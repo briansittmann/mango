@@ -1,0 +1,46 @@
+{
+  "dashboard": {
+    "gastosFijos": "Fixed expenses",
+    "colapsarTodo": "Collapse all",
+    "anadirGasto": "Add expense",
+    "anadirIngreso": "Add income",
+    "anadirMovimientoAhorro": "Add savings movement",
+    "cicloAnterior": "Previous cycle",
+    "cicloSiguiente": "Next cycle",
+    "enCurso": "in progress"
+  },
+  "resumen": {
+    "ingresos": "Income",
+    "gastos": "Expenses",
+    "ahorro": "Savings",
+    "verTodosLosGastos": "View all expenses",
+    "estimado": "{real} of {estimado} estimated",
+    "acumulado": "Accumulated",
+    "deposito": "Deposit",
+    "retiro": "Withdrawal"
+  },
+  "categoria": {
+    "gastadoDePresupuesto": "{gastado} of {presupuesto}",
+    "disponibleSemanal": "You have {monto} left per week",
+    "disponibleDias": "You have {monto} left for {dias, plural, one {the last day} other {the last # days}}"
+  },
+  "menuCuenta": {
+    "menuDeCuenta": "Account menu",
+    "abrirMenuDeCuenta": "Open account menu",
+    "cerrarMenu": "Close menu",
+    "tema": "Theme",
+    "claro": "Light",
+    "oscuro": "Dark",
+    "automatico": "Automatic",
+    "idioma": "Language",
+    "espanol": "Spanish",
+    "ingles": "English",
+    "cerrarSesion": "Log out"
+  },
+  "graficos": {
+    "total": "Total"
+  },
+  "demo": {
+    "aviso": "You're viewing sample data"
+  }
+}

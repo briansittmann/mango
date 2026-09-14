@@ -1,22 +1,72 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light dark;
+
+  --background: light-dark(#FAFBFA, #0D100D);
+  --card: light-dark(#FFFFFF, #171A17);
+  --border: light-dark(#E6E9E6, #262A26);
+  --input: light-dark(#E6E9E6, #262A26);
+  --foreground: light-dark(#0D100D, #F2F5F2);
+  --muted-foreground: light-dark(#5F665F, #8A918A);
+  --muted: light-dark(#F0F2F0, #1E221E);
+  --secondary: light-dark(#F0F2F0, #1E221E);
+  --brand: light-dark(#C3E86B, #C3E86B);
+  --brand-ink: light-dark(#4D6A0F, #C3E86B);
+  --primary: light-dark(#C3E86B, #C3E86B);
+  --primary-foreground: light-dark(#0D100D, #0D100D);
+  --secondary-foreground: light-dark(#0D100D, #F2F5F2);
+  --warning: light-dark(#F0B429, #F0B429);
+  --destructive: light-dark(#E5484D, #E5484D);
+  --ring: light-dark(#C3E86B, #C3E86B);
+  --hero-glow: light-dark(transparent, color-mix(in oklab, #C3E86B 30%, transparent));
+
+  --cat-naranja_calido: light-dark(#D4661A, #E87924);
+  --cat-verde_profundo: light-dark(#2F7A4B, #3E8E5A);
+  --cat-azul_apagado: light-dark(#3F7AB8, #4C8DCE);
+  --cat-gris_calido: light-dark(#8A877E, #9C9A92);
+  --cat-violeta_metalico: light-dark(#8446D6, #9B5DE5);
+  --cat-gris_oscuro: light-dark(#3A403B, #606861);
+  --cat-blanco: light-dark(#C9CEC9, #F2F5F2);
+  --cat-granate: light-dark(#8C2335, #BA3349);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+  --color-ring: var(--ring);
+  --color-hero-glow: var(--hero-glow);
+  --color-cat-naranja-calido: var(--cat-naranja_calido);
+  --color-cat-verde-profundo: var(--cat-verde_profundo);
+  --color-cat-azul-apagado: var(--cat-azul_apagado);
+  --color-cat-gris-calido: var(--cat-gris_calido);
+  --color-cat-violeta-metalico: var(--cat-violeta_metalico);
+  --color-cat-gris-oscuro: var(--cat-gris_oscuro);
+  --color-cat-blanco: var(--cat-blanco);
+  --color-cat-granate: var(--cat-granate);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {

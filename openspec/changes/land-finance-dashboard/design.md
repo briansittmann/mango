@@ -61,25 +61,40 @@ See proposal.md → *Why*. Current state of the repo:
 
 ## Decisions
 
-### D1 — Component split under `components/dashboard/`
+### D1 — Components split by atomic design level
 
-| File | Renders | Reused for |
-|---|---|---|
-| `dashboard.tsx` | Composition + UI state (D6); the only `'use client'` entry | `/demo` now, `/` later |
-| `month-selector.tsx` | Cycle title, chevrons, "en curso" | — |
-| `free-margin-card.tsx` | Hero number | — |
-| `summary-card.tsx` | Collapsible small card + panel slot | Income, expenses, savings |
-| `summary-row.tsx` | Dot? · name · detail · amount | Every summary panel row |
-| `category-card.tsx` | Dot, name, total/"X de Y", chevron, progress, rows, add row | **Fijos group and every category** |
-| `budget-progress.tsx` | Bar + weekly/remaining text | Inside `category-card` |
-| `expense-row.tsx` | Name, short date, amount | Inside `category-card` |
-| `add-row.tsx` | `+` action row | Add expense / income / movement |
-| `account-avatar.tsx` | 36px photo or initial | Top bar and menu header |
-| `account-menu.tsx` | Bottom sheet; theme + language controls | — |
-| `category-pie-chart.tsx`, `monthly-bars-chart.tsx` | Charts (D11) | — |
-| `demo-notice.tsx` | "Datos de ejemplo" banner | `/demo` only |
+Components live in top-level folders per atomic design level, so later screens (login, settings) can reuse the lower levels. `components/ui/` stays as the shadcn primitive layer (D12) that atoms may wrap, and the `app/` routes are the page level.
 
-*Alternative rejected:* one file per §9 section with inline sub-parts. It keeps the duplication that caused #18 and #19 and doesn't give a single category card.
+| Level | File (`components/<level>/`) | Renders | Reused for |
+|---|---|---|---|
+| atom | `category-dot.tsx` | `var(--cat-<color>)` dot, `aria-hidden` | Category card header, summary rows |
+| atom | `money.tsx` | Amount with the D9 money options, tabular figures | Every amount |
+| atom | `short-date.tsx` | Short date in the supplied timezone | Expense rows, savings movements |
+| atom | `progress-bar.tsx` | Bar filled to `consumo`, colour from `nivel` | Inside `budget-progress` |
+| atom | `expand-chevron.tsx` | Up/down chevron, brand ink when open | Category card, summary card |
+| atom | `avatar.tsx` | 36px photo or initial | Top bar and menu header |
+| molecule | `expense-row.tsx` | Name, short date, amount | Inside `category-card` |
+| molecule | `summary-row.tsx` | Dot? · name · detail · amount | Every summary panel row |
+| molecule | `add-row.tsx` | `+` action row | Add expense / income / movement |
+| molecule | `budget-progress.tsx` | Progress bar + weekly/remaining text | Inside `category-card` |
+| molecule | `month-selector.tsx` | Cycle title, chevrons, "en curso" | — |
+| molecule | `menu-row.tsx` | 48px icon · label · value row | Account menu rows |
+| molecule | `demo-notice.tsx` | "Datos de ejemplo" banner | `/demo` only, through the template's `aviso` slot |
+| organism | `category-card.tsx` | Dot, name, total/"X de Y", chevron, progress, rows, add row | **Fijos group and every category** |
+| organism | `summary-card.tsx` | Collapsible small card + panel slot | Income, expenses, savings |
+| organism | `free-margin-card.tsx` | Hero number | — |
+| organism | `account-menu.tsx` | Bottom sheet; theme + language controls | — |
+| organism | `category-pie-chart.tsx`, `monthly-bars-chart.tsx` | Charts (D11) | — |
+| template | `dashboard-template.tsx` | Top bar, layout, composition + UI state (D6); the only `'use client'` entry | `/demo` now, `/` later |
+| page | `app/demo/page.tsx` | Supplies `datos`, `acciones` and `aviso` to the template | — |
+
+Rules per level:
+- Imports only point down: `ui` < atoms < molecules < organisms < templates. An upward import fails lint (D4).
+- Atoms receive all text and accessible names as props and never call `useTranslations`. `money` and `short-date` may call `useFormatter` with `i18n/formatos.ts`, so formatting stays in one place. Molecules and above read their own messages.
+- The D6 UI state lives only in the template. Lower levels receive open/closed flags and handlers as props.
+- One stateful template instead of a stateless template plus a container: there is a single consumer, so the split would only add prop threading.
+
+*Alternatives rejected:* a flat `components/dashboard/` folder, or the atomic levels nested under it. Neither lets another screen reuse the atoms. One file per §9 section with inline sub-parts was also rejected: it keeps the duplication that caused #18 and #19 and doesn't give a single category card.
 
 ### D2 — Data contract in `lib/datos/dashboard.ts` (types only)
 
@@ -126,7 +141,8 @@ type Acciones = Partial<{ cicloAnterior(): void; cicloSiguiente(): void; anadirG
 ### D4 — Lint rules, `eslint.config.mjs` scoped to `components/**`
 
 - `@typescript-eslint/no-restricted-imports` with patterns `@supabase/*`, `@/lib/supabase/*`, `@/lib/datos/*` and `allowTypeImports: true`. Components may `import type` the contract but can't call anything that queries.
-- `react/jsx-no-literals` with `{ noStrings: true, ignoreProps: true, allowedStrings: ['·', '+', '/'] }` on `components/dashboard/**`, which catches literal JSX text. Attribute strings (`aria-label="…"`) aren't covered by this rule, so a grep in the verification tasks catches those.
+- Downward-only imports (D1) through the same rule per level: `components/atoms/**` bans `**/molecules/*`, `**/organisms/*` and `**/templates/*`; `components/molecules/**` bans `**/organisms/*` and `**/templates/*`; `components/organisms/**` bans `**/templates/*`. Flat config replaces a rule's options for matching files instead of merging them, so each level block repeats the data-access patterns above.
+- `react/jsx-no-literals` with `{ noStrings: true, ignoreProps: true, allowedStrings: ['·', '+', '/'] }` on `components/{atoms,molecules,organisms,templates}/**`, which catches literal JSX text. Task 1.3 first scoped it to `components/dashboard/**`, and task 1.4 moves it. Attribute strings (`aria-label="…"`) aren't covered by this rule, so a grep in the verification tasks catches those.
 
 *Alternative rejected:* code-review convention only. §12 calls this boundary the part that matters, and it's cheap to make mechanical.
 
@@ -134,7 +150,7 @@ type Acciones = Partial<{ cicloAnterior(): void; cicloSiguiente(): void; anadirG
 
 Each control reads its handler from `acciones`. If the handler is `undefined`, the control renders `disabled` (visibly dimmed). `/demo` supplies only `cambiarIdioma`.
 
-### D6 — UI state lives in `dashboard.tsx`
+### D6 — UI state lives in `dashboard-template.tsx`
 
 - `abiertos: Set<string>` (open cards). "Colapsar todo" clears it. Everything starts collapsed (§9).
 - `resumenAbierto: 'ingresos' | 'gastos' | 'ahorro' | null`.
@@ -161,29 +177,29 @@ Each control reads its handler from `acciones`. If the handler is `undefined`, t
 
 ### D8 — Palette values
 
-§ = ARCHITECTURE §9. * = provisional, tuned in task 2.3 against the contrast targets in `specs/theming`.
+§ = ARCHITECTURE §9. Values below are confirmed by the task 2.3 contrast pass (WCAG 2.1 formula) against the targets in `specs/theming`: `foreground`, `muted-foreground` and `brand-ink` reach ≥ 4.5:1 on both `card` and `background` in each theme; every `cat-*` reaches ≥ 3:1 on `card`, with one documented exception below.
 
 | Token | Light | Dark |
 |---|---|---|
 | background | `#FAFBFA` § | `#0D100D` § |
 | card | `#FFFFFF` § | `#171A17` § |
 | border / input | `#E6E9E6` § | `#262A26` § |
-| foreground | `#0D100D`* | `#F2F5F2` § |
-| muted-foreground | `#5F665F`* | `#8A918A` § |
-| muted / secondary | `#F0F2F0`* | `#1E221E`* |
+| foreground | `#0D100D` | `#F2F5F2` § |
+| muted-foreground | `#5F665F` | `#8A918A` § |
+| muted / secondary | `#F0F2F0` | `#1E221E` |
 | brand (fills, ring, primary) | `#C3E86B` § | `#C3E86B` § |
-| brand-ink (lime as text) | `#4D6A0F`* | `#C3E86B` § |
-| primary-foreground | `#0D100D`* | `#0D100D`* |
+| brand-ink (lime as text) | `#4D6A0F` | `#C3E86B` § |
+| primary-foreground | `#0D100D` | `#0D100D` |
 | warning | `#F0B429` § | `#F0B429` § |
 | destructive | `#E5484D` § | `#E5484D` § |
-| cat-naranja_calido | `#D4661A`* | `#E87924`* |
-| cat-verde_profundo | `#2F7A4B`* | `#3E8E5A`* |
-| cat-azul_apagado | `#3F7AB8`* | `#4C8DCE`* |
-| cat-gris_calido | `#8A877E`* | `#9C9A92`* |
-| cat-violeta_metalico | `#8446D6`* | `#9B5DE5`* |
-| cat-gris_oscuro | `#3A403B`* | `#59605A`* |
-| cat-blanco | `#C9CEC9`* + slice separator | `#F2F5F2`* |
-| cat-granate | `#8C2335`* | `#9E2B3E`* |
+| cat-naranja_calido | `#D4661A` | `#E87924` |
+| cat-verde_profundo | `#2F7A4B` | `#3E8E5A` |
+| cat-azul_apagado | `#3F7AB8` | `#4C8DCE` |
+| cat-gris_calido | `#8A877E` | `#9C9A92` |
+| cat-violeta_metalico | `#8446D6` | `#9B5DE5` |
+| cat-gris_oscuro | `#3A403B` | `#606861` (raised from `#59605A`, was 2.71:1) |
+| cat-blanco | `#C9CEC9` — 1.60:1 on `card`, accepted exception, stays visible via the pie slice separator | `#F2F5F2` |
+| cat-granate | `#8C2335` | `#BA3349` (raised from `#9E2B3E`, was 2.40:1) |
 
 Dark category values reuse the v0 hues where one maps to a stored name. Hex values appear **only** in `app/globals.css`.
 
@@ -223,6 +239,7 @@ Install `@base-ui/react`, `class-variance-authority`, `clsx`, `tailwind-merge` a
 - [Provisional light palette looks wrong or fails contrast] → Task 2.3 checks each token pair and screenshots both themes before any component work depends on the look.
 - [`react/jsx-no-literals` flags harmless glyphs] → `allowedStrings` list; icons instead of text glyphs where possible.
 - [Dynamic rendering from the locale cookie adds server work on every request] → Negligible at this scale. If it matters later, move the locale read into a client-side script like the theme.
+- [Atomic levels add files and prop threading for a single screen] → Accepted: login and settings will reuse the lower levels, and the D4 import bans keep dependencies pointing down.
 - [Removing `finance-dashboard.tsx` loses the v0 reference] → It remains in git history once this change is committed. The file is untracked now, so commit it first (task 1.1).
 
 ## Migration Plan

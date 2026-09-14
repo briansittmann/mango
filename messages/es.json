@@ -1,0 +1,46 @@
+{
+  "dashboard": {
+    "gastosFijos": "Gastos fijos",
+    "colapsarTodo": "Colapsar todo",
+    "anadirGasto": "Añadir gasto",
+    "anadirIngreso": "Añadir ingreso",
+    "anadirMovimientoAhorro": "Añadir movimiento de ahorro",
+    "cicloAnterior": "Ciclo anterior",
+    "cicloSiguiente": "Ciclo siguiente",
+    "enCurso": "en curso"
+  },
+  "resumen": {
+    "ingresos": "Ingresos",
+    "gastos": "Gastos",
+    "ahorro": "Ahorro",
+    "verTodosLosGastos": "Ver todos los gastos",
+    "estimado": "{real} de {estimado} estimados",
+    "acumulado": "Acumulado",
+    "deposito": "Ingreso",
+    "retiro": "Retiro"
+  },
+  "categoria": {
+    "gastadoDePresupuesto": "{gastado} de {presupuesto}",
+    "disponibleSemanal": "Te quedan {monto} por semana",
+    "disponibleDias": "Te quedan {monto} para {dias, plural, one {el último día} other {los últimos # días}}"
+  },
+  "menuCuenta": {
+    "menuDeCuenta": "Menú de cuenta",
+    "abrirMenuDeCuenta": "Abrir menú de cuenta",
+    "cerrarMenu": "Cerrar menú",
+    "tema": "Tema",
+    "claro": "Claro",
+    "oscuro": "Oscuro",
+    "automatico": "Automático",
+    "idioma": "Idioma",
+    "espanol": "Español",
+    "ingles": "Inglés",
+    "cerrarSesion": "Cerrar sesión"
+  },
+  "graficos": {
+    "total": "Total"
+  },
+  "demo": {
+    "aviso": "Estás viendo datos de ejemplo"
+  }
+}
