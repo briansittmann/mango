@@ -91,15 +91,18 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
             reverse
             duration={0.6}
             className={cn(
-              'absolute right-4 transition-[top] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] sm:right-5',
-              scrolled ? 'top-[86px]' : 'top-6',
+              'absolute right-4 z-10 transition-[top] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] sm:right-5',
+              scrolled ? 'top-[87px]' : 'top-6',
             )}
           >
             <button
               type="button"
               onClick={() => setAccountMenuOpen(true)}
               aria-label={tMenu('abrirMenuDeCuenta')}
-              className="grid size-11 place-items-center rounded-full"
+              aria-haspopup="dialog"
+              aria-expanded={accountMenuOpen}
+              aria-controls="account-menu"
+              className="grid size-11 place-items-center rounded-full transition-[scale] duration-200 active:scale-90"
             >
               <Avatar name={data.user.name} photoUrl={data.user.photoUrl} />
             </button>

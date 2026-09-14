@@ -166,6 +166,26 @@
   --text-label-ui--font-weight: 500;
 }
 
+@theme {
+  --ease-spring: linear(0, 0.028, 0.099, 0.197, 0.307, 0.42, 0.53, 0.631, 0.721, 0.799, 0.863, 0.915, 0.956, 0.987, 1.009, 1.023, 1.033, 1.037, 1.038, 1.037, 1.034, 1.031, 1.026, 1.022, 1.018, 1.014, 1.011, 1.008, 1.005, 1.003, 1.002, 1, 1, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 1);
+  --ease-bounce: linear(0, 0.044, 0.155, 0.304, 0.467, 0.626, 0.77, 0.891, 0.986, 1.054, 1.098, 1.12, 1.126, 1.12, 1.106, 1.087, 1.066, 1.046, 1.028, 1.013, 1.001, 0.993, 0.987, 0.985, 0.984, 0.985, 0.987, 0.989, 0.992, 0.994, 0.997, 0.998, 1, 1.001, 1.002, 1.002, 1.002, 1.002, 1.002, 1.001, 1);
+  --animate-segment-pop: segment-pop 600ms var(--ease-bounce) both;
+
+  @keyframes segment-pop {
+    from {
+      rotate: var(--pop-rotate, 0deg);
+      scale: 0.5;
+      opacity: 0;
+    }
+  }
+}
+
+:root.theme-switching::view-transition-old(root),
+:root.theme-switching::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -255,6 +275,16 @@ body {
   );
   -webkit-backdrop-filter: blur(32px) saturate(180%);
   backdrop-filter: blur(32px) saturate(180%);
+}
+
+@media (width >= 40rem) {
+  #account-menu.liquid-glass {
+    background: linear-gradient(
+      160deg,
+      light-dark(rgba(255, 255, 255, 0.97), rgba(34, 42, 36, 0.97)) 0%,
+      light-dark(rgba(250, 252, 250, 0.94), rgba(22, 28, 23, 0.95)) 100%
+    );
+  }
 }
 
 .glass-bar {
