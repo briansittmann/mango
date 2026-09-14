@@ -2,9 +2,9 @@ import {
   procesarMensaje,
   procesarNumeroDesconocido,
   type RespuestaBot,
-} from '@/lib/bot/logica'
-import { mensajeYaProcesado } from '@/lib/datos/transacciones'
-import { buscarUsuarioIdPorTelefono } from '@/lib/datos/usuarios'
+} from '@/lib/bot/logic'
+import { mensajeYaProcesado } from '@/lib/data/transactions'
+import { buscarUsuarioIdPorTelefono } from '@/lib/data/users'
 
 import type { MensajeWhatsApp } from './payload'
 

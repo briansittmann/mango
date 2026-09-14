@@ -1,7 +1,7 @@
 import { after, type NextRequest } from 'next/server'
 
-import { manejarMensajes } from '@/lib/whatsapp/adaptador'
-import { comparacionSegura, firmaValida } from '@/lib/whatsapp/firma'
+import { manejarMensajes } from '@/lib/whatsapp/adapter'
+import { comparacionSegura, firmaValida } from '@/lib/whatsapp/signature'
 import { extraerMensajesDeTexto } from '@/lib/whatsapp/payload'
 
 /**

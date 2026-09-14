@@ -13,7 +13,7 @@ const eslintConfig = defineConfig([
         {
           patterns: [
             {
-              group: ["@supabase/*", "@/lib/supabase/*", "@/lib/datos/*"],
+              group: ["@supabase/*", "@/lib/supabase/*", "@/lib/data/*"],
               allowTypeImports: true,
             },
           ],
@@ -38,7 +38,7 @@ const eslintConfig = defineConfig([
         {
           patterns: [
             {
-              group: ["@supabase/*", "@/lib/supabase/*", "@/lib/datos/*"],
+              group: ["@supabase/*", "@/lib/supabase/*", "@/lib/data/*"],
               allowTypeImports: true,
             },
             {
@@ -57,7 +57,7 @@ const eslintConfig = defineConfig([
         {
           patterns: [
             {
-              group: ["@supabase/*", "@/lib/supabase/*", "@/lib/datos/*"],
+              group: ["@supabase/*", "@/lib/supabase/*", "@/lib/data/*"],
               allowTypeImports: true,
             },
             {
@@ -76,7 +76,7 @@ const eslintConfig = defineConfig([
         {
           patterns: [
             {
-              group: ["@supabase/*", "@/lib/supabase/*", "@/lib/datos/*"],
+              group: ["@supabase/*", "@/lib/supabase/*", "@/lib/data/*"],
               allowTypeImports: true,
             },
             {
