@@ -1,5 +1,9 @@
 {
   "dashboard": {
+    "appName": "Mango",
+    "available": "available",
+    "freeMarginIncome": "Income for the period",
+    "expenseBreakdown": "Expense breakdown",
     "gastosFijos": "Fixed expenses",
     "colapsarTodo": "Collapse all",
     "anadirGasto": "Add expense",
@@ -18,10 +22,12 @@
     "estimado": "{real} of {estimado} estimated",
     "acumulado": "Accumulated",
     "deposito": "Deposit",
-    "retiro": "Withdrawal"
+    "retiro": "Withdrawal",
+    "incomeSources": "Income sources",
+    "cycleSavings": "Cycle savings"
   },
   "categoria": {
-    "gastadoDePresupuesto": "{gastado} of {presupuesto}",
+    "gastadoDePresupuesto": "{gastado} <muted>of {presupuesto}</muted>",
     "disponibleSemanal": "You have {monto} left per week",
     "disponibleDias": "You have {monto} left for {dias, plural, one {the last day} other {the last # days}}"
   },
@@ -39,7 +45,10 @@
     "cerrarSesion": "Log out"
   },
   "graficos": {
-    "total": "Total"
+    "total": "Total",
+    "lastMonths": "Last months",
+    "monthlySpend": "Monthly spend",
+    "distribution": "Distribution"
   },
   "demo": {
     "aviso": "You're viewing sample data"

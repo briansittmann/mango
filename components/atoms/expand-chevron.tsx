@@ -11,7 +11,7 @@ export function ExpandChevron({ open, className }: ExpandChevronProps) {
     <ChevronDown
       aria-hidden
       className={cn(
-        'size-4 shrink-0 transition-transform',
+        'size-5 shrink-0 transition-transform',
         open ? 'rotate-180 text-brand-ink' : 'text-muted-foreground',
         className,
       )}

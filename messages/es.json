@@ -1,5 +1,9 @@
 {
   "dashboard": {
+    "appName": "Mango",
+    "available": "disponible",
+    "freeMarginIncome": "Ingresos del periodo",
+    "expenseBreakdown": "Desglose de gastos",
     "gastosFijos": "Gastos fijos",
     "colapsarTodo": "Colapsar todo",
     "anadirGasto": "Añadir gasto",
@@ -18,10 +22,12 @@
     "estimado": "{real} de {estimado} estimados",
     "acumulado": "Acumulado",
     "deposito": "Ingreso",
-    "retiro": "Retiro"
+    "retiro": "Retiro",
+    "incomeSources": "Fuentes de ingreso",
+    "cycleSavings": "Ahorro del ciclo"
   },
   "categoria": {
-    "gastadoDePresupuesto": "{gastado} de {presupuesto}",
+    "gastadoDePresupuesto": "{gastado} <muted>de {presupuesto}</muted>",
     "disponibleSemanal": "Te quedan {monto} por semana",
     "disponibleDias": "Te quedan {monto} para {dias, plural, one {el último día} other {los últimos # días}}"
   },
@@ -39,7 +45,10 @@
     "cerrarSesion": "Cerrar sesión"
   },
   "graficos": {
-    "total": "Total"
+    "total": "Total",
+    "lastMonths": "Últimos meses",
+    "monthlySpend": "Gasto mensual",
+    "distribution": "Distribución"
   },
   "demo": {
     "aviso": "Estás viendo datos de ejemplo"

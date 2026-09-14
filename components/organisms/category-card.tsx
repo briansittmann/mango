@@ -23,42 +23,50 @@ export function CategoryCard({ group, currency, timeZone, open, onToggle, onAddE
   const format = useFormatter()
 
   const name = group.name ?? t('gastosFijos')
-  const headerAmount = group.budget
-    ? tCategoria('gastadoDePresupuesto', {
-        gastado: format.number(group.budget.spent, { ...currencyFormatOptions, currency }),
-        presupuesto: format.number(group.budget.amount, { ...currencyFormatOptions, currency }),
-      })
-    : null
 
   return (
-    <div className={`rounded-xl border bg-card p-3 ${open ? 'border-foreground/20' : 'border-border'}`}>
-      <button type="button" onClick={onToggle} className="flex min-h-12 w-full items-center gap-3">
-        <CategoryDot color={group.color} />
-        <span className="flex-1 truncate text-left text-sm font-medium text-foreground">{name}</span>
-        {headerAmount !== null ? (
-          <span className="text-sm text-foreground">{headerAmount}</span>
+    <div
+      className={`overflow-hidden rounded-card border bg-card ${open ? '' : 'border-border hover:border-foreground/25'}`}
+      style={open ? { borderColor: `var(--cat-${group.color})` } : undefined}
+    >
+      <button type="button" onClick={onToggle} className="flex min-h-[72px] w-full items-center gap-3 px-4">
+        <CategoryDot color={group.color} className="size-3.5" />
+        <span className="flex-1 truncate text-left font-display text-headline-sm text-foreground">{name}</span>
+        {group.budget ? (
+          <span className="text-tabular-numeric-md text-lg font-semibold text-foreground">
+            {tCategoria.rich('gastadoDePresupuesto', {
+              gastado: format.number(group.budget.spent, { ...currencyFormatOptions, currency }),
+              presupuesto: format.number(group.budget.amount, { ...currencyFormatOptions, currency }),
+              muted: (chunks) => <span className="font-normal text-muted-foreground">{chunks}</span>,
+            })}
+          </span>
         ) : (
-          <Money amount={group.total} currency={currency} className="text-sm text-foreground" />
+          <Money amount={group.total} currency={currency} className="text-tabular-numeric-md text-lg font-semibold text-foreground" />
         )}
         <ExpandChevron open={open} />
       </button>
 
+      {group.budget ? (
+        <div className="px-4 pb-3">
+          <BudgetProgress budget={group.budget} currency={currency} />
+        </div>
+      ) : null}
+
       {open ? (
-        <div className="mt-3 flex flex-col gap-3 border-t border-border pt-3">
-          {group.budget ? <BudgetProgress budget={group.budget} currency={currency} /> : null}
-          <div className="flex flex-col divide-y divide-border">
-            {group.expenses.map((expense) => (
-              <ExpenseRow
-                key={expense.id}
-                name={expense.name}
-                date={expense.date}
-                amount={expense.amount}
-                currency={currency}
-                timeZone={timeZone}
-              />
-            ))}
+        <div className="flex flex-col">
+          {group.expenses.map((expense) => (
+            <ExpenseRow
+              key={expense.id}
+              name={expense.name}
+              date={expense.date}
+              amount={expense.amount}
+              currency={currency}
+              timeZone={timeZone}
+            />
+          ))}
+          <div className="px-4 pb-4">
+            <AddRow label={t('anadirGasto')} onClick={onAddExpense} />
           </div>
-          <AddRow label={t('anadirGasto')} onClick={onAddExpense} />
         </div>
       ) : null}
     </div>

@@ -1,5 +1,6 @@
-import { Bar, BarChart, Cell, ResponsiveContainer, XAxis, YAxis } from 'recharts'
-import { useFormatter } from 'next-intl'
+import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, XAxis } from 'recharts'
+import type { LabelProps, XAxisTickContentProps } from 'recharts'
+import { useFormatter, useTranslations } from 'next-intl'
 import { compactFormatOptions } from '@/i18n/formats'
 
 type MonthlyBarsChartProps = {
@@ -8,32 +9,68 @@ type MonthlyBarsChartProps = {
 }
 
 export function MonthlyBarsChart({ history, currentMonth }: MonthlyBarsChartProps) {
+  const t = useTranslations('graficos')
   const format = useFormatter()
 
+  const formatMonth = (month: string) => format.dateTime(new Date(`${month}-01T00:00:00Z`), { month: 'short', timeZone: 'UTC' })
+
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
-      <div className="h-40 w-full">
+    <div className="rounded-card border border-border bg-card p-5">
+      <div className="flex items-baseline justify-between">
+        <h3 className="font-display text-headline-sm text-foreground">{t('lastMonths')}</h3>
+        <span className="text-label-caps uppercase text-muted-foreground">{t('monthlySpend')}</span>
+      </div>
+      <div className="mt-5 h-40 rounded-inner bg-background px-4 pb-3 pt-5">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={history}>
+          <BarChart data={history} margin={{ top: 16, right: 16, bottom: 0, left: 16 }}>
             <XAxis
               dataKey="month"
-              tickFormatter={(month: string) => format.dateTime(new Date(`${month}-01T00:00:00Z`), { month: 'short', timeZone: 'UTC' })}
               tickLine={false}
               axisLine={false}
-              stroke="var(--muted-foreground)"
-              fontSize={12}
+              tick={(props: XAxisTickContentProps) => {
+                const isCurrent = props.payload.value === currentMonth
+                return (
+                  <text
+                    x={props.x}
+                    y={props.y}
+                    dy={16}
+                    textAnchor="middle"
+                    fontSize={14}
+                    fontWeight={isCurrent ? 600 : 400}
+                    fill={isCurrent ? 'var(--brand-ink)' : 'var(--muted-foreground)'}
+                  >
+                    {formatMonth(String(props.payload.value))}
+                  </text>
+                )
+              }}
             />
-            <YAxis
-              tickFormatter={(value: number) => format.number(value, compactFormatOptions)}
-              tickLine={false}
-              axisLine={false}
-              stroke="var(--muted-foreground)"
-              fontSize={12}
-              width={40}
-            />
-            <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+            <Bar dataKey="total" maxBarSize={32} radius={[8, 8, 0, 0]}>
+              <LabelList
+                dataKey="total"
+                position="top"
+                content={(props: LabelProps) => {
+                  const isCurrent = typeof props.index === 'number' && history[props.index]?.month === currentMonth
+                  return (
+                    <text
+                      x={props.x}
+                      y={Number(props.y) - 6}
+                      textAnchor="middle"
+                      fontSize={12}
+                      fontWeight={isCurrent ? 600 : 400}
+                      fill={isCurrent ? 'var(--brand-ink)' : 'var(--muted-foreground)'}
+                    >
+                      {format.number(Number(props.value), compactFormatOptions)}
+                    </text>
+                  )
+                }}
+              />
               {history.map((entry) => (
-                <Cell key={entry.month} fill={entry.month === currentMonth ? 'var(--brand)' : 'var(--muted)'} />
+                <Cell
+                  key={entry.month}
+                  fill={entry.month === currentMonth ? 'var(--brand)' : 'var(--muted-foreground)'}
+                  fillOpacity={entry.month === currentMonth ? 1 : 0.25}
+                  style={entry.month === currentMonth ? { filter: 'drop-shadow(0 0 9px var(--hero-glow))' } : undefined}
+                />
               ))}
             </Bar>
           </BarChart>

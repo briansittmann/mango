@@ -5,18 +5,25 @@ type ProgressBarProps = {
   level: BudgetStatus['level']
 }
 
-const LEVEL_CLASSES: Record<BudgetStatus['level'], string> = {
-  ok: 'bg-brand',
-  warning: 'bg-warning',
-  exceeded: 'bg-destructive',
+const LEVEL_VARS: Record<BudgetStatus['level'], string> = {
+  ok: '--brand',
+  warning: '--warning',
+  exceeded: '--destructive',
 }
 
 export function ProgressBar({ usage, level }: ProgressBarProps) {
   const width = Math.min(1, Math.max(0, usage)) * 100
+  const colorVar = LEVEL_VARS[level]
 
   return (
-    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-      <div className={`h-full rounded-full ${LEVEL_CLASSES[level]}`} style={{ width: `${width}%` }} />
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/10">
+      <div
+        className="h-full rounded-full"
+        style={{
+          width: `${width}%`,
+          background: `linear-gradient(90deg, color-mix(in srgb, var(${colorVar}) 70%, white), var(${colorVar}))`,
+        }}
+      />
     </div>
   )
 }

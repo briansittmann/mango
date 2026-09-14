@@ -23,9 +23,9 @@ export function BudgetProgress({ budget, currency }: BudgetProgressProps) {
         })
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col">
       <ProgressBar usage={budget.usage} level={budget.level} />
-      <p className="text-xs text-muted-foreground">{remainingText}</p>
+      <p className="mt-2 text-body-md text-muted-foreground">{remainingText}</p>
     </div>
   )
 }

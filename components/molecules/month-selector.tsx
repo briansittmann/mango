@@ -15,28 +15,34 @@ export function MonthSelector({ month, inProgress, onPrevious, onNext }: MonthSe
 
   return (
     <div className="flex items-center justify-center gap-3">
-      <button
-        type="button"
-        onClick={onPrevious}
-        disabled={!onPrevious}
-        aria-label={t('cicloAnterior')}
-        className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-30"
-      >
-        <ChevronLeft aria-hidden className="size-5" />
-      </button>
-      <div className="flex items-baseline gap-2">
-        <span className="text-base font-semibold capitalize text-foreground">{monthName}</span>
-        {inProgress ? <span className="text-xs text-muted-foreground">{t('enCurso')}</span> : null}
+      <div className="flex h-12 items-center rounded-full border border-border bg-card px-0.5">
+        <button
+          type="button"
+          onClick={onPrevious}
+          disabled={!onPrevious}
+          aria-label={t('cicloAnterior')}
+          className="grid size-11 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+        >
+          <ChevronLeft aria-hidden className="size-5" />
+        </button>
+        <span className="min-w-[158px] text-center font-display text-headline-sm capitalize text-foreground">
+          {monthName}
+        </span>
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={!onNext}
+          aria-label={t('cicloSiguiente')}
+          className="grid size-11 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+        >
+          <ChevronRight aria-hidden className="size-5" />
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={onNext}
-        disabled={!onNext}
-        aria-label={t('cicloSiguiente')}
-        className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-30"
-      >
-        <ChevronRight aria-hidden className="size-5" />
-      </button>
+      {inProgress ? (
+        <span className="rounded-full bg-brand/10 px-2.5 py-1 text-label-caps uppercase text-brand-ink">
+          {t('enCurso')}
+        </span>
+      ) : null}
     </div>
   )
 }

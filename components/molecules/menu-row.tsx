@@ -9,11 +9,14 @@ type MenuRowProps = {
   disabled?: boolean
 }
 
+const rowClassName =
+  'relative flex min-h-12 w-full items-center gap-3 px-4 py-3 before:absolute before:left-4 before:right-0 before:top-0 before:h-px before:bg-border first:before:hidden'
+
 export function MenuRow({ icon, label, children, onClick, disabled }: MenuRowProps) {
   const content = (
     <>
       {icon}
-      <span className="flex-1 text-left text-sm text-foreground">{label}</span>
+      <span className="flex-1 text-left text-body-md text-foreground">{label}</span>
       {children}
     </>
   )
@@ -24,12 +27,12 @@ export function MenuRow({ icon, label, children, onClick, disabled }: MenuRowPro
         type="button"
         onClick={onClick}
         disabled={disabled}
-        className="flex min-h-12 w-full items-center gap-3 rounded-lg px-1 py-2 transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+        className={cn(rowClassName, 'disabled:pointer-events-none disabled:opacity-40')}
       >
         {content}
       </button>
     )
   }
 
-  return <div className={cn('flex min-h-12 items-center gap-3 px-1 py-2', disabled && 'opacity-40')}>{content}</div>
+  return <div className={cn(rowClassName, disabled && 'opacity-40')}>{content}</div>
 }

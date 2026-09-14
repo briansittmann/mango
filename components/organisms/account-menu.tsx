@@ -1,6 +1,6 @@
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
+import { useState } from 'react'
 import { Globe, LogOut, Moon, Sun, SunMoon, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/atoms/avatar'
@@ -15,6 +15,9 @@ type AccountMenuProps = {
 }
 
 type ThemeChoice = 'light' | 'dark' | null
+
+const segmentClassName =
+  'grid min-h-11 min-w-11 place-items-center rounded-full px-3 text-label-ui transition-colors'
 
 export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) {
   const t = useTranslations('menuCuenta')
@@ -50,37 +53,45 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-20 flex items-end justify-center">
-      <button type="button" onClick={onClose} aria-label={t('cerrarMenu')} className="absolute inset-0 bg-foreground/40" />
-      <div className="relative z-10 flex w-full max-w-lg flex-col gap-1 rounded-t-2xl border border-border bg-card p-4 pb-6">
-        <div className="mb-2 flex items-center justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <Avatar name={user.name} photoUrl={user.photoUrl} />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
-              <p className="truncate text-xs text-muted-foreground">{user.phone}</p>
-            </div>
-          </div>
+    <div className="fixed inset-0 z-40 flex items-end justify-center">
+      <button type="button" onClick={onClose} aria-label={t('cerrarMenu')} className="fixed inset-0 z-40 bg-scrim backdrop-blur-[12px]" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="account-menu-title"
+        className="fixed inset-x-0 bottom-0 z-50 mx-auto max-h-[85vh] max-w-[640px] overflow-y-auto rounded-t-sheet border border-b-0 border-border bg-card pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_32px_var(--sheet-shadow)]"
+      >
+        <div aria-hidden className="mx-auto mt-2.5 h-1 w-9 rounded-full bg-handle" />
+
+        <div className="sticky top-0 flex items-center justify-between bg-card px-4 py-2">
+          <h2 id="account-menu-title" className="font-display text-headline-sm">
+            {t('menuDeCuenta')}
+          </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label={t('cerrarMenu')}
-            className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted"
+            className="grid size-11 place-items-center rounded-full text-muted-foreground hover:bg-muted"
           >
             <X aria-hidden className="size-5" />
           </button>
         </div>
 
-        <MenuRow icon={<SunMoon aria-hidden className="size-4 text-muted-foreground" />} label={t('tema')}>
-          <div className="flex gap-1">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <Avatar name={user.name} photoUrl={user.photoUrl} size="sm" />
+          <div className="min-w-0">
+            <p className="truncate text-body-md font-semibold text-foreground">{user.name}</p>
+            <p className="truncate text-body-sm text-muted-foreground">{user.phone}</p>
+          </div>
+        </div>
+
+        <MenuRow icon={<SunMoon aria-hidden className="size-4 text-brand-ink" />} label={t('tema')}>
+          <div className="flex rounded-full bg-muted p-0.5">
             <button
               type="button"
               onClick={() => applyTheme('light')}
               aria-label={t('claro')}
-              className={cn(
-                'rounded-md p-1.5 transition-colors',
-                theme === 'light' ? 'bg-brand/15 text-brand-ink' : 'text-muted-foreground hover:bg-muted',
-              )}
+              className={cn(segmentClassName, theme === 'light' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}
             >
               <Sun aria-hidden className="size-4" />
             </button>
@@ -88,10 +99,7 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
               type="button"
               onClick={() => applyTheme('dark')}
               aria-label={t('oscuro')}
-              className={cn(
-                'rounded-md p-1.5 transition-colors',
-                theme === 'dark' ? 'bg-brand/15 text-brand-ink' : 'text-muted-foreground hover:bg-muted',
-              )}
+              className={cn(segmentClassName, theme === 'dark' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}
             >
               <Moon aria-hidden className="size-4" />
             </button>
@@ -99,25 +107,23 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
               type="button"
               onClick={() => applyTheme(null)}
               aria-label={t('automatico')}
-              className={cn(
-                'rounded-md p-1.5 transition-colors',
-                theme === null ? 'bg-brand/15 text-brand-ink' : 'text-muted-foreground hover:bg-muted',
-              )}
+              className={cn(segmentClassName, theme === null ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}
             >
               <SunMoon aria-hidden className="size-4" />
             </button>
           </div>
         </MenuRow>
 
-        <MenuRow icon={<Globe aria-hidden className="size-4 text-muted-foreground" />} label={t('idioma')}>
-          <div className="flex gap-1">
+        <MenuRow icon={<Globe aria-hidden className="size-4 text-brand-ink" />} label={t('idioma')}>
+          <div className="flex rounded-full bg-muted p-0.5">
             <button
               type="button"
               onClick={() => applyLanguage('es')}
               disabled={!actions.changeLanguage}
               className={cn(
-                'rounded-md px-2 py-1 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-40',
-                locale === 'es' ? 'bg-brand/15 text-brand-ink' : 'text-muted-foreground hover:bg-muted',
+                segmentClassName,
+                'disabled:pointer-events-none disabled:opacity-40',
+                locale === 'es' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
               )}
             >
               {t('espanol')}
@@ -127,8 +133,9 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
               onClick={() => applyLanguage('en')}
               disabled={!actions.changeLanguage}
               className={cn(
-                'rounded-md px-2 py-1 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-40',
-                locale === 'en' ? 'bg-brand/15 text-brand-ink' : 'text-muted-foreground hover:bg-muted',
+                segmentClassName,
+                'disabled:pointer-events-none disabled:opacity-40',
+                locale === 'en' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
               )}
             >
               {t('ingles')}
@@ -136,12 +143,15 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
           </div>
         </MenuRow>
 
-        <MenuRow
-          icon={<LogOut aria-hidden className="size-4 text-muted-foreground" />}
-          label={t('cerrarSesion')}
+        <button
+          type="button"
           onClick={actions.signOut}
           disabled={!actions.signOut}
-        />
+          className="flex min-h-12 w-full items-center justify-center gap-2 border-t border-border text-body-md font-semibold text-destructive transition-colors hover:bg-destructive/[0.08] disabled:pointer-events-none disabled:opacity-40"
+        >
+          <LogOut aria-hidden className="size-4" />
+          {t('cerrarSesion')}
+        </button>
       </div>
     </div>
   )

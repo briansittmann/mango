@@ -11,12 +11,16 @@ type ExpenseRowProps = {
 
 export function ExpenseRow({ name, date, amount, currency, timeZone }: ExpenseRowProps) {
   return (
-    <div className="flex min-h-12 items-center justify-between gap-3 py-2">
-      <div className="min-w-0">
-        <p className="truncate text-sm text-foreground">{name}</p>
-        <ShortDate date={date} timeZone={timeZone} className="text-xs text-muted-foreground" />
+    <div className="relative flex min-h-12 items-center gap-3 px-4 py-3 before:absolute before:left-4 before:right-0 before:top-0 before:h-px before:bg-border first:before:hidden hover:bg-foreground/[0.04]">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-body-lg text-foreground">{name}</p>
+        <ShortDate date={date} timeZone={timeZone} className="text-body-sm text-muted-foreground" />
       </div>
-      <Money amount={amount} currency={currency} className="shrink-0 text-sm text-foreground" />
+      <Money
+        amount={amount}
+        currency={currency}
+        className="shrink-0 rounded-full bg-muted px-3 py-1 text-tabular-numeric-md text-foreground"
+      />
     </div>
   )
 }
