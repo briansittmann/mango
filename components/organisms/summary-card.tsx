@@ -33,7 +33,7 @@ export function SummaryCard({ label, total, currency, open, onToggle, accent, he
           <Money
             amount={total}
             currency={currency}
-            className={`mt-4 text-tabular-numeric-lg ${accent ? 'text-hero-accent' : 'text-foreground'}`}
+            className={`mt-4 text-tabular-numeric-lg ${accent ? 'text-hero-accent text-glow-sm' : 'text-foreground'}`}
           />
         </button>
       </div>

@@ -23,6 +23,12 @@ export function MonthlyBarsChart({ history, currentMonth }: MonthlyBarsChartProp
       <div className="mt-5 h-40 rounded-inner bg-background px-4 pb-3 pt-5">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={history} margin={{ top: 16, right: 16, bottom: 0, left: 16 }}>
+            <defs>
+              <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--brand)" stopOpacity={1} />
+                <stop offset="100%" stopColor="var(--brand)" stopOpacity={0.35} />
+              </linearGradient>
+            </defs>
             <XAxis
               dataKey="month"
               tickLine={false}
@@ -50,9 +56,10 @@ export function MonthlyBarsChart({ history, currentMonth }: MonthlyBarsChartProp
                 position="top"
                 content={(props: LabelProps) => {
                   const isCurrent = typeof props.index === 'number' && history[props.index]?.month === currentMonth
+                  const centerX = Number(props.x) + Number(props.width ?? 0) / 2
                   return (
                     <text
-                      x={props.x}
+                      x={centerX}
                       y={Number(props.y) - 6}
                       textAnchor="middle"
                       fontSize={12}
@@ -64,14 +71,21 @@ export function MonthlyBarsChart({ history, currentMonth }: MonthlyBarsChartProp
                   )
                 }}
               />
-              {history.map((entry) => (
-                <Cell
-                  key={entry.month}
-                  fill={entry.month === currentMonth ? 'var(--brand)' : 'var(--muted-foreground)'}
-                  fillOpacity={entry.month === currentMonth ? 1 : 0.25}
-                  style={entry.month === currentMonth ? { filter: 'drop-shadow(0 0 9px var(--hero-glow))' } : undefined}
-                />
-              ))}
+              {history.map((entry) => {
+                const isCurrent = entry.month === currentMonth
+                return (
+                  <Cell
+                    key={entry.month}
+                    fill="url(#barGradient)"
+                    fillOpacity={isCurrent ? 1 : 0.35}
+                    style={{
+                      filter: isCurrent
+                        ? 'drop-shadow(0 0 2px var(--brand)) drop-shadow(0 0 8px var(--brand)) drop-shadow(0 0 16px var(--hero-glow))'
+                        : 'drop-shadow(0 0 4px var(--hero-glow))',
+                    }}
+                  />
+                )
+              })}
             </Bar>
           </BarChart>
         </ResponsiveContainer>

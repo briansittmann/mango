@@ -12,7 +12,10 @@
     "cicloAnterior": "Ciclo anterior",
     "cicloSiguiente": "Ciclo siguiente",
     "enCurso": "en curso",
-    "margenLibre": "Margen libre"
+    "margenLibre": "Margen libre",
+    "seleccionarMes": "Seleccionar mes",
+    "anioAnterior": "Año anterior",
+    "anioSiguiente": "Año siguiente"
   },
   "resumen": {
     "ingresos": "Ingresos",
@@ -51,6 +54,7 @@
     "distribution": "Distribución"
   },
   "demo": {
-    "aviso": "Estás viendo datos de ejemplo"
+    "aviso": "Estás viendo datos de ejemplo",
+    "cerrarAviso": "Cerrar aviso"
   }
 }

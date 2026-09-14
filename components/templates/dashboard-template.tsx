@@ -1,9 +1,10 @@
 'use client'
 
-import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { currencyFormatOptions } from '@/i18n/formats'
+import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/atoms/avatar'
 import { Money } from '@/components/atoms/money'
 import { ShortDate } from '@/components/atoms/short-date'
@@ -16,6 +17,7 @@ import { CategoryPieChart } from '@/components/organisms/category-pie-chart'
 import { FreeMarginCard } from '@/components/organisms/free-margin-card'
 import { MonthlyBarsChart } from '@/components/organisms/monthly-bars-chart'
 import { SummaryCard } from '@/components/organisms/summary-card'
+import { AnimatedContent } from '@/components/ui/animated-content'
 import type { DashboardActions, DashboardData } from '@/lib/data/dashboard'
 
 type DashboardTemplateProps = {
@@ -34,8 +36,16 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
   const [openIds, setOpenIds] = useState<Set<string>>(new Set())
   const [openSummary, setOpenSummary] = useState<SummaryKey | null>(null)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const expensesRef = useRef<HTMLDivElement>(null)
   const currency = data.user.currency
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 56)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   function toggleCard(id: string) {
     setOpenIds((prev) => {
@@ -59,35 +69,62 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
   )
 
   return (
-    <div className="mx-auto w-full max-w-[640px] px-4 pb-12 pt-6 sm:px-5">
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/mango-logo.svg" alt="" aria-hidden className="size-9 object-contain" />
-          <span className="font-display text-headline-md">{t('appName')}</span>
-        </div>
-        <button
-          type="button"
-          onClick={() => setAccountMenuOpen(true)}
-          aria-label={tMenu('abrirMenuDeCuenta')}
-          className="grid size-11 place-items-center rounded-full"
-        >
-          <Avatar name={data.user.name} photoUrl={data.user.photoUrl} />
-        </button>
-      </header>
-      {notice}
-      <div className="mt-8">
-        <MonthSelector
-          month={data.cycle.month}
-          inProgress={data.cycle.inProgress}
-          onPrevious={actions.previousCycle}
-          onNext={actions.nextCycle}
+    <div className="pb-12">
+      <div className="sticky -top-[76px] z-30">
+        <div
+          aria-hidden
+          className={cn(
+            'glass-bar absolute inset-x-0 bottom-0 h-[72px] transition-opacity duration-300',
+            scrolled ? 'opacity-100' : 'opacity-0',
+          )}
         />
+        <div className="relative mx-auto w-full max-w-[640px] px-4 pt-6 sm:px-5">
+          <AnimatedContent distance={16} reverse duration={0.6}>
+            <header className="flex h-11 items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/mango-logo.svg" alt="" aria-hidden className="size-9 object-contain" />
+              <span className="font-display text-headline-md">{t('appName')}</span>
+            </header>
+          </AnimatedContent>
+          <AnimatedContent
+            distance={16}
+            reverse
+            duration={0.6}
+            className={cn(
+              'absolute right-4 transition-[top] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] sm:right-5',
+              scrolled ? 'top-[86px]' : 'top-6',
+            )}
+          >
+            <button
+              type="button"
+              onClick={() => setAccountMenuOpen(true)}
+              aria-label={tMenu('abrirMenuDeCuenta')}
+              className="grid size-11 place-items-center rounded-full"
+            >
+              <Avatar name={data.user.name} photoUrl={data.user.photoUrl} />
+            </button>
+          </AnimatedContent>
+          <AnimatedContent className="pb-3 pt-5" distance={20} delay={0.12}>
+            <MonthSelector
+              month={data.cycle.month}
+              inProgress={data.cycle.inProgress}
+              onPrevious={actions.previousCycle}
+              onNext={actions.nextCycle}
+              onSelect={actions.selectCycle}
+            />
+          </AnimatedContent>
+        </div>
       </div>
-      <div className="mt-6">
+      <div className="mx-auto w-full max-w-[640px] px-4 sm:px-5">
+      {notice ? (
+        <AnimatedContent distance={12} delay={0.06} duration={0.6}>
+          {notice}
+        </AnimatedContent>
+      ) : null}
+      <AnimatedContent className="mt-4" distance={32} scale={0.97} duration={1} delay={0.2}>
         <FreeMarginCard amount={data.freeMargin} currency={currency} income={data.income.total} />
-      </div>
-      <div className="mt-4 grid grid-cols-3 items-start gap-2">
+      </AnimatedContent>
+      <AnimatedContent className="mt-4 grid grid-cols-3 items-start gap-2" distance={24} delay={0.32}>
           <SummaryCard
             label={tResumen('ingresos')}
             total={data.income.total}
@@ -162,7 +199,7 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
               <div className="flex items-center justify-between border-b border-border px-4 py-4">
                 <div>
                   <p className="text-label-caps uppercase text-muted-foreground">{tResumen('cycleSavings')}</p>
-                  <Money amount={data.savings.cycle} currency={currency} className="mt-1 text-tabular-numeric-lg text-hero-accent" />
+                  <Money amount={data.savings.cycle} currency={currency} className="mt-1 text-tabular-numeric-lg text-hero-accent text-glow-sm" />
                 </div>
                 <div className="text-right">
                   <p className="text-label-caps uppercase text-muted-foreground">{tResumen('acumulado')}</p>
@@ -187,9 +224,9 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
               <AddRow label={t('anadirMovimientoAhorro')} onClick={actions.addSavingsMovement} />
             </div>
           </SummaryCard>
-      </div>
+      </AnimatedContent>
 
-      <div className="mt-10 flex items-center justify-between">
+      <AnimatedContent className="mt-10 flex items-center justify-between" distance={16} delay={0.42}>
         <h2 className="text-label-caps uppercase text-muted-foreground">{t('expenseBreakdown')}</h2>
         <button
           type="button"
@@ -199,23 +236,49 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
           <ChevronUp className="size-4 text-brand-ink" aria-hidden />
           {t('colapsarTodo')}
         </button>
-      </div>
+      </AnimatedContent>
       <div ref={expensesRef} className="mt-4 flex flex-col gap-3">
-        {data.expenses.groups.map((group) => (
-          <CategoryCard
+        {data.expenses.groups.map((group, index) => (
+          <AnimatedContent
             key={group.id}
-            group={group}
-            currency={currency}
-            timeZone={data.user.timezone}
-            open={openIds.has(group.id)}
-            onToggle={() => toggleCard(group.id)}
-            onAddExpense={actions.addExpense ? () => actions.addExpense!(group.id) : undefined}
-          />
+            id={index === 1 ? 'category-cascade' : undefined}
+            trigger={index === 0 ? undefined : '#category-cascade'}
+            threshold={0.2}
+            distance={24}
+            duration={0.22}
+            delay={index === 0 ? 0.48 : (index - 1) * 0.06}
+          >
+            <CategoryCard
+              group={group}
+              currency={currency}
+              timeZone={data.user.timezone}
+              open={openIds.has(group.id)}
+              onToggle={() => toggleCard(group.id)}
+              onAddExpense={actions.addExpense ? () => actions.addExpense!(group.id) : undefined}
+            />
+          </AnimatedContent>
         ))}
       </div>
       <div className="mt-8 flex flex-col gap-4">
-        <MonthlyBarsChart history={data.history} currentMonth={data.cycle.month} />
-        <CategoryPieChart groups={data.expenses.groups} total={data.expenses.total} currency={currency} />
+        <AnimatedContent
+          trigger="#category-cascade"
+          threshold={0.2}
+          distance={40}
+          duration={1}
+          delay={(data.expenses.groups.length - 1) * 0.06}
+        >
+          <MonthlyBarsChart history={data.history} currentMonth={data.cycle.month} />
+        </AnimatedContent>
+        <AnimatedContent
+          trigger="#category-cascade"
+          threshold={0.2}
+          distance={40}
+          duration={1}
+          delay={data.expenses.groups.length * 0.06 + 0.1}
+        >
+          <CategoryPieChart groups={data.expenses.groups} total={data.expenses.total} currency={currency} />
+        </AnimatedContent>
+      </div>
       </div>
       <AccountMenu
         user={data.user}

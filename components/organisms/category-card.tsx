@@ -31,7 +31,7 @@ export function CategoryCard({ group, currency, timeZone, open, onToggle, onAddE
     >
       <button type="button" onClick={onToggle} className="flex min-h-[72px] w-full items-center gap-3 px-4">
         <CategoryDot color={group.color} className="size-3.5" />
-        <span className="flex-1 truncate text-left font-display text-headline-sm text-foreground">{name}</span>
+        <span className="flex-1 truncate text-left font-display text-headline-sm font-semibold text-foreground">{name}</span>
         {group.budget ? (
           <span className="text-tabular-numeric-md text-lg font-semibold text-foreground">
             {tCategoria.rich('gastadoDePresupuesto', {

@@ -42,6 +42,7 @@ export type DashboardData = {
 export type DashboardActions = Partial<{
   previousCycle(): void
   nextCycle(): void
+  selectCycle(month: string): void
   addExpense(groupId: string): void
   addIncome(): void
   addSavingsMovement(): void

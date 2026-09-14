@@ -12,7 +12,10 @@
     "cicloAnterior": "Previous cycle",
     "cicloSiguiente": "Next cycle",
     "enCurso": "in progress",
-    "margenLibre": "Free margin"
+    "margenLibre": "Free margin",
+    "seleccionarMes": "Select month",
+    "anioAnterior": "Previous year",
+    "anioSiguiente": "Next year"
   },
   "resumen": {
     "ingresos": "Income",
@@ -51,6 +54,7 @@
     "distribution": "Distribution"
   },
   "demo": {
-    "aviso": "You're viewing sample data"
+    "aviso": "You're viewing sample data",
+    "cerrarAviso": "Dismiss notice"
   }
 }
