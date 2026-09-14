@@ -55,3 +55,50 @@
 ## 13. No usar Agent cuando Grep/Read basta
 - Agent duplica todo el contexto en un subproceso. Solo usalo para busquedas amplias o tareas complejas.
 - Para buscar una funcion o archivo especifico, usa Grep o Glob directo.
+
+---
+
+## Estado actual (al 2026-09-14)
+> Se actualiza al archivar un change de OpenSpec o al cerrar un hito. Ante duda, mandan el codigo y `openspec list`.
+
+**Web/dashboard**
+- Hecho: `/demo` (`app/demo/page.tsx`) monta el dashboard completo con datos en memoria (`lib/demo/demo-data.ts`), sin Supabase ni login.
+- Pendiente: `app/page.tsx` sigue siendo el boilerplate de `create-next-app`. No hay ruta real del dashboard ni Supabase Auth (magic link).
+
+**Bot de WhatsApp**
+- Hecho: webhook (`app/api/whatsapp/route.ts`), validacion HMAC (`lib/whatsapp/signature.ts`), adaptador y extraccion de payload.
+- A medias: `lib/bot/logic.ts` es stub — `processMessage` y `processUnknownNumber` devuelven `{ kind: 'none' }`. Faltan parser Gemini + Zod, onboarding, invitaciones y rate limiting (TODOs en el archivo).
+- Pendiente: Zod y el SDK de Gemini no estan en `package.json`.
+
+**Base de datos**
+- Hecho: 12 migraciones en `supabase/migrations/` (tablas, RLS, ciclo de facturacion, seed de Brian).
+- A medias: `lib/data/` tiene tipos del dashboard, `getBudgetStatus`, `findUserIdByPhone`, `messageAlreadyProcessed`. No existe `resumenMensual` ni queries reales del dashboard.
+
+**i18n/tema**
+- Hecho: next-intl (`messages/es.json`, `en.json`), cambio de idioma por server action, tema claro/oscuro (`components/theme/theme-sync.tsx`).
+
+**Tests**
+- Pendiente: solo esta el ejemplo de Playwright (`tests/example.spec.js`). Sin tests propios ni script `test`.
+
+**Deploy/entorno**
+- Pendiente: sin `.env.local` en el repo local, sin evidencia de deploy en Vercel.
+
+**OpenSpec**
+- `translate-code-to-english` y `land-finance-dashboard`: completos, sin archivar.
+- `restyle-dashboard-to-v0`: 17/20 (faltan tareas 6.1-6.3, verificacion final).
+
+## Proyeccion
+
+Proximos pasos, en orden:
+1. Cerrar `restyle-dashboard-to-v0` (6.1-6.3) y archivar los tres changes completos, para que `openspec/specs/` refleje lo construido.
+2. Capa de datos real (`resumenMensual` y queries del dashboard en `lib/data/`), manteniendo la inyeccion de datos que ya usa `/demo`.
+3. Ruta real del dashboard (reemplazar `app/page.tsx`) + Supabase Auth con magic link.
+4. Bot: parser Gemini + Zod, carga de transacciones, confirmacion progresiva (ARCHITECTURE.md §3).
+5. Onboarding por chat e invitaciones con rate limiting (ARCHITECTURE.md §4, §10).
+6. Cron de gastos fijos, deploy en Vercel y variables de entorno (ARCHITECTURE.md §2, §7).
+7. Tests propios (Playwright sobre `/demo`, unitarios de ritmo/presupuesto).
+
+Mapeo a fases (ARCHITECTURE.md §13):
+- **Fase 1** (uso personal): pasos 2-4 arriba. Falta el grueso — capa de datos, dashboard real y bot funcional.
+- **Fase 2** (amigos y demo): invitaciones y rate limiting (paso 5); la demo publica (§12) ya esta adelantada via `/demo`.
+- **Fase 3** (refinamiento): sin empezar, salvo la traduccion a ingles (§2) que ya esta hecha.

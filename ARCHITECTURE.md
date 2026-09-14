@@ -460,7 +460,15 @@ No es la versión reducida del escritorio: si los gastos se cargan por WhatsApp 
 
 **Por qué el selector de mes va arriba** aunque sea la zona más incómoda para el pulgar: sin él, ningún número de abajo significa nada — *"margen libre: 640"* sin saber de qué mes no es información. Y se toca poco: lo normal es entrar a ver el mes actual y no tocarlo nunca. El compromiso es dejarlo arriba pero mínimo.
 
-En **escritorio** es el mismo contenido en dos columnas: números y barras a la izquierda, gráficos a la derecha.
+En **escritorio** no es el mismo layout estirado a dos columnas: es su propia composición (ver *Móvil y escritorio: experiencias distintas, misma lógica* más abajo).
+
+### Móvil y escritorio: experiencias distintas, misma lógica
+
+**Mobile y desktop son dos experiencias, no un layout responsive del mismo componente.** Comparten la capa de datos y la lógica (la misma función `resumenMensual`, el mismo cálculo de ritmo, sección 3), pero la composición visual de cada uno se piensa por separado, sin la obligación de que un breakpoint reordene las mismas piezas.
+
+**Por qué:** móvil es la vista principal (arriba) porque el gasto se carga desde el teléfono y el link abre ahí — una columna, orden por lo que decide vs. lo que explica. Escritorio tiene otro contexto de uso (más pantalla, cursor, sesiones más largas de revisión) y forzarlo a heredar el mismo orden en dos columnas desperdicia el espacio y no responde a cómo se usa realmente en cada dispositivo.
+
+**Qué se comparte:** la lógica de negocio, los cálculos, las llamadas a la capa de datos, los componentes atómicos (tarjeta de categoría, fila de gasto, barra de progreso). **Qué no se comparte:** el orden de las secciones, cuánto vive expandido por defecto, ni la composición general de la pantalla — cada plataforma la define según lo que a ese contexto le sirve.
 
 ### Filas de gastos fijos
 
