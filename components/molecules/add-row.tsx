@@ -11,9 +11,9 @@ export function AddRow({ label, onClick }: AddRowProps) {
       type="button"
       onClick={onClick}
       disabled={!onClick}
-      className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-inner border border-dashed border-foreground/15 text-label-ui text-muted-foreground transition-colors hover:border-brand/35 hover:text-brand-ink disabled:pointer-events-none disabled:opacity-50"
+      className="pressable relative flex min-h-row w-full items-center gap-3 px-inset text-body-lg font-medium text-brand-ink before:absolute before:left-4 before:right-0 before:top-0 before:h-px before:bg-border disabled:pointer-events-none disabled:opacity-50"
     >
-      <Plus aria-hidden className="size-5" />
+      <Plus aria-hidden className="size-5 shrink-0" />
       <span>{label}</span>
     </button>
   )

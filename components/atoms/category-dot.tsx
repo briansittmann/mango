@@ -11,9 +11,7 @@ export function CategoryDot({ color, className }: CategoryDotProps) {
     <span
       aria-hidden
       className={cn('inline-block size-2.5 shrink-0 rounded-full', className)}
-      style={{
-        background: `radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--cat-${color}) 70%, white), var(--cat-${color}) 70%, color-mix(in srgb, var(--cat-${color}) 70%, black))`,
-      }}
+      style={{ background: `var(--cat-${color})` }}
     />
   )
 }

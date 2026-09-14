@@ -1,8 +1,6 @@
 {
   "dashboard": {
     "appName": "Mango",
-    "available": "available",
-    "freeMarginIncome": "Income for the period",
     "expenseBreakdown": "Expense breakdown",
     "gastosFijos": "Fixed expenses",
     "colapsarTodo": "Collapse all",
@@ -32,7 +30,9 @@
   "categoria": {
     "gastadoDePresupuesto": "{gastado} <muted>of {presupuesto}</muted>",
     "disponibleSemanal": "You have {monto} left per week",
-    "disponibleDias": "You have {monto} left for {dias, plural, one {the last day} other {the last # days}}"
+    "disponibleDias": "You have {monto} left for {dias, plural, one {the last day} other {the last # days}}",
+    "nearLimit": "Near limit",
+    "overBudget": "{monto} over budget"
   },
   "menuCuenta": {
     "menuDeCuenta": "Account menu",

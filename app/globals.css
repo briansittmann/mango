@@ -28,6 +28,7 @@
   --primary-foreground: #0D110E;
   --secondary-foreground: light-dark(#0D100D, #F2F5F2);
   --warning: light-dark(#F0B429, #F0B429);
+  --warning-ink: light-dark(#8A5A00, #F0B429);
   --destructive: light-dark(#B91C1C, #EF4444);
   --ring: light-dark(#149052, #84CC16);
   --hero-glow: light-dark(transparent, color-mix(in oklab, #84CC16 30%, transparent));
@@ -41,7 +42,7 @@
   --shell-stop-5: light-dark(#E1E5E1, #080A09);
 
   --hero-start: light-dark(color-mix(in oklab, var(--brand) 3%, white), #1B211C);
-  --hero-end: light-dark(color-mix(in oklab, var(--brand) 42%, white), #121712);
+  --hero-end: light-dark(color-mix(in oklab, var(--brand) 8%, white), #121712);
   --hero-border: light-dark(rgba(20, 144, 82, 0.45), rgba(132, 204, 22, 0.22));
   --hero-shadow: light-dark(rgba(28, 40, 25, 0.08), rgba(0, 0, 0, 0.3));
   --hero-highlight: light-dark(transparent, rgba(132, 204, 22, 0.16));
@@ -88,6 +89,7 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-warning: var(--warning);
+  --color-warning-ink: var(--warning-ink);
   --color-destructive: var(--destructive);
   --color-ring: var(--ring);
   --color-hero-glow: var(--hero-glow);
@@ -121,19 +123,19 @@
   --text-display--letter-spacing: -0.03em;
   --text-display--font-weight: 800;
   --text-display-mobile: 44px;
-  --text-display-mobile--line-height: 50px;
-  --text-display-mobile--letter-spacing: -0.02em;
-  --text-display-mobile--font-weight: 800;
+  --text-display-mobile--line-height: 48px;
+  --text-display-mobile--letter-spacing: -0.035em;
+  --text-display-mobile--font-weight: 700;
   --text-headline-lg: 28px;
-  --text-headline-lg--line-height: 36px;
+  --text-headline-lg--line-height: 34px;
   --text-headline-lg--letter-spacing: -0.02em;
-  --text-headline-lg--font-weight: 600;
-  --text-headline-md: 22px;
-  --text-headline-md--line-height: 28px;
+  --text-headline-lg--font-weight: 700;
+  --text-headline-md: 20px;
+  --text-headline-md--line-height: 26px;
   --text-headline-md--letter-spacing: -0.015em;
   --text-headline-md--font-weight: 600;
-  --text-headline-sm: 18px;
-  --text-headline-sm--line-height: 24px;
+  --text-headline-sm: 17px;
+  --text-headline-sm--line-height: 22px;
   --text-headline-sm--letter-spacing: -0.01em;
   --text-headline-sm--font-weight: 600;
   --text-body-lg: 16px;
@@ -144,21 +146,21 @@
   --text-body-md--line-height: 20px;
   --text-body-md--letter-spacing: 0em;
   --text-body-md--font-weight: 400;
-  --text-body-sm: 12px;
-  --text-body-sm--line-height: 16px;
-  --text-body-sm--letter-spacing: 0.01em;
+  --text-body-sm: 13px;
+  --text-body-sm--line-height: 18px;
+  --text-body-sm--letter-spacing: 0em;
   --text-body-sm--font-weight: 400;
-  --text-tabular-numeric-lg: 24px;
-  --text-tabular-numeric-lg--line-height: 32px;
-  --text-tabular-numeric-lg--letter-spacing: -0.02em;
+  --text-tabular-numeric-lg: 20px;
+  --text-tabular-numeric-lg--line-height: 26px;
+  --text-tabular-numeric-lg--letter-spacing: -0.015em;
   --text-tabular-numeric-lg--font-weight: 600;
-  --text-tabular-numeric-md: 15px;
-  --text-tabular-numeric-md--line-height: 20px;
+  --text-tabular-numeric-md: 16px;
+  --text-tabular-numeric-md--line-height: 22px;
   --text-tabular-numeric-md--letter-spacing: -0.01em;
   --text-tabular-numeric-md--font-weight: 500;
-  --text-label-caps: 11px;
-  --text-label-caps--line-height: 14px;
-  --text-label-caps--letter-spacing: 0.06em;
+  --text-label-caps: 12px;
+  --text-label-caps--line-height: 16px;
+  --text-label-caps--letter-spacing: 0.04em;
   --text-label-caps--font-weight: 600;
   --text-label-ui: 13px;
   --text-label-ui--line-height: 18px;
@@ -171,12 +173,35 @@
   --ease-bounce: linear(0, 0.044, 0.155, 0.304, 0.467, 0.626, 0.77, 0.891, 0.986, 1.054, 1.098, 1.12, 1.126, 1.12, 1.106, 1.087, 1.066, 1.046, 1.028, 1.013, 1.001, 0.993, 0.987, 0.985, 0.984, 0.985, 0.987, 0.989, 0.992, 0.994, 0.997, 0.998, 1, 1.001, 1.002, 1.002, 1.002, 1.002, 1.002, 1.001, 1);
   --animate-segment-pop: segment-pop 600ms var(--ease-bounce) both;
 
+  --spacing-gutter: 1rem;
+  --spacing-section: 2rem;
+  --spacing-stack: 0.75rem;
+  --spacing-inset: 1rem;
+  --spacing-row: 3rem;
+  --spacing-target: 2.75rem;
+
   @keyframes segment-pop {
     from {
       rotate: var(--pop-rotate, 0deg);
       scale: 0.5;
       opacity: 0;
     }
+  }
+}
+
+@utility pressable {
+  -webkit-tap-highlight-color: transparent;
+  transition: scale 200ms var(--ease-spring), background-color 150ms ease-out;
+  &:active:not(:disabled) {
+    scale: var(--press-scale, 0.98);
+    background-color: color-mix(in oklab, var(--foreground) 4%, transparent);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
 }
 
@@ -213,16 +238,10 @@ body {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  border-color: rgba(167, 243, 208, 0.6);
-  background: linear-gradient(135deg, rgba(230, 252, 217, 0.85) 0%, rgba(240, 253, 244, 0.95) 45%, rgba(224, 242, 254, 0.85) 100%);
-  box-shadow: 0 10px 30px -10px rgba(16, 185, 129, 0.15), 0 2px 8px rgba(0, 0, 0, 0.02);
+  border-color: var(--hero-border);
+  background: linear-gradient(135deg, var(--hero-start), var(--hero-end));
+  box-shadow: 0 12px 30px var(--hero-shadow), inset 0 1px 0 var(--hero-highlight);
   clip-path: inset(0 round var(--radius-card));
-
-  @variant dark {
-    border-color: var(--hero-border);
-    background: linear-gradient(135deg, var(--hero-start), var(--hero-end));
-    box-shadow: 0 12px 30px var(--hero-shadow), inset 0 1px 0 var(--hero-highlight);
-  }
 }
 
 .hero-card::after {
@@ -288,9 +307,22 @@ body {
 }
 
 .glass-bar {
-  background: color-mix(in oklab, var(--background) 45%, transparent);
+  background: color-mix(in oklab, var(--background) 72%, transparent);
   border-bottom: 1px solid light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.06));
   box-shadow: 0 10px 28px -18px light-dark(rgba(28, 40, 25, 0.35), rgba(0, 0, 0, 0.8));
   -webkit-backdrop-filter: blur(16px) saturate(160%);
   backdrop-filter: blur(16px) saturate(160%);
+}
+
+.segment-track {
+  background-color: light-dark(color-mix(in oklab, var(--foreground) 5%, transparent), rgba(0, 0, 0, 0.25));
+}
+
+.segment-thumb {
+  background-color: light-dark(var(--card), color-mix(in oklab, white 9%, transparent));
+  box-shadow:
+    0 1px 2px light-dark(rgba(13, 17, 14, 0.06), transparent),
+    0 8px 20px -8px light-dark(rgba(13, 17, 14, 0.22), transparent),
+    inset 0 1px 0 light-dark(transparent, rgba(255, 255, 255, 0.08)),
+    0 8px 20px -8px light-dark(transparent, rgba(0, 0, 0, 0.7));
 }

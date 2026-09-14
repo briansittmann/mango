@@ -30,10 +30,10 @@ const LANGUAGE_OPTIONS = [
 const enterClassName =
   'transition-[opacity,translate] duration-700 ease-spring starting:translate-y-3 starting:opacity-0 motion-reduce:transition-none'
 
-const trackClassName = 'group relative grid rounded-[22px] bg-foreground/[0.05] p-1 text-label-ui dark:bg-black/25'
+const trackClassName = 'segment-track group relative grid rounded-[22px] p-1 text-label-ui'
 
 const thumbClassName =
-  'absolute inset-y-1 left-1 rounded-[18px] bg-card shadow-[0_1px_2px_rgba(13,17,14,0.06),0_8px_20px_-8px_rgba(13,17,14,0.22)] transition-[translate,scale] duration-500 ease-spring group-active:scale-[0.96] motion-reduce:transition-none dark:bg-white/[0.09] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_20px_-8px_rgba(0,0,0,0.7)]'
+  'segment-thumb absolute inset-y-1 left-1 rounded-[18px] transition-[translate,scale] duration-500 ease-spring group-active:scale-[0.96] motion-reduce:transition-none'
 
 const segmentClassName =
   'relative flex items-center justify-center rounded-[18px] transition-[color,scale] duration-200 active:scale-95 focus-visible:outline-2 focus-visible:-outline-offset-2 disabled:pointer-events-none'

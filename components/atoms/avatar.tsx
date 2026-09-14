@@ -28,7 +28,7 @@ export function Avatar({ name, photoUrl, size = 'md', className }: AvatarProps) 
     <span
       className={cn(
         SIZE_CLASSES[size],
-        'grid shrink-0 place-items-center rounded-full border border-brand/40 bg-brand/10 text-xs font-semibold text-brand-ink',
+        'grid shrink-0 place-items-center rounded-full border border-brand/40 bg-brand/10 text-label-ui font-semibold text-brand-ink',
         className,
       )}
     >

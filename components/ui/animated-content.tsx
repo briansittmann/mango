@@ -54,6 +54,11 @@ export function AnimatedContent({
     const el = ref.current
     if (!el) return
 
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      gsap.set(el, { clearProps: 'transform,opacity', visibility: 'visible' })
+      return
+    }
+
     let scrollerTarget: string | Element | null = container || document.getElementById('snap-main-container') || null
 
     if (typeof scrollerTarget === 'string') {

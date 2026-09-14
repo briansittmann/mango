@@ -7,21 +7,22 @@ type MoneyProps = {
   currency: string
   className?: string
   currencyClassName?: string
+  signDisplay?: Intl.NumberFormatOptions['signDisplay']
 }
 
-export function Money({ amount, currency, className, currencyClassName }: MoneyProps) {
+export function Money({ amount, currency, className, currencyClassName, signDisplay }: MoneyProps) {
   const format = useFormatter()
   const locale = useLocale()
 
   if (!currencyClassName) {
     return (
       <span className={className} style={{ fontVariantNumeric: 'tabular-nums' }}>
-        {format.number(amount, { ...currencyFormatOptions, currency })}
+        {format.number(amount, { ...currencyFormatOptions, currency, signDisplay })}
       </span>
     )
   }
 
-  const parts = new Intl.NumberFormat(locale, { ...currencyFormatOptions, currency }).formatToParts(amount)
+  const parts = new Intl.NumberFormat(locale, { ...currencyFormatOptions, currency, signDisplay }).formatToParts(amount)
   const currencyIndex = parts.findIndex((part) => part.type === 'currency')
   const currencyIsFirst = currencyIndex === 0
 
