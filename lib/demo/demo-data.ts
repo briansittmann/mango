@@ -118,7 +118,6 @@ export function buildDemoData(locale: Locale): DashboardData {
 
   const groups = [fixedGroup, ...categoryGroups]
   const expensesTotal = groups.reduce((sum, group) => sum + group.total, 0)
-  const remainingBudgets = categoryGroups.reduce((sum, group) => sum + (group.budget?.remaining ?? 0), 0)
 
   const incomeSources = [
     { id: 'salario', nameKey: 'salario' as const, estimated: 2400, actual: 2400 },
@@ -127,7 +126,7 @@ export function buildDemoData(locale: Locale): DashboardData {
   const incomeTotal = incomeSources.reduce((sum, source) => sum + source.actual, 0)
 
   const savingsMovements = [
-    { id: 'savings-0', nameKey: 'ahorroMensual' as const, date: '2026-09-03T09:00:00Z', amount: 150 },
+    { id: 'savings-0', nameKey: 'ahorroMensual' as const, date: '2026-09-03T09:00:00Z', amount: 176 },
     { id: 'savings-1', nameKey: 'retiroEmergencia' as const, date: '2026-09-08T09:00:00Z', amount: -80 },
     { id: 'savings-2', nameKey: 'bonoAhorro' as const, date: '2026-09-09T09:00:00Z', amount: 50 },
   ].map((movement) => ({ ...movement, name: name(locale, movement.nameKey) }))
@@ -143,7 +142,7 @@ export function buildDemoData(locale: Locale): DashboardData {
     { month: '2026-09', total: expensesTotal },
   ]
 
-  const freeMargin = incomeTotal - savingsCycle - fixedGroup.total - remainingBudgets
+  const freeMargin = incomeTotal - expensesTotal - savingsCycle
 
   return {
     user: {
