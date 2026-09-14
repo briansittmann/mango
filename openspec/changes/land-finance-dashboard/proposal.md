@@ -27,7 +27,7 @@ _None — `openspec/specs/` is empty._
 
 ## Impact
 
-- **Code:** new `components/{atoms,molecules,organisms,templates}/*`, `lib/datos/dashboard.ts` (contract), `lib/datos/presupuesto.ts` (pure budget maths), `lib/demo/datos-demo.ts`, `app/demo/page.tsx`, `i18n/request.ts`, `messages/{es,en}.json`, `lib/utils.ts`. Modified: `app/layout.tsx`, `app/globals.css`, `next.config.ts`, `eslint.config.mjs`, `package.json`. Removed: `components/finance-dashboard.tsx`.
+- **Code:** new `components/{atoms,molecules,organisms,templates}/*`, `lib/data/dashboard.ts` (contract), `lib/data/budget.ts` (pure budget maths), `lib/demo/demo-data.ts`, `app/demo/page.tsx`, `i18n/request.ts`, `messages/{es,en}.json`, `lib/utils.ts`. Modified: `app/layout.tsx`, `app/globals.css`, `next.config.ts`, `eslint.config.mjs`, `package.json`. Removed: `components/finance-dashboard.tsx`.
 - **Dependencies:** `next-intl`, `lucide-react`, `recharts` (+ `react-is`), plus the packages `components/ui/button.tsx` already imports (`@base-ui/react`, `class-variance-authority`, `clsx`, `tailwind-merge`). Without them `next build` fails today.
 - **Routing:** reading the locale cookie in the root layout makes routes render dynamically. `/` (still the create-next-app page) is untouched.
 - **Out of scope:** the real Supabase loader for `/`, which needs web auth and an RLS session client that don't exist yet. Also out: writing `usuarios.idioma`, and the §9 interactions the component doesn't have (inline edit, swipe delete, reorder, sticky glass bar, desktop two-column layout). See design.md → *Non-Goals*.

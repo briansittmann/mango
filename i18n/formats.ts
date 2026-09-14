@@ -1,9 +1,9 @@
-export const opcionesMoneda: Intl.NumberFormatOptions = {
+export const currencyFormatOptions = {
   style: "currency",
   trailingZeroDisplay: "stripIfInteger",
   useGrouping: "always",
-};
+} as const;
 
-export const opcionesCompacto: Intl.NumberFormatOptions = {
+export const compactFormatOptions = {
   notation: "compact",
-};
+} as const;

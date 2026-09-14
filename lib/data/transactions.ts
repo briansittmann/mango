@@ -1,21 +1,21 @@
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
 /**
- * Idempotencia del webhook (ARCHITECTURE.md §3 y §11): si ya hay una
- * transacción con este `wa_message_id`, el mensaje ya se procesó y el reintento
- * de Meta se descarta.
+ * Webhook idempotency (ARCHITECTURE.md §3 and §11): if a transaction with
+ * this `wa_message_id` already exists, the message was already processed and
+ * Meta's retry is discarded.
  *
- * **No filtra por `borrado_en` a propósito.** La fila borrada conserva el id
- * justo para que un reintento no la resucite como si fuera una carga nueva (§4).
+ * **Does not filter by `borrado_en` on purpose.** The deleted row keeps the id
+ * so a retry doesn't resurrect it as if it were a new charge (§4).
  */
-export async function mensajeYaProcesado(
-  usuarioId: string,
+export async function messageAlreadyProcessed(
+  userId: string,
   waMessageId: string
 ): Promise<boolean> {
   const { data, error } = await supabaseAdmin()
     .from('transacciones')
     .select('id')
-    .eq('usuario_id', usuarioId)
+    .eq('usuario_id', userId)
     .eq('wa_message_id', waMessageId)
     .maybeSingle()
 

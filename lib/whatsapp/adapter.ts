@@ -1,67 +1,68 @@
 import {
-  procesarMensaje,
-  procesarNumeroDesconocido,
-  type RespuestaBot,
+  processMessage,
+  processUnknownNumber,
+  type BotReply,
 } from '@/lib/bot/logic'
-import { mensajeYaProcesado } from '@/lib/data/transactions'
-import { buscarUsuarioIdPorTelefono } from '@/lib/data/users'
+import { messageAlreadyProcessed } from '@/lib/data/transactions'
+import { findUserIdByPhone } from '@/lib/data/users'
 
-import type { MensajeWhatsApp } from './payload'
+import type { WhatsAppMessage } from './payload'
 
 /**
- * Adaptador: resuelve el número contra los usuarios, descarta reintentos y
- * llama a la lógica del bot con el formato interno `{ usuarioId, texto,
- * mensajeId }` (ARCHITECTURE.md §3).
+ * Adapter: resolves the number against the users, discards retries and
+ * calls the bot logic with the internal format `{ userId, text,
+ * messageId }` (ARCHITECTURE.md §3).
  */
-export async function manejarMensajes(mensajes: MensajeWhatsApp[]): Promise<void> {
-  for (const mensaje of mensajes) {
+export async function handleMessages(messages: WhatsAppMessage[]): Promise<void> {
+  for (const message of messages) {
     try {
-      await manejarMensaje(mensaje)
+      await handleMessage(message)
     } catch (error) {
-      // Un mensaje que falla no se lleva puestos a los demás del lote.
-      console.error(`[whatsapp] error procesando ${mensaje.mensajeId}:`, error)
+      // A message that fails doesn't take the rest of the batch down with it.
+      console.error(`[whatsapp] error processing ${message.messageId}:`, error)
     }
   }
 }
 
-async function manejarMensaje(mensaje: MensajeWhatsApp): Promise<void> {
-  const usuarioId = await buscarUsuarioIdPorTelefono(mensaje.telefono)
+async function handleMessage(message: WhatsAppMessage): Promise<void> {
+  const userId = await findUserIdByPhone(message.phone)
 
-  if (!usuarioId) {
-    const respuesta = await procesarNumeroDesconocido(mensaje.telefono, mensaje.texto)
-    await responder(mensaje.telefono, respuesta)
+  if (!userId) {
+    const reply = await processUnknownNumber(message.phone, message.text)
+    await sendReply(message.phone, reply)
     return
   }
 
-  if (await mensajeYaProcesado(usuarioId, mensaje.mensajeId)) {
-    console.info(`[whatsapp] reintento descartado: ${mensaje.mensajeId}`)
+  if (await messageAlreadyProcessed(userId, message.messageId)) {
+    console.info(`[whatsapp] retry discarded: ${message.messageId}`)
     return
   }
 
-  const respuesta = await procesarMensaje({
-    usuarioId,
-    texto: mensaje.texto,
-    mensajeId: mensaje.mensajeId,
+  const reply = await processMessage({
+    userId,
+    text: message.text,
+    messageId: message.messageId,
   })
 
-  await responder(mensaje.telefono, respuesta)
+  await sendReply(message.phone, reply)
 }
 
 /**
- * Acá se elige **cómo** contesta el bot: texto con botón Deshacer las primeras
- * 15 cargas, reacción con emoji a partir de la 16 (confirmación progresiva,
- * §3). La lógica del bot no participa de esa decisión.
+ * This is where **how** the bot replies gets decided: text with an Undo
+ * button for the first 15 charges, emoji reaction from the 16th on
+ * (progressive confirmation, §3). The bot logic doesn't take part in that
+ * decision.
  */
-async function responder(telefono: string, respuesta: RespuestaBot): Promise<void> {
-  if (respuesta.tipo === 'sin_respuesta') return
+async function sendReply(phone: string, reply: BotReply): Promise<void> {
+  if (reply.kind === 'none') return
 
-  // TODO: POST a la Cloud API con WHATSAPP_TOKEN y WHATSAPP_PHONE_NUMBER_ID,
-  // eligiendo mensaje o reacción según `cargas_confirmadas` y
-  // `modo_confirmacion` del usuario (§3).
-  console.info(`[whatsapp] respuesta pendiente de envío a ${enmascarar(telefono)}`)
+  // TODO: POST to the Cloud API with WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID,
+  // choosing message or reaction based on the user's `cargas_confirmadas` and
+  // `modo_confirmacion` (§3).
+  console.info(`[whatsapp] reply pending send to ${maskPhone(phone)}`)
 }
 
-/** Solo los últimos 4 dígitos: el número completo no va a los logs. */
-function enmascarar(telefono: string): string {
-  return `…${telefono.slice(-4)}`
+/** Only the last 4 digits: the full number doesn't go into the logs. */
+function maskPhone(phone: string): string {
+  return `…${phone.slice(-4)}`
 }

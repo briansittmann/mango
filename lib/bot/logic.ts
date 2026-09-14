@@ -1,47 +1,49 @@
 /**
- * Lógica del bot. **No sabe nada de WhatsApp** (ARCHITECTURE.md §3): recibe el
- * formato interno y devuelve *qué* contestar. El *cómo* — texto o reacción,
- * según la confirmación progresiva — lo decide el adaptador.
+ * Bot logic. **Knows nothing about WhatsApp** (ARCHITECTURE.md §3): it
+ * receives the internal format and decides *what* to reply. The *how* — text
+ * or reaction, depending on progressive confirmation — is decided by the
+ * adapter.
  *
- * Si mañana se agrega Telegram o Signal, este archivo no se toca.
+ * If Telegram or Signal gets added tomorrow, this file doesn't change.
  */
 
-export type MensajeEntrante = {
-  usuarioId: string
-  texto: string
-  mensajeId: string
+export type IncomingMessage = {
+  userId: string
+  text: string
+  messageId: string
 }
 
-export type RespuestaBot = { tipo: 'texto'; texto: string } | { tipo: 'sin_respuesta' }
+export type BotReply = { kind: 'text'; text: string } | { kind: 'none' }
 
-export async function procesarMensaje(mensaje: MensajeEntrante): Promise<RespuestaBot> {
-  // TODO: parser de Gemini + validación con Zod, carga de la transacción
-  // (categoría que no matchea → `otros`, sin repreguntar) y modo asesor (§3, §5).
-  // TODO: interceptar al usuario con `onboarding_completo = false` y disparar
-  // el wizard antes de parsear nada (§11).
-  void mensaje
-  return { tipo: 'sin_respuesta' }
+export async function processMessage(message: IncomingMessage): Promise<BotReply> {
+  // TODO: Gemini parser + Zod validation, transaction charge (category that
+  // doesn't match → `otros`, without asking again) and advisor mode (§3, §5).
+  // TODO: intercept the user with `onboarding_completo = false` and trigger
+  // the wizard before parsing anything (§11).
+  void message
+  return { kind: 'none' }
 }
 
 /**
- * Primer contacto de un número que no está dado de alta. **No se lo ignora en
- * silencio** (§4): se le pide el código de invitación, y los tres errores
- * posibles — no existe, ya fue usado, venció — se distinguen en el mensaje,
- * o la persona no sabe si el problema es el código o su número.
+ * First contact from a number that isn't registered. **Not silently
+ * ignored** (§4): the invitation code is requested, and the three possible
+ * errors — doesn't exist, already used, expired — are distinguished in the
+ * message, in case the person doesn't know if the problem is the code or
+ * their number.
  */
-export async function procesarNumeroDesconocido(
-  telefono: string,
-  texto: string
-): Promise<RespuestaBot> {
-  // TODO: validar el código contra `invitaciones`, quemarlo (`usada_por` +
-  // `usada_en`) y arrancar el onboarding: nombre → país → día de ciclo →
-  // gasto de prueba (§4).
-  // TODO: rate limiting de intentos por número antes de tocar la base, o se
-  // pueden probar códigos por fuerza bruta (§10).
+export async function processUnknownNumber(
+  phone: string,
+  text: string
+): Promise<BotReply> {
+  // TODO: validate the code against `invitaciones`, burn it (`usada_por` +
+  // `usada_en`) and start onboarding: name → country → cycle day → test
+  // expense (§4).
+  // TODO: rate limit attempts per number before touching the database, or
+  // codes can be brute-forced (§10).
   //
-  // Todavía no devuelve el pedido del código porque los textos del bot van en
-  // archivos de traducción, no incrustados acá (§2), y esa pieza no está armada.
-  void telefono
-  void texto
-  return { tipo: 'sin_respuesta' }
+  // Doesn't return the code request yet because the bot's texts live in
+  // translation files, not embedded here (§2), and that piece isn't built.
+  void phone
+  void text
+  return { kind: 'none' }
 }

@@ -1,15 +1,15 @@
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
 /**
- * Resuelve el teléfono contra los usuarios dados de alta (ARCHITECTURE.md §3,
- * paso 2 del flujo de carga). Devuelve `null` si el número no existe: ese caso
- * lo maneja el alta por código de invitación (§4).
+ * Resolves the phone number against registered users (ARCHITECTURE.md §3,
+ * step 2 of the onboarding flow). Returns `null` if the number doesn't exist:
+ * that case is handled by signup via invitation code (§4).
  */
-export async function buscarUsuarioIdPorTelefono(telefono: string): Promise<string | null> {
+export async function findUserIdByPhone(phone: string): Promise<string | null> {
   const { data, error } = await supabaseAdmin()
     .from('usuarios')
     .select('id')
-    .eq('telefono', telefono)
+    .eq('telefono', phone)
     .maybeSingle()
 
   if (error) throw error

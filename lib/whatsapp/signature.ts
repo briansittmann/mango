@@ -1,30 +1,31 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
 
 /**
- * Valida el header `X-Hub-Signature-256`: HMAC SHA-256 del cuerpo **crudo** con
- * el App Secret de Meta (ARCHITECTURE.md §3 y §10). Sin esto cualquiera puede
- * pegarle al endpoint.
+ * Validates the `X-Hub-Signature-256` header: HMAC SHA-256 of the **raw**
+ * body with Meta's App Secret (ARCHITECTURE.md §3 and §10). Without this,
+ * anyone could hit the endpoint.
  */
-export function firmaValida(
-  cuerpoCrudo: Buffer,
+export function isValidSignature(
+  rawBody: Buffer,
   header: string | null,
   appSecret: string
 ): boolean {
   if (!header) return false
 
-  const [algoritmo, firmaRecibida] = header.split('=')
-  if (algoritmo !== 'sha256' || !firmaRecibida) return false
+  const [algorithm, receivedSignature] = header.split('=')
+  if (algorithm !== 'sha256' || !receivedSignature) return false
 
-  const firmaEsperada = createHmac('sha256', appSecret).update(cuerpoCrudo).digest('hex')
-  return comparacionSegura(firmaRecibida, firmaEsperada)
+  const expectedSignature = createHmac('sha256', appSecret).update(rawBody).digest('hex')
+  return safeCompare(receivedSignature, expectedSignature)
 }
 
 /**
- * Comparación en tiempo constante. Compara los digest SHA-256 y no las cadenas
- * directas por dos motivos: `timingSafeEqual` tira si los buffers miden
- * distinto, y comparar longitudes antes filtraría el largo del secreto.
+ * Constant-time comparison. Compares the SHA-256 digests rather than the raw
+ * strings for two reasons: `timingSafeEqual` throws if the buffers have
+ * different lengths, and comparing lengths beforehand would leak the
+ * secret's length.
  */
-export function comparacionSegura(a: string, b: string): boolean {
+export function safeCompare(a: string, b: string): boolean {
   const digestA = createHash('sha256').update(a, 'utf8').digest()
   const digestB = createHash('sha256').update(b, 'utf8').digest()
   return timingSafeEqual(digestA, digestB)
