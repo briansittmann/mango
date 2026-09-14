@@ -7,7 +7,8 @@
     "anadirMovimientoAhorro": "Add savings movement",
     "cicloAnterior": "Previous cycle",
     "cicloSiguiente": "Next cycle",
-    "enCurso": "in progress"
+    "enCurso": "in progress",
+    "margenLibre": "Free margin"
   },
   "resumen": {
     "ingresos": "Income",
