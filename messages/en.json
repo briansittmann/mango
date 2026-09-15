@@ -57,5 +57,27 @@
     "aviso": "You're viewing sample data",
     "cerrarAviso": "Dismiss notice",
     "accionNoDisponible": "This action isn't available in the demo"
+  },
+  "hojaGasto": {
+    "nuevoGasto": "New expense",
+    "editarGasto": "Edit expense",
+    "cancelar": "Cancel",
+    "anadir": "Add",
+    "guardar": "Save",
+    "importe": "Amount",
+    "descripcion": "Description",
+    "opcional": "Optional",
+    "fecha": "Date",
+    "importeInvalido": "Enter an amount above 0 with up to 2 decimals",
+    "soloCargoDelMes": "This month's charge only",
+    "eliminarGasto": "Delete expense",
+    "eliminar": "Delete",
+    "gastoEliminado": "Expense deleted",
+    "deshacer": "Undo",
+    "gastoAnadido": "Expense added",
+    "cambiosGuardados": "Changes saved",
+    "errorGuardar": "Couldn't save. Try again.",
+    "errorEliminar": "Couldn't delete the expense",
+    "errorDeshacer": "Couldn't undo"
   }
 }

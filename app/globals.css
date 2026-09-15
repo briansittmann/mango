@@ -30,6 +30,9 @@
   --warning: light-dark(#F0B429, #F0B429);
   --warning-ink: light-dark(#8A5A00, #F0B429);
   --destructive: light-dark(#B91C1C, #EF4444);
+  --destructive-ink: light-dark(#B91C1C, #F87171);
+  --destructive-fill: light-dark(#B91C1C, #DC2626);
+  --destructive-fill-foreground: #FFFFFF;
   --ring: light-dark(#149052, #84CC16);
   --hero-glow: light-dark(transparent, color-mix(in oklab, #84CC16 30%, transparent));
   --radius: 0.625rem;
@@ -91,6 +94,9 @@
   --color-warning: var(--warning);
   --color-warning-ink: var(--warning-ink);
   --color-destructive: var(--destructive);
+  --color-destructive-ink: var(--destructive-ink);
+  --color-destructive-fill: var(--destructive-fill);
+  --color-destructive-fill-foreground: var(--destructive-fill-foreground);
   --color-ring: var(--ring);
   --color-hero-glow: var(--hero-glow);
   --color-scrim: var(--scrim);

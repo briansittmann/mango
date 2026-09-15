@@ -1,5 +1,6 @@
 import { getBudgetStatus } from '@/lib/data/budget'
 import type { CategoryColor, DashboardData, ExpenseGroup } from '@/lib/data/dashboard'
+import { deriveDemoData, noDemoEdits } from '@/lib/demo/demo-expenses'
 
 type Locale = 'es' | 'en'
 type Localized = { es: string; en: string }
@@ -142,9 +143,7 @@ export function buildDemoData(locale: Locale): DashboardData {
     { month: '2026-09', total: expensesTotal },
   ]
 
-  const freeMargin = incomeTotal - expensesTotal - savingsCycle
-
-  return {
+  const sample: DashboardData = {
     user: {
       name: 'Ana García',
       phone: '+34 611 222 333',
@@ -152,8 +151,8 @@ export function buildDemoData(locale: Locale): DashboardData {
       currency: 'EUR',
       timezone: 'Europe/Dublin',
     },
-    cycle: { start: '2026-09-01', end: '2026-09-30', month: '2026-09', inProgress: true },
-    freeMargin,
+    cycle: { start: '2026-09-01', end: '2026-09-30', today: '2026-09-10', month: '2026-09', inProgress: true },
+    freeMargin: incomeTotal - expensesTotal - savingsCycle,
     income: {
       total: incomeTotal,
       sources: incomeSources.map(({ id, nameKey, estimated, actual }) => ({
@@ -171,4 +170,6 @@ export function buildDemoData(locale: Locale): DashboardData {
     expenses: { total: expensesTotal, groups },
     history,
   }
+
+  return deriveDemoData(sample, noDemoEdits)
 }

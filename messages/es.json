@@ -57,5 +57,27 @@
     "aviso": "Estás viendo datos de ejemplo",
     "cerrarAviso": "Cerrar aviso",
     "accionNoDisponible": "Esta acción no está disponible en la demo"
+  },
+  "hojaGasto": {
+    "nuevoGasto": "Nuevo gasto",
+    "editarGasto": "Editar gasto",
+    "cancelar": "Cancelar",
+    "anadir": "Añadir",
+    "guardar": "Guardar",
+    "importe": "Importe",
+    "descripcion": "Descripción",
+    "opcional": "Opcional",
+    "fecha": "Fecha",
+    "importeInvalido": "Introduce un importe mayor que 0 con hasta 2 decimales",
+    "soloCargoDelMes": "Solo el cargo de este mes",
+    "eliminarGasto": "Eliminar gasto",
+    "eliminar": "Eliminar",
+    "gastoEliminado": "Gasto eliminado",
+    "deshacer": "Deshacer",
+    "gastoAnadido": "Gasto añadido",
+    "cambiosGuardados": "Cambios guardados",
+    "errorGuardar": "No se pudo guardar. Inténtalo de nuevo.",
+    "errorEliminar": "No se pudo eliminar el gasto",
+    "errorDeshacer": "No se pudo deshacer"
   }
 }

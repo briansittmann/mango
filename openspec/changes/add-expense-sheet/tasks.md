@@ -1,9 +1,9 @@
 ## 1. Baseline and keypad spike
 
-- [ ] 1.1 Capture "before" screenshots with a scratchpad Playwright script on `/demo` at 390 × 844, in both themes, in Spanish: the "comida" card open, and the fixed-expenses card open. Verify:
+- [x] 1.1 Capture "before" screenshots with a scratchpad Playwright script on `/demo` at 390 × 844, in both themes, in Spanish: the "comida" card open, and the fixed-expenses card open. Verify:
   - four PNGs exist in the scratchpad
   - `grep -rn "addExpense" app components lib` lists only `lib/data/dashboard.ts`, `components/templates/dashboard-template.tsx` and `app/demo/demo-dashboard.tsx`
-- [ ] 1.2 Keypad spike (D5):
+- [x] 1.2 Keypad spike (D5):
   1. Read *Virtual keyboard aware* and the `Root`, `Portal` and `Popup` API tables in `node_modules/@base-ui/react/docs/react/components/drawer.md`.
   2. Create a throwaway `app/spike-entry-sheet/page.tsx`: a `Drawer` (`Portal keepMounted`, `VirtualKeyboardProvider`) holding one `inputMode="decimal"` input, opened by a button whose click handler opens the drawer through `flushSync` and then focuses the input.
   3. Tap the button in Playwright WebKit with the `iPhone 15` device.
@@ -14,15 +14,17 @@
   - The chosen approach (direct focus or proxy) is written into this task line.
   - The spike route is deleted: `git status` shows no `app/spike-entry-sheet`.
 
+  **Result:** direct focus. `flushSync(() => setOpen(true))` followed by `inputRef.current?.focus({ preventScroll: true })` in the tap handler leaves `document.activeElement` as the amount input immediately after the tap in WebKit `iPhone 15` emulation — no focus-proxy needed. No physical iPhone was available on this LAN to confirm the software keypad itself; that check is pending for task 8.13.
+
 ## 2. Contract
 
-- [ ] 2.1 Create `lib/data/expenses.ts` with `LocalDate`, `ExpenseDraft` and `ExpenseMutations`. Doc comments carry the D1 semantics:
+- [x] 2.1 Create `lib/data/expenses.ts` with `LocalDate`, `ExpenseDraft` and `ExpenseMutations`. Doc comments carry the D1 semantics:
   - operations resolve once the change is durable, and reject with nothing changed
   - `update` writes only amount, description and date
   - soft delete and restore only set or clear `borrado_en`
 
   Verify: `npx tsc --noEmit` passes, and `grep -nE "export (async )?(function|const)" lib/data/expenses.ts` returns nothing.
-- [ ] 2.2 In `lib/data/dashboard.ts`:
+- [x] 2.2 In `lib/data/dashboard.ts`:
   - export `Expense`
   - add `cycle.today: LocalDate`
   - document `ExpenseGroup.id` as the category id for `kind: 'category'`
@@ -32,7 +34,7 @@
 
 ## 3. Demo operations
 
-- [ ] 3.1 Create `lib/demo/demo-expenses.ts` per D9, containing:
+- [x] 3.1 Create `lib/demo/demo-expenses.ts` per D9, containing:
   - `DemoExpenseEdits` and `noDemoEdits`
   - the pure `deriveDemoData`: rows, group totals, budgets through `getBudgetStatus` with the day taken from `cycle.today`, expenses total, the current history entry, and the free margin
   - `createDemoExpenseMutations` with counter-based ids
@@ -42,32 +44,32 @@
   - after `softDelete('comida-2')`: the "comida" total is 247.6 and `freeMargin` is 1036.4. After `restore('comida-2')` they are back to 310 and 974.
   - after `create('comida', { amount: 20, description: 'Panadería', date: '2026-09-10' })`: "comida" is 330 with budget level `warning`, the last history total is 1720, and `freeMargin` is 954
   - after `update('ocio-1', { amount: 125, description: 'Conciertos', date: '2026-09-08' })`: "ocio" is 170 with level `exceeded`
-- [ ] 3.2 Make `buildDemoData` build the sample rows and return `deriveDemoData(sample, noDemoEdits)`, so a single derivation serves the first render and every edit (D9). Verify:
+- [x] 3.2 Make `buildDemoData` build the sample rows and return `deriveDemoData(sample, noDemoEdits)`, so a single derivation serves the first render and every edit (D9). Verify:
   - `npx tsc --noEmit` passes
   - `/demo` in Spanish still shows "974 €" as the free margin, and "310 €" of "400 €" on the collapsed "comida" card
 
 ## 4. Tokens and messages
 
-- [ ] 4.1 Add `--destructive-ink`, `--destructive-fill` and `--destructive-fill-foreground` to `:root` in `app/globals.css`, and map them in `@theme inline` (D11). Edit only those lines. Verify: `npm run lint` passes, and on `/demo` in both themes `getComputedStyle(document.documentElement)` resolves all three to non-empty values.
-- [ ] 4.2 Add the `hojaGasto` namespace from D10 to `messages/es.json` and `messages/en.json`. Verify:
+- [x] 4.1 Add `--destructive-ink`, `--destructive-fill` and `--destructive-fill-foreground` to `:root` in `app/globals.css`, and map them in `@theme inline` (D11). Edit only those lines. Verify: `npm run lint` passes, and on `/demo` in both themes `getComputedStyle(document.documentElement)` resolves all three to non-empty values.
+- [x] 4.2 Add the `hojaGasto` namespace from D10 to `messages/es.json` and `messages/en.json`. Verify:
   - both files parse with `node -e 'JSON.parse(require("fs").readFileSync(process.argv[1]))'`
   - `npx tsc --noEmit` passes (`messages/parity.ts` enforces matching keys)
 
 ## 5. Molecules
 
-- [ ] 5.1 Rework `components/molecules/expense-row.tsx` per D7:
+- [x] 5.1 Rework `components/molecules/expense-row.tsx` per D7:
   - a `button` with block `span`s when `onActivate` is given, a `div` otherwise
   - the `bg-muted rounded-lg` amount only when the row is interactive
   - `pressable` and the existing hover tint
 
   Verify: `npm run lint` passes, and `/demo` still renders plain amounts (no handler is wired yet).
-- [ ] 5.2 Create `components/molecules/field-row.tsx` per D4:
+- [x] 5.2 Create `components/molecules/field-row.tsx` per D4:
   - the label on the leading side and a control slot on the trailing side
   - `min-h-row`, with a taller variant for the amount
   - an inset hairline
 
   Verify: `npm run lint` passes, and the land-finance-dashboard colour guard grep returns nothing for the file.
-- [ ] 5.3 Create `components/molecules/swipe-to-delete.tsx` per D6:
+- [x] 5.3 Create `components/molecules/swipe-to-delete.tsx` per D6:
   - 10px intent lock and pointer capture
   - 50 % panel and 60 % long-swipe thresholds
   - click suppression after a drag
@@ -77,7 +79,7 @@
   - the reduced-motion path and the `starting:` expand-in
 
   Verify: `npm run lint` passes, and `grep -n "'use client'" components/molecules/swipe-to-delete.tsx` returns nothing.
-- [ ] 5.4 Read *Undo action*, *Global manager* and the `ToastObject` type in `node_modules/@base-ui/react/docs/react/components/toast.md`. Then create `components/molecules/undo-toast.tsx` per D8: viewport position, the inverted opaque capsule, the action's styling, and motion with its reduced-motion fallback. Verify: `npm run lint` passes, and the colour and `aria-label` guard greps return nothing for the file.
+- [x] 5.4 Read *Undo action*, *Global manager* and the `ToastObject` type in `node_modules/@base-ui/react/docs/react/components/toast.md`. Then create `components/molecules/undo-toast.tsx` per D8: viewport position, the inverted opaque capsule, the action's styling, and motion with its reduced-motion fallback. Verify: `npm run lint` passes, and the colour and `aria-label` guard greps return nothing for the file.
 
 ## 6. Sheet, card, template and demo wiring
 
