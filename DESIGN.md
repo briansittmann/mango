@@ -51,33 +51,33 @@ colors:
 typography:
   display:
     fontFamily: Manrope
-    fontSize: 40px
-    fontWeight: '700'
-    lineHeight: 48px
+    fontSize: 58px
+    fontWeight: '800'
+    lineHeight: 64px
     letterSpacing: -0.03em
   display-mobile:
     fontFamily: Manrope
-    fontSize: 32px
+    fontSize: 44px
     fontWeight: '700'
-    lineHeight: 38px
-    letterSpacing: -0.02em
+    lineHeight: 48px
+    letterSpacing: -0.035em
   headline-lg:
     fontFamily: Manrope
     fontSize: 28px
-    fontWeight: '600'
-    lineHeight: 36px
+    fontWeight: '700'
+    lineHeight: 34px
     letterSpacing: -0.02em
   headline-md:
     fontFamily: Manrope
-    fontSize: 22px
+    fontSize: 20px
     fontWeight: '600'
-    lineHeight: 28px
+    lineHeight: 26px
     letterSpacing: -0.015em
   headline-sm:
     fontFamily: Manrope
-    fontSize: 18px
+    fontSize: 17px
     fontWeight: '600'
-    lineHeight: 24px
+    lineHeight: 22px
     letterSpacing: -0.01em
   body-lg:
     fontFamily: Inter
@@ -93,28 +93,28 @@ typography:
     letterSpacing: 0em
   body-sm:
     fontFamily: Inter
-    fontSize: 12px
+    fontSize: 13px
     fontWeight: '400'
-    lineHeight: 16px
-    letterSpacing: 0.01em
+    lineHeight: 18px
+    letterSpacing: 0em
   tabular-numeric-lg:
     fontFamily: Inter
-    fontSize: 24px
+    fontSize: 20px
     fontWeight: '600'
-    lineHeight: 32px
-    letterSpacing: -0.02em
+    lineHeight: 26px
+    letterSpacing: -0.015em
   tabular-numeric-md:
     fontFamily: Inter
-    fontSize: 15px
+    fontSize: 16px
     fontWeight: '500'
-    lineHeight: 20px
+    lineHeight: 22px
     letterSpacing: -0.01em
   label-caps:
     fontFamily: Inter
-    fontSize: 11px
+    fontSize: 12px
     fontWeight: '600'
-    lineHeight: 14px
-    letterSpacing: 0.06em
+    lineHeight: 16px
+    letterSpacing: 0.04em
   label-ui:
     fontFamily: Inter
     fontSize: 13px
@@ -143,6 +143,12 @@ spacing:
   row-min-height: 3rem
   handle-width: 2.25rem
   handle-height: 0.25rem
+  gutter: 1rem
+  section: 2rem
+  stack: 0.75rem
+  inset: 1rem
+  row: 3rem
+  target: 2.75rem
 ---
 
 ## Brand & Style
@@ -182,6 +188,11 @@ Typography balances structural authority with numerical legibility:
 - **Body & Tabular Telemetry (`Inter`):** Systematic, highly neutral, with mandatory tabular lining figures (`font-variant-numeric: tabular-nums`) across all data displays, transaction feeds, currency symbols, and percentage deltas.
 - **Micro-Copy (`label-caps`):** Rendered in uppercase with +0.06em tracking for category categorizations, sheet section headers, and field indicators.
 
+## Hierarchy
+
+- Six sizes at most are visible on a mobile screen at once.
+- Uppercase labels mark metadata only — never titles or values.
+
 ## Layout & Spacing
 
 The layout is constructed on a 4px/8px base rhythm, prioritizing mobile-first tactile reachability.
@@ -211,6 +222,10 @@ The design system adopts **Level 3 (Pill-shaped)** ergonomics, balancing rounded
 - **Bottom Sheets:** Distinct asymmetrical rounding with top corners at `28px` (`1.75rem`), flat bottom edges adhering to device edges.
 - **Drag Handle:** Rounded pill strip measuring 36px wide by 4px high (`handle-width` x `handle-height`), centered 8px below the sheet apex.
 
+## Materials
+
+Translucency is an allowlist, not a default: the scrolled top bar (`.glass-bar`) and the month picker/account sheet dialogs are the only frosted surfaces. The month title, notice, hero, summary group, cards and charts stay opaque tokens with no `backdrop-filter`.
+
 ## Components
 
 ### Bottom Sheets & Modals
@@ -236,3 +251,9 @@ The design system adopts **Level 3 (Pill-shaped)** ergonomics, balancing rounded
 - **Secondary / Ghost Button:** Hairline border `1px solid #232B24`, background `#131814`, text `#F3F4F6`.
 - **Destruction Rows:** Isolated row item or bottom button styling with `#EF4444` text and red-tinted background hover states (`rgba(239, 68, 68, 0.08)`), demarcated by full-width hairline dividers.
 - **Input Fields:** 48px height, rounded-xl (16px), background `#19201A`, border `1px solid #232B24`. Active focus state triggers an outer outline in `#84CC16` with zero displacement.
+
+### Add Rows
+- **Anatomy:** A Structured List Row whose leading element is a `28px` circular badge holding a `16px` plus icon, followed by the label in brand ink; same 48px minimum height and inset hairline as the rows above it.
+- **Rest / Hover:** Transparent row with a brand-tinted badge (`#84CC16` at 15% opacity) at rest; on pointer hover the row tints like its sibling rows and the badge fills solid brand (`#84CC16`) with the plus in `#0D110E`, growing and turning 90° with spring motion.
+- **Pressed / Reduced motion:** Pressing deepens the row tint beyond hover and shrinks the badge; under reduced motion the badge stops growing and the plus stops turning, but the colour change still applies.
+- **Contrast:** Label reaches at least 4.5:1 against the card, and the plus at least 3:1 against the badge, in both themes.

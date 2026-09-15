@@ -1,5 +1,3 @@
-'use client'
-
 import { useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
@@ -65,7 +63,7 @@ export function MonthPicker({ month, inProgress, open, onSelect, onClose, align 
           type="button"
           onClick={() => setYear((y) => y - 1)}
           aria-label={t('anioAnterior')}
-          className="grid size-10 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
+          className="pressable grid size-target place-items-center rounded-full text-muted-foreground [--press-scale:0.9] hover:bg-foreground/[0.06] hover:text-foreground"
         >
           <ChevronLeft aria-hidden className="size-4" />
         </button>
@@ -75,7 +73,7 @@ export function MonthPicker({ month, inProgress, open, onSelect, onClose, align 
           onClick={() => setYear((y) => y + 1)}
           disabled={inProgress && year >= currentYear}
           aria-label={t('anioSiguiente')}
-          className="grid size-10 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+          className="pressable grid size-target place-items-center rounded-full text-muted-foreground [--press-scale:0.9] hover:bg-foreground/[0.06] hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
         >
           <ChevronRight aria-hidden className="size-4" />
         </button>

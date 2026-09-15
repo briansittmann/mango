@@ -84,7 +84,7 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
             titleInView ? 'opacity-0' : 'opacity-100',
           )}
         />
-        <div className="relative mx-auto flex h-full w-full max-w-[640px] items-center gap-3 px-4 sm:px-5">
+        <div className="relative mx-auto flex h-full w-full max-w-[640px] items-center gap-3 px-gutter">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/mango-logo.svg" alt="" aria-hidden className="size-7 shrink-0 object-contain" />
           <div className="relative min-w-0 flex-1">
@@ -131,8 +131,8 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
           </button>
         </div>
       </div>
-      <div className="mx-auto w-full max-w-[640px] px-4 sm:px-5">
-      <div ref={titleRef}>
+      <div className="mx-auto w-full max-w-[640px] px-gutter">
+      <div ref={titleRef} className="relative z-20">
         <AnimatedContent className="pb-3 pt-5" distance={20} delay={0.12}>
           <MonthSelector
             variant="title"
@@ -154,7 +154,7 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
       <AnimatedContent className="mt-4" distance={32} scale={0.97} duration={1} delay={0.2}>
         <FreeMarginCard amount={data.freeMargin} currency={currency} />
       </AnimatedContent>
-      <AnimatedContent className="mt-4" distance={24} delay={0.32}>
+      <AnimatedContent className="mt-stack" distance={24} delay={0.32}>
         <SummaryGroup
           currency={currency}
           openKey={openSummary}
@@ -179,8 +179,6 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
                         })}
                       />
                     ))}
-                  </div>
-                  <div className="px-4 pb-3">
                     <AddRow label={t('anadirIngreso')} onClick={actions.addIncome} />
                   </div>
                 </>
@@ -232,8 +230,6 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
                         signed
                       />
                     ))}
-                  </div>
-                  <div className="px-4 pb-3">
                     <AddRow label={t('anadirMovimientoAhorro')} onClick={actions.addSavingsMovement} />
                   </div>
                 </>
@@ -243,18 +239,20 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
         />
       </AnimatedContent>
 
-      <AnimatedContent className="mt-10 flex items-center justify-between" distance={16} delay={0.42}>
-        <h2 className="text-label-caps uppercase text-muted-foreground">{t('expenseBreakdown')}</h2>
-        <button
-          type="button"
-          onClick={() => setOpenIds(new Set())}
-          className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-label-ui text-foreground"
-        >
-          <ChevronUp className="size-4 text-brand-ink" aria-hidden />
-          {t('colapsarTodo')}
-        </button>
+      <AnimatedContent className="mt-section flex items-center justify-between" distance={16} delay={0.42}>
+        <h2 className="font-display text-headline-md text-foreground">{t('expenseBreakdown')}</h2>
+        {openIds.size > 0 ? (
+          <button
+            type="button"
+            onClick={() => setOpenIds(new Set())}
+            className="pressable inline-flex min-h-target items-center gap-2 text-body-lg font-medium text-brand-ink"
+          >
+            <ChevronUp className="size-4" aria-hidden />
+            {t('colapsarTodo')}
+          </button>
+        ) : null}
       </AnimatedContent>
-      <div ref={expensesRef} className="mt-4 flex flex-col gap-3">
+      <div ref={expensesRef} className="mt-4 flex scroll-mt-20 flex-col gap-stack">
         {data.expenses.groups.map((group, index) => (
           <AnimatedContent
             key={group.id}
@@ -276,7 +274,7 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
           </AnimatedContent>
         ))}
       </div>
-      <div className="mt-8 flex flex-col gap-4">
+      <div className="mt-section flex flex-col gap-stack">
         <AnimatedContent
           trigger="#category-cascade"
           threshold={0.2}

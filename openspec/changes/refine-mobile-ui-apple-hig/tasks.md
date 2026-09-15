@@ -179,7 +179,7 @@
   - **Title line:** in es, the title is "Septiembre" at 28px Manrope 700, and the line under it contains "en curso" and a range covering 1 and 30 September. In en, it shows "in progress" and an English range.
   - **Motion:** the swap animates visibly by default and is instant under reduced motion.
   - **Clean-up:** `grep -n "scrollY\|-top-\[76px\]" components/templates/dashboard-template.tsx` prints nothing.
-- [ ] 6.2 Recompose the body (D2, D5, D7):
+- [x] 6.2 Recompose the body (D2, D5, D7):
   - Spacing: `px-gutter`, `mt-stack` (hero → summary group), `mt-section` (expenses and charts sections), `gap-stack` (cards and charts).
   - Expenses title in `font-display text-headline-md`, sentence case.
   - "Colapsar todo" as a `pressable` `min-h-target text-body-lg font-medium text-brand-ink` text button, rendered only while at least one card is open.
@@ -195,13 +195,13 @@
 
 ## 7. Docs
 
-- [ ] 7.1 Update `DESIGN.md` (D14): typography front-matter set to the D1 values, the D2 keys added to `spacing`, and short *Materials* and *Hierarchy* rules. Verify:
+- [x] 7.1 Update `DESIGN.md` (D14): typography front-matter set to the D1 values, the D2 keys added to `spacing`, and short *Materials* and *Hierarchy* rules. Verify:
   - Every `typography` entry's size, line height and weight equals the matching `--text-*` value in `app/globals.css` (a scratchpad script prints the comparison with zero mismatches).
   - `git diff --stat DESIGN.md` shows only those sections changed.
 
 ## 8. Verification
 
-- [ ] 8.1 Re-run the 1.1 script, saving `after.json` and the after screenshots. Walk through every scenario in this change's `specs/` on `/demo` in es/en × light/dark. Verify:
+- [x] 8.1 Re-run the 1.1 script, saving `after.json` and the after screenshots. Walk through every scenario in this change's `specs/` on `/demo` in es/en × light/dark. Verify:
   - At most 6 font sizes while collapsed.
   - No text under 12px with the picker or the sheet open.
   - 0 targets under 44px in every listed state.
@@ -213,7 +213,7 @@
   - The reduced-motion scenario passes.
   - No console errors or hydration warnings.
   - Every state has a before/after screenshot pair.
-- [ ] 8.2 Guards: run the land-finance-dashboard 6.1 greps unchanged, plus these:
+- [x] 8.2 Guards: run the land-finance-dashboard 6.1 greps unchanged, plus these:
 
   | Command | Expected |
   |---|---|
@@ -225,4 +225,4 @@
   | `git diff main -- components \| grep -E "^\+.*\b(sm\|md\|lg):"` | nothing (no new viewport layout variants, D12) |
 
   Verify: each command prints what the table expects, and `npm run lint` passes.
-- [ ] 8.3 Final gate: run `npx tsc --noEmit`, `npm run lint`, `npm run build` and `openspec validate refine-mobile-ui-apple-hig --strict`. Then check whether `openspec/specs/dashboard-ui/spec.md` and `openspec/specs/theming/spec.md` exist. Verify: all four commands pass. If either spec file is missing, tell the user to archive `land-finance-dashboard`, then `restyle-dashboard-to-v0`, before archiving this change.
+- [x] 8.3 Final gate: run `npx tsc --noEmit`, `npm run lint`, `npm run build` and `openspec validate refine-mobile-ui-apple-hig --strict`. Then check whether `openspec/specs/dashboard-ui/spec.md` and `openspec/specs/theming/spec.md` exist. Verify: all four commands pass. If either spec file is missing, tell the user to archive `land-finance-dashboard`, then `restyle-dashboard-to-v0`, before archiving this change.

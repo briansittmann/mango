@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -nE \"#[0-9a-fA-F]{3,8}\\\\b|rgba?\\\\\\(|hsla?\\\\\\(|-\\(white|black\\)\\(/|\\\\b\\)\" components/molecules/add-row.tsx)",
+      "Bash(/usr/bin/grep -nE \"#[0-9a-fA-F]{3,8}\\\\b|rgba?\\\\\\(|hsla?\\\\\\(|-\\(white|black\\)\\(/|\\\\b\\)\" components/molecules/add-row.tsx)",
+      "Bash(node \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/b0550f55-f869-4c48-ac51-1dbf3fee93bb/scratchpad/geometry-4.1.mjs\")",
+      "Bash(node \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/b0550f55-f869-4c48-ac51-1dbf3fee93bb/scratchpad/verify-4.2.mjs\")",
+      "Bash(node \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/b0550f55-f869-4c48-ac51-1dbf3fee93bb/scratchpad/6.1-geometry.mjs\")",
+      "Bash(node -e ' *)",
+      "Bash(node \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/b0550f55-f869-4c48-ac51-1dbf3fee93bb/scratchpad/6.2-states.mjs\")",
+      "Bash(node \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/b0550f55-f869-4c48-ac51-1dbf3fee93bb/scratchpad/6.3-contrast.mjs\")",
+      "Bash(node \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/b0550f55-f869-4c48-ac51-1dbf3fee93bb/scratchpad/6.4-touch-reduced.mjs\")",
+      "Bash(node \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/b0550f55-f869-4c48-ac51-1dbf3fee93bb/scratchpad/6.5-demo-message.mjs\")",
+      "Bash(node \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/b0550f55-f869-4c48-ac51-1dbf3fee93bb/scratchpad/after-screenshots.mjs\")"
+    ]
+  }
+}

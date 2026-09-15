@@ -10,11 +10,8 @@ export function FreeMarginCard({ amount, currency }: FreeMarginCardProps) {
   const t = useTranslations('dashboard')
 
   return (
-    <div className="hero-card rounded-card border p-5">
-      <p className="flex items-center gap-1.5 text-label-caps uppercase text-brand-ink">
-        <span aria-hidden className="size-1.5 rounded-full bg-brand-ink" />
-        {t('margenLibre')}
-      </p>
+    <div className="hero-card rounded-card border px-inset py-5">
+      <p className="text-body-lg text-muted-foreground">{t('margenLibre')}</p>
       <Money
         amount={amount}
         currency={currency}

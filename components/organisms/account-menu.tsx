@@ -168,7 +168,7 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
           <Avatar
             name={user.name}
             photoUrl={user.photoUrl}
-            className="size-12 text-sm shadow-[0_0_0_4px_color-mix(in_oklab,var(--brand)_14%,transparent)] transition-[scale,rotate,box-shadow] duration-500 ease-bounce hover:-rotate-6 hover:scale-110 hover:shadow-[0_0_0_6px_color-mix(in_oklab,var(--brand)_28%,transparent),0_8px_24px_-6px_color-mix(in_oklab,var(--brand)_45%,transparent)]"
+            className="size-12 text-headline-sm shadow-[0_0_0_4px_color-mix(in_oklab,var(--brand)_14%,transparent)] transition-[scale,rotate,box-shadow] duration-500 ease-bounce hover:-rotate-6 hover:scale-110 hover:shadow-[0_0_0_6px_color-mix(in_oklab,var(--brand)_28%,transparent),0_8px_24px_-6px_color-mix(in_oklab,var(--brand)_45%,transparent)]"
           />
           <div className="min-w-0 flex-1">
             <p className="truncate font-display text-headline-sm text-foreground">{user.name}</p>

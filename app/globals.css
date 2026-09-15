@@ -194,7 +194,7 @@
   transition: scale 200ms var(--ease-spring), background-color 150ms ease-out;
   &:active:not(:disabled) {
     scale: var(--press-scale, 0.98);
-    background-color: color-mix(in oklab, var(--foreground) 4%, transparent);
+    background-color: color-mix(in oklab, var(--foreground) var(--press-tint, 4%), transparent);
   }
   &:focus-visible {
     outline: 2px solid var(--ring);
@@ -261,14 +261,6 @@ body {
 .hero-value {
   color: light-dark(var(--positive), var(--brand-ink));
   text-shadow: 0 0 18px var(--hero-glow-near), 0 0 36px var(--hero-glow-far);
-}
-
-.text-hero-accent {
-  color: light-dark(var(--positive), var(--brand-ink));
-}
-
-.text-glow-sm {
-  text-shadow: 0 0 8px var(--hero-glow-near), 0 0 16px var(--hero-glow-far);
 }
 
 .liquid-glass {

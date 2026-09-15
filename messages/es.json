@@ -55,6 +55,7 @@
   },
   "demo": {
     "aviso": "Estás viendo datos de ejemplo",
-    "cerrarAviso": "Cerrar aviso"
+    "cerrarAviso": "Cerrar aviso",
+    "accionNoDisponible": "Esta acción no está disponible en la demo"
   }
 }

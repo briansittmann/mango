@@ -15,7 +15,7 @@ export function DemoNotice() {
         <span className="grid size-8 shrink-0 place-items-center rounded-full bg-warning/20 text-[color-mix(in_oklab,var(--warning)_70%,var(--foreground))]">
           <FlaskConical aria-hidden className="size-4" />
         </span>
-        <p className="min-w-0 flex-1 truncate text-body-md text-foreground">{t('aviso')}</p>
+        <p className="min-w-0 flex-1 truncate text-body-sm text-foreground">{t('aviso')}</p>
         <button
           type="button"
           onClick={() => setDismissed(true)}
