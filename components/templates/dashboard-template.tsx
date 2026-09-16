@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { flushSync } from 'react-dom'
+import { Toast } from '@base-ui/react/toast'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { currencyFormatOptions } from '@/i18n/formats'
@@ -10,14 +12,17 @@ import { ShortDate } from '@/components/atoms/short-date'
 import { AddRow } from '@/components/molecules/add-row'
 import { MonthSelector } from '@/components/molecules/month-selector'
 import { SummaryRow } from '@/components/molecules/summary-row'
+import { UndoToast } from '@/components/molecules/undo-toast'
 import { AccountMenu } from '@/components/organisms/account-menu'
 import { CategoryCard } from '@/components/organisms/category-card'
 import { CategoryPieChart } from '@/components/organisms/category-pie-chart'
+import { EntrySheet, expenseEntry } from '@/components/organisms/entry-sheet'
 import { FreeMarginCard } from '@/components/organisms/free-margin-card'
 import { MonthlyBarsChart } from '@/components/organisms/monthly-bars-chart'
 import { SummaryGroup } from '@/components/organisms/summary-group'
 import { AnimatedContent } from '@/components/ui/animated-content'
-import type { DashboardActions, DashboardData } from '@/lib/data/dashboard'
+import type { DashboardActions, DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
+import type { ExpenseDraft } from '@/lib/data/expenses'
 
 type DashboardTemplateProps = {
   data: DashboardData
@@ -27,20 +32,111 @@ type DashboardTemplateProps = {
 
 type SummaryKey = 'income' | 'expenses' | 'savings'
 
+type SheetTarget = { mode: 'create'; group: ExpenseGroup } | { mode: 'edit'; group: ExpenseGroup; expense: Expense }
+
 const BAR_HEIGHT = 56
+
+function clampDate(date: string, min: string, max: string): string {
+  if (date < min) return min
+  if (date > max) return max
+  return date
+}
+
+function localDateOf(dateIso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(dateIso))
+}
 
 export function DashboardTemplate({ data, actions, notice }: DashboardTemplateProps) {
   const t = useTranslations('dashboard')
   const tResumen = useTranslations('resumen')
   const tMenu = useTranslations('menuCuenta')
+  const tHojaGasto = useTranslations('hojaGasto')
   const format = useFormatter()
   const [openIds, setOpenIds] = useState<Set<string>>(new Set())
   const [openSummary, setOpenSummary] = useState<SummaryKey | null>(null)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [titleInView, setTitleInView] = useState(true)
+  const [sheet, setSheet] = useState<{ open: boolean; target: SheetTarget | null }>({ open: false, target: null })
+  const [statusMessage, setStatusMessage] = useState('')
   const titleRef = useRef<HTMLDivElement>(null)
   const expensesRef = useRef<HTMLDivElement>(null)
+  const initialFocusRef = useRef<HTMLInputElement>(null)
+  const toasts = useMemo(() => Toast.createToastManager(), [])
   const currency = data.user.currency
+
+  function openCreateSheet(group: ExpenseGroup) {
+    flushSync(() => setSheet({ open: true, target: { mode: 'create', group } }))
+    initialFocusRef.current?.focus({ preventScroll: true })
+  }
+
+  function openEditSheet(group: ExpenseGroup, expense: Expense) {
+    flushSync(() => setSheet({ open: true, target: { mode: 'edit', group, expense } }))
+    initialFocusRef.current?.focus({ preventScroll: true })
+    initialFocusRef.current?.select()
+  }
+
+  function showUndo(expense: Expense) {
+    toasts.close()
+    const id = toasts.add({
+      title: tHojaGasto('gastoEliminado'),
+      priority: 'low',
+      actionProps: { children: tHojaGasto('deshacer'), onClick: () => void undoDelete(id, expense) },
+    })
+  }
+
+  async function undoDelete(id: string, expense: Expense) {
+    if (!actions.expenses) return
+    try {
+      await actions.expenses.restore(expense.id)
+      toasts.close(id)
+    } catch {
+      toasts.update(id, { title: tHojaGasto('errorDeshacer'), priority: 'high', actionProps: undefined })
+    }
+  }
+
+  async function handleDeleteExpense(expense: Expense) {
+    if (!actions.expenses) return
+    try {
+      await actions.expenses.softDelete(expense.id)
+      showUndo(expense)
+    } catch (error) {
+      toasts.add({ title: tHojaGasto('errorEliminar'), priority: 'high' })
+      throw error
+    }
+  }
+
+  async function handleSheetDelete() {
+    if (!actions.expenses || sheet.target?.mode !== 'edit') return
+    const expense = sheet.target.expense
+    await actions.expenses.softDelete(expense.id)
+    setSheet((prev) => ({ ...prev, open: false }))
+    showUndo(expense)
+  }
+
+  async function handleSaveExpense(values: ExpenseDraft) {
+    if (!actions.expenses || !sheet.target) return
+    if (sheet.target.mode === 'create') {
+      await actions.expenses.create(sheet.target.group.id, values)
+    } else {
+      await actions.expenses.update(sheet.target.expense.id, values)
+    }
+    setSheet((prev) => ({ ...prev, open: false }))
+    setStatusMessage(sheet.target.mode === 'create' ? tHojaGasto('gastoAnadido') : tHojaGasto('cambiosGuardados'))
+  }
+
+  const sheetGroup = sheet.target?.group ?? data.expenses.groups[0]
+  const sheetContext =
+    sheetGroup.kind === 'category'
+      ? { kind: 'category' as const, name: sheetGroup.name ?? t('gastosFijos'), color: sheetGroup.color }
+      : { kind: 'fixedCharge' as const }
+  const sheetInitialValues: Partial<ExpenseDraft> =
+    sheet.target?.mode === 'edit'
+      ? {
+          amount: sheet.target.expense.amount,
+          description: sheet.target.expense.name,
+          date: localDateOf(sheet.target.expense.date, data.user.timezone),
+        }
+      : { date: clampDate(data.cycle.today, data.cycle.start, data.cycle.end) }
 
   useEffect(() => {
     const el = titleRef.current
@@ -75,6 +171,7 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
   )
 
   return (
+    <Toast.Provider toastManager={toasts} limit={1} timeout={5000}>
     <div className="pb-12">
       <div className="sticky top-0 z-30" style={{ height: BAR_HEIGHT }}>
         <div
@@ -269,7 +366,9 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
               timeZone={data.user.timezone}
               open={openIds.has(group.id)}
               onToggle={() => toggleCard(group.id)}
-              onAddExpense={actions.addExpense ? () => actions.addExpense!(group.id) : undefined}
+              onAddExpense={actions.expenses ? () => openCreateSheet(group) : undefined}
+              onEditExpense={actions.expenses ? (expense) => openEditSheet(group, expense) : undefined}
+              onDeleteExpense={actions.expenses ? (expense) => handleDeleteExpense(expense) : undefined}
             />
           </AnimatedContent>
         ))}
@@ -301,6 +400,23 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
         open={accountMenuOpen}
         onClose={() => setAccountMenuOpen(false)}
       />
+      <EntrySheet
+        config={expenseEntry}
+        open={sheet.open}
+        onOpenChange={(open) => setSheet((prev) => ({ ...prev, open }))}
+        mode={sheet.target?.mode ?? 'create'}
+        context={sheetContext}
+        initialValues={sheetInitialValues}
+        fieldOptions={{ amount: { currency }, date: { min: data.cycle.start, max: data.cycle.end } }}
+        initialFocusRef={initialFocusRef}
+        onSave={handleSaveExpense}
+        onDelete={sheet.target?.mode === 'edit' ? handleSheetDelete : undefined}
+      />
+      <UndoToast />
+      <div role="status" className="sr-only">
+        {statusMessage}
+      </div>
     </div>
+    </Toast.Provider>
   )
 }

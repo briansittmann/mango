@@ -70,11 +70,15 @@ export function MonthSelector({ variant, month, start, end, inProgress, onPrevio
     )
   }
 
-  const range = format.dateTimeRange(new Date(`${start}T00:00:00Z`), new Date(`${end}T00:00:00Z`), {
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  })
+  // Node and browser ICU builds disagree on the range separator's spacing
+  // ("1–30 sept" vs "1 – 30 sept"), which breaks hydration. Normalize it.
+  const range = format
+    .dateTimeRange(new Date(`${start}T00:00:00Z`), new Date(`${end}T00:00:00Z`), {
+      day: 'numeric',
+      month: 'short',
+      timeZone: 'UTC',
+    })
+    .replace(/\s*[–-]\s*/, '–')
 
   return (
     <div className="relative">

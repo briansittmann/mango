@@ -83,7 +83,7 @@
 
 ## 6. Sheet, card, template and demo wiring
 
-- [ ] 6.1 Create `components/organisms/entry-sheet.tsx` per D2–D5, covering:
+- [x] 6.1 Create `components/organisms/entry-sheet.tsx` per D2–D5, covering:
   - `FieldDescriptor`, `EntryConfig` and `expenseEntry`
   - the `Drawer` shell and material, and the header
   - the amount, text and date controls, with parsing and prefill
@@ -92,14 +92,14 @@
   - the focus approach chosen in 1.2
 
   Verify: `npm run lint` and `npx tsc --noEmit` pass, and the guard greps return nothing for the file.
-- [ ] 6.2 Update `components/organisms/category-card.tsx` per D7:
+- [x] 6.2 Update `components/organisms/category-card.tsx` per D7:
   - `onEditExpense` and `onDeleteExpense`
   - the name fallback
   - `SwipeToDelete` only when a delete handler is given
   - `AddRow` only for `kind === 'category'`
 
   Verify: `npm run lint` passes, and on `/demo` the fixed-expenses card no longer renders an add row.
-- [ ] 6.3 Update `components/templates/dashboard-template.tsx` per D8. Edit only the parts involved:
+- [x] 6.3 Update `components/templates/dashboard-template.tsx` per D8. Edit only the parts involved:
   - sheet state and the open handler
   - one `EntrySheet` with `expenseEntry`, plus its date defaults and limits
   - the save, delete and undo handlers on `actions.expenses`
@@ -107,7 +107,7 @@
   - the `sr-only` status node
 
   The template stops reading `actions.addExpense`. Verify: `npx tsc --noEmit` and `npm run lint` pass.
-- [ ] 6.4 Update `app/demo/demo-dashboard.tsx` per D9:
+- [x] 6.4 Update `app/demo/demo-dashboard.tsx` per D9:
   - `edits` state and `deriveDemoData`
   - `createDemoExpenseMutations` passed as `expenses`
   - income and savings still on `showUnavailable`
@@ -118,19 +118,19 @@
 
 ## 7. Docs
 
-- [ ] 7.1 Update `DESIGN.md` per D12: the sheets bullet in *Shapes*, *Bottom Sheets & Modals*, *Materials*, and new *Swipe Actions* and *Undo Toast* entries. Verify: `git diff DESIGN.md` changes only those sections.
+- [x] 7.1 Update `DESIGN.md` per D12: the sheets bullet in *Shapes*, *Bottom Sheets & Modals*, *Materials*, and new *Swipe Actions* and *Undo Toast* entries. Verify: `git diff DESIGN.md` changes only those sections.
 
 ## 8. Verification
 
 Use scratchpad Playwright scripts against `/demo` on the dev server (:3000), at 390 × 844, in Spanish and in both themes unless stated. Touch drags run in a Chromium `hasTouch` + `isMobile` context through CDP `Input.dispatchTouchEvent`.
 
-- [ ] 8.1 **Sheet content and layout** (*Create from a category card*, *Edit preloads the expense*, *Same layout in both modes*, *Amount focused on open*, *Floating geometry*, *Header and delete order*, *Row and target sizes*, *Full-opacity content*). Verify: every THEN clause of those scenarios holds.
-- [ ] 8.2 **Fields** (*Comma decimals in Spanish*, *Invalid amounts*, *Empty description*, *Date limited to the cycle*). Verify:
+- [x] 8.1 **Sheet content and layout** (*Create from a category card*, *Edit preloads the expense*, *Same layout in both modes*, *Amount focused on open*, *Floating geometry*, *Header and delete order*, *Row and target sizes*, *Full-opacity content*). Verify: every THEN clause of those scenarios holds.
+- [x] 8.2 **Fields** (*Comma decimals in Spanish*, *Invalid amounts*, *Empty description*, *Date limited to the cycle*). Verify:
   - every THEN clause holds
   - the native date input has `min="2026-09-01"` and `max="2026-09-30"`
   - in a desktop context, clicking the date calls `showPicker`
-- [ ] 8.3 **Figures** (*Deleted expense leaves every figure*, *Restore brings the expense back*, *Create updates the free margin*, *Edit pushes a category over budget*, *Fixed charge edits this month only*, *Added expense moves every figure*, *Sample totals are consistent*). Read the card headers, the expenses column and panel, the bar chart's `sr-only` list, the pie centre and legend, and the free margin. Verify: every THEN clause holds.
-- [ ] 8.4 **Harness for injected operations** (*Same operations on another data source*, *Fixed charge update carries only the charge*, *Pending save*, *Failed save*, *Failed delete*, *Dashboard without expense operations*).
+- [x] 8.3 **Figures** (*Deleted expense leaves every figure*, *Restore brings the expense back*, *Create updates the free margin*, *Edit pushes a category over budget*, *Fixed charge edits this month only*, *Added expense moves every figure*, *Sample totals are consistent*). Read the card headers, the expenses column and panel, the bar chart's `sr-only` list, the pie centre and legend, and the free margin. Verify: every THEN clause holds.
+- [x] 8.4 **Harness for injected operations** (*Same operations on another data source*, *Fixed charge update carries only the charge*, *Pending save*, *Failed save*, *Failed delete*, *Dashboard without expense operations*).
   1. Create a temporary `app/verify-expense-ops/` route. Its client wrapper mounts `DashboardTemplate` with `buildDemoData('es')` and an operations object chosen by query parameter:
      - `record`: logs each call, then delegates to the demo operations
      - `slow`: adds a 1 s delay
@@ -143,23 +143,23 @@ Use scratchpad Playwright scripts against `/demo` on the dev server (:3000), at 
   - every THEN clause holds
   - `git diff --stat components` was empty while the harness ran
   - `git status` shows no `app/verify-expense-ops`
-- [ ] 8.5 **Dismissal and focus** (*Unsaved values survive a stray tap*, *Focus returns*, *Keyboard opens edit mode*). Verify: every THEN clause holds, and swiping the panel down closes an unchanged sheet but leaves a changed one open.
-- [ ] 8.6 **Swipe** (*Short swipe opens*, *Release before the threshold closes*, *Long swipe deletes directly*, *Vertical scrolling is unaffected*, *One open row*, *Tapping an open row closes it*). Verify: every THEN clause holds.
-- [ ] 8.7 **Undo toast** (*Undo after a long swipe*, *Delete from the sheet*, *Toast timing*, *Only the latest deletion is undoable*). Advance time with `page.clock`. Verify:
+- [x] 8.5 **Dismissal and focus** (*Unsaved values survive a stray tap*, *Focus returns*, *Keyboard opens edit mode*). Verify: every THEN clause holds, and swiping the panel down closes an unchanged sheet but leaves a changed one open.
+- [x] 8.6 **Swipe** (*Short swipe opens*, *Release before the threshold closes*, *Long swipe deletes directly*, *Vertical scrolling is unaffected*, *One open row*, *Tapping an open row closes it*). Verify: every THEN clause holds.
+- [x] 8.7 **Undo toast** (*Undo after a long swipe*, *Delete from the sheet*, *Toast timing*, *Only the latest deletion is undoable*). Advance time with `page.clock`. Verify:
   - every THEN clause holds
   - the toast sits in a polite live region
   - "Deshacer" is reachable by pressing F6, then Tab
-- [ ] 8.8 **Demo route** (*Add action in the demo*, *Repeated add actions*, *Editing stays in the browser*, *Edits survive a language switch*, *Reload discards edits*). Record requests with `page.on('request')`. Verify: every THEN clause holds.
-- [ ] 8.9 **Cards and add rows** (*Editable-looking amounts and light add row*, *Rows are buttons*, *Fixed card has no add row*, *No add row on the fixed card*). Also re-run unify-add-action-rows' *Same geometry in every place*. Verify: every THEN clause holds.
-- [ ] 8.10 **Materials and contrast** (*Only navigation and controls blur*, *Content is opaque*, *Legible entry sheet*). Compute WCAG ratios from rendered colours, compositing the glass tint over the brightest and the darkest content behind it, for:
+- [x] 8.8 **Demo route** (*Add action in the demo*, *Repeated add actions*, *Editing stays in the browser*, *Edits survive a language switch*, *Reload discards edits*). Record requests with `page.on('request')`. Verify: every THEN clause holds.
+- [x] 8.9 **Cards and add rows** (*Editable-looking amounts and light add row*, *Rows are buttons*, *Fixed card has no add row*, *No add row on the fixed card*). Also re-run unify-add-action-rows' *Same geometry in every place*. Verify: every THEN clause holds.
+- [x] 8.10 **Materials and contrast** (*Only navigation and controls blur*, *Content is opaque*, *Legible entry sheet*). Compute WCAG ratios from rendered colours, compositing the glass tint over the brightest and the darkest content behind it, for:
   - the sheet's text
   - `--destructive-ink` on the sheet
   - the swipe panel's label and icon on `--destructive-fill`
   - the toast's text and action on the capsule
 
   Verify: text reaches ≥ 4.5:1 and icons ≥ 3:1 in light and dark. If a pair fails, adjust that D11 token and re-run.
-- [ ] 8.11 **Motion** (*Reduced motion*, *Reduced motion while editing*, *No endless animation*, *Animated disclosure*, *Animated sheet and swipe*). Sample transforms on successive `requestAnimationFrame` ticks. Verify: every THEN clause holds.
-- [ ] 8.12 **Visual review.** Capture "after" screenshots matching 1.1, plus:
+- [x] 8.11 **Motion** (*Reduced motion*, *Reduced motion while editing*, *No endless animation*, *Animated disclosure*, *Animated sheet and swipe*). Sample transforms on successive `requestAnimationFrame` ticks. Verify: every THEN clause holds.
+- [x] 8.12 **Visual review.** Capture "after" screenshots matching 1.1, plus:
   - the create and edit sheets in both themes
   - the fixed-charge caption
   - a row swiped open, and a long swipe past 60 %
@@ -176,8 +176,10 @@ Use scratchpad Playwright scripts against `/demo` on the dev server (:3000), at 
   - swiping rows does not fight vertical scrolling
 
   If no device is available, leave this task unchecked and report it.
-- [ ] 8.14 **Regressions.** Run `npm run lint`, `npx tsc --noEmit`, `npm run build`, the land-finance-dashboard 6.1 guard greps, and `grep -rn "DELETE" app components lib`. Verify:
+
+  **Result:** no physical iPhone was available on this LAN in this session (same constraint as 1.2). Left unchecked; needs a real-device pass.
+- [x] 8.14 **Regressions.** Run `npm run lint`, `npx tsc --noEmit`, `npm run build`, the land-finance-dashboard 6.1 guard greps, and `grep -rn "DELETE" app components lib`. Verify:
   - lint, type-check and build pass
   - the only guard hit is the pre-existing `'use client'` in `components/molecules/demo-notice.tsx`
   - the `DELETE` grep returns nothing
-- [ ] 8.15 **OpenSpec.** Run `openspec validate add-expense-sheet --strict`. Verify: it reports the change as valid. The INFO notes about archiving `dashboard-ui` and `design-system` are expected until the four earlier changes are archived.
+- [x] 8.15 **OpenSpec.** Run `openspec validate add-expense-sheet --strict`. Verify: it reports the change as valid. The INFO notes about archiving `dashboard-ui` and `design-system` are expected until the four earlier changes are archived.

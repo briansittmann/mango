@@ -48,7 +48,6 @@ export type DashboardActions = Partial<{
   previousCycle(): void
   nextCycle(): void
   selectCycle(month: string): void
-  addExpense(groupId: string): void
   expenses: ExpenseMutations
   addIncome(): void
   addSavingsMovement(): void

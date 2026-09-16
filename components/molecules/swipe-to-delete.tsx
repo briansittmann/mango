@@ -28,6 +28,7 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
   const offsetRef = useRef(0)
   const widthRef = useRef(0)
   const draggedRef = useRef(false)
+  const contentRef = useRef<HTMLDivElement>(null)
   const gestureRef = useRef<{
     pointerId: number
     startX: number
@@ -44,7 +45,10 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
   useEffect(() => {
     if (dragging || removing || offset === 0) return
 
-    function close() {
+    function close(event: Event) {
+      // A press on the row itself is handled by handleClickCapture (which also swallows the
+      // resulting click); only an outside press should close it here.
+      if (event.target instanceof Node && contentRef.current?.contains(event.target)) return
       offsetRef.current = 0
       setOffset(0)
     }
@@ -180,6 +184,7 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
           </button>
         </div>
         <div
+          ref={contentRef}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={endDrag}

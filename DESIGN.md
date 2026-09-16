@@ -219,20 +219,20 @@ Visual hierarchy uses tonal surface progression combined with low-contrast struc
 The design system adopts **Level 3 (Pill-shaped)** ergonomics, balancing rounded silhouettes with sharp tabular grids:
 - **Buttons, Badges & Toggles:** Fully pill-shaped (`rounded-full` / 9999px) to establish clear interactive affordance.
 - **Containers & Master Cards:** 1rem (`16px`) inner radius to 1.25rem (`20px`) outer radius.
-- **Bottom Sheets:** Distinct asymmetrical rounding with top corners at `28px` (`1.75rem`), flat bottom edges adhering to device edges.
+- **Bottom Sheets:** Floating panel, inset by 12px margins plus the safe area rather than flush against the device edge, with `--radius-sheet` (`28px` / `1.75rem`) applied to all four corners.
 - **Drag Handle:** Rounded pill strip measuring 36px wide by 4px high (`handle-width` x `handle-height`), centered 8px below the sheet apex.
 
 ## Materials
 
-Translucency is an allowlist, not a default: the scrolled top bar (`.glass-bar`) and the month picker/account sheet dialogs are the only frosted surfaces. The month title, notice, hero, summary group, cards and charts stay opaque tokens with no `backdrop-filter`.
+Translucency is an allowlist, not a default: the scrolled top bar (`.glass-bar`), the month picker/account sheet dialogs and the expense entry sheet are the only frosted surfaces. The month title, notice, hero, summary group, cards and charts stay opaque tokens with no `backdrop-filter`.
 
 ## Components
 
 ### Bottom Sheets & Modals
 - **Backdrop:** Dimmed screen scrim with a 12px Gaussian blur.
-- **Container Geometry:** Top-left and top-right radii set to `28px`. Background of brushed `#131814`.
+- **Container Geometry:** Floating panel, 12px margins plus the safe area, up to 440px wide and centered, all four corners at `28px`. Background of brushed `#131814`.
 - **Drag Pill Handle:** Centered horizontally, dimensions 36px × 4px, `#374151` neutral muted color, positioned 10px from the sheet's top edge.
-- **Header:** Sticky top section displaying a centered or left-aligned `headline-sm` with a secondary dismiss icon button top-right.
+- **Header:** Sticky top row with a leading text "Cancel" action, a centered `headline-sm` title with a `body-sm` caption below it, and a trailing pill-shaped primary action.
 
 ### Structured List Rows
 - **Dimensions:** Strict minimum height of 48px (`3rem`), vertical padding of 12px, horizontal padding of 16px.
@@ -257,3 +257,15 @@ Translucency is an allowlist, not a default: the scrolled top bar (`.glass-bar`)
 - **Rest / Hover:** Transparent row with a brand-tinted badge (`#84CC16` at 15% opacity) at rest; on pointer hover the row tints like its sibling rows and the badge fills solid brand (`#84CC16`) with the plus in `#0D110E`, growing and turning 90° with spring motion.
 - **Pressed / Reduced motion:** Pressing deepens the row tint beyond hover and shrinks the badge; under reduced motion the badge stops growing and the plus stops turning, but the colour change still applies.
 - **Contrast:** Label reaches at least 4.5:1 against the card, and the plus at least 3:1 against the badge, in both themes.
+
+### Swipe Actions
+- **Anatomy:** A `destructive-fill` panel revealed behind a Structured List Row by a horizontal drag, guarded by a 10px intent lock before the pointer is captured. The panel holds an icon and label in `destructive-fill-foreground`.
+- **Panel width:** A quarter of the row's width, at least 44px.
+- **Thresholds:** Releasing past 50% of the panel width snaps it open; dragging past 60% of the row width arms and commits the delete directly, without needing a second tap.
+- **Motion:** Spring easing opens and closes the panel; removal collapses the row over 220ms with a linear ease-in. Reduced motion drops the spring but keeps the state changes.
+- **Contrast:** Label and icon reach at least 4.5:1 and 3:1 against `destructive-fill`, in both themes.
+
+### Undo Toast
+- **Anatomy:** An inverted, fully opaque capsule (`bg-foreground` / `text-background`) anchored bottom-center above the safe area, holding a message and a trailing "Deshacer" action separated by a hairline divider.
+- **Behavior:** One toast at a time; a new deletion replaces the previous toast. Auto-dismisses after 5s, pausing while hovered or focused.
+- **Motion:** Enters and exits with a spring translate/opacity transition; reduced motion keeps the opacity fade only.

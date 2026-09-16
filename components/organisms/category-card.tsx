@@ -7,7 +7,8 @@ import { Money } from '@/components/atoms/money'
 import { AddRow } from '@/components/molecules/add-row'
 import { BudgetProgress } from '@/components/molecules/budget-progress'
 import { ExpenseRow } from '@/components/molecules/expense-row'
-import type { ExpenseGroup } from '@/lib/data/dashboard'
+import { SwipeToDelete } from '@/components/molecules/swipe-to-delete'
+import type { Expense, ExpenseGroup } from '@/lib/data/dashboard'
 
 type CategoryCardProps = {
   group: ExpenseGroup
@@ -16,9 +17,20 @@ type CategoryCardProps = {
   open: boolean
   onToggle: () => void
   onAddExpense?: () => void
+  onEditExpense?: (expense: Expense) => void
+  onDeleteExpense?: (expense: Expense) => Promise<void>
 }
 
-export function CategoryCard({ group, currency, timeZone, open, onToggle, onAddExpense }: CategoryCardProps) {
+export function CategoryCard({
+  group,
+  currency,
+  timeZone,
+  open,
+  onToggle,
+  onAddExpense,
+  onEditExpense,
+  onDeleteExpense,
+}: CategoryCardProps) {
   const t = useTranslations('dashboard')
   const tCategoria = useTranslations('categoria')
   const format = useFormatter()
@@ -62,17 +74,27 @@ export function CategoryCard({ group, currency, timeZone, open, onToggle, onAddE
 
       <Collapsible open={open} id={panelId}>
         <div className="flex flex-col">
-          {group.expenses.map((expense) => (
-            <ExpenseRow
-              key={expense.id}
-              name={expense.name}
-              date={expense.date}
-              amount={expense.amount}
-              currency={currency}
-              timeZone={timeZone}
-            />
-          ))}
-          <AddRow label={t('anadirGasto')} onClick={onAddExpense} />
+          {group.expenses.map((expense, index) => {
+            const row = (
+              <ExpenseRow
+                name={expense.name || name}
+                date={expense.date}
+                amount={expense.amount}
+                currency={currency}
+                timeZone={timeZone}
+                onActivate={onEditExpense ? () => onEditExpense(expense) : undefined}
+                first={index === 0}
+              />
+            )
+            return onDeleteExpense ? (
+              <SwipeToDelete key={expense.id} onDelete={() => onDeleteExpense(expense)}>
+                {row}
+              </SwipeToDelete>
+            ) : (
+              <div key={expense.id}>{row}</div>
+            )
+          })}
+          {group.kind === 'category' ? <AddRow label={t('anadirGasto')} onClick={onAddExpense} /> : null}
         </div>
       </Collapsible>
     </div>

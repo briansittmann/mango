@@ -9,11 +9,14 @@ type ExpenseRowProps = {
   currency: string
   timeZone: string
   onActivate?: () => void
+  first?: boolean
 }
 
-export function ExpenseRow({ name, date, amount, currency, timeZone, onActivate }: ExpenseRowProps) {
-  const rowClassName =
-    'relative flex min-h-row w-full items-center gap-3 px-inset py-2.5 text-left before:absolute before:left-4 before:right-0 before:top-0 before:h-px before:bg-border first:before:hidden hover:bg-foreground/[0.04]'
+export function ExpenseRow({ name, date, amount, currency, timeZone, onActivate, first }: ExpenseRowProps) {
+  const rowClassName = cn(
+    'relative flex min-h-row w-full items-center gap-3 px-inset py-2.5 text-left hover:bg-foreground/[0.04]',
+    !first && 'before:absolute before:left-4 before:right-0 before:top-0 before:h-px before:bg-border',
+  )
   const amountClassName = cn(
     'shrink-0 text-tabular-numeric-md text-foreground',
     onActivate && 'rounded-lg bg-muted px-2 py-0.5',
