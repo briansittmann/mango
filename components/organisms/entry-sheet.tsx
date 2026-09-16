@@ -113,7 +113,6 @@ export function EntrySheet<V>({
   onDelete,
 }: EntrySheetProps<V>) {
   const t = useTranslations('hojaGasto')
-  const tDashboard = useTranslations('dashboard')
   const format = useFormatter()
   const locale = useLocale()
 
@@ -254,7 +253,7 @@ export function EntrySheet<V>({
             placeholder={field.placeholderKey ? t(field.placeholderKey) : undefined}
             value={value}
             onChange={(event) => updateField(field.name, event.target.value)}
-            className="w-40 bg-transparent text-right text-body-lg text-foreground placeholder:text-muted-foreground outline-none"
+            className="w-40 rounded-lg bg-muted px-2 py-1.5 text-right text-body-lg text-foreground placeholder:text-muted-foreground outline-none"
           />
         </FieldRow>
       )
@@ -329,30 +328,16 @@ export function EntrySheet<V>({
               )}
             >
               <span aria-hidden className="mx-auto mt-2.5 h-1 w-9 shrink-0 rounded-full bg-handle" />
-              <header className="grid min-h-14 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-inset">
+              <header className="grid min-h-14 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-x-2 px-inset pb-1.5">
                 <div className="flex min-h-target items-center justify-self-start">
                   <Drawer.Close
                     disabled={disabled}
-                    className="pressable text-body-lg text-foreground disabled:pointer-events-none disabled:opacity-50"
+                    className="pressable text-body-md text-muted-foreground disabled:pointer-events-none disabled:opacity-50"
                   >
                     {t('cancelar')}
                   </Drawer.Close>
                 </div>
-                <div className="flex flex-col items-center text-center">
-                  <Drawer.Title className="font-display text-headline-sm text-foreground">{title}</Drawer.Title>
-                  <Drawer.Description className="flex items-center gap-1.5 text-body-sm text-muted-foreground">
-                    {context.kind === 'category' ? (
-                      <>
-                        <CategoryDot color={context.color} className="size-2" />
-                        {context.name}
-                      </>
-                    ) : (
-                      <>
-                        {tDashboard('gastosFijos')} · {t('soloCargoDelMes')}
-                      </>
-                    )}
-                  </Drawer.Description>
-                </div>
+                <Drawer.Title className="font-display text-headline-sm text-foreground">{title}</Drawer.Title>
                 <div className="flex min-h-target items-center justify-self-end">
                   <button
                     type="submit"
@@ -373,6 +358,16 @@ export function EntrySheet<V>({
                     )}
                   </button>
                 </div>
+                <Drawer.Description className="col-span-3 flex items-center justify-center gap-1.5 whitespace-nowrap text-body-sm text-muted-foreground">
+                  {context.kind === 'category' ? (
+                    <>
+                      <CategoryDot color={context.color} className="size-2 shrink-0" />
+                      <span className="truncate">{context.name}</span>
+                    </>
+                  ) : (
+                    t('soloEsteMes')
+                  )}
+                </Drawer.Description>
               </header>
               <form id={formId} onSubmit={handleSubmit} aria-busy={disabled} className="flex min-h-0 flex-1 flex-col">
                 <Drawer.Content className="flex flex-1 flex-col overflow-y-auto overscroll-contain">
@@ -398,7 +393,7 @@ export function EntrySheet<V>({
                         ) : (
                           <Trash2 aria-hidden className="size-5" />
                         )}
-                        {t(config.deleteKey)}
+                        {t(context.kind === 'fixedCharge' ? 'eliminarCargoDelMes' : config.deleteKey)}
                       </button>
                     </>
                   ) : null}
