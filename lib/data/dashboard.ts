@@ -1,4 +1,5 @@
 import type { LocalDate, ExpenseMutations } from './expenses'
+import type { CategoryMutations } from './categories'
 
 // = check in supabase/migrations/0004_categorias.sql
 export type CategoryColor =
@@ -49,6 +50,7 @@ export type DashboardActions = Partial<{
   nextCycle(): void
   selectCycle(month: string): void
   expenses: ExpenseMutations
+  categories: CategoryMutations
   addIncome(): void
   addSavingsMovement(): void
   signOut(): void

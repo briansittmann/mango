@@ -1,9 +1,11 @@
-import { Fragment, useId, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type RefObject } from 'react'
+import { Fragment, useId, useState, type FormEvent, type RefObject } from 'react'
 import { Drawer } from '@base-ui/react/drawer'
 import { Loader2, Trash2 } from 'lucide-react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { CategoryDot } from '@/components/atoms/category-dot'
+import { AmountField, parseAmount } from '@/components/molecules/amount-field'
 import { FieldRow } from '@/components/molecules/field-row'
+import { SheetShell } from '@/components/organisms/sheet-shell'
 import { cn } from '@/lib/utils'
 import type { CategoryColor } from '@/lib/data/dashboard'
 import type { ExpenseDraft, LocalDate } from '@/lib/data/expenses'
@@ -57,15 +59,6 @@ type EntrySheetProps<V> = {
 }
 
 type FieldState = Record<string, string>
-
-const AMOUNT_PATTERN = /^\d{0,10}([.,]\d{0,2})?$/
-
-function parseAmount(text: string): number | null {
-  const trimmed = text.trim()
-  if (!AMOUNT_PATTERN.test(trimmed) || !/\d/.test(trimmed)) return null
-  const value = Number(trimmed.replace(',', '.'))
-  return Number.isFinite(value) && value > 0 ? value : null
-}
 
 function formatAmountForEdit(amount: number, locale: string): string {
   return new Intl.NumberFormat(locale, {
@@ -124,7 +117,6 @@ export function EntrySheet<V>({
   const [touched, setTouched] = useState<Partial<Record<string, boolean>>>({})
   const [status, setStatus] = useState<'idle' | 'saving' | 'deleting'>('idle')
   const [error, setError] = useState<'save' | 'delete' | null>(null)
-  const openerRef = useRef<Element | null>(null)
 
   if (open !== wasOpen) {
     setWasOpen(open)
@@ -138,27 +130,11 @@ export function EntrySheet<V>({
     }
   }
 
-  useLayoutEffect(() => {
-    if (open) openerRef.current = document.activeElement
-  }, [open])
-
   const amountField = config.fields.find((field) => field.kind === 'amount')
   const amountValue = amountField ? parseAmount(fieldState[amountField.name] ?? '') : 0
   const isDirty = config.fields.some((field) => fieldState[field.name] !== initialSnapshot[field.name])
   const disabled = status !== 'idle'
   const primaryDisabled = disabled || (amountField ? amountValue === null : false)
-
-  const amountCurrency = fieldOptions.amount?.currency
-  const currencyParts = useMemo(() => {
-    if (!amountCurrency) return null
-    try {
-      return new Intl.NumberFormat(locale, { style: 'currency', currency: amountCurrency }).formatToParts(1)
-    } catch {
-      return null
-    }
-  }, [locale, amountCurrency])
-  const currencySymbol = currencyParts?.find((part) => part.type === 'currency')?.value
-  const currencyFirst = currencyParts ? currencyParts[0]?.type === 'currency' : false
 
   function updateField(name: string, value: string) {
     setFieldState((prev) => ({ ...prev, [name]: value }))
@@ -206,37 +182,23 @@ export function EntrySheet<V>({
     if (field.kind === 'amount') {
       const invalid = Boolean(touched[field.name]) && value.trim() !== '' && parseAmount(value) === null
       return (
-        <>
-          <FieldRow label={t(field.labelKey)} htmlFor={id} tall>
-            <div className="flex items-center gap-1 rounded-lg bg-muted px-2 py-1.5">
-              {currencyFirst && currencySymbol ? <span className="text-tabular-numeric-lg text-foreground">{currencySymbol}</span> : null}
-              <input
-                id={id}
-                ref={(el) => {
-                  if (field.name === config.initialFocus) initialFocusRef.current = el
-                }}
-                data-base-ui-swipe-ignore
-                inputMode="decimal"
-                enterKeyHint="done"
-                autoComplete="off"
-                readOnly={disabled}
-                aria-invalid={invalid || undefined}
-                aria-describedby={invalid ? `${id}-error` : undefined}
-                value={value}
-                onChange={(event) => updateField(field.name, event.target.value)}
-                onFocus={(event) => mode === 'edit' && event.currentTarget.select()}
-                onBlur={() => setTouched((prev) => ({ ...prev, [field.name]: true }))}
-                className="w-24 bg-transparent text-right text-tabular-numeric-lg text-foreground outline-none"
-              />
-              {!currencyFirst && currencySymbol ? <span className="text-tabular-numeric-lg text-foreground">{currencySymbol}</span> : null}
-            </div>
-          </FieldRow>
-          {invalid ? (
-            <p id={`${id}-error`} className="px-inset pb-2 text-body-sm text-destructive-ink">
-              {t('importeInvalido')}
-            </p>
-          ) : null}
-        </>
+        <AmountField
+          id={id}
+          label={t(field.labelKey)}
+          currency={fieldOptions.amount?.currency}
+          value={value}
+          onChange={(next) => updateField(field.name, next)}
+          onFocus={(event) => {
+            if (mode === 'edit') event.currentTarget.select()
+          }}
+          onBlur={() => setTouched((prev) => ({ ...prev, [field.name]: true }))}
+          inputRef={(el) => {
+            if (field.name === config.initialFocus) initialFocusRef.current = el
+          }}
+          disabled={disabled}
+          invalid={invalid}
+          invalidMessage={t('importeInvalido')}
+        />
       )
     }
 
@@ -287,122 +249,83 @@ export function EntrySheet<V>({
   const submitLabel = t(mode === 'create' ? config.submitKeys.create : config.submitKeys.edit)
 
   return (
-    <Drawer.Root
+    <SheetShell
       open={open}
-      swipeDirection="down"
-      modal
-      onOpenChange={(nextOpen, details) => {
-        if (nextOpen) {
-          onOpenChange(true)
-          return
-        }
-        if (status !== 'idle') {
-          details.cancel()
-          return
-        }
-        if (isDirty && (details.reason === 'outside-press' || details.reason === 'swipe')) {
-          details.cancel()
-          return
-        }
-        onOpenChange(false)
-      }}
+      onOpenChange={onOpenChange}
+      busy={status !== 'idle'}
+      isDirty={isDirty}
+      initialFocus={initialFocusRef}
+      finalFocus={finalFocusRef}
+      leading={
+        <Drawer.Close
+          disabled={disabled}
+          className="pressable text-body-md text-muted-foreground disabled:pointer-events-none disabled:opacity-50"
+        >
+          {t('cancelar')}
+        </Drawer.Close>
+      }
+      title={title}
+      trailing={
+        <button
+          type="submit"
+          form={formId}
+          disabled={primaryDisabled}
+          className={cn(
+            'pressable h-9 rounded-full px-4 font-semibold',
+            primaryDisabled ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground',
+          )}
+        >
+          {status === 'saving' ? (
+            <>
+              <Loader2 aria-hidden className="size-4 animate-spin" />
+              <span className="sr-only">{submitLabel}</span>
+            </>
+          ) : (
+            submitLabel
+          )}
+        </button>
+      }
+      caption={
+        context.kind === 'category' ? (
+          <>
+            <CategoryDot color={context.color} className="size-2 shrink-0" />
+            <span className="truncate">{context.name}</span>
+          </>
+        ) : (
+          t('soloEsteMes')
+        )
+      }
     >
-      <Drawer.Portal keepMounted>
-        <Drawer.VirtualKeyboardProvider>
-          <Drawer.Backdrop className="fixed inset-0 z-40 bg-scrim opacity-[calc(1-var(--drawer-swipe-progress,0))] backdrop-blur-[8px] transition-opacity duration-300 motion-reduce:transition-none data-starting-style:opacity-0 data-ending-style:opacity-0 data-swiping:transition-none" />
-          <Drawer.Viewport className="fixed inset-0 z-50 flex items-end justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <Drawer.Popup
-              initialFocus={initialFocusRef}
-              finalFocus={() => {
-                const opener = openerRef.current
-                if (opener instanceof HTMLElement && document.contains(opener)) return opener
-                return finalFocusRef?.current ?? true
-              }}
-              className={cn(
-                'liquid-glass relative mx-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[440px] flex-col overflow-hidden rounded-sheet outline-none',
-                'translate-y-(--drawer-swipe-movement-y)',
-                'transition-transform duration-500 ease-spring motion-reduce:transition-none',
-                'data-starting-style:translate-y-[calc(100%+1.5rem)] data-ending-style:translate-y-[calc(100%+1.5rem)]',
-                'data-ending-style:duration-[calc(var(--drawer-swipe-strength)*400ms)] data-ending-style:ease-in',
-                'data-swiping:transition-none',
-              )}
-            >
-              <span aria-hidden className="mx-auto mt-2.5 h-1 w-9 shrink-0 rounded-full bg-handle" />
-              <header className="grid min-h-14 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-x-2 px-inset pb-1.5">
-                <div className="flex min-h-target items-center justify-self-start">
-                  <Drawer.Close
-                    disabled={disabled}
-                    className="pressable text-body-md text-muted-foreground disabled:pointer-events-none disabled:opacity-50"
-                  >
-                    {t('cancelar')}
-                  </Drawer.Close>
-                </div>
-                <Drawer.Title className="font-display text-headline-sm text-foreground">{title}</Drawer.Title>
-                <div className="flex min-h-target items-center justify-self-end">
-                  <button
-                    type="submit"
-                    form={formId}
-                    disabled={primaryDisabled}
-                    className={cn(
-                      'pressable h-9 rounded-full px-4 font-semibold',
-                      primaryDisabled ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground',
-                    )}
-                  >
-                    {status === 'saving' ? (
-                      <>
-                        <Loader2 aria-hidden className="size-4 animate-spin" />
-                        <span className="sr-only">{submitLabel}</span>
-                      </>
-                    ) : (
-                      submitLabel
-                    )}
-                  </button>
-                </div>
-                <Drawer.Description className="col-span-3 flex items-center justify-center gap-1.5 whitespace-nowrap text-body-sm text-muted-foreground">
-                  {context.kind === 'category' ? (
-                    <>
-                      <CategoryDot color={context.color} className="size-2 shrink-0" />
-                      <span className="truncate">{context.name}</span>
-                    </>
-                  ) : (
-                    t('soloEsteMes')
-                  )}
-                </Drawer.Description>
-              </header>
-              <form id={formId} onSubmit={handleSubmit} aria-busy={disabled} className="flex min-h-0 flex-1 flex-col">
-                <Drawer.Content className="flex flex-1 flex-col overflow-y-auto overscroll-contain">
-                  {error ? (
-                    <div role="alert" className="mx-inset mt-3 rounded-inner bg-destructive/[0.08] px-4 py-3 text-body-md text-destructive-ink">
-                      {t(error === 'save' ? 'errorGuardar' : 'errorEliminar')}
-                    </div>
-                  ) : null}
-                  {config.fields.map((field) => (
-                    <Fragment key={field.name}>{renderField(field)}</Fragment>
-                  ))}
-                  {onDelete ? (
-                    <>
-                      <div className="border-t border-border" />
-                      <button
-                        type="button"
-                        onClick={() => void handleDelete()}
-                        disabled={disabled}
-                        className="flex min-h-row items-center gap-3 px-inset text-body-lg font-medium text-destructive-ink hover:bg-destructive/[0.08] active:bg-destructive/[0.12] disabled:pointer-events-none disabled:opacity-50"
-                      >
-                        {status === 'deleting' ? (
-                          <Loader2 aria-hidden className="size-5 animate-spin" />
-                        ) : (
-                          <Trash2 aria-hidden className="size-5" />
-                        )}
-                        {t(context.kind === 'fixedCharge' ? 'eliminarCargoDelMes' : config.deleteKey)}
-                      </button>
-                    </>
-                  ) : null}
-                </Drawer.Content>
-              </form>
-            </Drawer.Popup>
-          </Drawer.Viewport>
-        </Drawer.VirtualKeyboardProvider>
-      </Drawer.Portal>
-    </Drawer.Root>
+      <form id={formId} onSubmit={handleSubmit} aria-busy={disabled} className="flex min-h-0 flex-1 flex-col">
+        <Drawer.Content className="flex flex-1 flex-col overflow-y-auto overscroll-contain">
+          {error ? (
+            <div role="alert" className="mx-inset mt-3 rounded-inner bg-destructive/[0.08] px-4 py-3 text-body-md text-destructive-ink">
+              {t(error === 'save' ? 'errorGuardar' : 'errorEliminar')}
+            </div>
+          ) : null}
+          {config.fields.map((field) => (
+            <Fragment key={field.name}>{renderField(field)}</Fragment>
+          ))}
+          {onDelete ? (
+            <>
+              <div className="border-t border-border" />
+              <button
+                type="button"
+                onClick={() => void handleDelete()}
+                disabled={disabled}
+                className="flex min-h-row items-center gap-3 px-inset text-body-lg font-medium text-destructive-ink hover:bg-destructive/[0.08] active:bg-destructive/[0.12] disabled:pointer-events-none disabled:opacity-50"
+              >
+                {status === 'deleting' ? (
+                  <Loader2 aria-hidden className="size-5 animate-spin" />
+                ) : (
+                  <Trash2 aria-hidden className="size-5" />
+                )}
+                {t(context.kind === 'fixedCharge' ? 'eliminarCargoDelMes' : config.deleteKey)}
+              </button>
+            </>
+          ) : null}
+        </Drawer.Content>
+      </form>
+    </SheetShell>
   )
 }

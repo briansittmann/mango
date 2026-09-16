@@ -53,7 +53,26 @@
       "Bash(NODE_PATH=/Users/brianrebagliati/Documents/Work/mango-finanzas/mango/node_modules node /private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/5f7f3c5d-41c1-4b7e-a129-032052ddd34e/scratchpad/review-sheet-check.js)",
       "Bash(NODE_PATH=/Users/brianrebagliati/Documents/Work/mango-finanzas/mango/node_modules node -e ' *)",
       "Bash(echo \"tsc exit=$?\")",
-      "Bash(NODE_PATH=/Users/brianrebagliati/Documents/Work/mango-finanzas/mango/node_modules node /private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/5f7f3c5d-41c1-4b7e-a129-032052ddd34e/scratchpad/demo-today-check.js)"
+      "Bash(NODE_PATH=/Users/brianrebagliati/Documents/Work/mango-finanzas/mango/node_modules node /private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/5f7f3c5d-41c1-4b7e-a129-032052ddd34e/scratchpad/demo-today-check.js)",
+      "Bash(npx openspec *)",
+      "Bash(grep -n \"^#\\\\{1,3\\\\} \" DESIGN.md)",
+      "Bash(echo \"--- exit: $? ---\")",
+      "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('./package.json'\\).scripts,null,2\\)\\)\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\(JSON.stringify\\({...p.dependencies,...p.devDependencies},null,2\\)\\)\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\([\\(a['id'],a['status']\\) for a in d['artifacts']]\\)\")",
+      "Bash(grep -rln \"setLocale\\\\|NEXT_LOCALE\" --include=\"*.ts\" --include=\"*.tsx\" . -g '!node_modules')",
+      "Bash(node -e \"const m=require\\('./messages/es.json'\\); console.log\\(Object.keys\\(m.dashboard||{}\\)\\)\")",
+      "Bash(node -e \"const m=require\\('./messages/es.json'\\); console.log\\(m.dashboard.gastosFijos, '|', m.dashboard.margenLibre\\)\")",
+      "Bash(node -e \"const m=require\\('./messages/es.json'\\); console.log\\(JSON.stringify\\(m.categoria,null,2\\)\\)\")",
+      "Bash(node \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/eaded8ef-8fdb-44a0-a94d-9dfd023a8cfb/scratchpad/baseline.mjs\")",
+      "Bash(node /Users/brianrebagliati/Documents/Work/mango-finanzas/mango/.tmp-baseline.mjs)",
+      "Bash(mkdir -p \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/eaded8ef-8fdb-44a0-a94d-9dfd023a8cfb/scratchpad/baseline-shots\" *)",
+      "Bash(node /Users/brianrebagliati/Documents/Work/mango-finanzas/mango/.tmp-check.mjs)",
+      "Bash(node /private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/b3193a47-00ad-4093-85b8-8b21ff57526d/scratchpad/regression-3-3.mjs)",
+      "Bash(node .scratch/regression-3-3.mjs)"
+    ],
+    "additionalDirectories": [
+      "/Users/brianrebagliati/Documents/Work/mango-finanzas/mango/baseline-shots"
     ]
   }
 }
