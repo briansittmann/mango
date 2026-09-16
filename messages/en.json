@@ -80,5 +80,33 @@
     "errorGuardar": "Couldn't save. Try again.",
     "errorEliminar": "Couldn't delete the expense",
     "errorDeshacer": "Couldn't undo"
+  },
+  "hojaCategoria": {
+    "cancelar": "Cancel",
+    "guardar": "Save",
+    "nombre": "Name",
+    "color": "Color",
+    "presupuesto": "Budget",
+    "nombreDuplicado": "A category with this name already exists",
+    "presupuestoInvalido": "Enter an amount above 0 with up to 2 decimals",
+    "errorGuardar": "Couldn't save. Try again.",
+    "errorEliminar": "Couldn't delete the category",
+    "eliminarCategoria": "Delete category",
+    "confirmarEliminar": "Delete {categoria}? It has {count, plural, =0 {no expenses} one {one expense} other {# expenses}} this cycle.",
+    "eliminar": "Delete",
+    "cambiosGuardados": "Changes saved",
+    "categoriaEliminada": "Category deleted",
+    "categoriaDestino": "Move expenses to",
+    "opcionesDeCategoria": "{categoria} options",
+    "colores": {
+      "naranja_calido": "Warm orange",
+      "verde_profundo": "Deep green",
+      "azul_apagado": "Muted blue",
+      "gris_calido": "Warm gray",
+      "violeta_metalico": "Metallic violet",
+      "gris_oscuro": "Dark gray",
+      "blanco": "White",
+      "granate": "Maroon"
+    }
   }
 }

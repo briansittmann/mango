@@ -80,5 +80,33 @@
     "errorGuardar": "No se pudo guardar. Inténtalo de nuevo.",
     "errorEliminar": "No se pudo eliminar el gasto",
     "errorDeshacer": "No se pudo deshacer"
+  },
+  "hojaCategoria": {
+    "cancelar": "Cancelar",
+    "guardar": "Guardar",
+    "nombre": "Nombre",
+    "color": "Color",
+    "presupuesto": "Presupuesto",
+    "nombreDuplicado": "Ya existe una categoría con este nombre",
+    "presupuestoInvalido": "Introduce un importe mayor que 0 con hasta 2 decimales",
+    "errorGuardar": "No se pudo guardar. Inténtalo de nuevo.",
+    "errorEliminar": "No se pudo eliminar la categoría",
+    "eliminarCategoria": "Eliminar categoría",
+    "confirmarEliminar": "¿Eliminar {categoria}? Tiene {count, plural, =0 {ningún gasto} one {un gasto} other {# gastos}} este ciclo.",
+    "eliminar": "Eliminar",
+    "cambiosGuardados": "Cambios guardados",
+    "categoriaEliminada": "Categoría eliminada",
+    "categoriaDestino": "Mover gastos a",
+    "opcionesDeCategoria": "Opciones de {categoria}",
+    "colores": {
+      "naranja_calido": "Naranja cálido",
+      "verde_profundo": "Verde profundo",
+      "azul_apagado": "Azul apagado",
+      "gris_calido": "Gris cálido",
+      "violeta_metalico": "Violeta metálico",
+      "gris_oscuro": "Gris oscuro",
+      "blanco": "Blanco",
+      "granate": "Granate"
+    }
   }
 }

@@ -1,3 +1,4 @@
+import { MoreHorizontal } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { currencyFormatOptions } from '@/i18n/formats'
 import { Collapsible } from '@/components/atoms/collapsible'
@@ -19,6 +20,7 @@ type CategoryCardProps = {
   onAddExpense?: () => void
   onEditExpense?: (expense: Expense) => void
   onDeleteExpense?: (expense: Expense) => Promise<void>
+  onOpenOptions?: () => void
 }
 
 export function CategoryCard({
@@ -30,41 +32,67 @@ export function CategoryCard({
   onAddExpense,
   onEditExpense,
   onDeleteExpense,
+  onOpenOptions,
 }: CategoryCardProps) {
   const t = useTranslations('dashboard')
   const tCategoria = useTranslations('categoria')
+  const tHojaCategoria = useTranslations('hojaCategoria')
   const format = useFormatter()
 
   const name = group.name ?? t('gastosFijos')
   const panelId = `category-panel-${group.id}`
+  const nameId = `category-name-${group.id}`
+  const amountId = `category-amount-${group.id}`
 
   return (
     <div
       className={`overflow-hidden rounded-card border bg-card ${open ? '' : 'border-border hover:border-foreground/25'}`}
       style={open ? { borderColor: `var(--cat-${group.color})` } : undefined}
     >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        aria-controls={panelId}
-        className="pressable flex min-h-14 w-full items-center gap-3 px-inset"
-      >
-        <CategoryDot color={group.color} className="size-2.5" />
-        <span className="flex-1 truncate text-left text-body-lg font-medium text-foreground">{name}</span>
-        {group.budget ? (
-          <span className="text-tabular-numeric-md font-semibold text-foreground">
-            {tCategoria.rich('gastadoDePresupuesto', {
-              gastado: format.number(group.budget.spent, { ...currencyFormatOptions, currency }),
-              presupuesto: format.number(group.budget.amount, { ...currencyFormatOptions, currency }),
-              muted: (chunks) => <span className="font-normal text-muted-foreground">{chunks}</span>,
-            })}
+      <div className="relative flex min-h-14 items-center gap-3 px-inset">
+        {/* Interactive elements cannot nest, so the disclosure carries no visible content of its
+            own — it is a full-header hit target under the header's content, which stays in the
+            §9-required order (dot · name · amount · options · chevron) painted above it. */}
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-controls={panelId}
+          aria-labelledby={`${nameId} ${amountId}`}
+          className="pressable absolute inset-0 [--press-scale:1]"
+        />
+        <div className="pointer-events-none relative flex flex-1 items-center gap-3">
+          <CategoryDot color={group.color} className="size-2.5" />
+          <span id={nameId} className="flex-1 truncate text-left text-body-lg font-medium text-foreground">
+            {name}
           </span>
-        ) : (
-          <Money amount={group.total} currency={currency} className="text-tabular-numeric-md font-semibold text-foreground" />
-        )}
-        <ExpandChevron open={open} />
-      </button>
+          {group.budget ? (
+            <span id={amountId} className="text-tabular-numeric-md font-semibold text-foreground">
+              {tCategoria.rich('gastadoDePresupuesto', {
+                gastado: format.number(group.budget.spent, { ...currencyFormatOptions, currency }),
+                presupuesto: format.number(group.budget.amount, { ...currencyFormatOptions, currency }),
+                muted: (chunks) => <span className="font-normal text-muted-foreground">{chunks}</span>,
+              })}
+            </span>
+          ) : (
+            <span id={amountId}>
+              <Money amount={group.total} currency={currency} className="text-tabular-numeric-md font-semibold text-foreground" />
+            </span>
+          )}
+          {group.kind === 'category' ? (
+            <button
+              type="button"
+              onClick={onOpenOptions}
+              disabled={!onOpenOptions}
+              aria-label={tHojaCategoria('opcionesDeCategoria', { categoria: name })}
+              className="pressable pointer-events-auto grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground [--press-scale:0.9] hover:bg-foreground/[0.06] hover:text-foreground disabled:opacity-30"
+            >
+              <MoreHorizontal aria-hidden className="size-5" />
+            </button>
+          ) : null}
+          <ExpandChevron open={open} />
+        </div>
+      </div>
 
       {group.budget ? (
         <div className="px-inset pb-3">

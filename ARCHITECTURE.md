@@ -506,7 +506,7 @@ Se arranca **plano**: el usuario crea las categorías que quiera y listo. Las je
 Estructura de la vista mensual, de arriba hacia abajo:
  
 1. **Selector de mes**
-2. **Margen libre** — `ingresos − fijos − presupuestos`. El número más grande de la pantalla: es la pregunta principal que la app tiene que contestar.
+2. **Margen libre** — `ingresos − ahorro − gastos`. El número más grande de la pantalla: es la pregunta principal que la app tiene que contestar. Los presupuestos por categoría no restan de este número — solo hacen seguimiento (ver *Presupuestado vs real*, más abajo).
 3. **Ingresos** del mes
 4. **Gastos fijos** — total y detalle
 5. **Gastos variables** — total y detalle, **con avance contra el presupuesto de cada categoría** (*"comida: 310 de 400"*)
@@ -622,6 +622,8 @@ En el código: **deslizamiento largo elimina directo** sin soltar en el botón, 
 - *(divisor)*
 - Eliminar categoría — rojo apagado, último, con confirmación
 "Añadir gasto" **no está acá** a propósito: vive como fila `+` al final del contenido abierto.
+
+> **Implementado (add-category-sheet, sept 2026):** el menú de acciones no se construyó como lista — cambiar color, renombrar y presupuesto son un campo cada uno, así que se armó **una sola hoja de formulario** (nombre, color y presupuesto juntos, `Guardar` único) con "Eliminar categoría" como paso de confirmación dentro de la misma hoja. Reordenar sigue sin implementarse (fase 3, ver sección "Reordenar arrastrando").
  
 **Menú de fila individual:** editar monto · cambiar de categoría · *(divisor)* · eliminar.
  
@@ -636,6 +638,8 @@ No lleva nada de la vista del mes.
 **Idea a probar más adelante:** tocar directamente el **punto de color** de la cabecera como atajo al selector de color, sin pasar por la hoja. Queda anotado para cuando se vea si la hoja resulta cómoda o no.
  
 **Riesgo asumido:** la pulsación larga no se descubre sola. Si en el uso real el menú de categoría no aparece nunca, la salida es un **botón de tres puntos verticales** en la cabecera, entre el total y el chevron, con área táctil de 48px y separación real del chevron. Queda como plan B sobre la mesa.
+
+> **Implementado (add-category-sheet, sept 2026):** se saltó directo al plan B. El botón de opciones en la cabecera (entre el total y el chevron, 44×44px) es la **única** vía al formulario de categoría — no se implementó ningún gesto de pulsación larga. Un gesto nunca es la única ruta a una función.
  
 ### Modo reordenar
  
@@ -725,7 +729,7 @@ Arriba de todo, antes de cualquier gráfico, van **cuatro tarjetas**:
 | **Ingresos** | **Fijo** — se sabe desde el día 1 | Suma de transacciones `tipo = ingreso` |
 | **Ahorro** | **Fijo** — se aparta a principio de mes | Suma de `tipo = ahorro` |
 | **Gastos totales** | **Sube** con cada carga | Suma de `tipo = gasto` (fijos + variables) |
-| **Margen libre** | **Baja** con cada carga | `ingresos − ahorro − fijos − presupuestos_restantes` |
+| **Margen libre** | **Baja** con cada carga | `ingresos − ahorro − gastos` (los fijos ya están adentro de "gastos") |
  
 Los dos últimos son **el mismo movimiento visto de dos lados**: cada gasto que suma arriba, resta abajo. No es información duplicada — uno responde *"cuánto llevo gastado"* (pasado) y el otro *"cuánto me queda"* (futuro), y la segunda es la pregunta que motiva la app.
  
@@ -812,7 +816,7 @@ En la práctica solo **dos categorías** llevan presupuesto — **comida** y **o
 | **Ocio** | Sí | Sí | *"Llevás 90 de 120. Vas adelantado, te quedan 12 por semana."* |
 | **Margen libre** | **No** | **No** | *"Te quedan 640 libres este mes."* |
  
-**El margen libre no tiene ritmo y es a propósito.** No es un presupuesto: es el sobrante después de ingresos, ahorro, fijos y presupuestos. No hay techo que romper — hay más o hay menos. Ponerle una barra de progreso sería inventarle un límite que no existe.
+**El margen libre no tiene ritmo y es a propósito.** No es un presupuesto: es el sobrante después de ingresos, ahorro y gastos. No hay techo que romper — hay más o hay menos. Ponerle una barra de progreso sería inventarle un límite que no existe.
  
 Son **tres preguntas distintas** que se le hacen al bot por separado: *cómo voy de comida*, *cómo voy de ocio*, *cuánto me queda libre*. Las dos primeras responden con ritmo y disponible semanal; la tercera, con un número a secas.
  
@@ -849,7 +853,7 @@ Son **dos números distintos** y el dashboard tiene que mostrarlos lado a lado, 
  
 - **Presupuestado** → sale de la tabla `presupuestos`.
 - **Real** → sale de las transacciones.
-La comparación categoría por categoría es lo que dice si hubo exceso o sobró. Y el **margen real** del mes es: `ingresos − fijos − presupuestos`.
+La comparación categoría por categoría es lo que dice si hubo exceso o sobró. Y el **margen real** del mes es: `ingresos − ahorro − gastos`. Los presupuestos no entran en esta cuenta — solo comparan lo gastado contra el techo de cada categoría, no restan del margen.
  
 **Por qué va en fase 1 (revisado):** originalmente estaba en fase 3, con el argumento de que presupuestar sin historial lleva a inventar números. Ese argumento **no aplica acá**: Brian ya lleva un Excel y conoce sus montos reales. El presupuesto no es una estimación aspiracional, es un dato que ya tiene.
  
@@ -859,10 +863,10 @@ Por eso la vista del mes arranca con el **margen libre** bien arriba:
  
 ```
 Ingresos            2.400
-− Gastos fijos        980   (alquiler, gym, barbería, servicios)
-− Presupuestos        520   (comida 400, ocio 120)
+− Ahorro               300
+− Gastos             1.200   (fijos 980 + variables 220, lo gastado en comida y ocio — no lo presupuestado)
 ─────────────────────────
-= Margen libre        900
+= Margen libre         900
 ```
  
 Ese número es la respuesta a "cuánto puedo gastar este mes sin romper nada".

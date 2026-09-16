@@ -5,6 +5,7 @@ import { DemoNotice } from '@/components/molecules/demo-notice'
 import { DemoToast } from '@/components/molecules/demo-toast'
 import { DashboardTemplate } from '@/components/templates/dashboard-template'
 import { createDemoExpenseMutations, deriveDemoData, noDemoEdits } from '@/lib/demo/demo-expenses'
+import { createDemoCategoryMutations, noDemoCategoryEdits } from '@/lib/demo/demo-categories'
 import type { DashboardData } from '@/lib/data/dashboard'
 
 type DemoDashboardProps = {
@@ -15,9 +16,11 @@ type DemoDashboardProps = {
 export function DemoDashboard({ data, changeLanguage }: DemoDashboardProps) {
   const [messageOpen, setMessageOpen] = useState(false)
   const [edits, setEdits] = useState(noDemoEdits)
+  const [categoryEdits, setCategoryEdits] = useState(noDemoCategoryEdits)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const view = useMemo(() => deriveDemoData(data, edits), [data, edits])
+  const view = useMemo(() => deriveDemoData(data, edits, categoryEdits), [data, edits, categoryEdits])
   const expenses = useMemo(() => createDemoExpenseMutations(setEdits), [])
+  const categories = useMemo(() => createDemoCategoryMutations(view.expenses.groups, setCategoryEdits), [view])
 
   useEffect(() => {
     return () => {
@@ -38,6 +41,7 @@ export function DemoDashboard({ data, changeLanguage }: DemoDashboardProps) {
         actions={{
           changeLanguage,
           expenses,
+          categories,
           addIncome: showUnavailable,
           addSavingsMovement: showUnavailable,
         }}

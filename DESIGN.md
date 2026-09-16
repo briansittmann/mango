@@ -244,7 +244,11 @@ Translucency is an allowlist, not a default: the scrolled top bar (`.glass-bar`)
 ### Controls & Interactive Badges
 - **Segmented Tabs:** Enclosed pill track (`#19201A`, 4px padding) with active pill tab in `#232B24` or lime tint (`#84CC16` with `#0D110E` black text).
 - **Toggles:** 50px × 28px pill track. Inactive track `#1F2923`; active track `#84CC16`. Thumb indicator is crisp white `#FFFFFF` with micro-drop shadow.
-- **Color Swatch Pickers:** Horizontal scroll of 28px circular tokens with a 2px inner selection gap and a 2px active accent ring.
+- **Color Swatch Pickers:** Horizontal scroll of 28px circular tokens with a 2px inner selection gap and a 2px active accent ring, each inside a 44px hit area with a hairline ring so the lightest and darkest tokens stay separated from the surface behind them. The selected token also carries a small check badge overlapping its bottom-right corner, filled with the sheet's own background and the check in the foreground color — never drawn on the token itself, since no single check color holds contrast across all eight fills.
+
+### Header Options Control
+- **Anatomy:** A 20px `MoreHorizontal` glyph in muted-foreground, centered in a 44px × 44px hit area, sitting between the amount and the chevron on a category card's header — above the disclosure in stacking order, never nested inside it.
+- **Accessible name:** Always carries the category's name (e.g. "Opciones de Comida"), so no two cards' controls share one.
 
 ### Buttons & Inputs
 - **Primary Button:** Full pill shape, height 48px, background `#84CC16`, text `#0D110E` (bold weight). Hover state transitions to `#A3E635`.

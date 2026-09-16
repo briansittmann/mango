@@ -1,6 +1,7 @@
 import { getBudgetStatus } from '@/lib/data/budget'
 import type { CategoryColor, DashboardData, ExpenseGroup } from '@/lib/data/dashboard'
 import { deriveDemoData, noDemoEdits } from '@/lib/demo/demo-expenses'
+import { noDemoCategoryEdits } from '@/lib/demo/demo-categories'
 
 type Locale = 'es' | 'en'
 type Localized = { es: string; en: string }
@@ -178,5 +179,5 @@ export function buildDemoData(locale: Locale): DashboardData {
     history,
   }
 
-  return deriveDemoData(sample, noDemoEdits)
+  return deriveDemoData(sample, noDemoEdits, noDemoCategoryEdits)
 }

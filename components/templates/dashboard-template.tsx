@@ -16,12 +16,14 @@ import { UndoToast } from '@/components/molecules/undo-toast'
 import { AccountMenu } from '@/components/organisms/account-menu'
 import { CategoryCard } from '@/components/organisms/category-card'
 import { CategoryPieChart } from '@/components/organisms/category-pie-chart'
+import { CategorySheet } from '@/components/organisms/category-sheet'
 import { EntrySheet, expenseEntry } from '@/components/organisms/entry-sheet'
 import { FreeMarginCard } from '@/components/organisms/free-margin-card'
 import { MonthlyBarsChart } from '@/components/organisms/monthly-bars-chart'
 import { SummaryGroup } from '@/components/organisms/summary-group'
 import { AnimatedContent } from '@/components/ui/animated-content'
 import type { DashboardActions, DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
+import type { CategoryDraft } from '@/lib/data/categories'
 import type { ExpenseDraft } from '@/lib/data/expenses'
 
 type DashboardTemplateProps = {
@@ -51,16 +53,19 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
   const tResumen = useTranslations('resumen')
   const tMenu = useTranslations('menuCuenta')
   const tHojaGasto = useTranslations('hojaGasto')
+  const tHojaCategoria = useTranslations('hojaCategoria')
   const format = useFormatter()
   const [openIds, setOpenIds] = useState<Set<string>>(new Set())
   const [openSummary, setOpenSummary] = useState<SummaryKey | null>(null)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [titleInView, setTitleInView] = useState(true)
   const [sheet, setSheet] = useState<{ open: boolean; target: SheetTarget | null }>({ open: false, target: null })
+  const [categorySheet, setCategorySheet] = useState<{ open: boolean; target: ExpenseGroup | null }>({ open: false, target: null })
   const [statusMessage, setStatusMessage] = useState('')
   const titleRef = useRef<HTMLDivElement>(null)
   const expensesRef = useRef<HTMLDivElement>(null)
   const initialFocusRef = useRef<HTMLInputElement>(null)
+  const categoryInitialFocusRef = useRef<HTMLInputElement>(null)
   const toasts = useMemo(() => Toast.createToastManager(), [])
   const currency = data.user.currency
 
@@ -73,6 +78,26 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
     flushSync(() => setSheet({ open: true, target: { mode: 'edit', group, expense } }))
     initialFocusRef.current?.focus({ preventScroll: true })
     initialFocusRef.current?.select()
+  }
+
+  function openCategorySheet(group: ExpenseGroup) {
+    flushSync(() => setCategorySheet({ open: true, target: group }))
+    categoryInitialFocusRef.current?.focus({ preventScroll: true })
+    categoryInitialFocusRef.current?.select()
+  }
+
+  async function handleSaveCategory(categoryId: string, draft: CategoryDraft) {
+    if (!actions.categories) return
+    await actions.categories.update(categoryId, draft)
+    setCategorySheet((prev) => ({ ...prev, open: false }))
+    setStatusMessage(tHojaCategoria('cambiosGuardados'))
+  }
+
+  async function handleDeleteCategory(categoryId: string, reassignTo: string | null) {
+    if (!actions.categories) return
+    await actions.categories.delete(categoryId, reassignTo)
+    setCategorySheet((prev) => ({ ...prev, open: false }))
+    setStatusMessage(tHojaCategoria('categoriaEliminada'))
   }
 
   function showUndo(expense: Expense) {
@@ -137,6 +162,11 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
           date: localDateOf(sheet.target.expense.date, data.user.timezone),
         }
       : { date: clampDate(data.cycle.today, data.cycle.start, data.cycle.end) }
+
+  const categorySheetTarget = categorySheet.target ?? data.expenses.groups.find((group) => group.kind === 'category')!
+  const receivingCategories = data.expenses.groups
+    .filter((group) => group.kind === 'category' && group.id !== categorySheetTarget.id)
+    .map((group) => ({ id: group.id, name: group.name ?? '' }))
 
   useEffect(() => {
     const el = titleRef.current
@@ -369,6 +399,7 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
               onAddExpense={actions.expenses ? () => openCreateSheet(group) : undefined}
               onEditExpense={actions.expenses ? (expense) => openEditSheet(group, expense) : undefined}
               onDeleteExpense={actions.expenses ? (expense) => handleDeleteExpense(expense) : undefined}
+              onOpenOptions={actions.categories ? () => openCategorySheet(group) : undefined}
             />
           </AnimatedContent>
         ))}
@@ -411,6 +442,16 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
         initialFocusRef={initialFocusRef}
         onSave={handleSaveExpense}
         onDelete={sheet.target?.mode === 'edit' ? handleSheetDelete : undefined}
+      />
+      <CategorySheet
+        open={categorySheet.open}
+        onOpenChange={(open) => setCategorySheet((prev) => ({ ...prev, open }))}
+        target={categorySheetTarget}
+        currency={currency}
+        receivingCategories={receivingCategories}
+        initialFocusRef={categoryInitialFocusRef}
+        onSave={handleSaveCategory}
+        onDelete={handleDeleteCategory}
       />
       <UndoToast />
       <div role="status" className="sr-only">
