@@ -7,6 +7,9 @@ type Localized = { es: string; en: string }
 
 const CURRENT_DAY = 10
 const CYCLE_DAYS = 30
+const TIMEZONE = 'Europe/Dublin'
+const CYCLE_START = '2026-09-01'
+const CYCLE_END = '2026-09-30'
 
 const NAMES = {
   comida: { es: 'Comida', en: 'Food' },
@@ -143,15 +146,19 @@ export function buildDemoData(locale: Locale): DashboardData {
     { month: '2026-09', total: expensesTotal },
   ]
 
+  // The budgets built above are placeholders: deriveDemoData recomputes them all from this date.
+  const realToday = new Intl.DateTimeFormat('en-CA', { timeZone: TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  const today = realToday < CYCLE_START ? CYCLE_START : realToday > CYCLE_END ? CYCLE_END : realToday
+
   const sample: DashboardData = {
     user: {
       name: 'Ana García',
       phone: '+34 611 222 333',
       photoUrl: null,
       currency: 'EUR',
-      timezone: 'Europe/Dublin',
+      timezone: TIMEZONE,
     },
-    cycle: { start: '2026-09-01', end: '2026-09-30', today: '2026-09-10', month: '2026-09', inProgress: true },
+    cycle: { start: CYCLE_START, end: CYCLE_END, today, month: '2026-09', inProgress: realToday >= CYCLE_START && realToday <= CYCLE_END },
     freeMargin: incomeTotal - expensesTotal - savingsCycle,
     income: {
       total: incomeTotal,
