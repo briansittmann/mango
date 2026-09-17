@@ -273,3 +273,13 @@ Translucency is an allowlist, not a default: the scrolled top bar (`.glass-bar`)
 - **Anatomy:** An inverted, fully opaque capsule (`bg-foreground` / `text-background`) anchored bottom-center above the safe area, holding a message and a trailing "Deshacer" action separated by a hairline divider.
 - **Behavior:** One toast at a time; a new deletion replaces the previous toast. Auto-dismisses after 5s, pausing while hovered or focused.
 - **Motion:** Enters and exits with a spring translate/opacity transition; reduced motion keeps the opacity fade only.
+
+### Day Chip
+- **Anatomy:** A fixed 32px × 24px box, `bg-muted` fill, `8px` radius, the day of the month centered inside in `label-ui` with tabular figures, in `text-muted-foreground` — never a variable width, so a one- and a two-digit day occupy the same column.
+- **Why it is not a badge:** a badge in this app carries an accent colour and marks a status or a count; the day chip is monochrome, holds a calendar date rather than either, and never grows, pulses or changes colour on interaction.
+
+### Read-only Charge Row
+- **Anatomy:** At least 48px tall, `px-inset`, four zones in fixed order — day chip, `6px` category dot, name, amount — the amount in `tabular-numeric-md` flush to the inset with a transparent background, unlike the `bg-muted` affordance an editable expense row puts under its amount.
+- **Checkmark:** A 14px `Check` immediately after the name on a taken charge, inside the dimmed group — not trailing the amount, which would break the amount column, and not leading the row, which would break the day column.
+- **Dimming:** A taken row is dimmed to between 45% and 55% opacity as a whole; the checkmark and the opacity are the only things that change — never the text colour, which elsewhere in the app is reserved for "muted metadata," not for a done state.
+- **No separators:** rows carry no hairline between them, unlike a Structured List Row. A divider at the boundary between taken and pending charges would read as a "today" marker, which is the one thing this row must not draw; the change in opacity carries the boundary on its own.

@@ -22,13 +22,20 @@ export type BudgetStatus = {
   weeklyAllowance: number | null
 }
 
-export type Expense = { id: string; name: string; amount: number; date: string }
+export type Expense = {
+  id: string
+  name: string
+  amount: number
+  date: string
+  /** Present only on a charge generated from a recurring definition (§7): `gastos_fijos.dia_del_mes` and `transacciones.estado`. */
+  fixed?: { day: number; charged: boolean }
+}
 
 export type ExpenseGroup = {
-  /** For `kind: 'category'`, the category id that `ExpenseMutations.create` receives. */
+  /** The category id that `ExpenseMutations.create` receives. */
   id: string
-  kind: 'fixed' | 'category'
-  name: string | null
+  kind: 'category'
+  name: string
   color: CategoryColor
   total: number
   budget: BudgetStatus | null

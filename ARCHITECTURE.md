@@ -419,7 +419,7 @@ Un fijo de monto variable (luz, gas) se carga por chat como cualquier gasto — 
  
 **Los fijos se descuentan del margen libre desde el día 1 del ciclo**, estén pendientes o confirmados. Esa es la pregunta que la app contesta: cuánto queda realmente, no cuánto hay en la cuenta antes de pagar lo que ya se debe. Si el alquiler apareciera recién el día que se cobra, el margen libre sería optimista justo los primeros días, que es cuando se decide.
  
-**Beneficio lateral:** la tarjeta de fijos puede mostrar **qué falta confirmar este ciclo**.
+**Beneficio lateral:** la tarjeta «Próximos cobros» (sección 9) existe justamente para esto — muestra **qué falta confirmar este ciclo**.
  
 > El aviso proactivo de *"inserté tus fijos"* cae fuera de la ventana de 24 h de WhatsApp y requiere una *template* aprobada por Meta. Para fase 1 se insertan en silencio y se ven en el dashboard.
  
@@ -508,12 +508,12 @@ Estructura de la vista mensual, de arriba hacia abajo:
 1. **Selector de mes**
 2. **Margen libre** — `ingresos − ahorro − gastos`. El número más grande de la pantalla: es la pregunta principal que la app tiene que contestar. Los presupuestos por categoría no restan de este número — solo hacen seguimiento (ver *Presupuestado vs real*, más abajo).
 3. **Ingresos** del mes
-4. **Gastos fijos** — total y detalle
-5. **Gastos variables** — total y detalle, **con avance contra el presupuesto de cada categoría** (*"comida: 310 de 400"*)
+4. **Próximos cobros** — calendario de solo lectura: qué cargo recurrente ya se cobró este ciclo y cuál falta, con su día del mes
+5. **Gastos** — una tarjeta por categoría, **con avance contra el presupuesto de cada categoría** (*"comida: 310 de 400"*)
 6. **Ahorro** — cuánto se apartó este mes y acumulado
-Deliberadamente **dos grupos de gastos, no tres**. Separar "variables" de "día a día" no funciona: el supermercado y el café son ambos variables. La granularidad fina la da la categoría, no un tercer grupo — si no, el sistema se llena de reglas.
+Deliberadamente **una sola lista de categorías, no un grupo de fijos aparte**. El alquiler y Netflix viven en su categoría como cualquier otro gasto; separarlos en un bloque propio volvería a contar esa plata dos veces, que es justo lo que "Próximos cobros" existe para evitar. La granularidad la da la categoría, no un segundo grupo — si no, el sistema se llena de reglas.
  
-**Fijos antes que variables**, siempre. Los fijos son un bloque cerrado: ya están decididos, casi no se miran, y sirven como referencia de cuánto del mes está comprometido. Una vez que pasás ese bloque, todo lo que sigue es plata sobre la que todavía se puede decidir — y ahí es donde está la atención.
+**"Próximos cobros" antes que las categorías**, siempre. Es un calendario, no una decisión: dice qué ya se cobró y qué falta, sin pedir ninguna acción. Debajo de esa tira empieza la plata sobre la que todavía se puede decidir — y ahí es donde está la atención.
  
 ### El móvil es la vista principal
  
@@ -526,8 +526,8 @@ No es la versión reducida del escritorio: si los gastos se cargan por WhatsApp 
    **No lleva desglose semanal.** El semanal es la presentación de un presupuesto — se reparte lo que queda contra un techo — y el margen libre no tiene techo. Además comida y ocio ya muestran su disponible semanal: un tercer número semanal en la misma pantalla compite con esos dos y no significa lo mismo.
    **Días, no fecha.** El dato accionable es cuánto queda, no qué día cae; la fecha ya está en el selector de mes. Se calcula contra `dia_inicio_ciclo` (sección 6) y en el timezone del usuario.
 3. **Ingresos · Gastos · Ahorro** — tres tarjetas chicas en fila.
-4. **Gastos fijos** — total y detalle.
-5. **Gastos variables** — con las barras de comida y ocio.
+4. **Próximos cobros** — tira colapsada con el próximo cargo por cobrar; al abrirla, el calendario del ciclo.
+5. **Categorías** — una tarjeta por categoría, con las barras de comida y ocio.
 6. **Gráficos** — torta primero, barras mes contra mes después.
 **Regla de orden: lo que decide algo va arriba, lo que explica va abajo.** Los gráficos explican el pasado; el margen libre decide el presente.
  
@@ -535,11 +535,11 @@ No es la versión reducida del escritorio: si los gastos se cargan por WhatsApp 
  
 En **escritorio** es el mismo contenido en dos columnas: números y barras a la izquierda, gráficos a la derecha.
  
-### La tarjeta "Gastos fijos": resumen, no contenedor
+### La tarjeta «Próximos cobros»: cuándo, no cuánto
  
-**Los fijos viven dentro de su categoría.** El alquiler está en `vivienda`, Netflix en `suscripciones`. La tarjeta "Gastos fijos" no los contiene: es un **resumen de solo lectura** que responde cuánto del ciclo ya está comprometido.
+**Los fijos viven dentro de su categoría.** El alquiler está en `vivienda`, Netflix en `suscripciones`. "Próximos cobros" no los contiene: es un **calendario de solo lectura**, derivado de esas mismas filas, que contesta una pregunta distinta de la que responde la categoría — no cuánto se gastó, sino **qué ya se cobró este ciclo y qué falta**.
  
-Cabecera con el **total al lado del título** (*"Gastos fijos · 820"*) y, debajo, una línea en texto apagado: *"ya incluidos en sus categorías"*. Una frase, no un tutorial — corta la única duda real que va a tener el usuario, que es si se está contando dos veces.
+Colapsada muestra el título y el **próximo cargo con su día** (*"Parking · día 15"*), nunca un monto ni un total. Al abrirla, lista cada cargo del ciclo en **dos grupos**: los **ya cobrados** — atenuados y con un check — primero, y los **pendientes** después, sin ningún separador entre ambos porque el cambio de apariencia ya marca el límite. Un pie con el total comprometido del ciclo cierra la tarjeta.
  
 Sin fila de añadir y sin edición: **tocar y deslizar se hacen en la fila de la categoría**, que es donde vive la transacción. Puede mostrar qué falta confirmar este ciclo (sección 7).
  

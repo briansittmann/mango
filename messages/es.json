@@ -2,7 +2,6 @@
   "dashboard": {
     "appName": "Mango",
     "expenseBreakdown": "Desglose de gastos",
-    "gastosFijos": "Gastos fijos",
     "colapsarTodo": "Colapsar todo",
     "anadirGasto": "Añadir gasto",
     "anadirIngreso": "Añadir ingreso",
@@ -69,7 +68,7 @@
     "opcional": "Opcional",
     "fecha": "Fecha",
     "importeInvalido": "Introduce un importe mayor que 0 con hasta 2 decimales",
-    "soloEsteMes": "Solo este mes · no cambia el fijo",
+    "soloEsteMes": "{categoria} · Solo el cargo de este mes",
     "eliminarGasto": "Eliminar gasto",
     "eliminarCargoDelMes": "Eliminar el cargo de este mes",
     "eliminar": "Eliminar",
@@ -108,5 +107,12 @@
       "blanco": "Blanco",
       "granate": "Granate"
     }
+  },
+  "proximosCobros": {
+    "titulo": "Próximos cobros",
+    "fila": "{nombre} · día {dia}",
+    "pie": "comprometido este ciclo · {monto}",
+    "cobrado": "Cobrado",
+    "pendiente": "Pendiente"
   }
 }

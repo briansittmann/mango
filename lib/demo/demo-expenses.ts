@@ -12,8 +12,8 @@ export type DemoExpenseEdits = {
 
 export const noDemoEdits: DemoExpenseEdits = { created: [], updated: {}, deletedIds: [] }
 
-function toExpense(id: string, draft: ExpenseDraft): Expense {
-  return { id, name: draft.description, amount: draft.amount, date: `${draft.date}T12:00:00Z` }
+function toExpense(id: string, draft: ExpenseDraft, fixed?: Expense['fixed']): Expense {
+  return { id, name: draft.description, amount: draft.amount, date: `${draft.date}T12:00:00Z`, ...(fixed ? { fixed } : {}) }
 }
 
 function resolveExpenses(group: ExpenseGroup, edits: DemoExpenseEdits): Expense[] {
@@ -23,7 +23,7 @@ function resolveExpenses(group: ExpenseGroup, edits: DemoExpenseEdits): Expense[
     .filter((expense) => !edits.deletedIds.includes(expense.id))
     .map((expense) => {
       const update = edits.updated[expense.id]
-      return update ? toExpense(expense.id, update) : expense
+      return update ? toExpense(expense.id, update, expense.fixed) : expense
     })
 }
 

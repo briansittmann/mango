@@ -2,7 +2,6 @@
   "dashboard": {
     "appName": "Mango",
     "expenseBreakdown": "Expense breakdown",
-    "gastosFijos": "Fixed expenses",
     "colapsarTodo": "Collapse all",
     "anadirGasto": "Add expense",
     "anadirIngreso": "Add income",
@@ -69,7 +68,7 @@
     "opcional": "Optional",
     "fecha": "Date",
     "importeInvalido": "Enter an amount above 0 with up to 2 decimals",
-    "soloEsteMes": "This month only · not the fixed charge",
+    "soloEsteMes": "{categoria} · This month's charge only",
     "eliminarGasto": "Delete expense",
     "eliminarCargoDelMes": "Delete this month's charge",
     "eliminar": "Delete",
@@ -108,5 +107,12 @@
       "blanco": "White",
       "granate": "Maroon"
     }
+  },
+  "proximosCobros": {
+    "titulo": "Upcoming charges",
+    "fila": "{nombre} · day {dia}",
+    "pie": "committed this cycle · {monto}",
+    "cobrado": "Charged",
+    "pendiente": "Pending"
   }
 }

@@ -19,6 +19,7 @@ const NAMES = {
   salud: { es: 'Salud', en: 'Health' },
   hogar: { es: 'Hogar', en: 'Home' },
   compras: { es: 'Compras', en: 'Shopping' },
+  vivienda: { es: 'Vivienda', en: 'Housing' },
   alquiler: { es: 'Alquiler', en: 'Rent' },
   internet: { es: 'Internet', en: 'Internet' },
   seguro: { es: 'Seguro', en: 'Insurance' },
@@ -29,7 +30,7 @@ const NAMES = {
   conciertos: { es: 'Conciertos', en: 'Concerts' },
   gasolina: { es: 'Gasolina', en: 'Gas' },
   parking: { es: 'Parking', en: 'Parking' },
-  farmacia: { es: 'Farmacia', en: 'Pharmacy' },
+  gimnasio: { es: 'Gimnasio', en: 'Gym' },
   limpieza: { es: 'Limpieza', en: 'Cleaning' },
   decoracion: { es: 'Decoración', en: 'Decor' },
   ropa: { es: 'Ropa', en: 'Clothes' },
@@ -50,14 +51,15 @@ function buildCategory(
   id: string,
   nameKey: keyof typeof NAMES,
   color: CategoryColor,
-  amount: number,
-  items: { nameKey: keyof typeof NAMES; amount: number; date: string }[],
+  amount: number | null,
+  items: { nameKey: keyof typeof NAMES; amount: number; date: string; fixed?: { day: number; charged: boolean } }[],
 ): ExpenseGroup {
   const expenses = items.map((item, index) => ({
     id: `${id}-${index}`,
     name: name(locale, item.nameKey),
     amount: item.amount,
     date: item.date,
+    ...(item.fixed ? { fixed: item.fixed } : {}),
   }))
   const spent = expenses.reduce((sum, expense) => sum + expense.amount, 0)
 
@@ -67,34 +69,18 @@ function buildCategory(
     name: name(locale, nameKey),
     color,
     total: spent,
-    budget: getBudgetStatus({ amount, spent, currentDay: CURRENT_DAY, cycleDays: CYCLE_DAYS }),
+    budget: amount != null ? getBudgetStatus({ amount, spent, currentDay: CURRENT_DAY, cycleDays: CYCLE_DAYS }) : null,
     expenses,
   }
 }
 
 export function buildDemoData(locale: Locale): DashboardData {
-  const fixedItems = [
-    { nameKey: 'alquiler' as const, amount: 820, date: '2026-09-01T09:00:00Z' },
-    { nameKey: 'internet' as const, amount: 45, date: '2026-09-02T09:00:00Z' },
-    { nameKey: 'seguro' as const, amount: 35, date: '2026-09-03T09:00:00Z' },
-  ]
-  const fixedExpenses = fixedItems.map((item, index) => ({
-    id: `fixed-${index}`,
-    name: name(locale, item.nameKey),
-    amount: item.amount,
-    date: item.date,
-  }))
-  const fixedGroup: ExpenseGroup = {
-    id: 'fixed',
-    kind: 'fixed',
-    name: null,
-    color: 'gris_oscuro',
-    total: fixedExpenses.reduce((sum, expense) => sum + expense.amount, 0),
-    budget: null,
-    expenses: fixedExpenses,
-  }
-
   const categoryGroups: ExpenseGroup[] = [
+    buildCategory(locale, 'vivienda', 'vivienda', 'gris_oscuro', null, [
+      { nameKey: 'alquiler', amount: 820, date: '2026-09-01T09:00:00Z', fixed: { day: 1, charged: true } },
+      { nameKey: 'internet', amount: 45, date: '2026-09-03T09:00:00Z', fixed: { day: 3, charged: true } },
+      { nameKey: 'seguro', amount: 35, date: '2026-09-08T09:00:00Z', fixed: { day: 8, charged: true } },
+    ]),
     buildCategory(locale, 'comida', 'comida', 'naranja_calido', 400, [
       { nameKey: 'supermercado', amount: 180, date: '2026-09-03T12:00:00Z' },
       { nameKey: 'restaurante', amount: 67.6, date: '2026-09-07T20:00:00Z' },
@@ -106,13 +92,13 @@ export function buildDemoData(locale: Locale): DashboardData {
     ]),
     buildCategory(locale, 'transporte', 'transporte', 'azul_apagado', 100, [
       { nameKey: 'gasolina', amount: 80, date: '2026-09-04T08:00:00Z' },
-      { nameKey: 'parking', amount: 50, date: '2026-09-06T08:00:00Z' },
+      { nameKey: 'parking', amount: 50, date: '2026-09-15T08:00:00Z', fixed: { day: 15, charged: false } },
     ]),
     buildCategory(locale, 'salud', 'salud', 'verde_profundo', 120, [
-      { nameKey: 'farmacia', amount: 40, date: '2026-09-05T11:00:00Z' },
+      { nameKey: 'gimnasio', amount: 40, date: '2026-09-22T11:00:00Z', fixed: { day: 22, charged: false } },
     ]),
     buildCategory(locale, 'hogar', 'hogar', 'gris_calido', 200, [
-      { nameKey: 'limpieza', amount: 35, date: '2026-09-02T10:00:00Z' },
+      { nameKey: 'limpieza', amount: 35, date: '2026-09-20T10:00:00Z', fixed: { day: 20, charged: false } },
       { nameKey: 'decoracion', amount: 60, date: '2026-09-09T10:00:00Z' },
     ]),
     buildCategory(locale, 'compras', 'compras', 'granate', 180, [
@@ -121,7 +107,7 @@ export function buildDemoData(locale: Locale): DashboardData {
     ]),
   ]
 
-  const groups = [fixedGroup, ...categoryGroups]
+  const groups = categoryGroups
   const expensesTotal = groups.reduce((sum, group) => sum + group.total, 0)
 
   const incomeSources = [

@@ -39,7 +39,7 @@ export function CategoryCard({
   const tHojaCategoria = useTranslations('hojaCategoria')
   const format = useFormatter()
 
-  const name = group.name ?? t('gastosFijos')
+  const name = group.name
   const panelId = `category-panel-${group.id}`
   const nameId = `category-name-${group.id}`
   const amountId = `category-amount-${group.id}`
@@ -79,17 +79,15 @@ export function CategoryCard({
               <Money amount={group.total} currency={currency} className="text-tabular-numeric-md font-semibold text-foreground" />
             </span>
           )}
-          {group.kind === 'category' ? (
-            <button
-              type="button"
-              onClick={onOpenOptions}
-              disabled={!onOpenOptions}
-              aria-label={tHojaCategoria('opcionesDeCategoria', { categoria: name })}
-              className="pressable pointer-events-auto grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground [--press-scale:0.9] hover:bg-foreground/[0.06] hover:text-foreground disabled:opacity-30"
-            >
-              <MoreHorizontal aria-hidden className="size-5" />
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={onOpenOptions}
+            disabled={!onOpenOptions}
+            aria-label={tHojaCategoria('opcionesDeCategoria', { categoria: name })}
+            className="pressable pointer-events-auto grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground [--press-scale:0.9] hover:bg-foreground/[0.06] hover:text-foreground disabled:opacity-30"
+          >
+            <MoreHorizontal aria-hidden className="size-5" />
+          </button>
           <ExpandChevron open={open} />
         </div>
       </div>
@@ -122,7 +120,7 @@ export function CategoryCard({
               <div key={expense.id}>{row}</div>
             )
           })}
-          {group.kind === 'category' ? <AddRow label={t('anadirGasto')} onClick={onAddExpense} /> : null}
+          <AddRow label={t('anadirGasto')} onClick={onAddExpense} />
         </div>
       </Collapsible>
     </div>

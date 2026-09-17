@@ -110,7 +110,17 @@
       "Bash(node /Users/brianrebagliati/.claude/skills/browser-automation/browser.mjs http://localhost:3000/demo --script /private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/8b1196e8-7685-4caa-8fdd-267294219182/scratchpad/hero.mjs --timeout 45000)",
       "Bash(grep -v \":0$\")",
       "Bash(sort -t: -k2 -rn)",
-      "Bash(curl -s \"http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0w-oper._.css\")"
+      "Bash(curl -s \"http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0w-oper._.css\")",
+      "Bash(grep -nE \"^#{1,3} \" ARCHITECTURE.md)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d['applyRequires']\\); [print\\(a['id'], a['status'], a.get\\('missingDeps',''\\)\\) for a in d['artifacts']]\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d['instruction']\\); print\\('--- TEMPLATE ---'\\); print\\(d['template']\\)\")",
+      "Bash(lsof -i :3000 -sTCP:LISTEN -Pn)",
+      "Bash(node /private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/f2d570e3-903f-4655-9e9c-c0ca53dceb64/scratchpad/baseline.mjs)",
+      "Bash(node baseline-scratch.mjs)",
+      "Bash(node verify-demo-scratch.mjs)",
+      "Bash(node /Users/brianrebagliati/.codegpt/skills/browser-automation/browser.mjs http://localhost:3000/demo --script \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/775ad018-c633-4078-88d4-993046826ee5/scratchpad/upcoming-verify.mjs\")",
+      "Bash(node /Users/brianrebagliati/.codegpt/skills/browser-automation/browser.mjs http://localhost:3000/demo --script \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/775ad018-c633-4078-88d4-993046826ee5/scratchpad/upcoming-verify-dark.mjs\")",
+      "Bash(node /Users/brianrebagliati/.codegpt/skills/browser-automation/browser.mjs http://localhost:3000/demo --script \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/775ad018-c633-4078-88d4-993046826ee5/scratchpad/verify-8.6b.mjs\")"
     ],
     "additionalDirectories": [
       "/Users/brianrebagliati/Documents/Work/mango-finanzas/mango/baseline-shots"

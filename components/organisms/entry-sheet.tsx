@@ -42,7 +42,7 @@ export const expenseEntry: EntryConfig<ExpenseDraft> = {
   deleteKey: 'eliminarGasto',
 }
 
-type EntrySheetContext = { kind: 'category'; name: string; color: CategoryColor } | { kind: 'fixedCharge' }
+type EntrySheetContext = { kind: 'category'; name: string; color: CategoryColor; recurring: boolean }
 
 type EntrySheetProps<V> = {
   config: EntryConfig<V>
@@ -287,14 +287,10 @@ export function EntrySheet<V>({
         </button>
       }
       caption={
-        context.kind === 'category' ? (
-          <>
-            <CategoryDot color={context.color} className="size-2 shrink-0" />
-            <span className="truncate">{context.name}</span>
-          </>
-        ) : (
-          t('soloEsteMes')
-        )
+        <>
+          <CategoryDot color={context.color} className="size-2 shrink-0" />
+          <span className="truncate">{context.recurring ? t('soloEsteMes', { categoria: context.name }) : context.name}</span>
+        </>
       }
     >
       <form id={formId} onSubmit={handleSubmit} aria-busy={disabled} className="flex min-h-0 flex-1 flex-col">
@@ -321,7 +317,7 @@ export function EntrySheet<V>({
                 ) : (
                   <Trash2 aria-hidden className="size-5" />
                 )}
-                {t(context.kind === 'fixedCharge' ? 'eliminarCargoDelMes' : config.deleteKey)}
+                {t(context.recurring ? 'eliminarCargoDelMes' : config.deleteKey)}
               </button>
             </>
           ) : null}

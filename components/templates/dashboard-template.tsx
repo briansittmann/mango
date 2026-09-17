@@ -21,14 +21,17 @@ import { EntrySheet, expenseEntry } from '@/components/organisms/entry-sheet'
 import { FreeMarginCard } from '@/components/organisms/free-margin-card'
 import { MonthlyBarsChart } from '@/components/organisms/monthly-bars-chart'
 import { SummaryGroup } from '@/components/organisms/summary-group'
+import { UpcomingChargesCard } from '@/components/organisms/upcoming-charges-card'
 import { AnimatedContent } from '@/components/ui/animated-content'
 import type { DashboardActions, DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
 import type { CategoryDraft } from '@/lib/data/categories'
 import type { ExpenseDraft } from '@/lib/data/expenses'
+import type { UpcomingCharge } from '@/lib/data/upcoming-charges'
 
 type DashboardTemplateProps = {
   data: DashboardData
   actions: DashboardActions
+  charges: UpcomingCharge[]
   notice?: ReactNode
 }
 
@@ -37,6 +40,7 @@ type SummaryKey = 'income' | 'expenses' | 'savings'
 type SheetTarget = { mode: 'create'; group: ExpenseGroup } | { mode: 'edit'; group: ExpenseGroup; expense: Expense }
 
 const BAR_HEIGHT = 56
+const UPCOMING_CHARGES_ID = 'proximos-cobros'
 
 function clampDate(date: string, min: string, max: string): string {
   if (date < min) return min
@@ -48,7 +52,7 @@ function localDateOf(dateIso: string, timeZone: string): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(dateIso))
 }
 
-export function DashboardTemplate({ data, actions, notice }: DashboardTemplateProps) {
+export function DashboardTemplate({ data, actions, charges, notice }: DashboardTemplateProps) {
   const t = useTranslations('dashboard')
   const tResumen = useTranslations('resumen')
   const tMenu = useTranslations('menuCuenta')
@@ -147,10 +151,12 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
   }
 
   const sheetGroup = sheet.target?.group ?? data.expenses.groups[0]
-  const sheetContext =
-    sheetGroup.kind === 'category'
-      ? { kind: 'category' as const, name: sheetGroup.name ?? t('gastosFijos'), color: sheetGroup.color }
-      : { kind: 'fixedCharge' as const }
+  const sheetContext = {
+    kind: 'category' as const,
+    name: sheetGroup.name,
+    color: sheetGroup.color,
+    recurring: sheet.target?.mode === 'edit' && sheet.target.expense.fixed != null,
+  }
   const sheetInitialValues: Partial<ExpenseDraft> =
     sheet.target?.mode === 'edit'
       ? {
@@ -319,7 +325,7 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
                       <SummaryRow
                         key={group.id}
                         color={group.color}
-                        name={group.name ?? t('gastosFijos')}
+                        name={group.name}
                         amount={group.total}
                         currency={currency}
                       />
@@ -377,15 +383,22 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
         ) : null}
       </AnimatedContent>
       <div ref={expensesRef} className="mt-4 flex scroll-mt-20 flex-col gap-stack">
+        <AnimatedContent id="category-cascade" threshold={0.2} distance={24} duration={0.3} delay={0.48}>
+          <UpcomingChargesCard
+            charges={charges}
+            currency={currency}
+            open={openIds.has(UPCOMING_CHARGES_ID)}
+            onToggle={() => toggleCard(UPCOMING_CHARGES_ID)}
+          />
+        </AnimatedContent>
         {data.expenses.groups.map((group, index) => (
           <AnimatedContent
             key={group.id}
-            id={index === 0 ? 'category-cascade' : undefined}
             trigger="#category-cascade"
             threshold={0.2}
             distance={24}
             duration={0.3}
-            delay={0.48 + Math.min(index, 5) * 0.05}
+            delay={0.48 + Math.min(index + 1, 5) * 0.05}
           >
             <CategoryCard
               group={group}

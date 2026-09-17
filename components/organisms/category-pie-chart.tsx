@@ -11,7 +11,6 @@ type CategoryPieChartProps = {
 }
 
 export function CategoryPieChart({ groups, total, currency }: CategoryPieChartProps) {
-  const t = useTranslations('dashboard')
   const tGraficos = useTranslations('graficos')
   const format = useFormatter()
   const slices = groups.filter((group) => group.total > 0)
@@ -49,7 +48,7 @@ export function CategoryPieChart({ groups, total, currency }: CategoryPieChartPr
           {slices.map((slice) => (
             <div key={slice.id} className="flex items-center gap-2">
               <CategoryDot color={slice.color} className="size-2.5" />
-              <span className="min-w-0 flex-1 truncate text-muted-foreground">{slice.name ?? t('gastosFijos')}</span>
+              <span className="min-w-0 flex-1 truncate text-muted-foreground">{slice.name}</span>
               <span>{total > 0 ? format.number(slice.total / total, { style: 'percent', maximumFractionDigits: 0 }) : null}</span>
             </div>
           ))}

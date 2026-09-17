@@ -6,6 +6,7 @@ import { DemoToast } from '@/components/molecules/demo-toast'
 import { DashboardTemplate } from '@/components/templates/dashboard-template'
 import { createDemoExpenseMutations, deriveDemoData, noDemoEdits } from '@/lib/demo/demo-expenses'
 import { createDemoCategoryMutations, noDemoCategoryEdits } from '@/lib/demo/demo-categories'
+import { selectUpcomingCharges } from '@/lib/data/upcoming-charges'
 import type { DashboardData } from '@/lib/data/dashboard'
 
 type DemoDashboardProps = {
@@ -19,6 +20,7 @@ export function DemoDashboard({ data, changeLanguage }: DemoDashboardProps) {
   const [categoryEdits, setCategoryEdits] = useState(noDemoCategoryEdits)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const view = useMemo(() => deriveDemoData(data, edits, categoryEdits), [data, edits, categoryEdits])
+  const charges = useMemo(() => selectUpcomingCharges(view.expenses.groups), [view])
   const expenses = useMemo(() => createDemoExpenseMutations(setEdits), [])
   const categories = useMemo(() => createDemoCategoryMutations(view.expenses.groups, setCategoryEdits), [view])
 
@@ -38,6 +40,7 @@ export function DemoDashboard({ data, changeLanguage }: DemoDashboardProps) {
     <>
       <DashboardTemplate
         data={view}
+        charges={charges}
         actions={{
           changeLanguage,
           expenses,
