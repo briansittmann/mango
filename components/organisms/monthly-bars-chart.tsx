@@ -55,6 +55,7 @@ export function MonthlyBarsChart({ history, currentMonth, currency }: MonthlyBar
               maxBarSize={32}
               radius={[8, 8, 0, 0]}
               style={{ cursor: 'pointer' }}
+              isAnimationActive={false}
               onClick={(entry) => setSelected(entry.payload.month)}
             >
               <LabelList
@@ -78,7 +79,10 @@ export function MonthlyBarsChart({ history, currentMonth, currency }: MonthlyBar
                     key={entry.month}
                     fill={isSelected ? 'var(--brand)' : 'var(--muted-foreground)'}
                     fillOpacity={isSelected ? 1 : 0.25}
-                    style={{ filter: isSelected ? 'drop-shadow(0 0 10px var(--hero-glow))' : 'none' }}
+                    style={{
+                      filter: isSelected ? 'drop-shadow(0 0 10px var(--hero-glow))' : 'none',
+                      transition: 'fill 150ms var(--ease-out), fill-opacity 150ms var(--ease-out)',
+                    }}
                   />
                 )
               })}

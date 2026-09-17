@@ -12,8 +12,8 @@ export function Collapsible({ open, id, className, children }: CollapsibleProps)
     <div
       id={id}
       className={cn(
-        'grid transition-[grid-template-rows] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none',
-        open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+        'grid transition-[grid-template-rows,opacity] duration-200 ease-drawer motion-reduce:transition-none',
+        open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
         className,
       )}
     >

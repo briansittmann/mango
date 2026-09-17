@@ -32,6 +32,7 @@ export function CategoryPieChart({ groups, total, currency }: CategoryPieChartPr
                 stroke="var(--card)"
                 strokeWidth={2}
                 rootTabIndex={-1}
+                isAnimationActive={false}
               >
                 {slices.map((slice) => (
                   <Cell key={slice.id} fill={`var(--cat-${slice.color})`} />

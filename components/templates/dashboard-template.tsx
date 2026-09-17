@@ -380,12 +380,12 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
         {data.expenses.groups.map((group, index) => (
           <AnimatedContent
             key={group.id}
-            id={index === 1 ? 'category-cascade' : undefined}
-            trigger={index === 0 ? undefined : '#category-cascade'}
+            id={index === 0 ? 'category-cascade' : undefined}
+            trigger="#category-cascade"
             threshold={0.2}
             distance={24}
-            duration={0.22}
-            delay={index === 0 ? 0.48 : (index - 1) * 0.06}
+            duration={0.3}
+            delay={0.48 + Math.min(index, 5) * 0.05}
           >
             <CategoryCard
               group={group}
@@ -402,22 +402,10 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
         ))}
       </div>
       <div className="mt-section flex flex-col gap-stack">
-        <AnimatedContent
-          trigger="#category-cascade"
-          threshold={0.2}
-          distance={40}
-          duration={1}
-          delay={(data.expenses.groups.length - 1) * 0.06}
-        >
+        <AnimatedContent threshold={0.2} distance={24} duration={0.3}>
           <MonthlyBarsChart history={data.history} currentMonth={data.cycle.month} currency={currency} />
         </AnimatedContent>
-        <AnimatedContent
-          trigger="#category-cascade"
-          threshold={0.2}
-          distance={40}
-          duration={1}
-          delay={data.expenses.groups.length * 0.06 + 0.1}
-        >
+        <AnimatedContent threshold={0.2} distance={24} duration={0.3} delay={0.05}>
           <CategoryPieChart groups={data.expenses.groups} total={data.expenses.total} currency={currency} />
         </AnimatedContent>
       </div>
