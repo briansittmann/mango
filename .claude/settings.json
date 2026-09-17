@@ -106,7 +106,8 @@
       "Bash(node /Users/brianrebagliati/.claude/skills/browser-automation/browser.mjs --session desktop --close)",
       "Bash(node /Users/brianrebagliati/.claude/skills/browser-automation/browser.mjs http://localhost:3000/demo --script \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/b0a6bc99-1eb4-40db-86d4-449e8f2463c2/scratchpad/dark-theme.mjs\")",
       "Bash(python3 -c \"import PIL; print\\(PIL.__version__\\)\")",
-      "Bash(node /Users/brianrebagliati/.claude/skills/browser-automation/browser.mjs http://localhost:3000/demo --script \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/b0a6bc99-1eb4-40db-86d4-449e8f2463c2/scratchpad/contrast-capture.mjs\")"
+      "Bash(node /Users/brianrebagliati/.claude/skills/browser-automation/browser.mjs http://localhost:3000/demo --script \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/b0a6bc99-1eb4-40db-86d4-449e8f2463c2/scratchpad/contrast-capture.mjs\")",
+      "Bash(node /Users/brianrebagliati/.claude/skills/browser-automation/browser.mjs http://localhost:3000/demo --script /private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/8b1196e8-7685-4caa-8fdd-267294219182/scratchpad/hero.mjs --timeout 45000)"
     ],
     "additionalDirectories": [
       "/Users/brianrebagliati/Documents/Work/mango-finanzas/mango/baseline-shots"
