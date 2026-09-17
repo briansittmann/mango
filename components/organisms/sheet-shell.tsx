@@ -7,7 +7,7 @@ export type SheetShellProps = {
   onOpenChange: (open: boolean) => void
   busy: boolean
   isDirty: boolean
-  initialFocus?: RefObject<HTMLElement | null>
+  initialFocus?: RefObject<HTMLElement | null> | false
   finalFocus?: RefObject<HTMLElement | null>
   leading: ReactNode
   title: ReactNode

@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
+import { useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { Loader2, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { CategoryDot } from '@/components/atoms/category-dot'
@@ -20,7 +20,6 @@ type CategorySheetProps = {
   target: ExpenseGroup
   currency: string
   receivingCategories: { id: string; name: string }[]
-  initialFocusRef: RefObject<HTMLInputElement | null>
   onSave: (categoryId: string, draft: CategoryDraft) => Promise<void>
   onDelete: (categoryId: string, reassignTo: string | null) => Promise<void>
 }
@@ -50,7 +49,6 @@ export function CategorySheet({
   target,
   currency,
   receivingCategories,
-  initialFocusRef,
   onSave,
   onDelete,
 }: CategorySheetProps) {
@@ -164,7 +162,7 @@ export function CategorySheet({
       onOpenChange={onOpenChange}
       busy={busy}
       isDirty={isDirty}
-      initialFocus={initialFocusRef}
+      initialFocus={false}
       anchored
       leading={
         <button
@@ -183,6 +181,7 @@ export function CategorySheet({
             type="submit"
             form={formId}
             disabled={primaryDisabled}
+            onMouseDown={(event) => event.preventDefault()}
             className={cn(
               'pressable h-9 rounded-full px-4 font-semibold',
               primaryDisabled ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground',
@@ -231,7 +230,6 @@ export function CategorySheet({
           <FieldRow label={t('nombre')} htmlFor={nameId}>
             <input
               id={nameId}
-              ref={initialFocusRef}
               type="text"
               data-base-ui-swipe-ignore
               enterKeyHint="done"

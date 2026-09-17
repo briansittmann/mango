@@ -65,7 +65,6 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
   const titleRef = useRef<HTMLDivElement>(null)
   const expensesRef = useRef<HTMLDivElement>(null)
   const initialFocusRef = useRef<HTMLInputElement>(null)
-  const categoryInitialFocusRef = useRef<HTMLInputElement>(null)
   const toasts = useMemo(() => Toast.createToastManager(), [])
   const currency = data.user.currency
 
@@ -81,9 +80,7 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
   }
 
   function openCategorySheet(group: ExpenseGroup) {
-    flushSync(() => setCategorySheet({ open: true, target: group }))
-    categoryInitialFocusRef.current?.focus({ preventScroll: true })
-    categoryInitialFocusRef.current?.select()
+    setCategorySheet({ open: true, target: group })
   }
 
   async function handleSaveCategory(categoryId: string, draft: CategoryDraft) {
@@ -449,7 +446,6 @@ export function DashboardTemplate({ data, actions, notice }: DashboardTemplatePr
         target={categorySheetTarget}
         currency={currency}
         receivingCategories={receivingCategories}
-        initialFocusRef={categoryInitialFocusRef}
         onSave={handleSaveCategory}
         onDelete={handleDeleteCategory}
       />
