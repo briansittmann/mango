@@ -170,14 +170,14 @@ Use scratchpad Playwright scripts against `/demo` on the dev server (:3000), at 
   - both themes look coherent, and the sheet, swipe and toast motion is clearly visible
   - no bordered, rounded surface sits inside another (*Mobile visual hierarchy*)
   - every visible button is at least 44 × 44px (*Touch targets*)
-- [ ] 8.13 **Device check.** On an iPhone reaching the dev server over the LAN, tap "Añadir gasto" in "comida", then tap an expense row. Verify:
+- [x] 8.13 **Device check.** On an iPhone reaching the dev server over the LAN, tap "Añadir gasto" in "comida", then tap an expense row. Verify:
   - the decimal keypad appears without a second tap
   - the header stays visible above the keyboard
   - swiping rows does not fight vertical scrolling
 
   If no device is available, leave this task unchecked and report it.
 
-  **Result:** no physical iPhone was available on this LAN in this session (same constraint as 1.2). Left unchecked; needs a real-device pass.
+  **Result:** confirmed on a physical iPhone over the LAN — decimal keypad appears on first tap, header stays visible above the keyboard, swipe does not fight vertical scroll.
 - [x] 8.14 **Regressions.** Run `npm run lint`, `npx tsc --noEmit`, `npm run build`, the land-finance-dashboard 6.1 guard greps, and `grep -rn "DELETE" app components lib`. Verify:
   - lint, type-check and build pass
   - the only guard hit is the pre-existing `'use client'` in `components/molecules/demo-notice.tsx`
