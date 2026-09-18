@@ -233,6 +233,7 @@ Translucency is an allowlist, not a default: the scrolled top bar (`.glass-bar`)
 - **Container Geometry:** Floating panel, 12px margins plus the safe area, up to 440px wide and centered, all four corners at `28px`. Background of brushed `#131814`.
 - **Drag Pill Handle:** Centered horizontally, dimensions 36px × 4px, `#374151` neutral muted color, positioned 10px from the sheet's top edge.
 - **Header:** Sticky top row with a leading text "Cancel" action, a centered `headline-sm` title with a `body-sm` caption below it, and a trailing pill-shaped primary action.
+- **Category sheet field order:** name, then budget, then colour, then a divider, "Reordenar", another divider, "Eliminar categoría".
 
 ### Structured List Rows
 - **Dimensions:** Strict minimum height of 48px (`3rem`), vertical padding of 12px, horizontal padding of 16px.
@@ -282,4 +283,11 @@ Translucency is an allowlist, not a default: the scrolled top bar (`.glass-bar`)
 - **Anatomy:** At least 48px tall, `px-inset`, four zones in fixed order — day chip, `6px` category dot, name, amount — the amount in `tabular-numeric-md` flush to the inset with a transparent background, unlike the `bg-muted` affordance an editable expense row puts under its amount.
 - **Checkmark:** A 14px `Check` immediately after the name on a taken charge, inside the dimmed group — not trailing the amount, which would break the amount column, and not leading the row, which would break the day column.
 - **Dimming:** A taken row is dimmed to between 45% and 55% opacity as a whole; the checkmark and the opacity are the only things that change — never the text colour, which elsewhere in the app is reserved for "muted metadata," not for a done state.
+
+### Reorder Mode
+- **Handle:** Three 2px horizontal lines in a 44 × 44px hit area, drawn in the 44px lane opened over each card's trailing edge — never inside the card, and present on every card including the first and the last. Drawn `white/70`, since it sits on the dark pushed-back scrim in both themes; a fine pointer that supports hover raises it to `white/90`, gated behind `(hover: hover) and (pointer: fine)` so a tap never leaves it looking hovered.
+- **Pushed-back layer:** One fixed layer, `backdrop-filter: blur(4px)` plus two stacked `--scrim` gradients — never a blur class per dimmed region. That leaves roughly a quarter of the background's resting presence visible (measured: 36% in light, 12% in dark), well under the 40% ceiling. The category cards, their handles and the reorder bar stay sharp and fully opaque above it.
+- **Reduced transparency:** The layer drops its blur entirely and stacks a third `--scrim` layer instead, dimming further than the default so the separation from the list is never carried by blur alone.
+- **Lift:** The held card scales to `1.02` with a deeper shadow (`0 20px 40px -12px var(--sheet-shadow)`) and no transition while held — the movement is the finger's, not an animated one.
+- **Colour:** Brand appears only on the "Listo" control and focus rings. No warning and no destructive colour anywhere in the mode.
 - **No separators:** rows carry no hairline between them, unlike a Structured List Row. A divider at the boundary between taken and pending charges would read as a "today" marker, which is the one thing this row must not draw; the change in opacity carries the boundary on its own.

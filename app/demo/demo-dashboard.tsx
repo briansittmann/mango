@@ -22,7 +22,16 @@ export function DemoDashboard({ data, changeLanguage }: DemoDashboardProps) {
   const view = useMemo(() => deriveDemoData(data, edits, categoryEdits), [data, edits, categoryEdits])
   const charges = useMemo(() => selectUpcomingCharges(view.expenses.groups), [view])
   const expenses = useMemo(() => createDemoExpenseMutations(setEdits), [])
-  const categories = useMemo(() => createDemoCategoryMutations(view.expenses.groups, setCategoryEdits), [view])
+  // Test-only seam for Playwright coverage of the reorder failure path (11.3): the demo has no
+  // network layer to intercept, so `?e2eFailReorder=1` makes `reorder` reject deterministically.
+  const [failReorder] = useState(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('e2eFailReorder') === '1',
+  )
+  const categories = useMemo(() => {
+    const base = createDemoCategoryMutations(view.expenses.groups, setCategoryEdits)
+    if (!failReorder) return base
+    return { ...base, reorder: () => Promise.reject(new Error('e2e-forced-reorder-failure')) }
+  }, [view, failReorder])
 
   useEffect(() => {
     return () => {

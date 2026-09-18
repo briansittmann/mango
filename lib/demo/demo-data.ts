@@ -81,6 +81,13 @@ export function buildDemoData(locale: Locale): DashboardData {
       { nameKey: 'internet', amount: 45, date: '2026-09-03T09:00:00Z', fixed: { day: 3, charged: true } },
       { nameKey: 'seguro', amount: 35, date: '2026-09-08T09:00:00Z', fixed: { day: 8, charged: true } },
     ]),
+    buildCategory(locale, 'salud', 'salud', 'verde_profundo', null, [
+      { nameKey: 'gimnasio', amount: 40, date: '2026-09-22T11:00:00Z', fixed: { day: 22, charged: false } },
+    ]),
+    buildCategory(locale, 'hogar', 'hogar', 'gris_calido', null, [
+      { nameKey: 'limpieza', amount: 35, date: '2026-09-20T10:00:00Z', fixed: { day: 20, charged: false } },
+      { nameKey: 'decoracion', amount: 60, date: '2026-09-09T10:00:00Z' },
+    ]),
     buildCategory(locale, 'comida', 'comida', 'naranja_calido', 400, [
       { nameKey: 'supermercado', amount: 180, date: '2026-09-03T12:00:00Z' },
       { nameKey: 'restaurante', amount: 67.6, date: '2026-09-07T20:00:00Z' },
@@ -94,14 +101,7 @@ export function buildDemoData(locale: Locale): DashboardData {
       { nameKey: 'gasolina', amount: 80, date: '2026-09-04T08:00:00Z' },
       { nameKey: 'parking', amount: 50, date: '2026-09-15T08:00:00Z', fixed: { day: 15, charged: false } },
     ]),
-    buildCategory(locale, 'salud', 'salud', 'verde_profundo', 120, [
-      { nameKey: 'gimnasio', amount: 40, date: '2026-09-22T11:00:00Z', fixed: { day: 22, charged: false } },
-    ]),
-    buildCategory(locale, 'hogar', 'hogar', 'gris_calido', 200, [
-      { nameKey: 'limpieza', amount: 35, date: '2026-09-20T10:00:00Z', fixed: { day: 20, charged: false } },
-      { nameKey: 'decoracion', amount: 60, date: '2026-09-09T10:00:00Z' },
-    ]),
-    buildCategory(locale, 'compras', 'compras', 'granate', 180, [
+    buildCategory(locale, 'compras', 'compras', 'granate', null, [
       { nameKey: 'ropa', amount: 65, date: '2026-09-06T15:00:00Z' },
       { nameKey: 'electronica', amount: 30, date: '2026-09-10T15:00:00Z' },
     ]),

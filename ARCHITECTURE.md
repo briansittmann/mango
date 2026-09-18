@@ -651,6 +651,8 @@ Dentro del modo, la pulsación larga ya no abre nada: se agarra y se mueve. No h
  
 Asas siempre visibles, descartado: empujan el nombre hacia adentro y comen ancho en todas las filas, todo el tiempo, para algo que se hace una vez cada tanto. Además duplicarían el acceso a la misma función.
  
+> **Implementado (add-category-reorder-mode, sept 2026):** el modo cubre **solo categorías** — el segundo nivel (mover un gasto dentro de su tarjeta) no se construyó; el estado del modo es una bandera de pantalla y el asa es un control autónomo, así que ese segundo nivel queda como una suma futura, no un rediseño. Se entra desde una fila "Reordenar" en la hoja de categoría, no con pulsación larga (mismo criterio que el menú de opciones, arriba). Dentro del modo no hay pulsación larga previa: se agarra y arrastra directo, sin esperar. El asa vive **fuera** de la tarjeta, en un carril de 44px sobre su borde final — nunca superpuesta al contenido. Cada movimiento se guarda al soltar (o con cada flecha del teclado), no al tocar "Listo": el modo nunca retiene cambios sin guardar.
+ 
 ### Tarjeta "Añadir categoría"
  
 Al final de la lista, después de la última categoría. Se lee como **hueco a llenar, no como categoría**: sin punto de color, sin total, sin chevron, sin superficie sólida (el fondo se ve a través), borde punteado tenue en gris apagado, más baja que las tarjetas reales, con un `+` y el texto centrados.
