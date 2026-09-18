@@ -6,9 +6,10 @@ import type { ExpenseGroup } from '@/lib/data/dashboard'
 export type DemoCategoryEdits = {
   updated: Record<string, CategoryDraft>
   deleted: { id: string; reassignTo: string | null }[]
+  order: string[] | null
 }
 
-export const noDemoCategoryEdits: DemoCategoryEdits = { updated: {}, deleted: [] }
+export const noDemoCategoryEdits: DemoCategoryEdits = { updated: {}, deleted: [], order: null }
 
 export function createDemoCategoryMutations(
   currentGroups: ExpenseGroup[],
@@ -27,6 +28,10 @@ export function createDemoCategoryMutations(
     },
     delete(categoryId, reassignTo) {
       setEdits((edits) => ({ ...edits, deleted: [...edits.deleted, { id: categoryId, reassignTo }] }))
+      return Promise.resolve()
+    },
+    reorder(categoryIds) {
+      setEdits((edits) => ({ ...edits, order: [...categoryIds] }))
       return Promise.resolve()
     },
   }

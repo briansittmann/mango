@@ -1,5 +1,5 @@
 import { useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
-import { Loader2, Trash2 } from 'lucide-react'
+import { ArrowUpDown, Loader2, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { CategoryDot } from '@/components/atoms/category-dot'
 import { AmountField, parseAmount } from '@/components/molecules/amount-field'
@@ -22,6 +22,8 @@ type CategorySheetProps = {
   receivingCategories: { id: string; name: string }[]
   onSave: (categoryId: string, draft: CategoryDraft) => Promise<void>
   onDelete: (categoryId: string, reassignTo: string | null) => Promise<void>
+  /** Turns reorder mode on for the whole screen. Absent when the page supplies no reorder operation. */
+  onReorder?: () => void
 }
 
 type Step = 'form' | 'confirmDelete'
@@ -51,8 +53,10 @@ export function CategorySheet({
   receivingCategories,
   onSave,
   onDelete,
+  onReorder,
 }: CategorySheetProps) {
   const t = useTranslations('hojaCategoria')
+  const tReorder = useTranslations('modoReordenar')
   const locale = useLocale()
   const formId = useId()
   const confirmHeadingRef = useRef<HTMLHeadingElement>(null)
@@ -100,6 +104,8 @@ export function CategorySheet({
   const busy = status !== 'idle'
   const primaryDisabled = busy || !nameValid || !budgetValid
   const deleteDisabled = busy || (expenseCount > 0 && !reassignTo)
+  // `receivingCategories` is every category but this one, so an empty list means this is the only one.
+  const reorderDisabled = busy || !onReorder || receivingCategories.length === 0
 
   function updateField<K extends keyof FieldState>(key: K, value: FieldState[K]) {
     setFieldState((prev) => ({ ...prev, [key]: value }))
@@ -252,6 +258,19 @@ export function CategorySheet({
             </p>
           ) : null}
 
+          <AmountField
+            id={budgetId}
+            label={t('presupuesto')}
+            currency={currency}
+            value={fieldState.budget}
+            onChange={(next) => updateField('budget', next)}
+            onBlur={() => setBudgetTouched(true)}
+            disabled={busy}
+            optional
+            invalid={budgetTouched && !budgetValid}
+            invalidMessage={t('presupuestoInvalido')}
+          />
+
           <div className="flex min-h-row items-center px-inset">
             <span id={colorsLabelId} className="text-body-lg text-foreground">
               {t('color')}
@@ -266,18 +285,20 @@ export function CategorySheet({
             />
           </div>
 
-          <AmountField
-            id={budgetId}
-            label={t('presupuesto')}
-            currency={currency}
-            value={fieldState.budget}
-            onChange={(next) => updateField('budget', next)}
-            onBlur={() => setBudgetTouched(true)}
-            disabled={busy}
-            optional
-            invalid={budgetTouched && !budgetValid}
-            invalidMessage={t('presupuestoInvalido')}
-          />
+          <div className="border-t border-border" />
+          <button
+            type="button"
+            aria-label={tReorder('titulo')}
+            onClick={() => {
+              onOpenChange(false)
+              onReorder?.()
+            }}
+            disabled={reorderDisabled}
+            className="flex min-h-row items-center gap-3 px-inset text-body-lg font-medium text-foreground hover:bg-muted active:bg-muted disabled:pointer-events-none disabled:opacity-50"
+          >
+            <ArrowUpDown aria-hidden className="size-5" />
+            {t('reordenar')}
+          </button>
 
           <div className="border-t border-border" />
           <button

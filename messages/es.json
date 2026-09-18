@@ -90,6 +90,7 @@
     "presupuestoInvalido": "Introduce un importe mayor que 0 con hasta 2 decimales",
     "errorGuardar": "No se pudo guardar. Inténtalo de nuevo.",
     "errorEliminar": "No se pudo eliminar la categoría",
+    "reordenar": "Reordenar",
     "eliminarCategoria": "Eliminar categoría",
     "confirmarEliminar": "¿Eliminar {categoria}? Tiene {count, plural, =0 {ningún gasto} one {un gasto} other {# gastos}} este ciclo.",
     "eliminar": "Eliminar",
@@ -107,6 +108,14 @@
       "blanco": "Blanco",
       "granate": "Granate"
     }
+  },
+  "modoReordenar": {
+    "titulo": "Reordenar categorías",
+    "listo": "Listo",
+    "mover": "Mover {categoria}, posición {posicion} de {total}",
+    "movido": "{categoria}, posición {posicion} de {total}",
+    "instrucciones": "Usa las flechas para mover la categoría",
+    "errorGuardarOrden": "No se pudo guardar el orden"
   },
   "proximosCobros": {
     "titulo": "Próximos cobros",

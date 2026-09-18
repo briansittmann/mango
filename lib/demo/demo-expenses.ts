@@ -72,12 +72,21 @@ export function deriveDemoData(base: DashboardData, expenseEdits: DemoExpenseEdi
   }
   const survivors = updated.filter(({ group }) => !deletedIds.has(group.id))
 
-  // 4. Recompute each group's total and budget status.
-  const groups = survivors.map(({ group, expenses, budgetAmount }) =>
+  // 4. Stored order. Ids it does not name keep their relative position after the ones it does,
+  //    and an id it names that no longer exists simply has no effect.
+  const order = categoryEdits.order
+  const rank = (id: string) => {
+    const index = order?.indexOf(id) ?? -1
+    return index === -1 ? (order?.length ?? 0) : index
+  }
+  const ordered = order ? [...survivors].sort((a, b) => rank(a.group.id) - rank(b.group.id)) : survivors
+
+  // 5. Recompute each group's total and budget status.
+  const groups = ordered.map(({ group, expenses, budgetAmount }) =>
     finalizeGroup(group, [...expenses, ...(reassignedExpenses.get(group.id) ?? [])], budgetAmount, currentDay, cycleDays),
   )
 
-  // 5. Recompute the page: expenses total, the current history entry, and the free margin.
+  // 6. Recompute the page: expenses total, the current history entry, and the free margin.
   const total = groups.reduce((sum, group) => sum + group.total, 0)
   const freeMargin = base.income.total - total - base.savings.cycle
   const history = base.history.map((entry) => (entry.month === base.cycle.month ? { ...entry, total } : entry))

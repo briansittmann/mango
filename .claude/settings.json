@@ -120,7 +120,15 @@
       "Bash(node verify-demo-scratch.mjs)",
       "Bash(node /Users/brianrebagliati/.codegpt/skills/browser-automation/browser.mjs http://localhost:3000/demo --script \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/775ad018-c633-4078-88d4-993046826ee5/scratchpad/upcoming-verify.mjs\")",
       "Bash(node /Users/brianrebagliati/.codegpt/skills/browser-automation/browser.mjs http://localhost:3000/demo --script \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/775ad018-c633-4078-88d4-993046826ee5/scratchpad/upcoming-verify-dark.mjs\")",
-      "Bash(node /Users/brianrebagliati/.codegpt/skills/browser-automation/browser.mjs http://localhost:3000/demo --script \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/775ad018-c633-4078-88d4-993046826ee5/scratchpad/verify-8.6b.mjs\")"
+      "Bash(node /Users/brianrebagliati/.codegpt/skills/browser-automation/browser.mjs http://localhost:3000/demo --script \"/private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/775ad018-c633-4078-88d4-993046826ee5/scratchpad/verify-8.6b.mjs\")",
+      "Bash(node /private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/39e11261-e2d0-4c94-97c7-a90e1705dfb9/scratchpad/baseline.mjs)",
+      "Bash(node /private/tmp/claude-501/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/39e11261-e2d0-4c94-97c7-a90e1705dfb9/scratchpad/probe.mjs)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in d.items\\(\\) if k in \\('instruction','state','context','operationGuidance'\\)}, indent=1\\)[:4000]\\)\")",
+      "Bash(node scratchpad/verify-9.2.mjs)",
+      "Bash(node scratchpad/verify-9.3.mjs)",
+      "Bash(node scratchpad/debug-9.4.mjs)",
+      "Bash",
+      "node"
     ],
     "additionalDirectories": [
       "/Users/brianrebagliati/Documents/Work/mango-finanzas/mango/baseline-shots"
