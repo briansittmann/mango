@@ -9,9 +9,13 @@ type SwipeToDeleteProps = {
   children: ReactNode
 }
 
-const LOCK_THRESHOLD_PX = 10
-const PANEL_RATIO = 0.25
-const MIN_PANEL_PX = 44
+// Un desliz corto basta para abrir: el umbral es bajo y el eje se decide con sesgo horizontal.
+const LOCK_THRESHOLD_PX = 6
+const HORIZONTAL_BIAS = 0.7
+const ACTION_SIZE_PX = 44
+const ACTION_GUTTER_PX = 12
+const PANEL_PX = ACTION_SIZE_PX + ACTION_GUTTER_PX * 2
+const OPEN_RATIO = 0.4
 const ARM_RATIO = 0.6
 
 function wait(ms: number) {
@@ -29,6 +33,7 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
   const widthRef = useRef(0)
   const draggedRef = useRef(false)
   const contentRef = useRef<HTMLDivElement>(null)
+  const actionRef = useRef<HTMLDivElement>(null)
   const gestureRef = useRef<{
     pointerId: number
     startX: number
@@ -47,8 +52,10 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
 
     function close(event: Event) {
       // A press on the row itself is handled by handleClickCapture (which also swallows the
-      // resulting click); only an outside press should close it here.
+      // resulting click); only an outside press should close it here. El boton de eliminar
+      // tambien queda fuera: cerrarlo al presionarlo mataria su propio click.
       if (event.target instanceof Node && contentRef.current?.contains(event.target)) return
+      if (event.target instanceof Node && actionRef.current?.contains(event.target)) return
       offsetRef.current = 0
       setOffset(0)
     }
@@ -63,6 +70,7 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
     if (removing) return
+    draggedRef.current = false
     widthRef.current = event.currentTarget.getBoundingClientRect().width
     gestureRef.current = {
       pointerId: event.pointerId,
@@ -82,7 +90,7 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
 
     if (gesture.locked === null) {
       if (Math.hypot(dx, dy) < LOCK_THRESHOLD_PX) return
-      gesture.locked = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical'
+      gesture.locked = Math.abs(dx) > Math.abs(dy) * HORIZONTAL_BIAS ? 'horizontal' : 'vertical'
       if (gesture.locked !== 'horizontal') {
         gestureRef.current = null
         return
@@ -105,18 +113,17 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
     if (gesture.locked !== 'horizontal') return
 
     setDragging(false)
-    setArmed(false)
     const width = widthRef.current
-    const panel = Math.max(width * PANEL_RATIO, MIN_PANEL_PX)
     const current = offsetRef.current
 
+    // Desliz completo: borra directo. Desliz corto: queda abierto con el boton a la vista.
     if (current < -width * ARM_RATIO) {
       void runDelete()
-    } else if (current < -panel / 2) {
-      updateOffset(-panel)
-    } else {
-      updateOffset(0)
+      return
     }
+
+    setArmed(false)
+    updateOffset(current < -PANEL_PX * OPEN_RATIO ? -PANEL_PX : 0)
   }
 
   async function runDelete() {
@@ -128,12 +135,15 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
         await onDelete()
       } catch {
         setRemoving(false)
+        setArmed(false)
         updateOffset(0)
       }
       return
     }
 
-    updateOffset(-widthRef.current)
+    // El circulo se estira a panel completo mientras la fila termina de salir.
+    setArmed(true)
+    updateOffset(-(widthRef.current || contentRef.current?.getBoundingClientRect().width || 0))
     await wait(220)
     setRemoving(true)
     await wait(250)
@@ -141,46 +151,54 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
       await onDelete()
     } catch {
       setRemoving(false)
+      setArmed(false)
       updateOffset(0)
     }
   }
 
   function handleClickCapture(event: MouseEvent<HTMLDivElement>) {
-    if (offsetRef.current !== 0) {
-      event.preventDefault()
-      event.stopPropagation()
-      updateOffset(0)
-      return
-    }
+    // El click que sigue a un arrastre se traga sin tocar el estado: si no, el panel recien
+    // abierto se cerraria solo. Un click limpio con el panel abierto si lo cierra.
     if (draggedRef.current) {
       draggedRef.current = false
       event.preventDefault()
       event.stopPropagation()
+      return
+    }
+    if (offsetRef.current !== 0) {
+      event.preventDefault()
+      event.stopPropagation()
+      updateOffset(0)
     }
   }
 
-  const panel = Math.max(widthRef.current * PANEL_RATIO, MIN_PANEL_PX)
-  const panelWidth = Math.max(panel, -offset)
+  const panelWidth = Math.max(PANEL_PX, -offset)
+  // El circulo entra a escala con el desliz y, al armarse, se estira a panel completo.
+  const actionScale = armed ? 1 : Math.min(1, Math.max(0, -offset / (PANEL_PX * 0.7)))
 
   return (
     <Collapsible open={!removing} className="motion-safe:starting:grid-rows-[0fr]">
       <div className="relative overflow-hidden">
         <div
-          className="absolute inset-y-0 right-0 flex items-center bg-destructive-fill"
-          style={{ width: `${panelWidth}px` }}
+          ref={actionRef}
+          className="absolute inset-y-0 right-0 flex items-center justify-end"
+          style={{ width: `${panelWidth}px`, paddingRight: armed ? 0 : `${ACTION_GUTTER_PX}px` }}
           inert={offset === 0}
           aria-hidden={offset === 0}
         >
           <button
             type="button"
             onClick={() => void runDelete()}
-            className={cn(
-              'flex h-full items-center gap-1.5 px-4 text-label-ui font-medium text-destructive-fill-foreground',
-              armed ? 'ml-auto' : 'mx-auto',
-            )}
+            aria-label={t('eliminar')}
+            className="grid shrink-0 place-items-center bg-destructive-fill text-destructive-fill-foreground transition-[width,height,border-radius,transform] duration-[260ms] ease-spring motion-reduce:transition-none"
+            style={{
+              width: armed ? `${panelWidth}px` : `${ACTION_SIZE_PX}px`,
+              height: armed ? '100%' : `${ACTION_SIZE_PX}px`,
+              borderRadius: armed ? 0 : '9999px',
+              transform: `scale(${actionScale})`,
+            }}
           >
-            <Trash2 aria-hidden className="size-4" />
-            {t('eliminar')}
+            <Trash2 aria-hidden className="size-5" />
           </button>
         </div>
         <div
