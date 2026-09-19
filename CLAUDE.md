@@ -58,11 +58,15 @@
 
 ---
 
-## Estado actual (al 2026-09-14)
+## Estado actual (al 2026-09-19)
 > Se actualiza al archivar un change de OpenSpec o al cerrar un hito. Ante duda, mandan el codigo y `openspec list`.
 
+**Donde estamos**: toda la UI del producto esta construida y funciona sobre `/demo` con datos en memoria. Nada esta conectado a Supabase todavia (salvo dos helpers del bot). El siguiente salto es la capa de datos real + auth, no mas UI.
+
 **Web/dashboard**
-- Hecho: `/demo` (`app/demo/page.tsx`) monta el dashboard completo con datos en memoria (`lib/demo/demo-data.ts`), sin Supabase ni login.
+- Hecho: `/demo` (`app/demo/page.tsx` + `app/demo/demo-dashboard.tsx`) monta el dashboard completo: resumen mensual, tarjeta de margen libre, grupos por categoria, graficos (`recharts`), menu de cuenta con idioma/tema.
+- Hecho: interacciones completas — sheet de carga/edicion (`entry-sheet`), sheet de categoria con colores (`category-sheet`), sheet de gasto fijo (`recurring-sheet`), swipe-to-delete con undo, modo reordenar categorias con drag & drop, tarjeta de "Proximos cobros" (`upcoming-charges-card`), animaciones con `gsap` y respeto de `prefers-reduced-motion`.
+- Hecho: todas las mutaciones pasan por contratos inyectados (`DashboardActions`, `CategoryMutations`, `ExpenseMutations`, `RecurringMutations` en `lib/data/`), implementados hoy solo por `lib/demo/*`. Enchufar Supabase es implementar esos contratos, no tocar componentes.
 - Pendiente: `app/page.tsx` sigue siendo el boilerplate de `create-next-app`. No hay ruta real del dashboard ni Supabase Auth (magic link).
 
 **Bot de WhatsApp**
@@ -71,34 +75,37 @@
 - Pendiente: Zod y el SDK de Gemini no estan en `package.json`.
 
 **Base de datos**
-- Hecho: 12 migraciones en `supabase/migrations/` (tablas, RLS, ciclo de facturacion, seed de Brian).
-- A medias: `lib/data/` tiene tipos del dashboard, `getBudgetStatus`, `findUserIdByPhone`, `messageAlreadyProcessed`. No existe `resumenMensual` ni queries reales del dashboard.
+- Hecho: 13 migraciones en `supabase/migrations/` (tablas, RLS, ciclo de facturacion, seed de Brian, `0013_gastos_fijos_repeticiones.sql` con `repeticiones_totales` / `repeticiones_insertadas`).
+- A medias: `lib/data/` es sobre todo tipos y funciones puras (`getBudgetStatus`, `selectUpcomingCharges`) mas los contratos de mutacion. Solo `users.ts` (`findUserIdByPhone`) y `transactions.ts` (`messageAlreadyProcessed`) hablan con Supabase. No existe `resumenMensual` ni queries del dashboard.
+- Pendiente: el cron que inserta los gastos fijos y decrementa/desactiva por repeticiones.
 
 **i18n/tema**
 - Hecho: next-intl (`messages/es.json`, `en.json`), cambio de idioma por server action, tema claro/oscuro (`components/theme/theme-sync.tsx`).
 
 **Tests**
-- Pendiente: solo esta el ejemplo de Playwright (`tests/example.spec.js`). Sin tests propios ni script `test`.
+- Hecho: script `npm test` (Playwright) y specs propias sobre `/demo`: `recurring-create`, `recurring-scope`, `recurring-motion-a11y`, `reorder-mode`, `category-sheet-header`.
+- Pendiente: unitarios de ritmo/presupuesto y cobertura de los sheets de gasto/categoria.
 
 **Deploy/entorno**
 - Pendiente: sin `.env.local` en el repo local, sin evidencia de deploy en Vercel.
 
 **OpenSpec**
-- `translate-code-to-english` y `land-finance-dashboard`: completos, sin archivar.
-- `restyle-dashboard-to-v0`: 17/20 (faltan tareas 6.1-6.3, verificacion final).
+- Archivados (9): `translate-code-to-english`, `land-finance-dashboard`, `refine-mobile-ui-apple-hig`, `unify-add-action-rows`, `add-expense-sheet`, `add-category-sheet`, `add-category-reorder-mode`, `replace-fixed-card-with-upcoming-charges`, `add-project-status-to-claude-md`.
+- Specs vivas en `openspec/specs/`: `dashboard-ui`, `design-system`, `theming`, `localization`, `expense-editing`, `category-editing`, `category-reordering`, `upcoming-charges`.
+- Abiertos: `add-recurring-expense-management` 26/27 (solo falta marcar/verificar 2.1, la migracion 0013 ya existe) y `restyle-dashboard-to-v0` 17/20 (faltan 6.1-6.3, verificacion final).
 
 ## Proyeccion
 
 Proximos pasos, en orden:
-1. Cerrar `restyle-dashboard-to-v0` (6.1-6.3) y archivar los tres changes completos, para que `openspec/specs/` refleje lo construido.
-2. Capa de datos real (`resumenMensual` y queries del dashboard en `lib/data/`), manteniendo la inyeccion de datos que ya usa `/demo`.
+1. Cerrar los dos changes abiertos (`add-recurring-expense-management` 2.1, `restyle-dashboard-to-v0` 6.1-6.3) y archivarlos.
+2. Capa de datos real (`resumenMensual` y queries del dashboard en `lib/data/`) implementando los contratos de mutacion que hoy cubre `lib/demo/`.
 3. Ruta real del dashboard (reemplazar `app/page.tsx`) + Supabase Auth con magic link.
 4. Bot: parser Gemini + Zod, carga de transacciones, confirmacion progresiva (ARCHITECTURE.md §3).
 5. Onboarding por chat e invitaciones con rate limiting (ARCHITECTURE.md §4, §10).
-6. Cron de gastos fijos, deploy en Vercel y variables de entorno (ARCHITECTURE.md §2, §7).
-7. Tests propios (Playwright sobre `/demo`, unitarios de ritmo/presupuesto).
+6. Cron de gastos fijos (con repeticiones), deploy en Vercel y variables de entorno (ARCHITECTURE.md §2, §7).
+7. Mas tests (unitarios de ritmo/presupuesto, Playwright sobre los sheets restantes).
 
 Mapeo a fases (ARCHITECTURE.md §13):
-- **Fase 1** (uso personal): pasos 2-4 arriba. Falta el grueso — capa de datos, dashboard real y bot funcional.
-- **Fase 2** (amigos y demo): invitaciones y rate limiting (paso 5); la demo publica (§12) ya esta adelantada via `/demo`.
+- **Fase 1** (uso personal): la UI esta terminada; falta backend — pasos 2-4 (capa de datos, dashboard real con auth, bot funcional).
+- **Fase 2** (amigos y demo): invitaciones y rate limiting (paso 5); la demo publica (§12) ya esta hecha via `/demo`.
 - **Fase 3** (refinamiento): sin empezar, salvo la traduccion a ingles (§2) que ya esta hecha.
