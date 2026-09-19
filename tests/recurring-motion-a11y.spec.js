@@ -37,15 +37,58 @@ async function sheetRect(sheet) {
   })
 }
 
-async function thumbTranslateX(thumb) {
-  // Tailwind v4 sets the standalone CSS `translate` property for `translate-x-*`, not `transform`
-  // (confirmed in task 6.1's own verification), so read that instead of parsing a transform matrix.
-  return thumb.evaluate((el) => {
-    const translate = getComputedStyle(el).translate
-    if (!translate || translate === 'none') return 0
-    return parseFloat(translate.split(' ')[0])
-  })
+/** Records each target on every animation frame, from inside the page, for `ms`.
+ *
+ * Sampling from the test side instead means every read pays a Playwright IPC round trip, and under
+ * parallel load two consecutive reads can straddle a whole 500ms transition — which is exactly how
+ * the first version of these tests passed alone and failed in the full suite. The browser collects
+ * the series itself here, so load changes how many frames land, never whether any land mid-flight.
+ *
+ * The window has to outlast the click that triggers the transition, not just the transition: a row
+ * click can take a second on its own, because Playwright waits for the panel that just expanded to
+ * stop moving before it will click anything inside it. Static frames on either side are harmless —
+ * every assertion is about how many *distinct* values the series holds, not how long it is.
+ *
+ * `translateX` reads the standalone CSS `translate` property, which is what Tailwind v4 sets for
+ * `translate-x-*` rather than `transform` (confirmed in task 6.1's own verification).
+ */
+async function startSampling(page, targets, ms = 4000) {
+  await page.evaluate(
+    ({ targets, ms }) => {
+      const series = {}
+      for (const target of targets) series[target.name] = []
+      window.__motionSamples = series
+      const deadline = performance.now() + ms
+      const tick = () => {
+        for (const target of targets) {
+          const el = document.querySelector(target.selector)
+          if (!el) continue
+          if (target.prop === 'translateX') {
+            const translate = getComputedStyle(el).translate
+            series[target.name].push(!translate || translate === 'none' ? 0 : parseFloat(translate.split(' ')[0]))
+          } else {
+            const rect = el.getBoundingClientRect()
+            series[target.name].push(Math.round((target.prop === 'top' ? rect.top : rect.height) * 100) / 100)
+          }
+        }
+        if (performance.now() < deadline) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+    },
+    { targets, ms },
+  )
 }
+
+async function collectSamples(page, ms = 950) {
+  await page.waitForTimeout(ms)
+  return page.evaluate(() => window.__motionSamples)
+}
+
+const distinct = (values) => new Set(values).size
+const last = (values) => values[values.length - 1]
+
+const OPEN_SHEET = 'div[role="dialog"][data-open]'
+const SWITCH_THUMB = `${OPEN_SHEET} [role="switch"] > span > span`
 
 /** WCAG contrast check over every element in `containerSelector` that carries its own text node,
  * compositing translucent backgrounds up the ancestor chain onto an opaque white backdrop. */
@@ -117,70 +160,68 @@ test.describe('recurring motion', () => {
     const sheet = await openEntrySheetOnTransporte(page)
     const before = await sheetRect(sheet)
 
-    const sw = sheet.getByRole('switch', { name: 'Se repite todos los meses' })
-    await sw.click()
-    const justAfter = await sheetRect(sheet)
-    await page.waitForTimeout(260)
-    const settled = await sheetRect(sheet)
+    await startSampling(page, [
+      { name: 'height', selector: OPEN_SHEET, prop: 'height' },
+      { name: 'thumb', selector: SWITCH_THUMB, prop: 'translateX' },
+    ])
+    await sheet.getByRole('switch', { name: 'Se repite todos los meses' }).click()
+    const samples = await collectSamples(page)
 
-    expect(settled.height).toBeGreaterThan(before.height + 20)
-    expect(Math.abs(justAfter.height - settled.height)).toBeLessThanOrEqual(1)
+    // Only two values ever exist: before the toggle and after it. No frame lands in between.
+    expect(distinct(samples.height)).toBeLessThanOrEqual(2)
+    expect(distinct(samples.thumb)).toBeLessThanOrEqual(2)
+    expect(last(samples.height)).toBeGreaterThan(before.height + 20)
+    expect(last(samples.thumb)).toBeCloseTo(20, 0)
   })
 
   test('reduced motion: the definition sheet is at rest in the first frame', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/demo')
     await page.locator('button[aria-controls="upcoming-charges-panel"]').click()
-    const row = page.locator('#upcoming-charges-panel').getByRole('button', { name: /^Alquiler ·/ })
-    await row.click()
-    const sheet = dialog(page)
-    await expect(sheet).toBeVisible()
 
-    const justAfter = await sheetRect(sheet)
-    await page.waitForTimeout(600)
-    const settled = await sheetRect(sheet)
-    expect(Math.abs(justAfter.top - settled.top)).toBeLessThanOrEqual(1)
+    await startSampling(page, [{ name: 'top', selector: OPEN_SHEET, prop: 'top' }])
+    await page.locator('#upcoming-charges-panel').getByRole('button', { name: /^Alquiler ·/ }).click()
+    const samples = await collectSamples(page)
+
+    // Two positions at most, and nothing in between: the off-screen offset the panel mounts at for
+    // a frame or two (base-ui applies the starting style, then drops it) and the resting position it
+    // snaps to. An animated open fills the gap between those two with intermediate positions; with
+    // `transition: none` the panel is simply never painted anywhere but off-screen or at rest.
+    expect(samples.top.length).toBeGreaterThan(3)
+    expect(distinct(samples.top)).toBeLessThanOrEqual(2)
+    expect(last(samples.top)).toBe(Math.min(...samples.top))
   })
 
   test('without reduced motion, the switch thumb and the revealed field animate over frames', async ({ page }) => {
     const sheet = await openEntrySheetOnTransporte(page)
     const before = await sheetRect(sheet)
 
-    const sw = sheet.getByRole('switch', { name: 'Se repite todos los meses' })
-    const thumb = sw.locator('[class*="size-5"]')
-    await sw.click()
-    const midHeight = (await sheetRect(sheet)).height
-    // `--ease-spring` overshoots before settling, so two close samples during the transition are
-    // compared for any change rather than assumed to grow monotonically toward the resting value.
-    const x1 = await thumbTranslateX(thumb)
-    await page.waitForTimeout(40)
-    const x2 = await thumbTranslateX(thumb)
-    await page.waitForTimeout(300)
-    const settled = await sheetRect(sheet)
-    const settledX = await thumbTranslateX(thumb)
+    await startSampling(page, [
+      { name: 'height', selector: OPEN_SHEET, prop: 'height' },
+      { name: 'thumb', selector: SWITCH_THUMB, prop: 'translateX' },
+    ])
+    await sheet.getByRole('switch', { name: 'Se repite todos los meses' }).click()
+    const samples = await collectSamples(page)
 
-    expect(settled.height).toBeGreaterThan(before.height + 20)
-    expect(midHeight).toBeLessThan(settled.height - 2)
-    expect(x1).not.toBe(x2)
-    expect(settledX).toBeCloseTo(20, 0)
+    // Intermediate values exist, so both travelled rather than jumping. `--ease-spring` overshoots
+    // before settling, so the series is checked for intermediate frames, not for monotonic growth.
+    expect(distinct(samples.height)).toBeGreaterThanOrEqual(3)
+    expect(distinct(samples.thumb)).toBeGreaterThanOrEqual(3)
+    expect(last(samples.height)).toBeGreaterThan(before.height + 20)
+    expect(last(samples.thumb)).toBeCloseTo(20, 0)
   })
 
   test('without reduced motion, the definition sheet slides in over frames', async ({ page }) => {
     await page.goto('/demo')
     await page.locator('button[aria-controls="upcoming-charges-panel"]').click()
-    const row = page.locator('#upcoming-charges-panel').getByRole('button', { name: /^Alquiler ·/ })
-    await row.click()
-    const sheet = dialog(page)
-    await expect(sheet).toBeVisible()
 
-    const early = await sheetRect(sheet)
-    await page.waitForTimeout(150)
-    const mid = await sheetRect(sheet)
-    await page.waitForTimeout(500)
-    const settled = await sheetRect(sheet)
+    await startSampling(page, [{ name: 'top', selector: OPEN_SHEET, prop: 'top' }])
+    await page.locator('#upcoming-charges-panel').getByRole('button', { name: /^Alquiler ·/ }).click()
+    const samples = await collectSamples(page)
 
-    expect(Math.abs(early.top - settled.top)).toBeGreaterThan(20)
-    expect(Math.abs(mid.top - settled.top)).toBeGreaterThan(2)
+    expect(distinct(samples.top)).toBeGreaterThanOrEqual(3)
+    // It comes up from below, so the first frames sit lower on screen than the resting position.
+    expect(Math.max(...samples.top)).toBeGreaterThan(last(samples.top))
   })
 })
 

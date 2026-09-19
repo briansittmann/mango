@@ -85,6 +85,10 @@ function prefersReducedMotion(): boolean {
 }
 
 const DRAG_MOVE_THRESHOLD_PX = 4
+/** Two layers, because one blur can only read as either contact or height: the tight one pins the
+ *  card's edge to the list, the wide one is the height it was lifted to. */
+const LIFTED_SHADOW =
+  '0 2px 8px -2px var(--lift-shadow), 0 26px 50px -12px var(--lift-shadow), 0 0 0 1px var(--lift-rim)'
 const AUTO_SCROLL_MARGIN_PX = 64
 const AUTO_SCROLL_MAX_SPEED_PX = 12
 
@@ -290,10 +294,12 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     }
     if (!displayedOrder) setDisplayedOrder(order)
     node.style.willChange = 'transform'
-    node.style.transition = 'none'
+    // Only `box-shadow` is transitioned, so the lift eases in while the transform keeps tracking
+    // the pointer 1:1 — a transition on transform would lag the card behind the finger.
+    node.style.transition = reducedMotion ? 'none' : `box-shadow 200ms var(--ease-spring)`
     // Reduced motion drops the lift scale; the held card still tracks the pointer 1:1 (D12).
-    node.style.transform = reducedMotion ? 'translateY(0px)' : 'translateY(0px) scale(1.02)'
-    node.style.boxShadow = '0 20px 40px -12px var(--sheet-shadow)'
+    node.style.transform = reducedMotion ? 'translateY(0px)' : 'translateY(0px) scale(1.03)'
+    node.style.boxShadow = LIFTED_SHADOW
     setDragVisual({ categoryId, startIndex: index, targetIndex: index, rowHeight })
   }
 
@@ -309,7 +315,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     else if (rawDelta > maxY) visualY = maxY + rubberBand(rawDelta - maxY, gesture.rowHeight)
 
     const node = cardNodeRefs.current.get(gesture.categoryId)
-    if (node) node.style.transform = gesture.reducedMotion ? `translateY(${visualY}px)` : `translateY(${visualY}px) scale(1.02)`
+    if (node) node.style.transform = gesture.reducedMotion ? `translateY(${visualY}px)` : `translateY(${visualY}px) scale(1.03)`
 
     // Every card is collapsed to the same height in this mode, so the target index is a
     // division rather than a per-card measurement or hit test (D5, Risks). A future addition
@@ -380,19 +386,22 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     }
     node.getBoundingClientRect() // force reflow: paint the starting position before animating away from it
     requestAnimationFrame(() => {
-      node.style.transition = 'transform 260ms var(--ease-spring)'
+      // The shadow lands with the card instead of being cut at the end of the settle.
+      node.style.transition = 'transform 260ms var(--ease-spring), box-shadow 260ms ease-out'
       node.style.transform = 'translateY(0px) scale(1)'
+      node.style.boxShadow = ''
     })
-    node.addEventListener(
-      'transitionend',
-      () => {
-        node.style.transition = ''
-        node.style.transform = ''
-        node.style.willChange = ''
-        node.style.boxShadow = ''
-      },
-      { once: true },
-    )
+    const clear = (event: TransitionEvent) => {
+      // Both properties settle together, so waiting on the transform keeps the shadow's own
+      // `transitionend` from clearing the inline styles while the card is still travelling.
+      if (event.propertyName !== 'transform') return
+      node.removeEventListener('transitionend', clear)
+      node.style.transition = ''
+      node.style.transform = ''
+      node.style.willChange = ''
+      node.style.boxShadow = ''
+    }
+    node.addEventListener('transitionend', clear)
   }
 
   function endDrag(event: ReactPointerEvent) {
@@ -892,6 +901,11 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                 distance={24}
                 duration={0.3}
                 delay={cascadeDelay(group.id)}
+                // The entrance animation leaves an inline transform here, and any transform makes
+                // this wrapper a stacking context — which traps the held card's own z-index inside
+                // it, so the card slid *under* the cards below it. The lift has to be raised on the
+                // element that owns the context, not on the card within it.
+                className={cn(isDragging && 'relative z-20')}
               >
                 <div
                   ref={(node) => {
@@ -901,7 +915,9 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                   className={cn(
                     'group relative',
                     reordering && !isDragging && 'transition-transform duration-200 ease-in-out motion-reduce:transition-none',
-                    isDragging && 'z-10',
+                    // The lift's shadows are drawn on this wrapper, not on the card inside it, so it
+                    // needs the card's own radius or they trace a square around a rounded card.
+                    isDragging && 'z-10 rounded-card',
                   )}
                   style={!isDragging && shift ? { transform: `translateY(${shift}px)` } : undefined}
                 >

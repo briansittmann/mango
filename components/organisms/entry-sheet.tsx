@@ -443,7 +443,10 @@ export function EntrySheet<V>({
       }
     >
       <form id={formId} onSubmit={handleSubmit} aria-busy={disabled} className="flex min-h-0 flex-1 flex-col">
-        <Drawer.Content className="flex flex-1 flex-col overflow-y-auto overscroll-contain">
+        {/* `pb-4` keeps the last row off the panel's bottom edge and gives the keyboard-aware
+            scroll something to scroll into, so a field focused at the very bottom — the revealed
+            "número de pagos" in particular — settles clear of the edge rather than flush against it. */}
+        <Drawer.Content className="flex flex-1 flex-col overflow-y-auto overscroll-contain pb-4">
           {error ? (
             <div role="alert" className="mx-inset mt-3 rounded-inner bg-destructive/[0.08] px-4 py-3 text-body-md text-destructive-ink">
               {t(error === 'save' ? 'errorGuardar' : 'errorEliminar')}

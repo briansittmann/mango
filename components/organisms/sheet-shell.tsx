@@ -89,7 +89,11 @@ export function SheetShell({
               anchored && 'sm:bg-transparent sm:backdrop-blur-none',
             )}
           />
-          <Drawer.Viewport className="fixed inset-0 z-50 flex items-end justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          {/* `Drawer.VirtualKeyboardProvider` measures the software keyboard and publishes its
+              inset on this element as `--drawer-keyboard-inset`, but it never applies it — that is
+              the app's job. Without consuming it the panel keeps its full height behind the
+              keyboard, so its last rows are invisible and untappable while a field is focused. */}
+          <Drawer.Viewport className="fixed inset-0 z-50 flex items-end justify-center px-3 pb-[calc(max(0.75rem,env(safe-area-inset-bottom))+var(--drawer-keyboard-inset,0px))]">
             <Drawer.Popup
               ref={popupRef}
               initialFocus={initialFocus}
@@ -99,7 +103,7 @@ export function SheetShell({
                 return finalFocus?.current ?? true
               }}
               className={cn(
-                'liquid-glass relative mx-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[440px] flex-col overflow-hidden rounded-sheet outline-none',
+                'liquid-glass relative mx-auto flex max-h-[calc(100dvh-1.5rem-var(--drawer-keyboard-inset,0px))] w-full max-w-[440px] flex-col overflow-hidden rounded-sheet outline-none',
                 'translate-y-(--drawer-swipe-movement-y)',
                 'transition-transform duration-500 ease-spring motion-reduce:transition-none',
                 'data-starting-style:translate-y-[calc(100%+1.5rem)] data-ending-style:translate-y-[calc(100%+1.5rem)]',

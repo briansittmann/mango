@@ -66,6 +66,12 @@
   --positive: light-dark(#15803D, #4ADE80);
   --handle: light-dark(#D1D5DB, #374151);
   --sheet-shadow: light-dark(rgba(13, 17, 14, 0.12), rgba(0, 0, 0, 0.4));
+  /* Held-card elevation. Darker than `--sheet-shadow` because it is drawn against the cards it is
+     lifted over, not against the scrim: a sheet only needs to separate from a dimmed page. */
+  --lift-shadow: light-dark(rgba(13, 17, 14, 0.3), rgba(0, 0, 0, 0.72));
+  /* A black shadow on a near-black page reads as nothing, so in dark the held card is separated by
+     catching more light instead — the same trick `--raised-highlight` uses. Absent in light. */
+  --lift-rim: light-dark(transparent, rgba(255, 255, 255, 0.14));
   --raised-highlight: light-dark(transparent, rgba(255, 255, 255, 0.05));
 
   --cat-naranja_calido: light-dark(#D4661A, #E87924);

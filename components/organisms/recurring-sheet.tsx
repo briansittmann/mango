@@ -268,7 +268,7 @@ export function RecurringSheet({
           id={formId}
           onSubmit={handleSave}
           aria-busy={busy}
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-4"
         >
           {error ? (
             <div role="alert" className="mx-inset mt-3 rounded-inner bg-destructive/[0.08] px-4 py-3 text-body-md text-destructive-ink">
