@@ -95,10 +95,14 @@ The sheet SHALL present the category's name, colour and budget together on one s
 
 **Panel:** it SHALL follow the entry sheet's appearance — a floating panel at most 440px wide, 12–16px from the left, right and bottom edges plus the bottom safe area on a narrow viewport, all four corners rounded, a drag handle centred at the top, and a dimmed scrim behind it. Every label, value, caption, icon and button SHALL be drawn at full opacity.
 
-**Header**, from the leading edge to the trailing edge:
+**Header**, from the leading edge to the trailing edge, on a single row:
 - a "Cancelar" action
-- the title, naming the category, with the category's colour dot and name as a caption under it
+- the title: the category's colour dot immediately followed by its name
 - the primary action, "Guardar"
+
+The header SHALL NOT repeat the name, the dot or both as a caption under the title.
+
+The title's dot SHALL show the colour **currently selected in the picker**, not the saved one: choosing another colour SHALL recolour it immediately, before "Guardar" is activated, and cancelling SHALL leave the category's saved colour untouched. It is the sheet's only preview of the colour outside the picker itself.
 
 **Body**, in this order:
 - the name field
@@ -113,7 +117,7 @@ The three fields SHALL be the only things "Guardar" writes. The two rows under t
 
 **Colour:** the brand colour SHALL appear only on the primary action and focus indicators, and the destructive colour only on the delete action and its confirmation. The warning colour SHALL NOT appear. The reorder row SHALL carry neither the brand nor the destructive colour.
 
-At a 390px-wide viewport, with the longest label of either language, a category name of eight words, and text scaled to 200%, no content SHALL be clipped and the page SHALL NOT scroll horizontally.
+At a 390px-wide viewport, with the longest label of either language, a category name of eight words, and text scaled to 200%, no content SHALL be clipped and the page SHALL NOT scroll horizontally. The title is the one exception: rather than widen the header, it SHALL truncate with an ellipsis, so that "Cancelar" and "Guardar" always stay inside the panel and reachable however long the name being typed is.
 
 #### Scenario: Order and geometry
 
@@ -126,7 +130,20 @@ At a 390px-wide viewport, with the longest label of either language, a category 
 
 - **WHEN** the sheet is open for "comida", in Spanish and then in English
 - **THEN** its accessible name includes "Comida" and then "Food"
-- **AND** the header caption shows the category's colour dot next to its name
+- **AND** the title shows the category's colour dot immediately before its name, on the same row as "Cancelar" and "Guardar"
+- **AND** no caption under the title repeats the name or the dot
+
+#### Scenario: The title's dot follows the picker, not the saved colour
+
+- **WHEN** the visitor opens the sheet for "comida" and selects a different colour in the picker without saving
+- **THEN** the dot beside the title takes the newly selected colour straight away
+- **AND** the "comida" card behind the sheet still shows its saved colour
+
+#### Scenario: A long name keeps the header's actions reachable
+
+- **WHEN** the visitor types a name of eight words into the name field at a 390px-wide viewport
+- **THEN** the title truncates with an ellipsis
+- **AND** "Cancelar" and "Guardar" are both still fully inside the panel
 
 #### Scenario: One surface only
 

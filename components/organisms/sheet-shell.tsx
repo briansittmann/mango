@@ -12,7 +12,8 @@ export type SheetShellProps = {
   leading: ReactNode
   title: ReactNode
   trailing: ReactNode
-  caption: ReactNode
+  /** Omitted when the title already carries everything the sheet has to say about its subject. */
+  caption?: ReactNode
   children: ReactNode
   /** Above `sm`, anchor the panel to the control that opened it instead of a bottom sheet (D4). */
   anchored?: boolean
@@ -118,13 +119,17 @@ export function SheetShell({
               )}
             >
               <span aria-hidden className={cn('mx-auto mt-2.5 h-1 w-9 shrink-0 rounded-full bg-handle', anchored && 'sm:hidden')} />
-              <header className="grid min-h-14 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-x-2 px-inset pb-1.5">
+              {/* `minmax(0,auto)` on the title, not `auto`: an `auto` track sizes to its content and
+                  pushes the cancel and save controls off the panel once the title is long. */}
+              <header className="grid min-h-14 shrink-0 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-x-2 px-inset pb-1.5">
                 <div className="flex min-h-target items-center justify-self-start">{leading}</div>
-                <Drawer.Title className="font-display text-headline-sm text-foreground">{title}</Drawer.Title>
+                <Drawer.Title className="min-w-0 truncate font-display text-headline-sm text-foreground">{title}</Drawer.Title>
                 <div className="flex min-h-target items-center justify-self-end">{trailing}</div>
-                <Drawer.Description className="col-span-3 flex items-center justify-center gap-1.5 whitespace-nowrap text-body-sm text-muted-foreground">
-                  {caption}
-                </Drawer.Description>
+                {caption ? (
+                  <Drawer.Description className="col-span-3 flex items-center justify-center gap-1.5 whitespace-nowrap text-body-sm text-muted-foreground">
+                    {caption}
+                  </Drawer.Description>
+                ) : null}
               </header>
               {children}
             </Drawer.Popup>

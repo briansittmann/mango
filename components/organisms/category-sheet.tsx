@@ -180,7 +180,12 @@ export function CategorySheet({
           {t('cancelar')}
         </button>
       }
-      title={title}
+      title={
+        <span className="flex min-w-0 items-center justify-center gap-2">
+          <CategoryDot color={fieldState.color} className="size-2.5" />
+          <span className="truncate">{title}</span>
+        </span>
+      }
       trailing={
         step === 'form' ? (
           <button
@@ -212,12 +217,6 @@ export function CategorySheet({
             {t('cancelar')}
           </button>
         )
-      }
-      caption={
-        <>
-          <CategoryDot color={fieldState.color} className="size-2 shrink-0" />
-          <span className="truncate">{title}</span>
-        </>
       }
     >
       {step === 'form' ? (
