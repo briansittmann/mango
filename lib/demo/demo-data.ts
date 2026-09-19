@@ -1,7 +1,9 @@
 import { getBudgetStatus } from '@/lib/data/budget'
 import type { CategoryColor, DashboardData, ExpenseGroup } from '@/lib/data/dashboard'
+import type { RecurringDefinition } from '@/lib/data/recurring'
 import { deriveDemoData, noDemoEdits } from '@/lib/demo/demo-expenses'
 import { noDemoCategoryEdits } from '@/lib/demo/demo-categories'
+import { noDemoRecurringEdits } from '@/lib/demo/demo-recurring'
 
 type Locale = 'es' | 'en'
 type Localized = { es: string; en: string }
@@ -46,13 +48,46 @@ function name(locale: Locale, key: keyof typeof NAMES): string {
   return NAMES[key][locale]
 }
 
+// The six definitions backing the six existing fixed charges (proposal.md "Demo"). Each
+// `expectedAmount` equals its charge's current amount and no charge's day or charged state
+// changes — "Seguro" is the only one with an end, so its progress is on screen at first load
+// without inventing a row.
+const RECURRING_DEFINITIONS: {
+  id: string
+  nameKey: keyof typeof NAMES
+  categoryId: string
+  day: number
+  expectedAmount: number
+  repetitions?: { total: number; done: number }
+}[] = [
+  { id: 'def-alquiler', nameKey: 'alquiler', categoryId: 'vivienda', day: 1, expectedAmount: 820 },
+  { id: 'def-internet', nameKey: 'internet', categoryId: 'vivienda', day: 3, expectedAmount: 45 },
+  { id: 'def-seguro', nameKey: 'seguro', categoryId: 'vivienda', day: 8, expectedAmount: 35, repetitions: { total: 10, done: 4 } },
+  { id: 'def-parking', nameKey: 'parking', categoryId: 'transporte', day: 15, expectedAmount: 50 },
+  { id: 'def-limpieza', nameKey: 'limpieza', categoryId: 'hogar', day: 20, expectedAmount: 35 },
+  { id: 'def-gimnasio', nameKey: 'gimnasio', categoryId: 'salud', day: 22, expectedAmount: 40 },
+]
+
+export function buildDemoRecurringDefinitions(locale: Locale): RecurringDefinition[] {
+  return RECURRING_DEFINITIONS.map((definition) => ({
+    id: definition.id,
+    name: name(locale, definition.nameKey),
+    expectedAmount: definition.expectedAmount,
+    categoryId: definition.categoryId,
+    day: definition.day,
+    active: true,
+    reminder: { active: false, daysBefore: 1 },
+    repetitions: definition.repetitions ?? null,
+  }))
+}
+
 function buildCategory(
   locale: Locale,
   id: string,
   nameKey: keyof typeof NAMES,
   color: CategoryColor,
   amount: number | null,
-  items: { nameKey: keyof typeof NAMES; amount: number; date: string; fixed?: { day: number; charged: boolean } }[],
+  items: { nameKey: keyof typeof NAMES; amount: number; date: string; fixed?: { definitionId: string; day: number; charged: boolean } }[],
 ): ExpenseGroup {
   const expenses = items.map((item, index) => ({
     id: `${id}-${index}`,
@@ -77,15 +112,15 @@ function buildCategory(
 export function buildDemoData(locale: Locale): DashboardData {
   const categoryGroups: ExpenseGroup[] = [
     buildCategory(locale, 'vivienda', 'vivienda', 'gris_oscuro', null, [
-      { nameKey: 'alquiler', amount: 820, date: '2026-09-01T09:00:00Z', fixed: { day: 1, charged: true } },
-      { nameKey: 'internet', amount: 45, date: '2026-09-03T09:00:00Z', fixed: { day: 3, charged: true } },
-      { nameKey: 'seguro', amount: 35, date: '2026-09-08T09:00:00Z', fixed: { day: 8, charged: true } },
+      { nameKey: 'alquiler', amount: 820, date: '2026-09-01T09:00:00Z', fixed: { definitionId: 'def-alquiler', day: 1, charged: true } },
+      { nameKey: 'internet', amount: 45, date: '2026-09-03T09:00:00Z', fixed: { definitionId: 'def-internet', day: 3, charged: true } },
+      { nameKey: 'seguro', amount: 35, date: '2026-09-08T09:00:00Z', fixed: { definitionId: 'def-seguro', day: 8, charged: true } },
     ]),
     buildCategory(locale, 'salud', 'salud', 'verde_profundo', null, [
-      { nameKey: 'gimnasio', amount: 40, date: '2026-09-22T11:00:00Z', fixed: { day: 22, charged: false } },
+      { nameKey: 'gimnasio', amount: 40, date: '2026-09-22T11:00:00Z', fixed: { definitionId: 'def-gimnasio', day: 22, charged: false } },
     ]),
     buildCategory(locale, 'hogar', 'hogar', 'gris_calido', null, [
-      { nameKey: 'limpieza', amount: 35, date: '2026-09-20T10:00:00Z', fixed: { day: 20, charged: false } },
+      { nameKey: 'limpieza', amount: 35, date: '2026-09-20T10:00:00Z', fixed: { definitionId: 'def-limpieza', day: 20, charged: false } },
       { nameKey: 'decoracion', amount: 60, date: '2026-09-09T10:00:00Z' },
     ]),
     buildCategory(locale, 'comida', 'comida', 'naranja_calido', 400, [
@@ -99,7 +134,7 @@ export function buildDemoData(locale: Locale): DashboardData {
     ]),
     buildCategory(locale, 'transporte', 'transporte', 'azul_apagado', 100, [
       { nameKey: 'gasolina', amount: 80, date: '2026-09-04T08:00:00Z' },
-      { nameKey: 'parking', amount: 50, date: '2026-09-15T08:00:00Z', fixed: { day: 15, charged: false } },
+      { nameKey: 'parking', amount: 50, date: '2026-09-15T08:00:00Z', fixed: { definitionId: 'def-parking', day: 15, charged: false } },
     ]),
     buildCategory(locale, 'compras', 'compras', 'granate', null, [
       { nameKey: 'ropa', amount: 65, date: '2026-09-06T15:00:00Z' },
@@ -165,5 +200,5 @@ export function buildDemoData(locale: Locale): DashboardData {
     history,
   }
 
-  return deriveDemoData(sample, noDemoEdits, noDemoCategoryEdits)
+  return deriveDemoData(sample, buildDemoRecurringDefinitions(locale), noDemoEdits, noDemoCategoryEdits, noDemoRecurringEdits).data
 }

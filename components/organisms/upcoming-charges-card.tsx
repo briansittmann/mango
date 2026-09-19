@@ -13,6 +13,7 @@ type UpcomingChargesCardProps = {
   currency: string
   open: boolean
   onToggle: () => void
+  onOpenDefinition?: (charge: UpcomingCharge) => void
 }
 
 const PANEL_ID = 'upcoming-charges-panel'
@@ -26,8 +27,9 @@ export function selectNextCharge(charges: UpcomingCharge[]): UpcomingCharge | nu
   return pool.reduce((lowest, charge) => (charge.day < lowest.day ? charge : lowest))
 }
 
-export function UpcomingChargesCard({ charges, currency, open, onToggle }: UpcomingChargesCardProps) {
+export function UpcomingChargesCard({ charges, currency, open, onToggle, onOpenDefinition }: UpcomingChargesCardProps) {
   const t = useTranslations('proximosCobros')
+  const tRecurrente = useTranslations('gastoRecurrente')
   const format = useFormatter()
 
   if (charges.length === 0) return null
@@ -67,24 +69,46 @@ export function UpcomingChargesCard({ charges, currency, open, onToggle }: Upcom
           {charges.map((charge) => {
             const amountText = format.number(charge.amount, { ...currencyFormatOptions, currency })
             const stateText = t(charge.charged ? 'cobrado' : 'pendiente')
-            const rowLabel = `${t('fila', { nombre: charge.name, dia: charge.day })}, ${amountText}, ${stateText}`
+            const showExpected = charge.amount !== charge.expectedAmount
+            const progressText = charge.progress
+              ? tRecurrente('progreso', { hechas: charge.progress.done, total: charge.progress.total })
+              : null
+            const expectedText = showExpected
+              ? tRecurrente('esperado', { monto: format.number(charge.expectedAmount, { ...currencyFormatOptions, currency }) })
+              : null
+            // The progress and the expected-amount caption are visible but sit outside the
+            // aria-label's plain text, so a screen reader would otherwise skip them entirely
+            // (`upcoming-charges` → *State reaches assistive technology*).
+            const rowLabel = [`${t('fila', { nombre: charge.name, dia: charge.day })}`, amountText, stateText, progressText, expectedText]
+              .filter(Boolean)
+              .join(', ')
 
             return (
-              <div
+              <button
                 key={charge.id}
+                type="button"
                 aria-label={rowLabel}
-                className={cn('flex min-h-row items-center gap-3 px-inset', charge.charged && 'opacity-[0.55]')}
+                disabled={!onOpenDefinition}
+                onClick={onOpenDefinition ? () => onOpenDefinition(charge) : undefined}
+                className={cn(
+                  'pressable flex min-h-row w-full items-center gap-3 px-inset text-left',
+                  charge.charged && 'opacity-[0.55]',
+                )}
               >
-                <div aria-hidden className="flex flex-1 items-center gap-3">
-                  <DayChip day={charge.day} />
-                  <CategoryDot color={charge.color} className="size-1.5" />
-                  <span className="flex min-w-0 flex-1 items-center gap-1">
+                <DayChip day={charge.day} />
+                <CategoryDot color={charge.color} className="size-1.5" />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="flex items-center gap-1">
                     <span className="truncate text-body-lg text-foreground">{charge.name}</span>
                     {charge.charged ? <Check className="size-3.5 shrink-0 text-foreground" /> : null}
                   </span>
-                  <Money amount={charge.amount} currency={currency} className="shrink-0 text-tabular-numeric-md text-foreground" />
-                </div>
-              </div>
+                  {expectedText ? <span className="truncate text-body-sm text-muted-foreground">{expectedText}</span> : null}
+                </span>
+                <span className="flex shrink-0 flex-col items-end">
+                  <Money amount={charge.amount} currency={currency} className="text-tabular-numeric-md text-foreground" />
+                  {progressText ? <span className="text-body-sm text-muted-foreground">{progressText}</span> : null}
+                </span>
+              </button>
             )
           })}
         </div>

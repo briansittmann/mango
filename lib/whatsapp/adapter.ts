@@ -48,6 +48,22 @@ async function handleMessage(message: WhatsAppMessage): Promise<void> {
 }
 
 /**
+ * A `recurring-discrepancy` reply turned into a question, held across turns. `recurring-expenses`
+ * → *The bot asks whether a change is permanent, and the adapter owns the answer*: the message
+ * logic (`lib/bot/logic.ts`) only reports the discrepancy: it never asks anything and never
+ * updates a definition. Holding this — and answering it — is the adapter's job, because it is
+ * WhatsApp-specific conversation state, not something the platform-agnostic logic should know
+ * about (D1's "no answer is not a state to store" applies to the *definition*, not to this —
+ * this pending decision itself is exactly the state the adapter is responsible for holding).
+ */
+type PendingRecurringDecision = {
+  userId: string
+  definitionId: string
+  expectedAmount: number
+  loadedAmount: number
+}
+
+/**
  * This is where **how** the bot replies gets decided: text with an Undo
  * button for the first 15 charges, emoji reaction from the 16th on
  * (progressive confirmation, §3). The bot logic doesn't take part in that
@@ -55,6 +71,17 @@ async function handleMessage(message: WhatsAppMessage): Promise<void> {
  */
 async function sendReply(phone: string, reply: BotReply): Promise<void> {
   if (reply.kind === 'none') return
+
+  if (reply.kind === 'recurring-discrepancy') {
+    // TODO (recurring-expenses): turn this into the follow-up question ("¿Son {loadedAmount}
+    // todos los meses?"), store a `PendingRecurringDecision` for this phone number, and resolve
+    // it on the next turn: an affirmative answer updates the definition's expected amount via
+    // `actions.recurring`'s eventual Supabase-backed equivalent; silence or a negative answer
+    // both clear the pending decision without touching the definition — this cycle's charge
+    // simply stands as the exception, exactly as the message logic already left it.
+    console.info(`[whatsapp] recurring discrepancy pending reply to ${maskPhone(phone)}`)
+    return
+  }
 
   // TODO: POST to the Cloud API with WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID,
   // choosing message or reaction based on the user's `cargas_confirmadas` and

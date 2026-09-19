@@ -13,13 +13,34 @@ export type IncomingMessage = {
   messageId: string
 }
 
-export type BotReply = { kind: 'text'; text: string } | { kind: 'none' }
+export type BotReply =
+  | { kind: 'text'; text: string }
+  | { kind: 'none' }
+  | {
+      /**
+       * `recurring-expenses` → *The bot asks whether a change is permanent, and the adapter
+       * owns the answer*. Returned once this cycle's pending charge for `definitionId` has
+       * already been completed and confirmed at `loadedAmount` — this reply only *reports*
+       * that it differs from the definition's `expectedAmount`. It decides nothing: no
+       * question is asked and no definition is updated here. That belongs to the adapter
+       * (`lib/whatsapp/adapter.ts`), which owns the conversation's state across turns.
+       */
+      kind: 'recurring-discrepancy'
+      definitionId: string
+      definitionName: string
+      expectedAmount: number
+      loadedAmount: number
+    }
 
 export async function processMessage(message: IncomingMessage): Promise<BotReply> {
   // TODO: Gemini parser + Zod validation, transaction charge (category that
   // doesn't match → `otros`, without asking again) and advisor mode (§3, §5).
   // TODO: intercept the user with `onboarding_completo = false` and trigger
   // the wizard before parsing anything (§11).
+  // TODO: when the loaded amount differs from a matched definition's expected amount,
+  // complete and confirm this cycle's charge at the loaded amount and return
+  // `{ kind: 'recurring-discrepancy', ... }` instead of `{ kind: 'text' }` — never ask
+  // anything here and never touch the definition (recurring-expenses, see `BotReply` above).
   void message
   return { kind: 'none' }
 }

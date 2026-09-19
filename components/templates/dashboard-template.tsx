@@ -28,18 +28,21 @@ import { CategorySheet } from '@/components/organisms/category-sheet'
 import { EntrySheet, expenseEntry } from '@/components/organisms/entry-sheet'
 import { FreeMarginCard } from '@/components/organisms/free-margin-card'
 import { MonthlyBarsChart } from '@/components/organisms/monthly-bars-chart'
+import { RecurringSheet } from '@/components/organisms/recurring-sheet'
 import { SummaryGroup } from '@/components/organisms/summary-group'
 import { UpcomingChargesCard } from '@/components/organisms/upcoming-charges-card'
 import { AnimatedContent } from '@/components/ui/animated-content'
 import type { DashboardActions, DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
 import type { CategoryDraft } from '@/lib/data/categories'
 import type { ExpenseDraft } from '@/lib/data/expenses'
+import type { RecurringDefinition, RecurringDraft } from '@/lib/data/recurring'
 import type { UpcomingCharge } from '@/lib/data/upcoming-charges'
 
 type DashboardTemplateProps = {
   data: DashboardData
   actions: DashboardActions
   charges: UpcomingCharge[]
+  definitions: RecurringDefinition[]
   notice?: ReactNode
 }
 
@@ -108,12 +111,13 @@ function neighbourShift(index: number, visual: DragVisual): number {
   return index >= targetIndex && index < startIndex ? rowHeight : 0
 }
 
-export function DashboardTemplate({ data, actions, charges, notice }: DashboardTemplateProps) {
+export function DashboardTemplate({ data, actions, charges, definitions, notice }: DashboardTemplateProps) {
   const t = useTranslations('dashboard')
   const tResumen = useTranslations('resumen')
   const tMenu = useTranslations('menuCuenta')
   const tHojaGasto = useTranslations('hojaGasto')
   const tHojaCategoria = useTranslations('hojaCategoria')
+  const tRecurrente = useTranslations('gastoRecurrente')
   const tReordenar = useTranslations('modoReordenar')
   const format = useFormatter()
   const [openIds, setOpenIds] = useState<Set<string>>(new Set())
@@ -122,6 +126,7 @@ export function DashboardTemplate({ data, actions, charges, notice }: DashboardT
   const [titleInView, setTitleInView] = useState(true)
   const [sheet, setSheet] = useState<{ open: boolean; target: SheetTarget | null }>({ open: false, target: null })
   const [categorySheet, setCategorySheet] = useState<{ open: boolean; target: ExpenseGroup | null }>({ open: false, target: null })
+  const [recurringSheet, setRecurringSheet] = useState<{ open: boolean; charge: UpcomingCharge | null }>({ open: false, charge: null })
   const [statusMessage, setStatusMessage] = useState('')
   const [reordering, setReordering] = useState(false)
   const [displayedOrder, setDisplayedOrder] = useState<string[] | null>(null)
@@ -156,6 +161,10 @@ export function DashboardTemplate({ data, actions, charges, notice }: DashboardT
 
   function openCategorySheet(group: ExpenseGroup) {
     setCategorySheet({ open: true, target: group })
+  }
+
+  function openRecurringSheet(charge: UpcomingCharge) {
+    setRecurringSheet({ open: true, charge })
   }
 
   function handleEnterReorder() {
@@ -500,6 +509,32 @@ export function DashboardTemplate({ data, actions, charges, notice }: DashboardT
     setStatusMessage(sheet.target.mode === 'create' ? tHojaGasto('gastoAnadido') : tHojaGasto('cambiosGuardados'))
   }
 
+  async function handleSaveRecurrence(draft: RecurringDraft) {
+    if (!actions.recurring || sheet.target?.mode !== 'create') return
+    await actions.recurring.create(sheet.target.group.id, draft)
+  }
+
+  async function handleSaveDefinition(definitionId: string, draft: RecurringDraft) {
+    if (!actions.recurring) return
+    await actions.recurring.update(definitionId, draft)
+    setRecurringSheet((prev) => ({ ...prev, open: false }))
+    setStatusMessage(
+      tRecurrente('cambiosGuardados', { nombre: draft.name, monto: format.number(draft.expectedAmount, { ...currencyFormatOptions, currency }) }),
+    )
+  }
+
+  async function handleStopDefinition(definitionId: string) {
+    if (!actions.recurring) return
+    await actions.recurring.stop(definitionId)
+    setRecurringSheet((prev) => ({ ...prev, open: false }))
+  }
+
+  async function handleDeleteDefinition(definitionId: string) {
+    if (!actions.recurring) return
+    await actions.recurring.delete(definitionId)
+    setRecurringSheet((prev) => ({ ...prev, open: false }))
+  }
+
   const sheetGroup = sheet.target?.group ?? data.expenses.groups[0]
   const sheetContext = {
     kind: 'category' as const,
@@ -520,6 +555,14 @@ export function DashboardTemplate({ data, actions, charges, notice }: DashboardT
   const receivingCategories = data.expenses.groups
     .filter((group) => group.kind === 'category' && group.id !== categorySheetTarget.id)
     .map((group) => ({ id: group.id, name: group.name ?? '' }))
+
+  const recurringSheetTarget =
+    (recurringSheet.charge ? definitions.find((definition) => definition.id === recurringSheet.charge!.definitionId) : null) ??
+    definitions[0]
+  const recurringSheetCategory = recurringSheetTarget
+    ? data.expenses.groups.find((group) => group.id === recurringSheetTarget.categoryId)
+    : undefined
+  const recurringSheetCurrentAmount = recurringSheet.charge?.amount ?? recurringSheetTarget?.expectedAmount ?? 0
 
   useEffect(() => {
     const el = titleRef.current
@@ -826,6 +869,7 @@ export function DashboardTemplate({ data, actions, charges, notice }: DashboardT
             currency={currency}
             open={openIds.has(UPCOMING_CHARGES_ID)}
             onToggle={() => toggleCard(UPCOMING_CHARGES_ID)}
+            onOpenDefinition={actions.recurring ? openRecurringSheet : undefined}
           />
         </AnimatedContent>
         {/* The lane is a step, not an animation: one reflow of the list, hidden inside the
@@ -952,6 +996,7 @@ export function DashboardTemplate({ data, actions, charges, notice }: DashboardT
         initialFocusRef={initialFocusRef}
         onSave={handleSaveExpense}
         onDelete={sheet.target?.mode === 'edit' ? handleSheetDelete : undefined}
+        onSaveRecurrence={actions.recurring ? handleSaveRecurrence : undefined}
       />
       <CategorySheet
         open={categorySheet.open}
@@ -963,6 +1008,20 @@ export function DashboardTemplate({ data, actions, charges, notice }: DashboardT
         onDelete={handleDeleteCategory}
         onReorder={actions.categories ? handleEnterReorder : undefined}
       />
+      {recurringSheetTarget ? (
+        <RecurringSheet
+          open={recurringSheet.open}
+          onOpenChange={(open) => setRecurringSheet((prev) => ({ ...prev, open }))}
+          target={recurringSheetTarget}
+          categoryName={recurringSheetCategory?.name ?? ''}
+          categoryColor={recurringSheetCategory?.color ?? 'gris_calido'}
+          currency={currency}
+          currentAmount={recurringSheetCurrentAmount}
+          onSave={handleSaveDefinition}
+          onStop={handleStopDefinition}
+          onDelete={handleDeleteDefinition}
+        />
+      ) : null}
       <UndoToast />
       <div role="status" className="sr-only">
         {statusMessage}

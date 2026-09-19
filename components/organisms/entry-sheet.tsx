@@ -2,25 +2,37 @@ import { Fragment, useId, useState, type FormEvent, type RefObject } from 'react
 import { Drawer } from '@base-ui/react/drawer'
 import { Loader2, Trash2 } from 'lucide-react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
+import { currencyFormatOptions } from '@/i18n/formats'
 import { CategoryDot } from '@/components/atoms/category-dot'
+import { Collapsible } from '@/components/atoms/collapsible'
+import { Switch } from '@/components/atoms/switch'
 import { AmountField, parseAmount } from '@/components/molecules/amount-field'
 import { FieldRow } from '@/components/molecules/field-row'
+import { IntegerField, parseInteger } from '@/components/molecules/integer-field'
 import { SheetShell } from '@/components/organisms/sheet-shell'
 import { cn } from '@/lib/utils'
 import type { CategoryColor } from '@/lib/data/dashboard'
 import type { ExpenseDraft, LocalDate } from '@/lib/data/expenses'
+import type { RecurringDraft } from '@/lib/data/recurring'
 import type esMessages from '@/messages/es.json'
 
 type FieldKind = 'amount' | 'text' | 'date'
 type HojaGastoKey = keyof typeof esMessages.hojaGasto
 
-export type FieldDescriptor<V> = {
+export type TextFieldDescriptor<V> = {
   name: keyof V & string
   kind: FieldKind
   labelKey: HojaGastoKey
   placeholderKey?: HojaGastoKey
   optional?: boolean
 }
+
+/** The switch plus its revealed day/ending/count block (D3) — one composite kind, not three
+ * descriptors, because the three validate and read from each other as one unit. Renders in
+ * create mode only, and only when the sheet is given `onSaveRecurrence`. */
+export type RecurrenceFieldDescriptor = { kind: 'recurrence' }
+
+export type FieldDescriptor<V> = TextFieldDescriptor<V> | RecurrenceFieldDescriptor
 
 export type EntryConfig<V> = {
   fields: FieldDescriptor<V>[]
@@ -35,6 +47,7 @@ export const expenseEntry: EntryConfig<ExpenseDraft> = {
     { name: 'amount', kind: 'amount', labelKey: 'importe' },
     { name: 'description', kind: 'text', labelKey: 'descripcion', placeholderKey: 'opcional', optional: true },
     { name: 'date', kind: 'date', labelKey: 'fecha' },
+    { kind: 'recurrence' },
   ],
   initialFocus: 'amount',
   titleKeys: { create: 'nuevoGasto', edit: 'editarGasto' },
@@ -56,6 +69,12 @@ type EntrySheetProps<V> = {
   finalFocusRef?: RefObject<HTMLElement | null>
   onSave: (values: V) => Promise<void>
   onDelete?: () => Promise<void>
+  /**
+   * Present only when the page supplies `actions.recurring` — its presence, together with
+   * `mode === 'create'`, is what makes the recurrence field render at all. Called after `onSave`
+   * resolves, only when the switch is on; `onSave` still runs the ordinary create either way.
+   */
+  onSaveRecurrence?: (draft: RecurringDraft) => Promise<void>
 }
 
 type FieldState = Record<string, string>
@@ -72,6 +91,7 @@ function buildFieldState<V>(config: EntryConfig<V>, values: Partial<V>, locale: 
   const source = values as Record<string, unknown>
   const state: FieldState = {}
   for (const field of config.fields) {
+    if (field.kind === 'recurrence') continue
     const raw = source[field.name]
     if (field.kind === 'amount') {
       state[field.name] = typeof raw === 'number' ? formatAmountForEdit(raw, locale) : ''
@@ -85,11 +105,19 @@ function buildFieldState<V>(config: EntryConfig<V>, values: Partial<V>, locale: 
 function buildValues<V>(config: EntryConfig<V>, state: FieldState, amount: number): V {
   const result: Record<string, unknown> = {}
   for (const field of config.fields) {
+    if (field.kind === 'recurrence') continue
     if (field.kind === 'amount') result[field.name] = amount
     else if (field.kind === 'text') result[field.name] = state[field.name].trim()
     else result[field.name] = state[field.name]
   }
   return result as V
+}
+
+const RECURRENCE_ENDINGS = ['none', 'count'] as const
+type RecurrenceEnding = (typeof RECURRENCE_ENDINGS)[number]
+
+function isTextField<V>(field: FieldDescriptor<V>): field is TextFieldDescriptor<V> {
+  return field.kind !== 'recurrence'
 }
 
 export function EntrySheet<V>({
@@ -104,8 +132,10 @@ export function EntrySheet<V>({
   finalFocusRef,
   onSave,
   onDelete,
+  onSaveRecurrence,
 }: EntrySheetProps<V>) {
   const t = useTranslations('hojaGasto')
+  const tRecurrente = useTranslations('gastoRecurrente')
   const format = useFormatter()
   const locale = useLocale()
 
@@ -118,6 +148,12 @@ export function EntrySheet<V>({
   const [status, setStatus] = useState<'idle' | 'saving' | 'deleting'>('idle')
   const [error, setError] = useState<'save' | 'delete' | null>(null)
 
+  const [recurrenceOn, setRecurrenceOn] = useState(false)
+  const [recurrenceDay, setRecurrenceDay] = useState('')
+  const [recurrenceEnding, setRecurrenceEnding] = useState<RecurrenceEnding>('none')
+  const [recurrenceCount, setRecurrenceCount] = useState('')
+  const [recurrenceTouched, setRecurrenceTouched] = useState<{ day?: boolean; count?: boolean }>({})
+
   if (open !== wasOpen) {
     setWasOpen(open)
     if (open) {
@@ -127,14 +163,26 @@ export function EntrySheet<V>({
       setTouched({})
       setStatus('idle')
       setError(null)
+      setRecurrenceOn(false)
+      setRecurrenceDay(next.date ? String(Number(next.date.slice(8, 10))) : '')
+      setRecurrenceEnding('none')
+      setRecurrenceCount('')
+      setRecurrenceTouched({})
     }
   }
 
-  const amountField = config.fields.find((field) => field.kind === 'amount')
-  const amountValue = amountField ? parseAmount(fieldState[amountField.name] ?? '') : 0
-  const isDirty = config.fields.some((field) => fieldState[field.name] !== initialSnapshot[field.name])
+  const amountFieldDescriptor = config.fields.find(
+    (field): field is TextFieldDescriptor<V> & { kind: 'amount' } => field.kind === 'amount',
+  )
+  const amountValue = amountFieldDescriptor ? parseAmount(fieldState[amountFieldDescriptor.name] ?? '') : 0
+  const isDirty = config.fields.filter(isTextField).some((field) => fieldState[field.name] !== initialSnapshot[field.name])
   const disabled = status !== 'idle'
-  const primaryDisabled = disabled || (amountField ? amountValue === null : false)
+
+  const recurrenceDayValid = parseInteger(recurrenceDay, { min: 1, max: 31 }) !== null
+  const recurrenceCountValid = recurrenceEnding !== 'count' || parseInteger(recurrenceCount, { min: 1 }) !== null
+  const recurrenceValid = !recurrenceOn || (recurrenceDayValid && recurrenceCountValid)
+
+  const primaryDisabled = disabled || (amountFieldDescriptor ? amountValue === null : false) || !recurrenceValid
 
   function updateField(name: string, value: string) {
     setFieldState((prev) => ({ ...prev, [name]: value }))
@@ -142,15 +190,44 @@ export function EntrySheet<V>({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (amountField && amountValue === null) {
-      setTouched((prev) => ({ ...prev, [amountField.name]: true }))
+    if (amountFieldDescriptor && amountValue === null) {
+      setTouched((prev) => ({ ...prev, [amountFieldDescriptor.name]: true }))
+      return
+    }
+    if (recurrenceOn && !recurrenceValid) {
+      setRecurrenceTouched({ day: true, count: recurrenceEnding === 'count' })
       return
     }
     const values = buildValues(config, fieldState, amountValue ?? 0)
+    const recurrenceDayNumber = parseInteger(recurrenceDay, { min: 1, max: 31 })
+    if (recurrenceOn && onSaveRecurrence && recurrenceDayNumber != null) {
+      // This cycle's charge and the definition describe the same day, so the date field's
+      // day-of-month is overridden to match the recurrence day — the two creates then
+      // correlate into one row (see attachCreatedDefinitions in demo-expenses.ts) instead of
+      // the date field's own, separately-editable day producing a second, uncorrelated one.
+      const dated = values as unknown as { date?: string }
+      if (typeof dated.date === 'string') {
+        dated.date = `${dated.date.slice(0, 8)}${String(recurrenceDayNumber).padStart(2, '0')}`
+      }
+    }
     setStatus('saving')
     setError(null)
     try {
       await onSave(values)
+      if (onSaveRecurrence && recurrenceOn) {
+        // The definition's name and expected amount are the same values just typed into the
+        // expense's own description and amount fields — see attachCreatedDefinitions in
+        // demo-expenses.ts, which relies on this equality (and the day override above) to link
+        // the two creates into one row.
+        const name = (values as unknown as { description?: string }).description?.trim() ?? ''
+        await onSaveRecurrence({
+          name,
+          expectedAmount: amountValue ?? 0,
+          day: recurrenceDayNumber ?? 1,
+          reminder: { active: false, daysBefore: 1 },
+          repetitions: recurrenceEnding === 'count' ? parseInteger(recurrenceCount, { min: 1 }) : null,
+        })
+      }
     } catch {
       setStatus('idle')
       setError('save')
@@ -175,7 +252,79 @@ export function EntrySheet<V>({
     } catch {}
   }
 
+  function renderRecurrenceField() {
+    if (mode !== 'create' || !onSaveRecurrence) return null
+
+    const switchId = `${formId}-recurrence-switch`
+    const dayId = `${formId}-recurrence-day`
+    const countId = `${formId}-recurrence-count`
+    const dayInvalid = Boolean(recurrenceTouched.day) && !recurrenceDayValid
+    const countInvalid = recurrenceEnding === 'count' && Boolean(recurrenceTouched.count) && !recurrenceCountValid
+    const amountText = format.number(amountValue ?? 0, { ...currencyFormatOptions, currency: fieldOptions.amount?.currency ?? 'EUR' })
+
+    return (
+      <>
+        <div className="border-t border-border" />
+        <FieldRow label={tRecurrente('seRepite')} htmlFor={switchId}>
+          <Switch id={switchId} checked={recurrenceOn} onCheckedChange={setRecurrenceOn} disabled={disabled} />
+        </FieldRow>
+        <Collapsible open={recurrenceOn}>
+          <IntegerField
+            id={dayId}
+            label={tRecurrente('diaDelMes')}
+            value={recurrenceDay}
+            onChange={setRecurrenceDay}
+            onBlur={() => setRecurrenceTouched((prev) => ({ ...prev, day: true }))}
+            disabled={disabled}
+            invalid={dayInvalid}
+            invalidMessage={tRecurrente('diaInvalido')}
+            maxLength={2}
+          />
+          <p className="px-inset pb-3 text-body-sm text-muted-foreground">
+            {tRecurrente('explicacion', { dia: recurrenceDay || '—', monto: amountText, categoria: context.name })}
+          </p>
+          <div role="radiogroup" aria-label={tRecurrente('seRepite')} className="flex gap-2 px-inset pb-3">
+            {RECURRENCE_ENDINGS.map((option) => {
+              const selected = recurrenceEnding === option
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  disabled={disabled}
+                  onClick={() => setRecurrenceEnding(option)}
+                  className={cn(
+                    'pressable min-h-target flex-1 rounded-full border px-3 text-body-sm font-medium',
+                    selected ? 'border-transparent bg-primary text-primary-foreground' : 'border-border text-foreground',
+                  )}
+                >
+                  {tRecurrente(option === 'none' ? 'sinFinal' : 'unNumeroDeVeces')}
+                </button>
+              )
+            })}
+          </div>
+          <Collapsible open={recurrenceEnding === 'count'}>
+            <IntegerField
+              id={countId}
+              label={tRecurrente('cantidadDePagos')}
+              value={recurrenceCount}
+              onChange={setRecurrenceCount}
+              onBlur={() => setRecurrenceTouched((prev) => ({ ...prev, count: true }))}
+              disabled={disabled}
+              invalid={countInvalid}
+              invalidMessage={tRecurrente('cantidadInvalida')}
+              maxLength={3}
+            />
+          </Collapsible>
+        </Collapsible>
+      </>
+    )
+  }
+
   function renderField(field: FieldDescriptor<V>) {
+    if (field.kind === 'recurrence') return renderRecurrenceField()
+
     const id = `${formId}-${field.name}`
     const value = fieldState[field.name] ?? ''
 
@@ -301,7 +450,7 @@ export function EntrySheet<V>({
             </div>
           ) : null}
           {config.fields.map((field) => (
-            <Fragment key={field.name}>{renderField(field)}</Fragment>
+            <Fragment key={field.kind === 'recurrence' ? 'recurrence' : field.name}>{renderField(field)}</Fragment>
           ))}
           {onDelete ? (
             <>

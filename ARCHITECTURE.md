@@ -400,7 +400,7 @@ Importante: **"fijo" significa recurrente, no inmutable.** Si el alquiler sube d
  
 ### Carga automática de fijos
  
-Los fijos se **insertan automáticamente al inicio del ciclo**, no se cargan a mano. La **edición del monto de este ciclo** se hace desde la fila, en su categoría; la **definición** (día del mes, monto esperado, alta y baja) vive en la pantalla de gastos fijos del dashboard.
+Los fijos se **insertan automáticamente al inicio del ciclo**, no se cargan a mano. La **edición del monto de este ciclo** se hace desde la fila, en su categoría; la **definición** (día del mes, monto esperado, alta y baja) vive en la hoja que abre "Próximos cobros" (sección 9), no en una pantalla aparte.
  
 #### Alta desde el propio gasto
  
@@ -422,6 +422,14 @@ Un fijo de monto variable (luz, gas) se carga por chat como cualquier gasto — 
 **Beneficio lateral:** la tarjeta «Próximos cobros» (sección 9) existe justamente para esto — muestra **qué falta confirmar este ciclo**.
  
 > El aviso proactivo de *"inserté tus fijos"* cae fuera de la ventana de 24 h de WhatsApp y requiere una *template* aprobada por Meta. Para fase 1 se insertan en silencio y se ven en el dashboard.
+ 
+#### Recurrencias con un final
+ 
+No todos los fijos son "para siempre" — una compra en cuotas también es un gasto que se repite, solo que un número fijo de veces. En vez de una entidad nueva ("deudas"), son dos columnas en `gastos_fijos`: `repeticiones_totales` (nullable — `null` es "sin final", el caso por defecto) y `repeticiones_insertadas` (cuántas veces el cron ya insertó una fila, no cuántas siguen vivas si se borra alguna). Cuando el insert que llega al total corre, la misma sentencia pone `activo = false`: nadie tiene que acordarse de cancelarlo. La hoja de la definición (sección 9) muestra el progreso (*"4 de 10"*) y lo que queda por pagar al monto actual.
+ 
+Deliberadamente no modela principal, interés ni una tabla de amortización — eso, si hace falta, es una capacidad nueva que *referencia* una definición, no una reescritura de esta.
+ 
+> **Implementado (add-recurring-expense-management, sept 2026):** la definición se edita desde una hoja propia que abre "Próximos cobros" (sección 9) — nunca se construyó una pantalla dedicada a los fijos. El alta sigue siendo el interruptor "recurrente" al crear un gasto (arriba). Ese interruptor solo aparece al crear, nunca al editar una fila ya existente — pasar un gasto suelto a recurrente se hace borrándolo y cargándolo de nuevo.
  
 ---
  
@@ -481,12 +489,23 @@ Un código está disponible si `usada_en IS NULL AND vence_en > now()`. No hace 
 - `activo` (bool)
 - `orden` (int — posición manual, ver sección 9)
 - `recordatorio_activo` (bool) y `dias_antes` (int, default 1) — ver sección 14.1
+- `repeticiones_totales` (int, nullable — `null` es "sin final") y `repeticiones_insertadas` (int, default 0) — ver sección 7, *Recurrencias con un final*
 **`presupuestos`** *(fase 1)*
 - `id`
 - `usuario_id`
 - `categoria_id`
 - `monto`
 - `periodo`
+**`ingresos_esperados`**
+- `id`
+- `usuario_id`
+- `nombre`
+- `monto_estimado`
+- `es_variable` (bool)
+- `dia_del_mes` (nullable — solo tiene sentido para los no variables: el sueldo cae un día fijo, las propinas no)
+- `activo` (bool)
+- `orden` (int)
+El espejo de `presupuestos`: un presupuesto es un techo para una categoría de gasto, un ingreso esperado es un piso para una fuente de ingreso. Existe desde la migración `0007_ingresos_esperados.sql`; el dashboard (sección 9) todavía no lo lee.
 ### Categorías: dos criterios que no se mezclan
  
 **"Gasto fijo" no es una categoría.** Es el booleano `es_fijo` de la transacción. Netflix es un gasto fijo *y* su categoría es `suscripciones`; el alquiler es un gasto fijo *y* su categoría es `vivienda`. Las dos cosas conviven en la misma fila y el gasto se cuenta **una sola vez**: el booleano no crea un movimiento aparte, solo marca esa transacción como recurrente.
@@ -508,7 +527,7 @@ Estructura de la vista mensual, de arriba hacia abajo:
 1. **Selector de mes**
 2. **Margen libre** — `ingresos − ahorro − gastos`. El número más grande de la pantalla: es la pregunta principal que la app tiene que contestar. Los presupuestos por categoría no restan de este número — solo hacen seguimiento (ver *Presupuestado vs real*, más abajo).
 3. **Ingresos** del mes
-4. **Próximos cobros** — calendario de solo lectura: qué cargo recurrente ya se cobró este ciclo y cuál falta, con su día del mes
+4. **Próximos cobros** — calendario de cuándo, no de cuánto: qué cargo recurrente ya se cobró este ciclo y cuál falta, con su día del mes; cada fila abre la definición
 5. **Gastos** — una tarjeta por categoría, **con avance contra el presupuesto de cada categoría** (*"comida: 310 de 400"*)
 6. **Ahorro** — cuánto se apartó este mes y acumulado
 Deliberadamente **una sola lista de categorías, no un grupo de fijos aparte**. El alquiler y Netflix viven en su categoría como cualquier otro gasto; separarlos en un bloque propio volvería a contar esa plata dos veces, que es justo lo que "Próximos cobros" existe para evitar. La granularidad la da la categoría, no un segundo grupo — si no, el sistema se llena de reglas.
@@ -537,11 +556,13 @@ En **escritorio** es el mismo contenido en dos columnas: números y barras a la 
  
 ### La tarjeta «Próximos cobros»: cuándo, no cuánto
  
-**Los fijos viven dentro de su categoría.** El alquiler está en `vivienda`, Netflix en `suscripciones`. "Próximos cobros" no los contiene: es un **calendario de solo lectura**, derivado de esas mismas filas, que contesta una pregunta distinta de la que responde la categoría — no cuánto se gastó, sino **qué ya se cobró este ciclo y qué falta**.
+**Los fijos viven dentro de su categoría.** El alquiler está en `vivienda`, Netflix en `suscripciones`. "Próximos cobros" no los contiene: es un **calendario derivado de esas mismas filas**, que contesta una pregunta distinta de la que responde la categoría — no cuánto se gastó, sino **qué ya se cobró este ciclo y qué falta**.
  
 Colapsada muestra el título y el **próximo cargo con su día** (*"Parking · día 15"*), nunca un monto ni un total. Al abrirla, lista cada cargo del ciclo en **dos grupos**: los **ya cobrados** — atenuados y con un check — primero, y los **pendientes** después, sin ningún separador entre ambos porque el cambio de apariencia ya marca el límite. Un pie con el total comprometido del ciclo cierra la tarjeta.
  
-Sin fila de añadir y sin edición: **tocar y deslizar se hacen en la fila de la categoría**, que es donde vive la transacción. Puede mostrar qué falta confirmar este ciclo (sección 7).
+**Cada fila es un botón que abre la hoja de la definición** — nombre, monto esperado, día, categoría, recordatorio, y desde ahí "dejar de repetir" o eliminar (sección 7). Sigue **sin fila de añadir y sin deslizar**: tocar o deslizar una fila se hace en la fila de la categoría, que sigue editando solo el cargo de este ciclo. El calendario ahora se puede abrir y editar, pero sigue siendo cuándo, no cuánto: la fila en sí no cambia — ningún monto, ningún total.
+
+> **Implementado (add-recurring-expense-management, sept 2026):** ver la nota en la sección 7.
  
 ### Cómo se entiende la recurrencia sin explicarla
  
@@ -549,7 +570,7 @@ En la fila del gasto, el **día del mes en texto apagado debajo del nombre**, so
  
 Es la razón por la que no hace falta tutorial ni cartel: la diferencia entre fijo y variable se lee en la fila.
  
-Lo que **no** va en la fila: medio de pago y el resto de la configuración. Eso vive en el detalle que se abre al tocarla.
+Lo que **no** va en la fila: medio de pago y el resto de la configuración. Eso vive en la hoja de la definición, que se abre al tocar la fila en "Próximos cobros" (sección 7), no en la fila misma.
  
 > **Pendiente de decidir:** el *medio de pago* (con qué tarjeta se paga cada fijo) **no está en el esquema**. Es un campo nuevo en `gastos_fijos` si se quiere.
  

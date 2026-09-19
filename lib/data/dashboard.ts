@@ -1,5 +1,6 @@
 import type { LocalDate, ExpenseMutations } from './expenses'
 import type { CategoryMutations } from './categories'
+import type { RecurringMutations } from './recurring'
 
 // = check in supabase/migrations/0004_categorias.sql
 export type CategoryColor =
@@ -27,8 +28,8 @@ export type Expense = {
   name: string
   amount: number
   date: string
-  /** Present only on a charge generated from a recurring definition (§7): `gastos_fijos.dia_del_mes` and `transacciones.estado`. */
-  fixed?: { day: number; charged: boolean }
+  /** Present only on a charge generated from a recurring definition (§7): `gastos_fijos.id`, `gastos_fijos.dia_del_mes` and `transacciones.estado`. */
+  fixed?: { definitionId: string; day: number; charged: boolean }
 }
 
 export type ExpenseGroup = {
@@ -58,6 +59,7 @@ export type DashboardActions = Partial<{
   selectCycle(month: string): void
   expenses: ExpenseMutations
   categories: CategoryMutations
+  recurring: RecurringMutations
   addIncome(): void
   addSavingsMovement(): void
   signOut(): void

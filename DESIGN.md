@@ -279,10 +279,19 @@ Translucency is an allowlist, not a default: the scrolled top bar (`.glass-bar`)
 - **Anatomy:** A fixed 32px × 24px box, `bg-muted` fill, `8px` radius, the day of the month centered inside in `label-ui` with tabular figures, in `text-muted-foreground` — never a variable width, so a one- and a two-digit day occupy the same column.
 - **Why it is not a badge:** a badge in this app carries an accent colour and marks a status or a count; the day chip is monochrome, holds a calendar date rather than either, and never grows, pulses or changes colour on interaction.
 
-### Read-only Charge Row
+### Charge Row
 - **Anatomy:** At least 48px tall, `px-inset`, four zones in fixed order — day chip, `6px` category dot, name, amount — the amount in `tabular-numeric-md` flush to the inset with a transparent background, unlike the `bg-muted` affordance an editable expense row puts under its amount.
 - **Checkmark:** A 14px `Check` immediately after the name on a taken charge, inside the dimmed group — not trailing the amount, which would break the amount column, and not leading the row, which would break the day column.
 - **Dimming:** A taken row is dimmed to between 45% and 55% opacity as a whole; the checkmark and the opacity are the only things that change — never the text colour, which elsewhere in the app is reserved for "muted metadata," not for a done state.
+- **Interactive:** the whole row is a single `<button>` named by the charge (its own accessible name, not the visual text), carrying the `pressable` focus ring (`outline: 2px solid var(--ring)`, 2px offset) on keyboard focus, and disabled — with no pointer or focus interaction, but the same visual weight — when the page supplies no handler to open the definition.
+- **Progress caption:** when the charge belongs to an instalment plan, a `"{done} de {total}"` caption in `body-sm`/`text-muted-foreground` under the amount, right-aligned so the amount's own right edge never moves.
+- **Expected caption:** when the charge's amount differs from its definition's expected amount, a muted `"esperado {monto}"` caption under the name. No colour — a difference is information, not a warning.
+
+### Switch
+- **Anatomy:** A 44×44px hit area (`size-target`) around a 44px × 24px track (`bg-muted` at rest, `bg-brand` when checked) holding a 20px circular thumb (`bg-card`, 2px inset from the track's edge).
+- **Motion:** the thumb's `translate` and the track's `background-color` both animate on `--ease-spring` over 200ms, moving together as one gesture rather than two separately-timed changes. `prefers-reduced-motion` drops the transition entirely, so the toggled state is final in the very first frame.
+- **Haptics:** one guarded `navigator.vibrate(10)` call on toggle, wrapped so a browser without the API never throws, and skipped outright under reduced motion.
+- **Disabled:** 50% opacity, no pointer events, same as the rest of the app's disabled controls.
 
 ### Reorder Mode
 - **Handle:** Three 2px horizontal lines in a 44 × 44px hit area, drawn in the 44px lane opened over each card's trailing edge — never inside the card, and present on every card including the first and the last. Drawn `white/70`, since it sits on the dark pushed-back scrim in both themes; a fine pointer that supports hover raises it to `white/90`, gated behind `(hover: hover) and (pointer: fine)` so a tap never leaves it looking hovered.
