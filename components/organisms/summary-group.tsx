@@ -1,12 +1,14 @@
 import { useState, type ReactNode } from 'react'
 import { Collapsible } from '@/components/atoms/collapsible'
 import { ExpandChevron } from '@/components/atoms/expand-chevron'
-import { Money } from '@/components/atoms/money'
+import { AnimatedAmount } from '@/components/ui/counter/animated-amount'
 
 type SummaryGroupItem = {
   key: string
   label: string
   total: number
+  /** Integer digits the tile is built for — see `AnimatedAmount`. */
+  places: number
   panel: ReactNode
 }
 
@@ -48,9 +50,10 @@ export function SummaryGroup({ items, openKey, onToggle, currency }: SummaryGrou
                 <span className="truncate text-label-ui text-muted-foreground">{item.label}</span>
                 <ExpandChevron open={open} className="size-4" />
               </span>
-              <Money
+              <AnimatedAmount
                 amount={item.total}
                 currency={currency}
+                places={item.places}
                 className={`mt-2 whitespace-nowrap text-foreground ${item.total >= 100000 ? 'text-tabular-numeric-md' : 'text-tabular-numeric-lg'}`}
               />
               {open ? <span aria-hidden className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-brand" /> : null}

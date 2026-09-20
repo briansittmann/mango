@@ -4,7 +4,7 @@ import { currencyFormatOptions } from '@/i18n/formats'
 import { Collapsible } from '@/components/atoms/collapsible'
 import { CategoryDot } from '@/components/atoms/category-dot'
 import { ExpandChevron } from '@/components/atoms/expand-chevron'
-import { Money } from '@/components/atoms/money'
+import { AnimatedAmount } from '@/components/ui/counter/animated-amount'
 import { AddRow } from '@/components/molecules/add-row'
 import { BudgetProgress } from '@/components/molecules/budget-progress'
 import { ExpenseRow } from '@/components/molecules/expense-row'
@@ -14,6 +14,8 @@ import type { Expense, ExpenseGroup } from '@/lib/data/dashboard'
 type CategoryCardProps = {
   group: ExpenseGroup
   currency: string
+  /** Integer digits the header total is built for — see `AnimatedAmount`. */
+  places: number
   timeZone: string
   open: boolean
   onToggle: () => void
@@ -27,6 +29,7 @@ type CategoryCardProps = {
 export function CategoryCard({
   group,
   currency,
+  places,
   timeZone,
   open,
   onToggle,
@@ -77,12 +80,20 @@ export function CategoryCard({
               {tCategoria.rich('gastadoDePresupuesto', {
                 gastado: format.number(group.budget.spent, { ...currencyFormatOptions, currency }),
                 presupuesto: format.number(group.budget.amount, { ...currencyFormatOptions, currency }),
+                // The tag wraps the formatted `gastado` — which is what `t.markup` reads for the
+                // progress bar's value text; on screen the counter takes its place.
+                montoGastado: () => <AnimatedAmount amount={group.budget!.spent} currency={currency} places={places} />,
                 muted: (chunks) => <span className="font-normal text-muted-foreground">{chunks}</span>,
               })}
             </span>
           ) : (
             <span id={amountId}>
-              <Money amount={group.total} currency={currency} className="text-tabular-numeric-md font-semibold text-foreground" />
+              <AnimatedAmount
+                amount={group.total}
+                currency={currency}
+                places={places}
+                className="text-tabular-numeric-md font-semibold text-foreground"
+              />
             </span>
           )}
           {reordering ? null : (

@@ -26,6 +26,8 @@ export function BudgetProgress({ budget, currency }: BudgetProgressProps) {
   const valueText = t.markup('gastadoDePresupuesto', {
     gastado: format.number(budget.spent, { ...currencyFormatOptions, currency }),
     presupuesto: format.number(budget.amount, { ...currencyFormatOptions, currency }),
+    // The card header animates the spent figure inside this tag; spoken aloud it is just the number.
+    montoGastado: (chunks) => chunks,
     muted: (chunks) => chunks,
   })
 

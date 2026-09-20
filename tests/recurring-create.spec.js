@@ -75,7 +75,15 @@ for (const locale of /** @type {const} */ (['es', 'en'])) {
     await expect(addBtn).toBeEnabled()
     await addBtn.click()
 
-    const body = () => page.evaluate(() => document.body.textContent.replace(/\s+/g, ' '))
+    // Totals are rolling counters (`AnimatedAmount`): on screen every column carries all ten
+    // digits, and the figure itself is the counter's `aria-hidden` twin. Reading the accessible
+    // text is reading what the counter is showing.
+    const body = () =>
+      page.evaluate(() => {
+        const copy = document.body.cloneNode(true)
+        copy.querySelectorAll('[aria-hidden="true"]').forEach((node) => node.remove())
+        return copy.textContent.replace(/\s+/g, ' ')
+      })
     await expect.poll(body).toMatch(copy.categoryLine)
     await expect.poll(body).toMatch(copy.total)
     await expect.poll(body).toContain('924')

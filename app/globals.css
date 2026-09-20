@@ -268,6 +268,11 @@ body {
 
 .hero-card {
   --hero-value-color: light-dark(var(--positive), var(--brand-ink));
+  /* What `AnimatedAmount` fades its rolling digits into. On a flat card the default `--card` is
+     exactly the colour behind the digits and the fade is invisible; this card is a diagonal
+     gradient under an orb, so any flat colour paints a band across it — in either theme. Here the
+     hard clip is the honest edge. */
+  --counter-surface: transparent;
   position: relative;
   overflow: hidden;
   isolation: isolate;
@@ -306,8 +311,12 @@ body {
 
 .hero-value {
   color: var(--hero-value-color);
-  text-shadow: 0 0 18px var(--hero-glow-near), 0 0 36px var(--hero-glow-far);
-  transition: color 400ms ease-out, text-shadow 400ms ease-out;
+  /* A `drop-shadow` rather than a `text-shadow`, because the value is a rolling counter: the nine
+     digits parked above and below the visible one are clipped away, but a text-shadow of theirs
+     still lands inside the clip and fills it with haze. A filter on this element reads the alpha of
+     what actually survives the clip, so the glow follows the digits on screen. */
+  filter: drop-shadow(0 0 18px var(--hero-glow-near)) drop-shadow(0 0 36px var(--hero-glow-far));
+  transition: color 400ms ease-out, filter 400ms ease-out;
 }
 
 .liquid-glass {

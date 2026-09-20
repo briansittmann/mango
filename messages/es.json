@@ -27,7 +27,7 @@
     "cycleSavings": "Ahorro del ciclo"
   },
   "categoria": {
-    "gastadoDePresupuesto": "{gastado} <muted>de {presupuesto}</muted>",
+    "gastadoDePresupuesto": "<montoGastado>{gastado}</montoGastado> <muted>de {presupuesto}</muted>",
     "disponibleSemanal": "Te quedan {monto} por semana",
     "disponibleDias": "Te quedan {monto} para {dias, plural, one {el último día} other {los últimos # días}}",
     "nearLimit": "Cerca del límite",

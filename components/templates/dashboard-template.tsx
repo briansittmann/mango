@@ -53,6 +53,13 @@ type SheetTarget = { mode: 'create'; group: ExpenseGroup } | { mode: 'edit'; gro
 const BAR_HEIGHT = 56
 const UPCOMING_CHARGES_ID = 'proximos-cobros'
 
+// How many integer columns each animated total is built for. They are set here, per surface,
+// rather than derived from whatever the figure happens to be, so a mutation never rebuilds the
+// counter's columns underneath it. Columns above the current amount are not painted, so an
+// over-estimate is invisible.
+const TOTAL_PLACES = 6
+const CATEGORY_PLACES = 5
+
 function clampDate(date: string, min: string, max: string): string {
   if (date < min) return min
   if (date > max) return max
@@ -757,7 +764,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
         aria-hidden={reordering}
         inert={reordering}
       >
-        <FreeMarginCard amount={data.freeMargin} currency={currency} />
+        <FreeMarginCard amount={data.freeMargin} currency={currency} places={TOTAL_PLACES} />
       </AnimatedContent>
       <AnimatedContent className="mt-stack" distance={24} delay={0.32} aria-hidden={reordering} inert={reordering}>
         <SummaryGroup
@@ -769,6 +776,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
               key: 'income',
               label: tResumen('ingresos'),
               total: data.income.total,
+              places: TOTAL_PLACES,
               panel: (
                 <>
                   <div className="flex flex-col">
@@ -793,6 +801,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
               key: 'expenses',
               label: tResumen('gastos'),
               total: data.expenses.total,
+              places: TOTAL_PLACES,
               panel: (
                 <>
                   <div className="flex flex-col">
@@ -821,6 +830,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
               key: 'savings',
               label: tResumen('ahorro'),
               total: data.savings.cycle,
+              places: TOTAL_PLACES,
               panel: (
                 <>
                   <div className="flex flex-col">
@@ -924,6 +934,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                   <CategoryCard
                     group={group}
                     currency={currency}
+                    places={CATEGORY_PLACES}
                     timeZone={data.user.timezone}
                     open={openIds.has(group.id)}
                     onToggle={() => toggleCard(group.id)}
