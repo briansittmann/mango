@@ -1,4 +1,4 @@
-import { Fragment, useId, useState, type FormEvent, type RefObject } from 'react'
+import { Fragment, useEffect, useId, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { Drawer } from '@base-ui/react/drawer'
 import { Loader2, Trash2 } from 'lucide-react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
@@ -153,6 +153,15 @@ export function EntrySheet<V>({
   const [recurrenceEnding, setRecurrenceEnding] = useState<RecurrenceEnding>('none')
   const [recurrenceCount, setRecurrenceCount] = useState('')
   const [recurrenceTouched, setRecurrenceTouched] = useState<{ day?: boolean; count?: boolean }>({})
+  const recurrenceCountRef = useRef<HTMLInputElement | null>(null)
+
+  // Picking "un número de veces" reveals the count field right below it — jump straight into it.
+  useEffect(() => {
+    if (recurrenceEnding === 'count') {
+      recurrenceCountRef.current?.focus()
+      recurrenceCountRef.current?.select()
+    }
+  }, [recurrenceEnding])
 
   if (open !== wasOpen) {
     setWasOpen(open)
@@ -311,6 +320,9 @@ export function EntrySheet<V>({
               value={recurrenceCount}
               onChange={setRecurrenceCount}
               onBlur={() => setRecurrenceTouched((prev) => ({ ...prev, count: true }))}
+              inputRef={(el) => {
+                recurrenceCountRef.current = el
+              }}
               disabled={disabled}
               invalid={countInvalid}
               invalidMessage={tRecurrente('cantidadInvalida')}
