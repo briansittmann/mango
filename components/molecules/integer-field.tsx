@@ -53,7 +53,7 @@ export function IntegerField({
           value={value}
           onChange={(event) => onChange(event.target.value.replace(/\D/g, ''))}
           onBlur={onBlur}
-          className="w-16 rounded-lg bg-muted px-2 py-1.5 text-right text-tabular-numeric-lg text-foreground outline-none"
+          className="field-focus w-16 rounded-lg bg-muted px-2 py-1.5 text-right text-tabular-numeric-lg text-foreground outline-none"
         />
       </FieldRow>
       {invalid && invalidMessage ? (

@@ -82,6 +82,13 @@
   --cat-gris_oscuro: light-dark(#3A403B, #606861);
   --cat-blanco: light-dark(#C9CEC9, #F2F5F2);
   --cat-granate: light-dark(#8C2335, #BA3349);
+  --cat-rojo: light-dark(#B23A2C, #D4453A);
+  --cat-coral: light-dark(#E0525C, #F2606A);
+  --cat-rosa: light-dark(#DE66AB, #F57FC0);
+  --cat-azul_electrico: light-dark(#3547CC, #4356E8);
+  --cat-celeste: light-dark(#4F8FDC, #6BA6F0);
+  --cat-turquesa: light-dark(#1FAEA5, #2FD0C5);
+  --cat-verde_menta: light-dark(#23AE68, #3FD98A);
 }
 
 :root[data-theme="light"] {
@@ -135,6 +142,13 @@
   --color-cat-gris-oscuro: var(--cat-gris_oscuro);
   --color-cat-blanco: var(--cat-blanco);
   --color-cat-granate: var(--cat-granate);
+  --color-cat-rojo: var(--cat-rojo);
+  --color-cat-coral: var(--cat-coral);
+  --color-cat-rosa: var(--cat-rosa);
+  --color-cat-azul-electrico: var(--cat-azul_electrico);
+  --color-cat-celeste: var(--cat-celeste);
+  --color-cat-turquesa: var(--cat-turquesa);
+  --color-cat-verde-menta: var(--cat-verde_menta);
   --font-sans: var(--font-inter);
   --font-display: var(--font-manrope);
   --font-mono: var(--font-geist-mono);
@@ -219,6 +233,15 @@
       translate: 8px 0;
     }
   }
+
+}
+
+/* Budget bar fill: springs from 0 to its width once on mount. */
+@utility progress-fill {
+  transition: width 700ms var(--ease-spring);
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 }
 
 @utility pressable {
@@ -234,6 +257,40 @@
   }
   @media (prefers-reduced-motion: reduce) {
     transition: none;
+  }
+}
+
+/* Focus treatment for the text/number inputs inside the sheets: a brand ring with a soft halo,
+   a brand caret and a brand-tinted selection. Applied to the input itself, or to the wrapper
+   when the box is drawn around the input (amount + currency symbol). */
+@utility field-focus {
+  border: 2px solid transparent;
+  transition: border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out), background-color 200ms var(--ease-out), color 200ms var(--ease-out);
+  caret-color: var(--ring);
+  &::selection,
+  & ::selection {
+    background-color: color-mix(in oklab, var(--brand) 28%, transparent);
+    color: var(--foreground);
+  }
+  &:focus,
+  &:focus-within {
+    border-color: var(--ring);
+    background-color: color-mix(in oklab, var(--brand) 12%, var(--muted));
+    box-shadow: 0 2px 16px color-mix(in oklab, var(--ring) 26%, transparent);
+  }
+  /* The currency symbol sits beside the input, inside the same box. */
+  &:focus-within span {
+    color: var(--ring);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
   }
 }
 

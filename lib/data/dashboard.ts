@@ -12,6 +12,13 @@ export type CategoryColor =
   | 'gris_oscuro'
   | 'blanco'
   | 'granate'
+  | 'rojo'
+  | 'coral'
+  | 'rosa'
+  | 'azul_electrico'
+  | 'celeste'
+  | 'turquesa'
+  | 'verde_menta'
 
 export type BudgetStatus = {
   amount: number

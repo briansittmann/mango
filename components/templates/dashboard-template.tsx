@@ -132,6 +132,8 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   const tReordenar = useTranslations('modoReordenar')
   const format = useFormatter()
   const [openIds, setOpenIds] = useState<Set<string>>(new Set())
+  // Categories whose budget bar is hidden from the card, toggled in the category options sheet.
+  const [hiddenProgressIds, setHiddenProgressIds] = useState<Set<string>>(new Set())
   const [openSummary, setOpenSummary] = useState<SummaryKey | null>(null)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [titleInView, setTitleInView] = useState(true)
@@ -604,6 +606,15 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     reorderingRef.current = reordering
   }, [reordering])
 
+  function toggleProgress(id: string) {
+    setHiddenProgressIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   function toggleCard(id: string) {
     setOpenIds((prev) => {
       const next = new Set(prev)
@@ -618,6 +629,37 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
 
   function toggleSummary(key: SummaryKey) {
     setOpenSummary((prev) => (prev === key ? null : key))
+  }
+
+  function scrollToCategory(id: string) {
+    const node = cardNodeRefs.current.get(id)
+    if (!node) return
+    const openCard = () => setOpenIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
+    if (prefersReducedMotion()) {
+      node.scrollIntoView({ behavior: 'auto', block: 'start' })
+      openCard()
+      return
+    }
+    node.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    // scrollIntoView has no completion callback, so the expand animation waits for the scroll
+    // position to settle (a few stable frames) before it opens the card.
+    let lastY = window.scrollY
+    let stableFrames = 0
+    const waitForScrollEnd = () => {
+      const y = window.scrollY
+      if (Math.abs(y - lastY) < 0.5) {
+        stableFrames += 1
+      } else {
+        stableFrames = 0
+        lastY = y
+      }
+      if (stableFrames >= 3) {
+        openCard()
+        return
+      }
+      requestAnimationFrame(waitForScrollEnd)
+    }
+    requestAnimationFrame(waitForScrollEnd)
   }
 
   // The entrance cascade is fixed at first paint. Deriving it from the current index instead would
@@ -688,38 +730,49 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
             titleInView ? 'opacity-0' : 'opacity-100',
           )}
         />
-        <div className="relative mx-auto flex h-full w-full max-w-[640px] items-center gap-3 px-gutter">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/mango-logo.svg" alt="" aria-hidden className="size-7 shrink-0 object-contain" />
-          <div className="relative min-w-0 flex-1">
-            <span
-              aria-hidden={!titleInView}
-              inert={!titleInView}
-              className={cn(
-                'absolute inset-0 flex items-center font-display text-headline-sm text-foreground transition-[opacity,translate] duration-500 ease-spring motion-reduce:transition-none',
-                titleInView ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-2 opacity-0',
-              )}
+        <div className="relative mx-auto flex h-full w-full max-w-[640px] items-center gap-2.5 px-gutter">
+          <div className="flex min-w-0 flex-1 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })}
+              aria-label={t('irArriba')}
+              className="pressable relative -top-px grid size-11 shrink-0 place-items-center rounded-full [--press-scale:0.9]"
             >
-              {t('appName')}
-            </span>
-            <div
-              aria-hidden={titleInView}
-              inert={titleInView}
-              className={cn(
-                'transition-[opacity,translate] duration-500 ease-spring motion-reduce:transition-none',
-                titleInView ? 'pointer-events-none translate-y-2 opacity-0' : 'translate-y-0 opacity-100',
-              )}
-            >
-              <MonthSelector
-                variant="compact"
-                month={data.cycle.month}
-                start={data.cycle.start}
-                end={data.cycle.end}
-                inProgress={data.cycle.inProgress}
-                onPrevious={actions.previousCycle}
-                onNext={actions.nextCycle}
-                onSelect={actions.selectCycle}
-              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/mango-logo-light.svg" alt="" aria-hidden className="size-11 object-contain dark:hidden" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/mango-logo-dark.svg" alt="" aria-hidden className="hidden size-11 object-contain dark:block" />
+            </button>
+            <div className="relative min-w-0 flex-1">
+              <span
+                aria-hidden={!titleInView}
+                inert={!titleInView}
+                className={cn(
+                  'absolute inset-0 flex items-center font-display text-headline-sm text-foreground transition-[opacity,translate] duration-500 ease-spring motion-reduce:transition-none',
+                  titleInView ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-2 opacity-0',
+                )}
+              >
+                {t('appName')}
+              </span>
+              <div
+                aria-hidden={titleInView}
+                inert={titleInView}
+                className={cn(
+                  'transition-[opacity,translate] duration-500 ease-spring motion-reduce:transition-none',
+                  titleInView ? 'pointer-events-none translate-y-2 opacity-0' : 'translate-y-0 opacity-100',
+                )}
+              >
+                <MonthSelector
+                  variant="compact"
+                  month={data.cycle.month}
+                  start={data.cycle.start}
+                  end={data.cycle.end}
+                  inProgress={data.cycle.inProgress}
+                  onPrevious={actions.previousCycle}
+                  onNext={actions.nextCycle}
+                  onSelect={actions.selectCycle}
+                />
+              </div>
             </div>
           </div>
           <button
@@ -729,7 +782,9 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
             aria-haspopup="dialog"
             aria-expanded={accountMenuOpen}
             aria-controls="account-menu"
-            className="pressable grid size-target shrink-0 place-items-center rounded-full [--press-scale:0.9]"
+            // The 44px target is wider than the 40px avatar inside it, so it hangs 2px past the
+            // gutter to leave the circle's edge level with the logo's on the other side.
+            className="pressable -me-0.5 grid size-target shrink-0 place-items-center rounded-full [--press-scale:0.9]"
           >
             <Avatar name={data.user.name} photoUrl={data.user.photoUrl} />
           </button>
@@ -812,6 +867,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                         name={group.name}
                         amount={group.total}
                         currency={currency}
+                        onClick={() => scrollToCategory(group.id)}
                       />
                     ))}
                   </div>
@@ -923,7 +979,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                     else cardNodeRefs.current.delete(group.id)
                   }}
                   className={cn(
-                    'group relative',
+                    'group relative scroll-mt-20',
                     reordering && !isDragging && 'transition-transform duration-200 ease-in-out motion-reduce:transition-none',
                     // The lift's shadows are drawn on this wrapper, not on the card inside it, so it
                     // needs the card's own radius or they trace a square around a rounded card.
@@ -943,6 +999,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                     onDeleteExpense={actions.expenses ? (expense) => handleDeleteExpense(expense) : undefined}
                     onOpenOptions={actions.categories ? () => openCategorySheet(group) : undefined}
                     reordering={reordering}
+                    showProgress={!hiddenProgressIds.has(group.id)}
                   />
                   {reordering ? (
                     <div
@@ -1034,6 +1091,8 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
         onSave={handleSaveCategory}
         onDelete={handleDeleteCategory}
         onReorder={actions.categories ? handleEnterReorder : undefined}
+        progressVisible={!hiddenProgressIds.has(categorySheetTarget.id)}
+        onToggleProgress={() => toggleProgress(categorySheetTarget.id)}
       />
       {recurringSheetTarget ? (
         <RecurringSheet

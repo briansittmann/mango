@@ -364,7 +364,7 @@ export function EntrySheet<V>({
             placeholder={field.placeholderKey ? t(field.placeholderKey) : undefined}
             value={value}
             onChange={(event) => updateField(field.name, event.target.value)}
-            className="w-40 rounded-lg bg-muted px-2 py-1.5 text-right text-body-lg text-foreground placeholder:text-muted-foreground outline-none"
+            className="field-focus w-40 rounded-lg bg-muted px-2 py-1.5 text-right text-body-lg text-foreground placeholder:text-muted-foreground outline-none"
           />
         </FieldRow>
       )

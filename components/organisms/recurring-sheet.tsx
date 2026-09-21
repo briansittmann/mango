@@ -288,7 +288,7 @@ export function RecurringSheet({
               value={fieldState.name}
               onChange={(event) => updateField('name', event.target.value)}
               onBlur={() => setNameTouched(true)}
-              className="w-40 rounded-lg bg-muted px-2 py-1.5 text-right text-body-lg text-foreground outline-none"
+              className="field-focus w-40 rounded-lg bg-muted px-2 py-1.5 text-right text-body-lg text-foreground outline-none"
             />
           </FieldRow>
 

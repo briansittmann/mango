@@ -59,7 +59,7 @@ export function AmountField({
   return (
     <>
       <FieldRow label={label} htmlFor={id} tall>
-        <div className="flex items-center gap-1 rounded-lg bg-muted px-2 py-1.5">
+        <div className="field-focus flex items-center gap-1 rounded-lg bg-muted px-2 py-1.5">
           {currencyFirst && currencySymbol ? <span className="text-tabular-numeric-lg text-foreground">{currencySymbol}</span> : null}
           <input
             id={id}

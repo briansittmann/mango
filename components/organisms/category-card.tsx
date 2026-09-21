@@ -24,6 +24,8 @@ type CategoryCardProps = {
   onDeleteExpense?: (expense: Expense) => Promise<void>
   onOpenOptions?: () => void
   reordering?: boolean
+  /** Off hides the budget bar; toggled from the category options sheet. */
+  showProgress?: boolean
 }
 
 export function CategoryCard({
@@ -38,6 +40,7 @@ export function CategoryCard({
   onDeleteExpense,
   onOpenOptions,
   reordering = false,
+  showProgress = true,
 }: CategoryCardProps) {
   const t = useTranslations('dashboard')
   const tCategoria = useTranslations('categoria')
@@ -46,6 +49,7 @@ export function CategoryCard({
 
   const name = group.name
   const panelId = `category-panel-${group.id}`
+  const progressId = `category-progress-${group.id}`
   const nameId = `category-name-${group.id}`
   const amountId = `category-amount-${group.id}`
   // In reorder mode the card keeps its identity and nothing else: collapsed, dot and name only,
@@ -115,9 +119,11 @@ export function CategoryCard({
       </div>
 
       {group.budget && !reordering ? (
-        <div className="px-inset pb-3">
-          <BudgetProgress budget={group.budget} currency={currency} />
-        </div>
+        <Collapsible open={showProgress} id={progressId}>
+          <div className="px-inset pb-3">
+            <BudgetProgress budget={group.budget} currency={currency} />
+          </div>
+        </Collapsible>
       ) : null}
 
       <Collapsible open={expanded} id={panelId}>

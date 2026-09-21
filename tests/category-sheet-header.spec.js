@@ -33,7 +33,7 @@ test.describe('category sheet header', () => {
     const sheet = await openCategorySheet(page, 'Comida')
     const saved = await headerDot(sheet).evaluate((el) => getComputedStyle(el).backgroundColor)
 
-    await sheet.getByRole('radio').nth(4).click()
+    await sheet.getByRole('radio', { name: 'Turquesa' }).click()
     await expect
       .poll(() => headerDot(sheet).evaluate((el) => getComputedStyle(el).backgroundColor))
       .not.toBe(saved)

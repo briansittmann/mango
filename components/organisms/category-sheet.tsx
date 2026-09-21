@@ -1,5 +1,5 @@
 import { useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowUpDown, Loader2, Trash2 } from 'lucide-react'
+import { ArrowUpDown, Eye, EyeOff, Loader2, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { CategoryDot } from '@/components/atoms/category-dot'
 import { AmountField, parseAmount } from '@/components/molecules/amount-field'
@@ -24,6 +24,9 @@ type CategorySheetProps = {
   onDelete: (categoryId: string, reassignTo: string | null) => Promise<void>
   /** Turns reorder mode on for the whole screen. Absent when the page supplies no reorder operation. */
   onReorder?: () => void
+  /** Whether this category's card shows its budget bar. */
+  progressVisible: boolean
+  onToggleProgress: () => void
 }
 
 type Step = 'form' | 'confirmDelete'
@@ -54,6 +57,8 @@ export function CategorySheet({
   onSave,
   onDelete,
   onReorder,
+  progressVisible,
+  onToggleProgress,
 }: CategorySheetProps) {
   const t = useTranslations('hojaCategoria')
   const tReorder = useTranslations('modoReordenar')
@@ -248,7 +253,7 @@ export function CategorySheet({
                 setNameError(false)
               }}
               onBlur={() => setNameTouched(true)}
-              className="w-40 rounded-lg bg-muted px-2 py-1.5 text-right text-body-lg text-foreground outline-none"
+              className="field-focus w-40 rounded-lg bg-muted px-2 py-1.5 text-right text-body-lg text-foreground outline-none"
             />
           </FieldRow>
           {nameError ? (
@@ -283,6 +288,23 @@ export function CategorySheet({
               labelledBy={colorsLabelId}
             />
           </div>
+
+          {target.budget ? (
+            <>
+              <div className="border-t border-border" />
+              <button
+                type="button"
+                data-category-progress-toggle
+                onClick={onToggleProgress}
+                aria-pressed={!progressVisible}
+                disabled={busy}
+                className="flex min-h-row items-center gap-3 px-inset text-body-lg font-medium text-foreground hover:bg-muted active:bg-muted disabled:pointer-events-none disabled:opacity-50"
+              >
+                {progressVisible ? <Eye aria-hidden className="size-5" /> : <EyeOff aria-hidden className="size-5" />}
+                {progressVisible ? t('ocultarProgreso') : t('mostrarProgreso')}
+              </button>
+            </>
+          ) : null}
 
           <div className="border-t border-border" />
           <button

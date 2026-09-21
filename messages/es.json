@@ -1,6 +1,7 @@
 {
   "dashboard": {
     "appName": "Mango",
+    "irArriba": "Ir arriba",
     "expenseBreakdown": "Desglose de gastos",
     "colapsarTodo": "Colapsar todo",
     "anadirGasto": "Añadir gasto",
@@ -90,6 +91,8 @@
     "presupuestoInvalido": "Introduce un importe mayor que 0 con hasta 2 decimales",
     "errorGuardar": "No se pudo guardar. Inténtalo de nuevo.",
     "errorEliminar": "No se pudo eliminar la categoría",
+    "ocultarProgreso": "Ocultar barra de progreso",
+    "mostrarProgreso": "Mostrar barra de progreso",
     "reordenar": "Reordenar",
     "eliminarCategoria": "Eliminar categoría",
     "confirmarEliminar": "¿Eliminar {categoria}? Tiene {count, plural, =0 {ningún gasto} one {un gasto} other {# gastos}} este ciclo.",
@@ -106,7 +109,14 @@
       "violeta_metalico": "Violeta metálico",
       "gris_oscuro": "Gris oscuro",
       "blanco": "Blanco",
-      "granate": "Granate"
+      "granate": "Granate",
+      "rojo": "Rojo",
+      "coral": "Coral",
+      "rosa": "Rosa",
+      "azul_electrico": "Azul eléctrico",
+      "celeste": "Celeste",
+      "turquesa": "Turquesa",
+      "verde_menta": "Verde menta"
     }
   },
   "modoReordenar": {
