@@ -11,21 +11,28 @@ import {
 } from 'react'
 import { flushSync } from 'react-dom'
 import { Toast } from '@base-ui/react/toast'
+import { gsap } from 'gsap'
+import { Flip } from 'gsap/Flip'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { currencyFormatOptions } from '@/i18n/formats'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/atoms/avatar'
 import { ShortDate } from '@/components/atoms/short-date'
+import { AddCategoryTile } from '@/components/molecules/add-category-tile'
 import { AddRow } from '@/components/molecules/add-row'
+import { CATEGORY_COLORS } from '@/components/molecules/color-swatch-picker'
+import { ExpenseRow } from '@/components/molecules/expense-row'
 import { MonthSelector } from '@/components/molecules/month-selector'
 import { SummaryRow } from '@/components/molecules/summary-row'
+import { SwipeToDelete } from '@/components/molecules/swipe-to-delete'
 import { UndoToast } from '@/components/molecules/undo-toast'
 import { AccountMenu } from '@/components/organisms/account-menu'
 import { CategoryCard } from '@/components/organisms/category-card'
 import { CategoryPieChart } from '@/components/organisms/category-pie-chart'
 import { CategorySheet } from '@/components/organisms/category-sheet'
-import { EntrySheet, expenseEntry } from '@/components/organisms/entry-sheet'
+import { EntrySheet, expenseEntry, incomeEntry } from '@/components/organisms/entry-sheet'
 import { FreeMarginCard } from '@/components/organisms/free-margin-card'
 import { MonthlyBarsChart } from '@/components/organisms/monthly-bars-chart'
 import { RecurringSheet } from '@/components/organisms/recurring-sheet'
@@ -34,7 +41,10 @@ import { UpcomingChargesCard } from '@/components/organisms/upcoming-charges-car
 import { AnimatedContent } from '@/components/ui/animated-content'
 import type { DashboardActions, DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
 import type { CategoryDraft } from '@/lib/data/categories'
+
+gsap.registerPlugin(ScrollTrigger, Flip)
 import type { ExpenseDraft } from '@/lib/data/expenses'
+import type { IncomeEntry } from '@/lib/data/income'
 import type { RecurringDefinition, RecurringDraft } from '@/lib/data/recurring'
 import type { UpcomingCharge } from '@/lib/data/upcoming-charges'
 
@@ -48,7 +58,13 @@ type DashboardTemplateProps = {
 
 type SummaryKey = 'income' | 'expenses' | 'savings'
 
-type SheetTarget = { mode: 'create'; group: ExpenseGroup } | { mode: 'edit'; group: ExpenseGroup; expense: Expense }
+type SheetTarget =
+  | { kind: 'expense'; mode: 'create'; group: ExpenseGroup }
+  | { kind: 'expense'; mode: 'edit'; group: ExpenseGroup; expense: Expense }
+  | { kind: 'income'; mode: 'create' }
+  | { kind: 'income'; mode: 'edit'; entry: IncomeEntry }
+
+type CategorySheetTarget = { mode: 'create' } | { mode: 'edit'; group: ExpenseGroup }
 
 const BAR_HEIGHT = 56
 const UPCOMING_CHARGES_ID = 'proximos-cobros'
@@ -138,7 +154,10 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [titleInView, setTitleInView] = useState(true)
   const [sheet, setSheet] = useState<{ open: boolean; target: SheetTarget | null }>({ open: false, target: null })
-  const [categorySheet, setCategorySheet] = useState<{ open: boolean; target: ExpenseGroup | null }>({ open: false, target: null })
+  const [categorySheet, setCategorySheet] = useState<{ open: boolean; target: CategorySheetTarget | null }>({
+    open: false,
+    target: null,
+  })
   const [recurringSheet, setRecurringSheet] = useState<{ open: boolean; charge: UpcomingCharge | null }>({ open: false, charge: null })
   const [statusMessage, setStatusMessage] = useState('')
   const [reordering, setReordering] = useState(false)
@@ -150,6 +169,17 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   const doneRef = useRef<HTMLButtonElement>(null)
   const reorderOriginRef = useRef<string | null>(null)
   const cardNodeRefs = useRef(new Map<string, HTMLDivElement>())
+  // Held so a later create's Flip capture can kill this tween first, instead of measuring the
+  // tile mid-entrance (D6, Risks).
+  const tileEntranceTweenRef = useRef<gsap.core.Tween | null>(null)
+  const tileScrollTriggerRef = useRef<ScrollTrigger | null>(null)
+  // Kept so a create's Flip capture can read the tile's pre-commit box (D6) — the entrance ref
+  // callback only fires on mount/unmount, not on every render.
+  const tileNodeRef = useRef<HTMLDivElement | null>(null)
+  // The tile unmounts in reorder mode (D8) and remounts on leaving it, so its entrance can't be a
+  // plain mount effect — a callback ref re-runs on every (re)mount, and this flag makes sure only
+  // the very first one (page load) plays the cascade; a remount after reorder just shows it.
+  const tileHasEnteredRef = useRef(false)
   const dragGestureRef = useRef<DragGesture | null>(null)
   const reorderingRef = useRef(false)
   const saveRef = useRef<{ inFlight: boolean; queued: string[] | null; committed: string[] }>({
@@ -162,18 +192,33 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   const currency = data.user.currency
 
   function openCreateSheet(group: ExpenseGroup) {
-    flushSync(() => setSheet({ open: true, target: { mode: 'create', group } }))
+    flushSync(() => setSheet({ open: true, target: { kind: 'expense', mode: 'create', group } }))
     initialFocusRef.current?.focus({ preventScroll: true })
   }
 
   function openEditSheet(group: ExpenseGroup, expense: Expense) {
-    flushSync(() => setSheet({ open: true, target: { mode: 'edit', group, expense } }))
+    flushSync(() => setSheet({ open: true, target: { kind: 'expense', mode: 'edit', group, expense } }))
+    initialFocusRef.current?.focus({ preventScroll: true })
+    initialFocusRef.current?.select()
+  }
+
+  function openIncomeCreateSheet() {
+    flushSync(() => setSheet({ open: true, target: { kind: 'income', mode: 'create' } }))
+    initialFocusRef.current?.focus({ preventScroll: true })
+  }
+
+  function openIncomeEditSheet(entry: IncomeEntry) {
+    flushSync(() => setSheet({ open: true, target: { kind: 'income', mode: 'edit', entry } }))
     initialFocusRef.current?.focus({ preventScroll: true })
     initialFocusRef.current?.select()
   }
 
   function openCategorySheet(group: ExpenseGroup) {
-    setCategorySheet({ open: true, target: group })
+    setCategorySheet({ open: true, target: { mode: 'edit', group } })
+  }
+
+  function openCreateCategorySheet() {
+    setCategorySheet({ open: true, target: { mode: 'create' } })
   }
 
   function openRecurringSheet(charge: UpcomingCharge) {
@@ -183,7 +228,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   function handleEnterReorder() {
     // The sheet closes and the mode turns on in the same tick, so the sheet's exit scrim and the
     // reorder overlay crossfade as one dimming instead of two events (D11).
-    reorderOriginRef.current = categorySheetTarget.id
+    reorderOriginRef.current = categorySheetTargetGroup?.id ?? null
     setCategorySheet((prev) => ({ ...prev, open: false }))
     const ids = data.expenses.groups.map((group) => group.id)
     saveRef.current = { inFlight: false, queued: null, committed: ids }
@@ -478,6 +523,98 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     setStatusMessage(tHojaCategoria('categoriaEliminada'))
   }
 
+  // Kills every card's still-running entrance tween and the tile's own, and settles each at its
+  // final transform-free box, so a create within the ~800ms cascade window gives Flip a settled
+  // "before" state to capture rather than one mid-tween (D6, Risks — 6.3).
+  function settleEntranceTweens() {
+    tileEntranceTweenRef.current?.kill()
+    tileEntranceTweenRef.current = null
+    tileScrollTriggerRef.current?.kill()
+    tileScrollTriggerRef.current = null
+    tileHasEnteredRef.current = true
+    if (tileNodeRef.current) gsap.set(tileNodeRef.current, { clearProps: 'transform,opacity', visibility: 'visible' })
+    cardNodeRefs.current.forEach((node) => {
+      const wrapper = node.parentElement
+      if (!wrapper) return
+      gsap.killTweensOf(wrapper)
+      gsap.set(wrapper, { clearProps: 'transform,opacity', visibility: 'visible' })
+    })
+  }
+
+  // The create path's motion (D6): the tile's rect and a Flip.getState() over the settled cards
+  // and the tile are captured before the commit; `flushSync` puts the new card and the relocated
+  // tile in the DOM in the same frame the capture assumed, so `Flip.from` can travel every
+  // pre-existing box from its old position without a jump, while the new card is tweened by hand
+  // from the tile's old box into its own, its content fading in as a dashed-border overlay
+  // (D6, 6.2) cross-fades out over its real solid border. Reduced motion skips straight to a plain
+  // commit (D7, 6.4).
+  async function handleCreateCategory(draft: CategoryDraft): Promise<string> {
+    if (!actions.categories) throw new Error('missing category operations')
+    const reduced = prefersReducedMotion()
+
+    let tileRect: DOMRect | undefined
+    let flipState: Flip.FlipState | undefined
+    if (!reduced) {
+      settleEntranceTweens()
+      tileRect = tileNodeRef.current?.getBoundingClientRect()
+      const targets = [...cardNodeRefs.current.values(), tileNodeRef.current].filter(
+        (node): node is HTMLDivElement => node != null,
+      )
+      flipState = Flip.getState(targets)
+    }
+
+    let createPromise!: Promise<string>
+    flushSync(() => {
+      createPromise = actions.categories!.create(draft)
+    })
+    const id = await createPromise
+
+    setCategorySheet((prev) => ({ ...prev, open: false }))
+    setStatusMessage(tHojaCategoria('categoriaCreada'))
+
+    if (reduced || !flipState || !tileRect) return id
+
+    Flip.from(flipState, { duration: 0.4, ease: 'power2.out' })
+
+    const cardWrapper = cardNodeRefs.current.get(id)
+    if (cardWrapper) {
+      const cardRect = cardWrapper.getBoundingClientRect()
+      const overlay = document.createElement('div')
+      overlay.setAttribute('aria-hidden', 'true')
+      overlay.className =
+        'pointer-events-none absolute inset-0 rounded-card border border-dashed border-muted-foreground/50'
+      cardWrapper.appendChild(overlay)
+
+      // The card's own markup (dot, name, solid border) is the wrapper's first child; fading it
+      // in while the dashed overlay fades out is the border cross-fade 6.2 asks for, since
+      // `border-style` itself does not interpolate.
+      const contentNode = cardWrapper.firstElementChild as HTMLElement | null
+
+      gsap.fromTo(
+        cardWrapper,
+        {
+          x: tileRect.left - cardRect.left,
+          y: tileRect.top - cardRect.top,
+          scaleX: cardRect.width ? tileRect.width / cardRect.width : 1,
+          scaleY: cardRect.height ? tileRect.height / cardRect.height : 1,
+          transformOrigin: 'top left',
+        },
+        { x: 0, y: 0, scaleX: 1, scaleY: 1, duration: 0.4, ease: 'power2.out' },
+      )
+      if (contentNode) {
+        gsap.fromTo(contentNode, { opacity: 0 }, { opacity: 1, duration: 0.2, delay: 0.2, ease: 'power1.out' })
+      }
+      gsap.to(overlay, {
+        opacity: 0,
+        duration: 0.4,
+        ease: 'power2.out',
+        onComplete: () => overlay.remove(),
+      })
+    }
+
+    return id
+  }
+
   function showUndo(expense: Expense) {
     toasts.close()
     const id = toasts.add({
@@ -508,16 +645,67 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     }
   }
 
+  function showIncomeUndo(entry: IncomeEntry) {
+    toasts.close()
+    const id = toasts.add({
+      title: tHojaGasto('ingresoEliminado'),
+      priority: 'low',
+      actionProps: { children: tHojaGasto('deshacer'), onClick: () => void undoIncomeDelete(id, entry) },
+    })
+  }
+
+  async function undoIncomeDelete(id: string, entry: IncomeEntry) {
+    if (!actions.income) return
+    try {
+      await actions.income.restore(entry.id)
+      toasts.close(id)
+    } catch {
+      toasts.update(id, { title: tHojaGasto('errorDeshacer'), priority: 'high', actionProps: undefined })
+    }
+  }
+
+  async function handleDeleteIncome(entry: IncomeEntry) {
+    if (!actions.income) return
+    try {
+      await actions.income.softDelete(entry.id)
+      showIncomeUndo(entry)
+    } catch (error) {
+      toasts.add({ title: tHojaGasto('errorEliminarIngreso'), priority: 'high' })
+      throw error
+    }
+  }
+
   async function handleSheetDelete() {
-    if (!actions.expenses || sheet.target?.mode !== 'edit') return
+    if (sheet.target?.mode !== 'edit') return
+    if (sheet.target.kind === 'income') {
+      if (!actions.income) return
+      const entry = sheet.target.entry
+      await actions.income.softDelete(entry.id)
+      setSheet((prev) => ({ ...prev, open: false }))
+      showIncomeUndo(entry)
+      return
+    }
+    if (!actions.expenses) return
     const expense = sheet.target.expense
     await actions.expenses.softDelete(expense.id)
     setSheet((prev) => ({ ...prev, open: false }))
     showUndo(expense)
   }
 
-  async function handleSaveExpense(values: ExpenseDraft) {
-    if (!actions.expenses || !sheet.target) return
+  async function handleSaveEntry(values: ExpenseDraft) {
+    if (!sheet.target) return
+    if (sheet.target.kind === 'income') {
+      if (!actions.income) return
+      if (sheet.target.mode === 'create') {
+        await actions.income.create(values)
+      } else {
+        await actions.income.update(sheet.target.entry.id, values)
+      }
+      setSheet((prev) => ({ ...prev, open: false }))
+      setStatusMessage(sheet.target.mode === 'create' ? tHojaGasto('ingresoAnadido') : tHojaGasto('cambiosGuardados'))
+      return
+    }
+    if (!actions.expenses) return
     if (sheet.target.mode === 'create') {
       await actions.expenses.create(sheet.target.group.id, values)
     } else {
@@ -529,7 +717,11 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
 
   async function handleSaveRecurrence(draft: RecurringDraft) {
     if (!actions.recurring || sheet.target?.mode !== 'create') return
-    await actions.recurring.create(sheet.target.group.id, draft)
+    if (sheet.target.kind === 'income') {
+      await actions.recurring.create({ tipo: 'ingreso' }, draft)
+      return
+    }
+    await actions.recurring.create({ tipo: 'gasto', categoryId: sheet.target.group.id }, draft)
   }
 
   async function handleSaveDefinition(definitionId: string, draft: RecurringDraft) {
@@ -553,26 +745,41 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     setRecurringSheet((prev) => ({ ...prev, open: false }))
   }
 
-  const sheetGroup = sheet.target?.group ?? data.expenses.groups[0]
-  const sheetContext = {
-    kind: 'category' as const,
-    name: sheetGroup.name,
-    color: sheetGroup.color,
-    recurring: sheet.target?.mode === 'edit' && sheet.target.expense.fixed != null,
-  }
+  const sheetIsIncome = sheet.target?.kind === 'income'
+  const sheetGroup = sheet.target?.kind === 'expense' ? sheet.target.group : data.expenses.groups[0]
+  const sheetContext =
+    sheet.target?.kind === 'income'
+      ? { kind: 'income' as const, recurring: sheet.target.mode === 'edit' && sheet.target.entry.recurring != null }
+      : {
+          kind: 'category' as const,
+          name: sheetGroup.name,
+          color: sheetGroup.color,
+          recurring: sheet.target?.mode === 'edit' && sheet.target.expense.fixed != null,
+        }
   const sheetInitialValues: Partial<ExpenseDraft> =
     sheet.target?.mode === 'edit'
-      ? {
-          amount: sheet.target.expense.amount,
-          description: sheet.target.expense.name,
-          date: localDateOf(sheet.target.expense.date, data.user.timezone),
-        }
+      ? sheet.target.kind === 'income'
+        ? {
+            amount: sheet.target.entry.amount,
+            description: sheet.target.entry.name,
+            date: localDateOf(sheet.target.entry.date, data.user.timezone),
+          }
+        : {
+            amount: sheet.target.expense.amount,
+            description: sheet.target.expense.name,
+            date: localDateOf(sheet.target.expense.date, data.user.timezone),
+          }
       : { date: clampDate(data.cycle.today, data.cycle.start, data.cycle.end) }
 
-  const categorySheetTarget = categorySheet.target ?? data.expenses.groups.find((group) => group.kind === 'category')!
+  const categorySheetMode = categorySheet.target?.mode ?? 'edit'
+  const categorySheetTargetGroup = categorySheet.target?.mode === 'edit' ? categorySheet.target.group : null
   const receivingCategories = data.expenses.groups
-    .filter((group) => group.kind === 'category' && group.id !== categorySheetTarget.id)
+    .filter((group) => group.kind === 'category' && group.id !== categorySheetTargetGroup?.id)
     .map((group) => ({ id: group.id, name: group.name ?? '' }))
+  // D3: the first colour in the picker's order that no current category uses, falling back to
+  // the first entry when every colour is taken.
+  const usedCategoryColors = new Set(data.expenses.groups.filter((group) => group.kind === 'category').map((group) => group.color))
+  const createCategoryColor = CATEGORY_COLORS.find((color) => !usedCategoryColors.has(color)) ?? CATEGORY_COLORS[0]
 
   const recurringSheetTarget =
     (recurringSheet.charge ? definitions.find((definition) => definition.id === recurringSheet.charge!.definitionId) : null) ??
@@ -671,9 +878,56 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     return 0.48 + Math.min(position < 0 ? 5 : position + 1, 5) * 0.05
   }
 
+  // The tile's own entrance (D6): unlike `AnimatedContent`, it clears its inline transform and
+  // opacity once it lands, and keeps the tween in a ref a later create can kill before its own
+  // Flip capture. An id not in `cascadeOrder` gets the cascade's capped, last-card delay, so the
+  // tile always fades in alongside the last cards regardless of how many there are.
+  const setTileEntranceRef = useCallback((el: HTMLDivElement | null) => {
+    tileNodeRef.current = el
+    if (!el) {
+      tileScrollTriggerRef.current?.kill()
+      tileScrollTriggerRef.current = null
+      tileEntranceTweenRef.current?.kill()
+      tileEntranceTweenRef.current = null
+      return
+    }
+    if (tileHasEnteredRef.current || prefersReducedMotion()) {
+      gsap.set(el, { clearProps: 'transform,opacity', visibility: 'visible' })
+      tileHasEnteredRef.current = true
+      return
+    }
+    gsap.set(el, { y: 24, opacity: 0, visibility: 'visible' })
+    const tween = gsap.to(el, {
+      y: 0,
+      opacity: 1,
+      duration: 0.3,
+      ease: 'power3.out',
+      delay: cascadeDelay('__add-category-tile__'),
+      paused: true,
+      onComplete: () => {
+        gsap.set(el, { clearProps: 'transform,opacity' })
+        tileHasEnteredRef.current = true
+        tileEntranceTweenRef.current = null
+      },
+    })
+    tileEntranceTweenRef.current = tween
+    tileScrollTriggerRef.current = ScrollTrigger.create({
+      trigger: document.getElementById('category-cascade'),
+      start: 'top 80%',
+      once: true,
+      onEnter: () => tween.play(),
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const sortedExpenseGroups = useMemo(
     () => [...data.expenses.groups].sort((a, b) => b.total - a.total),
     [data.expenses.groups],
+  )
+
+  const sortedIncomeEntries = useMemo(
+    () => [...data.income.entries].sort((a, b) => b.date.localeCompare(a.date)),
+    [data.income.entries],
   )
 
   function findGroupName(categoryId: string): string {
@@ -704,7 +958,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
       />
       {reordering ? (
         <div
-          className="fixed inset-x-0 top-0 z-40 border-b border-border bg-background"
+          className="glass-bar fixed inset-x-0 top-0 z-40"
           style={{ height: BAR_HEIGHT }}
         >
           <div className="mx-auto flex h-full w-full max-w-[640px] items-center justify-between gap-3 px-gutter">
@@ -713,7 +967,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
               ref={doneRef}
               type="button"
               onClick={leaveReorder}
-              className="pressable -me-2 inline-flex min-h-target items-center rounded-full px-2 text-body-lg font-medium text-brand-ink"
+              className="pressable -me-2 inline-flex min-h-target items-center rounded-full px-2 text-body-lg font-medium text-brand-ink transition-colors duration-150 ease-out hover:text-brand"
             >
               {tReordenar('listo')}
             </button>
@@ -736,14 +990,14 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
               type="button"
               onClick={() => window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })}
               aria-label={t('irArriba')}
-              className="pressable relative -top-px grid size-11 shrink-0 place-items-center rounded-full [--press-scale:0.9]"
+              className="pressable relative -top-px -ms-3 grid size-11 shrink-0 animate-header-pop place-items-center rounded-full [--press-scale:0.9] motion-reduce:animate-none"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/mango-logo-light.svg" alt="" aria-hidden className="size-11 object-contain dark:hidden" />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/mango-logo-dark.svg" alt="" aria-hidden className="hidden size-11 object-contain dark:block" />
             </button>
-            <div className="relative min-w-0 flex-1">
+            <div className="relative min-w-0 flex-1 animate-header-in [animation-delay:90ms] motion-reduce:animate-none">
               <span
                 aria-hidden={!titleInView}
                 inert={!titleInView}
@@ -784,7 +1038,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
             aria-controls="account-menu"
             // The 44px target is wider than the 40px avatar inside it, so it hangs 2px past the
             // gutter to leave the circle's edge level with the logo's on the other side.
-            className="pressable -me-0.5 grid size-target shrink-0 place-items-center rounded-full [--press-scale:0.9]"
+            className="pressable -me-0.5 grid size-target shrink-0 animate-header-pop place-items-center rounded-full [--pop-rotate:12deg] [--press-scale:0.9] [animation-delay:180ms] motion-reduce:animate-none"
           >
             <Avatar name={data.user.name} photoUrl={data.user.photoUrl} />
           </button>
@@ -806,12 +1060,11 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
         </AnimatedContent>
       </div>
       {notice ? (
-        <AnimatedContent distance={12} delay={0.06} duration={0.6} aria-hidden={reordering} inert={reordering}>
+        <AnimatedContent className="mb-stack" distance={12} delay={0.06} duration={0.6} aria-hidden={reordering} inert={reordering}>
           {notice}
         </AnimatedContent>
       ) : null}
       <AnimatedContent
-        className="mt-4"
         distance={32}
         scale={0.97}
         duration={1}
@@ -835,19 +1088,27 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
               panel: (
                 <>
                   <div className="flex flex-col">
-                    {data.income.sources.map((source) => (
-                      <SummaryRow
-                        key={source.id}
-                        name={source.name}
-                        amount={source.actual}
-                        currency={currency}
-                        detail={tResumen('estimado', {
-                          real: format.number(source.actual, { ...currencyFormatOptions, currency }),
-                          estimado: format.number(source.estimated, { ...currencyFormatOptions, currency }),
-                        })}
-                      />
-                    ))}
-                    <AddRow label={t('anadirIngreso')} onClick={actions.addIncome} />
+                    {sortedIncomeEntries.map((entry, index) => {
+                      const row = (
+                        <ExpenseRow
+                          name={entry.name || tHojaGasto('ingreso')}
+                          date={entry.date}
+                          amount={entry.amount}
+                          currency={currency}
+                          timeZone={data.user.timezone}
+                          onActivate={actions.income ? () => openIncomeEditSheet(entry) : undefined}
+                          first={index === 0}
+                        />
+                      )
+                      return actions.income ? (
+                        <SwipeToDelete key={entry.id} onDelete={() => handleDeleteIncome(entry)}>
+                          {row}
+                        </SwipeToDelete>
+                      ) : (
+                        <div key={entry.id}>{row}</div>
+                      )
+                    })}
+                    <AddRow label={t('anadirIngreso')} onClick={actions.income ? openIncomeCreateSheet : undefined} />
                   </div>
                 </>
               ),
@@ -959,6 +1220,98 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
           {renderedGroups.map((group, index) => {
             const isDragging = dragVisual?.categoryId === group.id
             const shift = dragVisual && !isDragging ? neighbourShift(index, dragVisual) : 0
+            // A category created after mount isn't in the cascade's own snapshot, and must not
+            // run through `AnimatedContent`'s entrance: that wrapper starts `visibility:hidden`
+            // until its own delayed tween plays, which would hide the new card underneath the
+            // create morph that already owns its appearance (D6).
+            const isNewlyCreated = !cascadeOrder.includes(group.id)
+            const card = (
+              <div
+                ref={(node) => {
+                  if (node) cardNodeRefs.current.set(group.id, node)
+                  else cardNodeRefs.current.delete(group.id)
+                }}
+                className={cn(
+                  'group relative scroll-mt-20',
+                  reordering && !isDragging && 'transition-transform duration-200 ease-in-out motion-reduce:transition-none',
+                  // The lift's shadows are drawn on this wrapper, not on the card inside it, so it
+                  // needs the card's own radius or they trace a square around a rounded card.
+                  isDragging && 'z-10 rounded-card',
+                )}
+                style={!isDragging && shift ? { transform: `translateY(${shift}px)` } : undefined}
+              >
+                <CategoryCard
+                  group={group}
+                  currency={currency}
+                  places={CATEGORY_PLACES}
+                  timeZone={data.user.timezone}
+                  open={openIds.has(group.id)}
+                  onToggle={() => toggleCard(group.id)}
+                  onAddExpense={actions.expenses ? () => openCreateSheet(group) : undefined}
+                  onEditExpense={actions.expenses ? (expense) => openEditSheet(group, expense) : undefined}
+                  onDeleteExpense={actions.expenses ? (expense) => handleDeleteExpense(expense) : undefined}
+                  onOpenOptions={actions.categories ? () => openCategorySheet(group) : undefined}
+                  reordering={reordering}
+                  showProgress={!hiddenProgressIds.has(group.id)}
+                />
+                {reordering ? (
+                  <div
+                    aria-hidden
+                    onPointerDown={(event) => {
+                      if (event.pointerType === 'touch') return // touch drags start at the handle only (D6)
+                      startDrag(event, group.id, index)
+                    }}
+                    onPointerMove={handleDragPointerMove}
+                    onPointerUp={endDrag}
+                    onPointerCancel={cancelDrag}
+                    className={cn('absolute inset-0 touch-pan-y', isDragging ? 'cursor-grabbing' : 'cursor-grab')}
+                  />
+                ) : null}
+                {reordering ? (
+                  <button
+                    type="button"
+                    aria-label={tReordenar('mover', {
+                      categoria: group.name,
+                      posicion: index + 1,
+                      total: renderedGroups.length,
+                    })}
+                    onPointerDown={(event) => startDrag(event, group.id, index)}
+                    onPointerMove={handleDragPointerMove}
+                    onPointerUp={endDrag}
+                    onPointerCancel={cancelDrag}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+                      event.preventDefault()
+                      void moveCategory(index, event.key === 'ArrowUp' ? -1 : 1)
+                    }}
+                    style={{ animationDelay: `${Math.min(index, 4) * 30}ms` }}
+                    // The handle is drawn on the scrim, which is dark in both themes, so its lines
+                    // are light in both rather than following the theme's muted foreground.
+                    // The hover contrast bump only applies to a fine pointer that supports hover,
+                    // so a tap on a touch device never leaves it looking hovered (D6, 9.3).
+                    className={cn(
+                      'animate-handle-in absolute -end-11 inset-y-0 grid w-11 touch-none place-items-center rounded-card text-white/70 group-hover:hover-fine:text-white/90 motion-reduce:animate-none',
+                      isDragging ? 'cursor-grabbing' : 'pressable cursor-grab [--press-scale:0.94]',
+                    )}
+                  >
+                    <span aria-hidden className="flex flex-col gap-[3px]">
+                      <span className="block h-0.5 w-4 rounded-full bg-current" />
+                      <span className="block h-0.5 w-4 rounded-full bg-current" />
+                      <span className="block h-0.5 w-4 rounded-full bg-current" />
+                    </span>
+                  </button>
+                ) : null}
+              </div>
+            )
+
+            if (isNewlyCreated) {
+              return (
+                <div key={group.id} className={cn(isDragging && 'relative z-20')}>
+                  {card}
+                </div>
+              )
+            }
+
             return (
               <AnimatedContent
                 key={group.id}
@@ -973,85 +1326,15 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                 // element that owns the context, not on the card within it.
                 className={cn(isDragging && 'relative z-20')}
               >
-                <div
-                  ref={(node) => {
-                    if (node) cardNodeRefs.current.set(group.id, node)
-                    else cardNodeRefs.current.delete(group.id)
-                  }}
-                  className={cn(
-                    'group relative scroll-mt-20',
-                    reordering && !isDragging && 'transition-transform duration-200 ease-in-out motion-reduce:transition-none',
-                    // The lift's shadows are drawn on this wrapper, not on the card inside it, so it
-                    // needs the card's own radius or they trace a square around a rounded card.
-                    isDragging && 'z-10 rounded-card',
-                  )}
-                  style={!isDragging && shift ? { transform: `translateY(${shift}px)` } : undefined}
-                >
-                  <CategoryCard
-                    group={group}
-                    currency={currency}
-                    places={CATEGORY_PLACES}
-                    timeZone={data.user.timezone}
-                    open={openIds.has(group.id)}
-                    onToggle={() => toggleCard(group.id)}
-                    onAddExpense={actions.expenses ? () => openCreateSheet(group) : undefined}
-                    onEditExpense={actions.expenses ? (expense) => openEditSheet(group, expense) : undefined}
-                    onDeleteExpense={actions.expenses ? (expense) => handleDeleteExpense(expense) : undefined}
-                    onOpenOptions={actions.categories ? () => openCategorySheet(group) : undefined}
-                    reordering={reordering}
-                    showProgress={!hiddenProgressIds.has(group.id)}
-                  />
-                  {reordering ? (
-                    <div
-                      aria-hidden
-                      onPointerDown={(event) => {
-                        if (event.pointerType === 'touch') return // touch drags start at the handle only (D6)
-                        startDrag(event, group.id, index)
-                      }}
-                      onPointerMove={handleDragPointerMove}
-                      onPointerUp={endDrag}
-                      onPointerCancel={cancelDrag}
-                      className={cn('absolute inset-0 touch-pan-y', isDragging ? 'cursor-grabbing' : 'cursor-grab')}
-                    />
-                  ) : null}
-                  {reordering ? (
-                    <button
-                      type="button"
-                      aria-label={tReordenar('mover', {
-                        categoria: group.name,
-                        posicion: index + 1,
-                        total: renderedGroups.length,
-                      })}
-                      onPointerDown={(event) => startDrag(event, group.id, index)}
-                      onPointerMove={handleDragPointerMove}
-                      onPointerUp={endDrag}
-                      onPointerCancel={cancelDrag}
-                      onKeyDown={(event) => {
-                        if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
-                        event.preventDefault()
-                        void moveCategory(index, event.key === 'ArrowUp' ? -1 : 1)
-                      }}
-                      style={{ animationDelay: `${Math.min(index, 4) * 30}ms` }}
-                      // The handle is drawn on the scrim, which is dark in both themes, so its lines
-                      // are light in both rather than following the theme's muted foreground.
-                      // The hover contrast bump only applies to a fine pointer that supports hover,
-                      // so a tap on a touch device never leaves it looking hovered (D6, 9.3).
-                      className={cn(
-                        'animate-handle-in absolute -end-11 inset-y-0 grid w-11 touch-none place-items-center rounded-card text-white/70 group-hover:hover-fine:text-white/90 motion-reduce:animate-none',
-                        isDragging ? 'cursor-grabbing' : 'pressable cursor-grab [--press-scale:0.94]',
-                      )}
-                    >
-                      <span aria-hidden className="flex flex-col gap-[3px]">
-                        <span className="block h-0.5 w-4 rounded-full bg-current" />
-                        <span className="block h-0.5 w-4 rounded-full bg-current" />
-                        <span className="block h-0.5 w-4 rounded-full bg-current" />
-                      </span>
-                    </button>
-                  ) : null}
-                </div>
+                {card}
               </AnimatedContent>
             )
           })}
+          {reordering ? null : (
+            <div ref={setTileEntranceRef} style={{ visibility: 'hidden' }}>
+              <AddCategoryTile label={t('anadirCategoria')} onClick={actions.categories ? openCreateCategorySheet : undefined} />
+            </div>
+          )}
         </div>
       </div>
       <div className="mt-section flex flex-col gap-stack" aria-hidden={reordering} inert={reordering}>
@@ -1070,7 +1353,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
         onClose={() => setAccountMenuOpen(false)}
       />
       <EntrySheet
-        config={expenseEntry}
+        config={sheetIsIncome ? incomeEntry : expenseEntry}
         open={sheet.open}
         onOpenChange={(open) => setSheet((prev) => ({ ...prev, open }))}
         mode={sheet.target?.mode ?? 'create'}
@@ -1078,21 +1361,26 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
         initialValues={sheetInitialValues}
         fieldOptions={{ amount: { currency }, date: { min: data.cycle.start, max: data.cycle.end } }}
         initialFocusRef={initialFocusRef}
-        onSave={handleSaveExpense}
+        onSave={handleSaveEntry}
         onDelete={sheet.target?.mode === 'edit' ? handleSheetDelete : undefined}
         onSaveRecurrence={actions.recurring ? handleSaveRecurrence : undefined}
       />
       <CategorySheet
         open={categorySheet.open}
         onOpenChange={(open) => setCategorySheet((prev) => ({ ...prev, open }))}
-        target={categorySheetTarget}
+        mode={categorySheetMode}
+        target={categorySheetTargetGroup}
         currency={currency}
         receivingCategories={receivingCategories}
         onSave={handleSaveCategory}
         onDelete={handleDeleteCategory}
+        onCreate={actions.categories ? handleCreateCategory : undefined}
+        initialColor={categorySheetMode === 'create' ? createCategoryColor : undefined}
         onReorder={actions.categories ? handleEnterReorder : undefined}
-        progressVisible={!hiddenProgressIds.has(categorySheetTarget.id)}
-        onToggleProgress={() => toggleProgress(categorySheetTarget.id)}
+        progressVisible={!hiddenProgressIds.has(categorySheetTargetGroup?.id ?? '')}
+        onToggleProgress={() => {
+          if (categorySheetTargetGroup) toggleProgress(categorySheetTargetGroup.id)
+        }}
       />
       {recurringSheetTarget ? (
         <RecurringSheet

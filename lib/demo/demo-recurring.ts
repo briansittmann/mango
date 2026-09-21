@@ -1,8 +1,8 @@
 import type { Dispatch, SetStateAction } from 'react'
-import type { RecurringDraft, RecurringMutations } from '@/lib/data/recurring'
+import type { RecurringDraft, RecurringMutations, RecurringTarget } from '@/lib/data/recurring'
 
 export type DemoRecurringEdits = {
-  created: { id: string; categoryId: string; draft: RecurringDraft }[]
+  created: { id: string; target: RecurringTarget; draft: RecurringDraft }[]
   updated: Record<string, RecurringDraft>
   stoppedIds: string[]
   deletedIds: string[]
@@ -14,10 +14,10 @@ let counter = 0
 
 export function createDemoRecurringMutations(setEdits: Dispatch<SetStateAction<DemoRecurringEdits>>): RecurringMutations {
   return {
-    create(categoryId, draft) {
+    create(target, draft) {
       counter += 1
       const id = `demo-recurring-${counter}`
-      setEdits((edits) => ({ ...edits, created: [...edits.created, { id, categoryId, draft }] }))
+      setEdits((edits) => ({ ...edits, created: [...edits.created, { id, target, draft }] }))
       return Promise.resolve()
     },
     update(definitionId, draft) {

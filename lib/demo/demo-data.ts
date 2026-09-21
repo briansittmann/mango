@@ -3,6 +3,7 @@ import type { CategoryColor, DashboardData, ExpenseGroup } from '@/lib/data/dash
 import type { RecurringDefinition } from '@/lib/data/recurring'
 import { deriveDemoData, noDemoEdits } from '@/lib/demo/demo-expenses'
 import { noDemoCategoryEdits } from '@/lib/demo/demo-categories'
+import { noDemoIncomeEdits } from '@/lib/demo/demo-income'
 import { noDemoRecurringEdits } from '@/lib/demo/demo-recurring'
 
 type Locale = 'es' | 'en'
@@ -55,17 +56,19 @@ function name(locale: Locale, key: keyof typeof NAMES): string {
 const RECURRING_DEFINITIONS: {
   id: string
   nameKey: keyof typeof NAMES
-  categoryId: string
+  tipo: 'gasto' | 'ingreso'
+  categoryId: string | null
   day: number
   expectedAmount: number
   repetitions?: { total: number; done: number }
 }[] = [
-  { id: 'def-alquiler', nameKey: 'alquiler', categoryId: 'vivienda', day: 1, expectedAmount: 820 },
-  { id: 'def-internet', nameKey: 'internet', categoryId: 'vivienda', day: 3, expectedAmount: 45 },
-  { id: 'def-seguro', nameKey: 'seguro', categoryId: 'vivienda', day: 8, expectedAmount: 35, repetitions: { total: 10, done: 4 } },
-  { id: 'def-parking', nameKey: 'parking', categoryId: 'transporte', day: 15, expectedAmount: 50 },
-  { id: 'def-limpieza', nameKey: 'limpieza', categoryId: 'hogar', day: 20, expectedAmount: 35 },
-  { id: 'def-gimnasio', nameKey: 'gimnasio', categoryId: 'salud', day: 22, expectedAmount: 40 },
+  { id: 'def-alquiler', nameKey: 'alquiler', tipo: 'gasto', categoryId: 'vivienda', day: 1, expectedAmount: 820 },
+  { id: 'def-internet', nameKey: 'internet', tipo: 'gasto', categoryId: 'vivienda', day: 3, expectedAmount: 45 },
+  { id: 'def-seguro', nameKey: 'seguro', tipo: 'gasto', categoryId: 'vivienda', day: 8, expectedAmount: 35, repetitions: { total: 10, done: 4 } },
+  { id: 'def-parking', nameKey: 'parking', tipo: 'gasto', categoryId: 'transporte', day: 15, expectedAmount: 50 },
+  { id: 'def-limpieza', nameKey: 'limpieza', tipo: 'gasto', categoryId: 'hogar', day: 20, expectedAmount: 35 },
+  { id: 'def-gimnasio', nameKey: 'gimnasio', tipo: 'gasto', categoryId: 'salud', day: 22, expectedAmount: 40 },
+  { id: 'def-salario', nameKey: 'salario', tipo: 'ingreso', categoryId: null, day: 1, expectedAmount: 2400 },
 ]
 
 export function buildDemoRecurringDefinitions(locale: Locale): RecurringDefinition[] {
@@ -73,6 +76,7 @@ export function buildDemoRecurringDefinitions(locale: Locale): RecurringDefiniti
     id: definition.id,
     name: name(locale, definition.nameKey),
     expectedAmount: definition.expectedAmount,
+    tipo: definition.tipo,
     categoryId: definition.categoryId,
     day: definition.day,
     active: true,
@@ -145,11 +149,11 @@ export function buildDemoData(locale: Locale): DashboardData {
   const groups = categoryGroups
   const expensesTotal = groups.reduce((sum, group) => sum + group.total, 0)
 
-  const incomeSources = [
-    { id: 'salario', nameKey: 'salario' as const, estimated: 2400, actual: 2400 },
-    { id: 'freelance', nameKey: 'freelance' as const, estimated: 500, actual: 420 },
+  const incomeEntries = [
+    { id: 'salario', nameKey: 'salario' as const, amount: 2400, date: '2026-09-01T09:00:00Z', recurring: { definitionId: 'def-salario', day: 1 } },
+    { id: 'freelance', nameKey: 'freelance' as const, amount: 420, date: '2026-09-05T09:00:00Z' },
   ]
-  const incomeTotal = incomeSources.reduce((sum, source) => sum + source.actual, 0)
+  const incomeTotal = incomeEntries.reduce((sum, entry) => sum + entry.amount, 0)
 
   const savingsMovements = [
     { id: 'savings-0', nameKey: 'ahorroMensual' as const, date: '2026-09-03T09:00:00Z', amount: 176 },
@@ -184,11 +188,12 @@ export function buildDemoData(locale: Locale): DashboardData {
     freeMargin: incomeTotal - expensesTotal - savingsCycle,
     income: {
       total: incomeTotal,
-      sources: incomeSources.map(({ id, nameKey, estimated, actual }) => ({
+      entries: incomeEntries.map(({ id, nameKey, amount, date, recurring }) => ({
         id,
         name: name(locale, nameKey),
-        estimated,
-        actual,
+        amount,
+        date,
+        ...(recurring ? { recurring } : {}),
       })),
     },
     savings: {
@@ -200,5 +205,5 @@ export function buildDemoData(locale: Locale): DashboardData {
     history,
   }
 
-  return deriveDemoData(sample, buildDemoRecurringDefinitions(locale), noDemoEdits, noDemoCategoryEdits, noDemoRecurringEdits).data
+  return deriveDemoData(sample, buildDemoRecurringDefinitions(locale), noDemoEdits, noDemoCategoryEdits, noDemoRecurringEdits, noDemoIncomeEdits).data
 }

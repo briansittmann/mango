@@ -9,6 +9,9 @@ export function ThemeSync() {
       if (theme === 'light' || theme === 'dark') {
         document.documentElement.setAttribute('data-theme', theme)
       }
+      if (localStorage.getItem('background') === 'solid') {
+        document.documentElement.setAttribute('data-background', 'solid')
+      }
     } catch {}
   }, [])
 

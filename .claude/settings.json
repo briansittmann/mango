@@ -128,7 +128,11 @@
       "Bash(node scratchpad/verify-9.3.mjs)",
       "Bash(node scratchpad/debug-9.4.mjs)",
       "Bash",
-      "WebFetch(domain:reactbits.dev)"
+      "WebFetch(domain:reactbits.dev)",
+      "Skill(opsx:propose)",
+      "Skill(opsx:propose:*)",
+      "Skill(opsx:sync)",
+      "Skill(opsx:sync:*)"
     ],
     "additionalDirectories": [
       "/Users/brianrebagliati/Documents/Work/mango-finanzas/mango/baseline-shots"

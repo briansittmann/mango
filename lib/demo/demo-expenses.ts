@@ -2,8 +2,10 @@ import type { Dispatch, SetStateAction } from 'react'
 import { getBudgetStatus } from '@/lib/data/budget'
 import type { DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
 import type { ExpenseDraft, ExpenseMutations } from '@/lib/data/expenses'
-import type { RecurringDefinition, RecurringDraft } from '@/lib/data/recurring'
+import type { IncomeDraft, IncomeEntry } from '@/lib/data/income'
+import type { RecurringDefinition, RecurringDraft, RecurringTarget } from '@/lib/data/recurring'
 import type { DemoCategoryEdits } from '@/lib/demo/demo-categories'
+import type { DemoIncomeEdits } from '@/lib/demo/demo-income'
 import type { DemoRecurringEdits } from '@/lib/demo/demo-recurring'
 
 export type DemoExpenseEdits = {
@@ -29,12 +31,13 @@ function resolveExpenses(group: ExpenseGroup, edits: DemoExpenseEdits): Expense[
     })
 }
 
-function toDefinition(id: string, categoryId: string, draft: RecurringDraft): RecurringDefinition {
+function toDefinition(id: string, target: RecurringTarget, draft: RecurringDraft): RecurringDefinition {
   return {
     id,
     name: draft.name,
     expectedAmount: draft.expectedAmount,
-    categoryId,
+    tipo: target.tipo,
+    categoryId: target.tipo === 'gasto' ? target.categoryId : null,
     day: draft.day,
     active: true,
     reminder: draft.reminder,
@@ -43,7 +46,7 @@ function toDefinition(id: string, categoryId: string, draft: RecurringDraft): Re
 }
 
 function resolveDefinitions(base: RecurringDefinition[], edits: DemoRecurringEdits): RecurringDefinition[] {
-  const created = edits.created.map(({ id, categoryId, draft }) => toDefinition(id, categoryId, draft))
+  const created = edits.created.map(({ id, target, draft }) => toDefinition(id, target, draft))
 
   return [...base, ...created]
     .filter((definition) => !edits.deletedIds.includes(definition.id))
@@ -63,13 +66,16 @@ function resolveDefinitions(base: RecurringDefinition[], edits: DemoRecurringEdi
 // ahead of the ordinary expense-edit step (D6): an amount change rewrites this cycle's charge
 // only while it is still pending (D4); a deletion removes it. Stopping touches no expense — a
 // stopped definition simply produces no more charges from here on.
-function reconcileRecurringUpdatesAndDeletes(groups: ExpenseGroup[], edits: DemoRecurringEdits): ExpenseGroup[] {
+function reconcileRecurringUpdatesAndDeletes(groups: ExpenseGroup[], edits: DemoRecurringEdits, expenseDefinitionIds: Set<string>): ExpenseGroup[] {
   return groups.map((group) => ({
     ...group,
     expenses: group.expenses
-      .filter((expense) => !expense.fixed || !edits.deletedIds.includes(expense.fixed.definitionId))
+      .filter(
+        (expense) =>
+          !expense.fixed || !expenseDefinitionIds.has(expense.fixed.definitionId) || !edits.deletedIds.includes(expense.fixed.definitionId),
+      )
       .map((expense) => {
-        if (!expense.fixed || expense.fixed.charged) return expense
+        if (!expense.fixed || expense.fixed.charged || !expenseDefinitionIds.has(expense.fixed.definitionId)) return expense
         const update = edits.updated[expense.fixed.definitionId]
         return update ? { ...expense, amount: update.expectedAmount } : expense
       }),
@@ -90,6 +96,9 @@ function attachCreatedDefinitions(
   currentDay: number,
   cycleStart: string,
 ): { group: ExpenseGroup; expenses: Expense[] }[] {
+  const expenseCreated = created.filter(
+    (c): c is { id: string; target: { tipo: 'gasto'; categoryId: string }; draft: RecurringDraft } => c.target.tipo === 'gasto',
+  )
   const claimed = new Set<string>()
 
   const tagged = resolved.map(({ group, expenses }) => ({
@@ -97,9 +106,9 @@ function attachCreatedDefinitions(
     expenses: expenses.map((expense) => {
       if (expense.fixed) return expense
       const day = Number(expense.date.slice(8, 10))
-      const match = created.find(
+      const match = expenseCreated.find(
         (c) =>
-          c.categoryId === group.id &&
+          c.target.categoryId === group.id &&
           !claimed.has(c.id) &&
           c.draft.expectedAmount === expense.amount &&
           c.draft.day === day &&
@@ -113,8 +122,8 @@ function attachCreatedDefinitions(
 
   const monthPrefix = cycleStart.slice(0, 8) // 'YYYY-MM-'
   return tagged.map(({ group, expenses }) => {
-    const additions = created
-      .filter((c) => c.categoryId === group.id && !claimed.has(c.id))
+    const additions = expenseCreated
+      .filter((c) => c.target.categoryId === group.id && !claimed.has(c.id))
       .map(
         ({ id, draft }): Expense => ({
           id: `charge-${id}`,
@@ -126,6 +135,55 @@ function attachCreatedDefinitions(
       )
     return { group, expenses: [...expenses, ...additions] }
   })
+}
+
+function toIncomeEntry(id: string, draft: IncomeDraft, recurring?: IncomeEntry['recurring']): IncomeEntry {
+  return { id, name: draft.description, amount: draft.amount, date: `${draft.date}T12:00:00Z`, ...(recurring ? { recurring } : {}) }
+}
+
+function resolveIncome(base: IncomeEntry[], edits: DemoIncomeEdits): IncomeEntry[] {
+  const created = edits.created.map((c) => toIncomeEntry(c.id, c.draft))
+
+  return [...base, ...created]
+    .filter((entry) => !edits.deletedIds.includes(entry.id))
+    .map((entry) => {
+      const update = edits.updated[entry.id]
+      return update ? toIncomeEntry(entry.id, update, entry.recurring) : entry
+    })
+}
+
+// Mirrors attachCreatedDefinitions (D6): a recurring income create submitted alongside an
+// income entry create (same name, amount and day) tags that entry rather than producing a
+// second row. Only 'ingreso' targets are considered — a 'gasto' recurring create never
+// produces an income row.
+function attachCreatedIncomeDefinition(entries: IncomeEntry[], created: DemoRecurringEdits['created'], cycleStart: string): IncomeEntry[] {
+  const incomeCreated = created.filter((c): c is { id: string; target: { tipo: 'ingreso' }; draft: RecurringDraft } => c.target.tipo === 'ingreso')
+  const claimed = new Set<string>()
+
+  const tagged = entries.map((entry) => {
+    if (entry.recurring) return entry
+    const day = Number(entry.date.slice(8, 10))
+    const match = incomeCreated.find(
+      (c) => !claimed.has(c.id) && c.draft.expectedAmount === entry.amount && c.draft.day === day && c.draft.name.trim() === entry.name.trim(),
+    )
+    if (!match) return entry
+    claimed.add(match.id)
+    return { ...entry, recurring: { definitionId: match.id, day: match.draft.day } }
+  })
+
+  const monthPrefix = cycleStart.slice(0, 8) // 'YYYY-MM-'
+  const additions = incomeCreated
+    .filter((c) => !claimed.has(c.id))
+    .map(
+      ({ id, draft }): IncomeEntry => ({
+        id: `income-${id}`,
+        name: draft.name,
+        amount: draft.expectedAmount,
+        date: `${monthPrefix}${String(draft.day).padStart(2, '0')}T12:00:00Z`,
+        recurring: { definitionId: id, day: draft.day },
+      }),
+    )
+  return [...tagged, ...additions]
 }
 
 function finalizeGroup(
@@ -151,6 +209,7 @@ export function deriveDemoData(
   expenseEdits: DemoExpenseEdits,
   categoryEdits: DemoCategoryEdits,
   recurringEdits: DemoRecurringEdits,
+  incomeEdits: DemoIncomeEdits,
 ): { data: DashboardData; definitions: RecurringDefinition[] } {
   const today = Number(base.cycle.today.slice(8, 10))
   const start = Number(base.cycle.start.slice(8, 10))
@@ -162,7 +221,8 @@ export function deriveDemoData(
   //    they produced, ahead of any edit made directly on one of those charges — so an expense
   //    edit applied after a definition update wins on that charge.
   const definitions = resolveDefinitions(baseDefinitions, recurringEdits)
-  const groupsAfterRecurring = reconcileRecurringUpdatesAndDeletes(base.expenses.groups, recurringEdits)
+  const gastoDefinitionIds = new Set(baseDefinitions.filter((d) => d.tipo === 'gasto').map((d) => d.id))
+  const groupsAfterRecurring = reconcileRecurringUpdatesAndDeletes(base.expenses.groups, recurringEdits, gastoDefinitionIds)
 
   // 2. Expense edits resolve each group's rows.
   const expenseResolved = groupsAfterRecurring.map((group) => ({ group, expenses: resolveExpenses(group, expenseEdits) }))
@@ -188,6 +248,17 @@ export function deriveDemoData(
   }
   const survivors = updated.filter(({ group }) => !deletedIds.has(group.id))
 
+  // 5b. Category creations append after the deletion pass and before the stored-order sort
+  //     (D4): appending before deletions would let a create be swept up by a delete's
+  //     reassignment, and appending after the sort would ignore a stored order that already
+  //     names the new id.
+  const created = categoryEdits.created.map(({ id, draft }) => ({
+    group: { id, kind: 'category' as const, name: draft.name, color: draft.color, total: 0, budget: null, expenses: [] },
+    expenses: [] as Expense[],
+    budgetAmount: draft.budget,
+  }))
+  const withCreated = [...survivors, ...created]
+
   // A definition's own `categoryId` is stored separately from the expense rows it produced, so
   // deleting its category has to relocate it too — otherwise its sheet points at a category that
   // no longer exists (`dashboard-ui` → *A deleted category carries its charges*).
@@ -195,7 +266,7 @@ export function deriveDemoData(
     categoryEdits.deleted.filter((d): d is { id: string; reassignTo: string } => d.reassignTo != null).map((d) => [d.id, d.reassignTo]),
   )
   const relocatedDefinitions = definitions.map((definition) => {
-    const reassignTo = categoryReassignment.get(definition.categoryId)
+    const reassignTo = definition.categoryId != null ? categoryReassignment.get(definition.categoryId) : undefined
     return reassignTo ? { ...definition, categoryId: reassignTo } : definition
   })
 
@@ -206,19 +277,30 @@ export function deriveDemoData(
     const index = order?.indexOf(id) ?? -1
     return index === -1 ? (order?.length ?? 0) : index
   }
-  const ordered = order ? [...survivors].sort((a, b) => rank(a.group.id) - rank(b.group.id)) : survivors
+  const ordered = order ? [...withCreated].sort((a, b) => rank(a.group.id) - rank(b.group.id)) : withCreated
 
   // 7. Recompute each group's total and budget status.
   const groups = ordered.map(({ group, expenses, budgetAmount }) =>
     finalizeGroup(group, [...expenses, ...(reassignedExpenses.get(group.id) ?? [])], budgetAmount, currentDay, cycleDays),
   )
 
-  // 8. Recompute the page: expenses total, the current history entry, and the free margin.
+  // 8. Recompute the expenses total and the current history entry.
   const total = groups.reduce((sum, group) => sum + group.total, 0)
-  const freeMargin = base.income.total - total - base.savings.cycle
   const history = base.history.map((entry) => (entry.month === base.cycle.month ? { ...entry, total } : entry))
 
-  return { data: { ...base, expenses: { total, groups }, freeMargin, history }, definitions: relocatedDefinitions }
+  // 9. Income resolves last (D6): income edits resolve into plain rows first — the same order as
+  //    expenses (step 2 before step 3) — so a recurring income create submitted alongside an
+  //    income entry create has that entry to find and tag, rather than being resolved onto the
+  //    untouched base list and then having `resolveIncome` add the same entry a second time.
+  const incomeResolved = resolveIncome(base.income.entries, incomeEdits)
+  const incomeEntries = attachCreatedIncomeDefinition(incomeResolved, recurringEdits.created, base.cycle.start)
+  const incomeTotal = incomeEntries.reduce((sum, entry) => sum + entry.amount, 0)
+  const freeMargin = incomeTotal - total - base.savings.cycle
+
+  return {
+    data: { ...base, expenses: { total, groups }, income: { total: incomeTotal, entries: incomeEntries }, freeMargin, history },
+    definitions: relocatedDefinitions,
+  }
 }
 
 let counter = 0

@@ -211,6 +211,10 @@
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --animate-segment-pop: segment-pop 600ms var(--ease-bounce) both;
   --animate-handle-in: handle-in 200ms var(--ease-out) both;
+  /* Header entrance: `backwards` and not `both`, so the fill releases `scale` when it ends and
+     the pressable press-scale keeps working on the logo and the avatar. */
+  --animate-header-pop: header-pop 700ms var(--ease-bounce) backwards;
+  --animate-header-in: header-in 600ms var(--ease-out) backwards;
 
   --spacing-gutter: 1rem;
   --spacing-section: 2rem;
@@ -231,6 +235,29 @@
     from {
       opacity: 0;
       translate: 8px 0;
+    }
+  }
+
+  @keyframes header-pop {
+    from {
+      scale: 0.5;
+      rotate: var(--pop-rotate, -12deg);
+      opacity: 0;
+      filter: blur(6px);
+    }
+    to {
+      filter: blur(0);
+    }
+  }
+
+  @keyframes header-in {
+    from {
+      scale: 0.92;
+      opacity: 0;
+      filter: blur(8px);
+    }
+    to {
+      filter: blur(0);
     }
   }
 

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { cn } from '@/lib/utils'
 import type { CategoryColor } from '@/lib/data/dashboard'
 
-const CATEGORY_COLORS: CategoryColor[] = [
+export const CATEGORY_COLORS: CategoryColor[] = [
   'granate',
   'rojo',
   'coral',

@@ -38,9 +38,9 @@ test.describe('reorder mode', () => {
   test('moves a card with the keyboard and saves on every press', async ({ page }) => {
     await enterReorderMode(page)
 
-    await page.getByRole('button', { name: /^Mover Comida, posición 2 de 7$/ }).focus()
+    await page.getByRole('button', { name: /^Mover Comida, posición 4 de 7$/ }).focus()
     await page.keyboard.press('ArrowDown')
-    await expect(page.getByRole('button', { name: /^Mover Comida, posición 3 de 7$/ })).toBeFocused()
+    await expect(page.getByRole('button', { name: /^Mover Comida, posición 5 de 7$/ })).toBeFocused()
 
     // An arrow at the end does nothing.
     await page.getByRole('button', { name: /^Mover Compras, posición 7 de 7$/ }).focus()
@@ -73,11 +73,11 @@ test.describe('reorder mode', () => {
   test('a failed save reverts the card and shows a toast', async ({ page }) => {
     await enterReorderMode(page, { failReorder: true })
 
-    await page.getByRole('button', { name: /^Mover Comida, posición 2 de 7$/ }).focus()
+    await page.getByRole('button', { name: /^Mover Comida, posición 4 de 7$/ }).focus()
     await page.keyboard.press('ArrowDown')
 
     await expect(page.getByText('No se pudo guardar el orden').first()).toBeVisible()
-    await expect(page.getByRole('button', { name: /^Mover Comida, posición 2 de 7$/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Mover Comida, posición 4 de 7$/ })).toBeVisible()
     await expect(page.getByText('974')).toBeVisible()
   })
 
@@ -87,8 +87,8 @@ test.describe('reorder mode', () => {
 
     await expect(page.getByRole('button', { name: /^Mover/ })).toHaveCount(7)
 
-    await page.getByRole('button', { name: /^Mover Comida, posición 2 de 7$/ }).focus()
+    await page.getByRole('button', { name: /^Mover Comida, posición 4 de 7$/ }).focus()
     await page.keyboard.press('ArrowDown')
-    await expect(page.getByRole('button', { name: /^Mover Comida, posición 3 de 7$/ })).toBeFocused()
+    await expect(page.getByRole('button', { name: /^Mover Comida, posición 5 de 7$/ })).toBeFocused()
   })
 })

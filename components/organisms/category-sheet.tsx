@@ -3,7 +3,7 @@ import { ArrowUpDown, Eye, EyeOff, Loader2, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { CategoryDot } from '@/components/atoms/category-dot'
 import { AmountField, parseAmount } from '@/components/molecules/amount-field'
-import { ColorSwatchPicker } from '@/components/molecules/color-swatch-picker'
+import { CATEGORY_COLORS, ColorSwatchPicker } from '@/components/molecules/color-swatch-picker'
 import { FieldRow } from '@/components/molecules/field-row'
 import { SheetShell } from '@/components/organisms/sheet-shell'
 import { cn } from '@/lib/utils'
@@ -16,12 +16,16 @@ const DUPLICATE_CATEGORY_NAME: typeof DuplicateCategoryNameMessage = 'duplicate-
 type CategorySheetProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** Values come from the card that opened the sheet, per §"Opening". */
-  target: ExpenseGroup
+  mode: 'create' | 'edit'
+  /** Values come from the card that opened the sheet in edit mode; null in create mode. */
+  target: ExpenseGroup | null
   currency: string
   receivingCategories: { id: string; name: string }[]
   onSave: (categoryId: string, draft: CategoryDraft) => Promise<void>
   onDelete: (categoryId: string, reassignTo: string | null) => Promise<void>
+  onCreate?: (draft: CategoryDraft) => Promise<string>
+  /** Preselected swatch in create mode (D3); ignored in edit mode. */
+  initialColor?: CategoryColor
   /** Turns reorder mode on for the whole screen. Absent when the page supplies no reorder operation. */
   onReorder?: () => void
   /** Whether this category's card shows its budget bar. */
@@ -40,22 +44,31 @@ function formatBudgetForEdit(amount: number, locale: string): string {
   }).format(amount)
 }
 
-function buildFieldState(target: ExpenseGroup, locale: string): FieldState {
+function buildFieldState(
+  mode: 'create' | 'edit',
+  target: ExpenseGroup | null,
+  initialColor: CategoryColor | undefined,
+  locale: string,
+): FieldState {
+  if (mode === 'create') return { name: '', color: initialColor ?? CATEGORY_COLORS[0], budget: '' }
   return {
-    name: target.name ?? '',
-    color: target.color,
-    budget: target.budget ? formatBudgetForEdit(target.budget.amount, locale) : '',
+    name: target?.name ?? '',
+    color: target?.color ?? CATEGORY_COLORS[0],
+    budget: target?.budget ? formatBudgetForEdit(target.budget.amount, locale) : '',
   }
 }
 
 export function CategorySheet({
   open,
   onOpenChange,
+  mode,
   target,
   currency,
   receivingCategories,
   onSave,
   onDelete,
+  onCreate,
+  initialColor,
   onReorder,
   progressVisible,
   onToggleProgress,
@@ -66,10 +79,11 @@ export function CategorySheet({
   const formId = useId()
   const confirmHeadingRef = useRef<HTMLHeadingElement>(null)
   const deleteRowRef = useRef<HTMLButtonElement>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
 
   const [wasOpen, setWasOpen] = useState(open)
   const [step, setStep] = useState<Step>('form')
-  const [fieldState, setFieldState] = useState<FieldState>(() => buildFieldState(target, locale))
+  const [fieldState, setFieldState] = useState<FieldState>(() => buildFieldState(mode, target, initialColor, locale))
   const [initialSnapshot, setInitialSnapshot] = useState(fieldState)
   const [nameTouched, setNameTouched] = useState(false)
   const [budgetTouched, setBudgetTouched] = useState(false)
@@ -81,7 +95,7 @@ export function CategorySheet({
   if (open !== wasOpen) {
     setWasOpen(open)
     if (open) {
-      const next = buildFieldState(target, locale)
+      const next = buildFieldState(mode, target, initialColor, locale)
       setFieldState(next)
       setInitialSnapshot(next)
       setNameTouched(false)
@@ -98,7 +112,7 @@ export function CategorySheet({
     if (step === 'confirmDelete') confirmHeadingRef.current?.focus()
   }, [step])
 
-  const expenseCount = target.expenses.length
+  const expenseCount = target?.expenses.length ?? 0
   const nameValid = fieldState.name.trim() !== ''
   const budgetParsed = fieldState.budget.trim() === '' ? null : parseAmount(fieldState.budget)
   const budgetValid = fieldState.budget.trim() === '' || budgetParsed !== null
@@ -129,8 +143,11 @@ export function CategorySheet({
     setStatus('saving')
     setError(null)
     setNameError(false)
+    const draft: CategoryDraft = { name: fieldState.name.trim(), color: fieldState.color, budget: budgetParsed }
     try {
-      await onSave(target.id, { name: fieldState.name.trim(), color: fieldState.color, budget: budgetParsed })
+      // `mode` decides the call; `target` is only null in create mode, where onSave is never reached.
+      if (mode === 'create') await onCreate?.(draft)
+      else await onSave(target!.id, draft)
     } catch (err) {
       setStatus('idle')
       if (err instanceof Error && err.message === DUPLICATE_CATEGORY_NAME) setNameError(true)
@@ -154,14 +171,14 @@ export function CategorySheet({
     setStatus('deleting')
     setError(null)
     try {
-      await onDelete(target.id, expenseCount > 0 ? reassignTo : null)
+      await onDelete(target!.id, expenseCount > 0 ? reassignTo : null)
     } catch {
       setStatus('idle')
       setError('delete')
     }
   }
 
-  const title = fieldState.name.trim() || (target.name ?? '')
+  const title = mode === 'create' ? t('nuevaCategoria') : fieldState.name.trim() || (target?.name ?? '')
   const nameId = `${formId}-name`
   const budgetId = `${formId}-budget`
   const colorsLabelId = `${formId}-colors-label`
@@ -173,7 +190,7 @@ export function CategorySheet({
       onOpenChange={onOpenChange}
       busy={busy}
       isDirty={isDirty}
-      initialFocus={false}
+      initialFocus={mode === 'create' ? nameRef : false}
       anchored
       leading={
         <button
@@ -206,10 +223,10 @@ export function CategorySheet({
             {status === 'saving' ? (
               <>
                 <Loader2 aria-hidden className="size-4 animate-spin" />
-                <span className="sr-only">{t('guardar')}</span>
+                <span className="sr-only">{t(mode === 'create' ? 'anadir' : 'guardar')}</span>
               </>
             ) : (
-              t('guardar')
+              t(mode === 'create' ? 'anadir' : 'guardar')
             )}
           </button>
         ) : (
@@ -240,6 +257,7 @@ export function CategorySheet({
           <FieldRow label={t('nombre')} htmlFor={nameId}>
             <input
               id={nameId}
+              ref={nameRef}
               type="text"
               data-base-ui-swipe-ignore
               enterKeyHint="done"
@@ -289,49 +307,53 @@ export function CategorySheet({
             />
           </div>
 
-          {target.budget ? (
+          {mode === 'edit' ? (
             <>
+              {target?.budget ? (
+                <>
+                  <div className="border-t border-border" />
+                  <button
+                    type="button"
+                    data-category-progress-toggle
+                    onClick={onToggleProgress}
+                    aria-pressed={!progressVisible}
+                    disabled={busy}
+                    className="flex min-h-row items-center gap-3 px-inset text-body-lg font-medium text-foreground hover:bg-muted active:bg-muted disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    {progressVisible ? <Eye aria-hidden className="size-5" /> : <EyeOff aria-hidden className="size-5" />}
+                    {progressVisible ? t('ocultarProgreso') : t('mostrarProgreso')}
+                  </button>
+                </>
+              ) : null}
+
               <div className="border-t border-border" />
               <button
                 type="button"
-                data-category-progress-toggle
-                onClick={onToggleProgress}
-                aria-pressed={!progressVisible}
-                disabled={busy}
+                aria-label={tReorder('titulo')}
+                onClick={() => {
+                  onOpenChange(false)
+                  onReorder?.()
+                }}
+                disabled={reorderDisabled}
                 className="flex min-h-row items-center gap-3 px-inset text-body-lg font-medium text-foreground hover:bg-muted active:bg-muted disabled:pointer-events-none disabled:opacity-50"
               >
-                {progressVisible ? <Eye aria-hidden className="size-5" /> : <EyeOff aria-hidden className="size-5" />}
-                {progressVisible ? t('ocultarProgreso') : t('mostrarProgreso')}
+                <ArrowUpDown aria-hidden className="size-5" />
+                {t('reordenar')}
+              </button>
+
+              <div className="border-t border-border" />
+              <button
+                ref={deleteRowRef}
+                type="button"
+                onClick={openConfirmDelete}
+                disabled={busy}
+                className="flex min-h-row items-center gap-3 px-inset text-body-lg font-medium text-destructive-ink hover:bg-destructive/[0.08] active:bg-destructive/[0.12] disabled:pointer-events-none disabled:opacity-50"
+              >
+                <Trash2 aria-hidden className="size-5" />
+                {t('eliminarCategoria')}
               </button>
             </>
           ) : null}
-
-          <div className="border-t border-border" />
-          <button
-            type="button"
-            aria-label={tReorder('titulo')}
-            onClick={() => {
-              onOpenChange(false)
-              onReorder?.()
-            }}
-            disabled={reorderDisabled}
-            className="flex min-h-row items-center gap-3 px-inset text-body-lg font-medium text-foreground hover:bg-muted active:bg-muted disabled:pointer-events-none disabled:opacity-50"
-          >
-            <ArrowUpDown aria-hidden className="size-5" />
-            {t('reordenar')}
-          </button>
-
-          <div className="border-t border-border" />
-          <button
-            ref={deleteRowRef}
-            type="button"
-            onClick={openConfirmDelete}
-            disabled={busy}
-            className="flex min-h-row items-center gap-3 px-inset text-body-lg font-medium text-destructive-ink hover:bg-destructive/[0.08] active:bg-destructive/[0.12] disabled:pointer-events-none disabled:opacity-50"
-          >
-            <Trash2 aria-hidden className="size-5" />
-            {t('eliminarCategoria')}
-          </button>
         </form>
       ) : (
         <div aria-busy={busy} className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
@@ -341,7 +363,7 @@ export function CategorySheet({
             </div>
           ) : null}
           <h3 ref={confirmHeadingRef} tabIndex={-1} className="px-inset pb-4 pt-3 text-body-lg text-foreground outline-none">
-            {t('confirmarEliminar', { categoria: target.name ?? '', count: expenseCount })}
+            {t('confirmarEliminar', { categoria: target?.name ?? '', count: expenseCount })}
           </h3>
           {expenseCount > 0 ? (
             <FieldRow label={t('categoriaDestino')} htmlFor={reassignId}>

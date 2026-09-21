@@ -16,10 +16,17 @@ type AccountMenuProps = {
 
 type ThemeChoice = 'light' | 'dark' | null
 
+type BackgroundChoice = 'dynamic' | 'solid'
+
 const THEME_OPTIONS = [
   { value: 'light', label: 'claro', Icon: Sun, pop: '[--pop-rotate:-120deg]' },
   { value: 'dark', label: 'oscuro', Icon: Moon, pop: '[--pop-rotate:60deg]' },
   { value: null, label: 'automatico', Icon: SunMoon, pop: '[--pop-rotate:-180deg]' },
+] as const
+
+const BACKGROUND_OPTIONS = [
+  { value: 'dynamic', label: 'dinamico' },
+  { value: 'solid', label: 'solido' },
 ] as const
 
 const LANGUAGE_OPTIONS = [
@@ -51,6 +58,13 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
       return stored === 'light' || stored === 'dark' ? stored : null
     } catch {
       return null
+    }
+  })
+  const [background, setBackground] = useState<BackgroundChoice>(() => {
+    try {
+      return localStorage.getItem('background') === 'solid' ? 'solid' : 'dynamic'
+    } catch {
+      return 'dynamic'
     }
   })
 
@@ -117,6 +131,20 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
     transition.finished.finally(() => root.classList.remove('theme-switching'))
   }
 
+  function applyBackground(next: BackgroundChoice) {
+    if (next === background) return
+    setBackground(next)
+    try {
+      if (next === 'solid') {
+        localStorage.setItem('background', 'solid')
+        document.documentElement.setAttribute('data-background', 'solid')
+      } else {
+        localStorage.removeItem('background')
+        document.documentElement.removeAttribute('data-background')
+      }
+    } catch {}
+  }
+
   const activeLocale = pendingLocale ?? locale
 
   async function applyLanguage(next: 'es' | 'en') {
@@ -130,6 +158,7 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
 
   const themeIndex = THEME_OPTIONS.findIndex((option) => option.value === theme)
   const localeIndex = LANGUAGE_OPTIONS.findIndex((option) => option.value === activeLocale)
+  const backgroundIndex = BACKGROUND_OPTIONS.findIndex((option) => option.value === background)
 
   return (
     <>
@@ -216,6 +245,38 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
                     aria-hidden
                     className={cn('size-5', selected && `animate-segment-pop text-brand-ink motion-reduce:animate-none ${pop}`)}
                   />
+                  {t(label)}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className={`mt-4 ${enterClassName}`} style={{ transitionDelay: '75ms' }}>
+          <p id="account-menu-background" className="mb-2 px-1 text-body-sm text-muted-foreground">
+            {t('fondo')}
+          </p>
+          <div role="radiogroup" aria-labelledby="account-menu-background" className={`${trackClassName} grid-cols-2`}>
+            <span
+              aria-hidden
+              className={`${thumbClassName} w-[calc((100%-0.5rem)/2)]`}
+              style={{ translate: `${backgroundIndex * 100}%` }}
+            />
+            {BACKGROUND_OPTIONS.map(({ value, label }) => {
+              const selected = background === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => applyBackground(value)}
+                  className={cn(
+                    segmentClassName,
+                    'h-11',
+                    selected ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
                   {t(label)}
                 </button>
               )

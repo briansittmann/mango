@@ -58,7 +58,7 @@
 
 ---
 
-## Estado actual (al 2026-09-19)
+## Estado actual (al 2026-09-21)
 > Se actualiza al archivar un change de OpenSpec o al cerrar un hito. Ante duda, mandan el codigo y `openspec list`.
 
 **Donde estamos**: toda la UI del producto esta construida y funciona sobre `/demo` con datos en memoria. Nada esta conectado a Supabase todavia (salvo dos helpers del bot). El siguiente salto es la capa de datos real + auth, no mas UI.
@@ -66,7 +66,8 @@
 **Web/dashboard**
 - Hecho: `/demo` (`app/demo/page.tsx` + `app/demo/demo-dashboard.tsx`) monta el dashboard completo: resumen mensual, tarjeta de margen libre, grupos por categoria, graficos (`recharts`), menu de cuenta con idioma/tema.
 - Hecho: interacciones completas — sheet de carga/edicion (`entry-sheet`), sheet de categoria con colores (`category-sheet`), sheet de gasto fijo (`recurring-sheet`), swipe-to-delete con undo, modo reordenar categorias con drag & drop, tarjeta de "Proximos cobros" (`upcoming-charges-card`), animaciones con `gsap` y respeto de `prefers-reduced-motion`.
-- Hecho: todas las mutaciones pasan por contratos inyectados (`DashboardActions`, `CategoryMutations`, `ExpenseMutations`, `RecurringMutations` en `lib/data/`), implementados hoy solo por `lib/demo/*`. Enchufar Supabase es implementar esos contratos, no tocar componentes.
+- Hecho: todas las mutaciones pasan por contratos inyectados (`DashboardActions`, `CategoryMutations`, `ExpenseMutations`, `RecurringMutations`, `IncomeMutations` en `lib/data/`), implementados hoy solo por `lib/demo/*`. Enchufar Supabase es implementar esos contratos, no tocar componentes.
+- Hecho: el panel de ingresos es editable igual que gastos — alta, edicion, borrado con deshacer y recurrencia, via el mismo `entry-sheet` y `swipe-to-delete` (`add-income-management`). Ya no quedan "fuentes estimadas"; el panel lista entradas fechadas.
 - Pendiente: `app/page.tsx` sigue siendo el boilerplate de `create-next-app`. No hay ruta real del dashboard ni Supabase Auth (magic link).
 
 **Bot de WhatsApp**
@@ -83,16 +84,16 @@
 - Hecho: next-intl (`messages/es.json`, `en.json`), cambio de idioma por server action, tema claro/oscuro (`components/theme/theme-sync.tsx`).
 
 **Tests**
-- Hecho: script `npm test` (Playwright) y specs propias sobre `/demo`: `recurring-create`, `recurring-scope`, `recurring-motion-a11y`, `reorder-mode`, `category-sheet-header`.
+- Hecho: script `npm test` (Playwright) y specs propias sobre `/demo`: `recurring-create`, `recurring-scope`, `recurring-motion-a11y`, `reorder-mode`, `category-sheet-header`, `animated-amount`, `income-create`, `income-edit-delete`, `income-recurring`, `income-motion-a11y`.
 - Pendiente: unitarios de ritmo/presupuesto y cobertura de los sheets de gasto/categoria.
 
 **Deploy/entorno**
 - Pendiente: sin `.env.local` en el repo local, sin evidencia de deploy en Vercel.
 
 **OpenSpec**
-- Archivados (9): `translate-code-to-english`, `land-finance-dashboard`, `refine-mobile-ui-apple-hig`, `unify-add-action-rows`, `add-expense-sheet`, `add-category-sheet`, `add-category-reorder-mode`, `replace-fixed-card-with-upcoming-charges`, `add-project-status-to-claude-md`.
-- Specs vivas en `openspec/specs/`: `dashboard-ui`, `design-system`, `theming`, `localization`, `expense-editing`, `category-editing`, `category-reordering`, `upcoming-charges`.
-- Abiertos: `add-recurring-expense-management` 26/27 (solo falta marcar/verificar 2.1, la migracion 0013 ya existe) y `restyle-dashboard-to-v0` 17/20 (faltan 6.1-6.3, verificacion final).
+- Archivados (10): `translate-code-to-english`, `land-finance-dashboard`, `refine-mobile-ui-apple-hig`, `unify-add-action-rows`, `add-expense-sheet`, `add-category-sheet`, `add-category-reorder-mode`, `replace-fixed-card-with-upcoming-charges`, `add-project-status-to-claude-md`, `add-income-management` (26/27 — 1.4 quedo bloqueada, ver Deuda tecnica).
+- Specs vivas en `openspec/specs/`: `dashboard-ui`, `design-system`, `theming`, `localization`, `expense-editing`, `category-editing`, `category-reordering`, `upcoming-charges`, `income-editing`.
+- Abiertos: `add-recurring-expense-management` 26/27 (solo falta marcar/verificar 2.1, la migracion 0013 ya existe), `restyle-dashboard-to-v0` 17/20 (faltan 6.1-6.3, verificacion final).
 
 ## Proyeccion
 
@@ -109,3 +110,16 @@ Mapeo a fases (ARCHITECTURE.md §13):
 - **Fase 1** (uso personal): la UI esta terminada; falta backend — pasos 2-4 (capa de datos, dashboard real con auth, bot funcional).
 - **Fase 2** (amigos y demo): invitaciones y rate limiting (paso 5); la demo publica (§12) ya esta hecha via `/demo`.
 - **Fase 3** (refinamiento): sin empezar, salvo la traduccion a ingles (§2) que ya esta hecha.
+
+## Deuda tecnica
+> Lo que un change dejo afuera a proposito. Se actualiza al archivar: lo que en el change vivia en *Out of scope* o en *Risks* se copia aca, porque al archivarse desaparece de la vista.
+
+- **Cron de movimientos recurrentes** — nada genera la fila del ciclo ni descuenta `repeticiones_insertadas`; las definiciones existen y no producen cargos. Diferido por `add-recurring-expense-management` y `add-income-management` (ARCHITECTURE.md §7, §11).
+- **`transacciones.estado`** — §7 y §8 lo dan por hecho (`pendiente` | `confirmada`) para reconciliar un fijo de monto variable con la carga manual, pero la columna nunca se creo: `0008` no la tiene. Hoy el estado "cobrado" del dashboard sale del dia del mes, no de la fila.
+- **Capa de datos real** — los contratos de `lib/data/` solo tienen implementacion en memoria (`lib/demo/`). Falta la de Supabase para todos, incluido `IncomeMutations` (ya definido en `lib/data/income.ts` tras `add-income-management`, sin implementacion real).
+- **Migracion 0015 sin aplicar contra una base real** — `add-income-management` (tarea 1.4) no pudo re-correr las migraciones desde cero: no hay docker/Supabase CLI/psql en este entorno. 1.1-1.3 se verificaron solo por revision estatica del SQL.
+- **UI de ahorro** — el `tipo` ya admite `ahorro`, pero el panel es de solo lectura y "Añadir movimiento" muestra el mensaje de demo. Propuesta aparte.
+- **Definiciones recurrentes de ingreso sin edicion** — la hoja de definicion abre desde "Proximos cobros", donde un ingreso nunca aparece, asi que una recurrencia de ingreso se corrige borrando y recargando. Aceptado en `add-income-management`.
+- **`ingresos_esperados` sin usar** — tabla creada en `0007`, ningun TypeScript la lee. El "piso del mes" (§9) no esta construido; `add-income-management` reemplazo las fuentes estimadas por entradas planas sin tocar esta tabla.
+- **`hojaGasto` guarda strings de ingreso** — el namespace quedo mal nombrado tras `add-income-management`; renombrarlo es mecanico y toca las dos catalogos.
+- **Sin tests unitarios** — `getBudgetStatus` y `selectUpcomingCharges` son funciones puras cubiertas solo de rebote por Playwright.

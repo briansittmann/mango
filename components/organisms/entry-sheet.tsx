@@ -13,6 +13,7 @@ import { SheetShell } from '@/components/organisms/sheet-shell'
 import { cn } from '@/lib/utils'
 import type { CategoryColor } from '@/lib/data/dashboard'
 import type { ExpenseDraft, LocalDate } from '@/lib/data/expenses'
+import type { IncomeDraft } from '@/lib/data/income'
 import type { RecurringDraft } from '@/lib/data/recurring'
 import type esMessages from '@/messages/es.json'
 
@@ -55,7 +56,20 @@ export const expenseEntry: EntryConfig<ExpenseDraft> = {
   deleteKey: 'eliminarGasto',
 }
 
-type EntrySheetContext = { kind: 'category'; name: string; color: CategoryColor; recurring: boolean }
+export const incomeEntry: EntryConfig<IncomeDraft> = {
+  fields: [
+    { name: 'amount', kind: 'amount', labelKey: 'importe' },
+    { name: 'description', kind: 'text', labelKey: 'descripcion', placeholderKey: 'opcional', optional: true },
+    { name: 'date', kind: 'date', labelKey: 'fecha' },
+    { kind: 'recurrence' },
+  ],
+  initialFocus: 'amount',
+  titleKeys: { create: 'nuevoIngreso', edit: 'editarIngreso' },
+  submitKeys: { create: 'anadir', edit: 'guardar' },
+  deleteKey: 'eliminarIngreso',
+}
+
+type EntrySheetContext = { kind: 'category'; name: string; color: CategoryColor; recurring: boolean } | { kind: 'income'; recurring: boolean }
 
 type EntrySheetProps<V> = {
   config: EntryConfig<V>
@@ -290,7 +304,9 @@ export function EntrySheet<V>({
             maxLength={2}
           />
           <p className="px-inset pb-3 text-body-sm text-muted-foreground">
-            {tRecurrente('explicacion', { dia: recurrenceDay || '—', monto: amountText, categoria: context.name })}
+            {context.kind === 'category'
+              ? tRecurrente('explicacion', { dia: recurrenceDay || '—', monto: amountText, categoria: context.name })
+              : tRecurrente('explicacionIngreso', { dia: recurrenceDay || '—', monto: amountText })}
           </p>
           <div role="radiogroup" aria-label={tRecurrente('seRepite')} className="flex gap-2 px-inset pb-3">
             {RECURRENCE_ENDINGS.map((option) => {
@@ -448,10 +464,14 @@ export function EntrySheet<V>({
         </button>
       }
       caption={
-        <>
-          <CategoryDot color={context.color} className="size-2 shrink-0" />
-          <span className="truncate">{context.recurring ? t('soloEsteMes', { categoria: context.name }) : context.name}</span>
-        </>
+        context.kind === 'category' ? (
+          <>
+            <CategoryDot color={context.color} className="size-2 shrink-0" />
+            <span className="truncate">{context.recurring ? t('soloEsteMes', { categoria: context.name }) : context.name}</span>
+          </>
+        ) : (
+          <span className="truncate">{context.recurring ? t('soloEsteIngreso') : t('ingreso')}</span>
+        )
       }
     >
       <form id={formId} onSubmit={handleSubmit} aria-busy={disabled} className="flex min-h-0 flex-1 flex-col">
@@ -481,7 +501,7 @@ export function EntrySheet<V>({
                 ) : (
                   <Trash2 aria-hidden className="size-5" />
                 )}
-                {t(context.recurring ? 'eliminarCargoDelMes' : config.deleteKey)}
+                {t(context.kind === 'category' && context.recurring ? 'eliminarCargoDelMes' : config.deleteKey)}
               </button>
             </>
           ) : null}

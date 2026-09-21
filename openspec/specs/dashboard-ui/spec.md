@@ -29,6 +29,11 @@ When the mounting page supplies no expense operations:
 - expense rows SHALL NOT open the entry sheet and SHALL NOT move when dragged
 - expense amounts SHALL be shown as plain text, without the editable-looking background
 
+When the mounting page supplies no income operations:
+- the "add income" row SHALL be disabled
+- income rows SHALL NOT open the entry sheet and SHALL NOT move when dragged
+- income amounts SHALL be shown as plain text, without the editable-looking background
+
 When the mounting page supplies no category operations:
 - the options control on every category card header SHALL be disabled
 - activating it SHALL NOT open the category sheet
@@ -42,6 +47,11 @@ When the mounting page supplies no category operations:
 - **THEN** "Añadir gasto" is disabled
 - **AND** tapping or dragging an expense row opens nothing and does not move the row, and its amount has a transparent background
 
+#### Scenario: Dashboard without income operations
+- **WHEN** the dashboard is mounted without income operations and the income panel is opened
+- **THEN** "Añadir ingreso" is disabled
+- **AND** tapping or dragging an income row opens nothing and does not move the row, and its amount has a transparent background
+
 #### Scenario: Dashboard without category operations
 - **WHEN** the dashboard is mounted without category operations
 - **THEN** the options control on each category card header is disabled, and activating it opens nothing
@@ -49,7 +59,7 @@ When the mounting page supplies no category operations:
 
 ### Requirement: Public demo route
 The application SHALL serve `/demo` without authentication. It SHALL render the full dashboard from a fictional sample billing cycle held in memory. The sample SHALL include:
-- income sources
+- at least two income entries, each with a calendar date inside the cycle, one of them produced by a recurring definition
 - a housing category holding the cycle's largest recurring charges
 - food and leisure categories with budgets partly spent
 - other variable categories
@@ -71,6 +81,13 @@ All totals in the sample SHALL be derived from its own rows. The sample SHALL se
 - Changes SHALL stay in the page's memory. They SHALL NOT be sent over the network, and reloading SHALL discard them.
 - Changes SHALL survive a language switch. Sample rows SHALL then be shown in the new language, and typed descriptions SHALL stay as typed.
 
+**Income editing on the demo:**
+- Creating, editing, deleting and restoring income entries SHALL work as described in the `income-editing` capability, through an in-memory implementation of the same income operations the real route supplies.
+- After each change, every figure derived from income SHALL be recalculated from the resulting rows: the income column's total, the rows of its panel, and the free margin.
+- No income change SHALL move an expense figure: card totals, budget bars, the expenses total, the charts and the rows and footer total of the `upcoming-charges` card SHALL stay as they were.
+- Changes SHALL stay in the page's memory. They SHALL NOT be sent over the network, and reloading SHALL discard them.
+- Changes SHALL survive a language switch. Sample rows SHALL then be shown in the new language, and typed descriptions SHALL stay as typed.
+
 **Category editing on the demo:**
 - Renaming, recolouring, changing or clearing a budget, and deleting a category SHALL work as described in the `category-editing` capability, through an in-memory implementation of the same category operations the real route supplies.
 - After each change, every figure derived from categories SHALL be recalculated: card names, colours and borders, budget bars and their remaining text, the pie chart and its legend, the expenses summary rows, the expenses total, and the dots in the `upcoming-charges` card.
@@ -83,11 +100,11 @@ All totals in the sample SHALL be derived from its own rows. The sample SHALL se
 - A new order SHALL survive a language switch, a rename, a recolour, a budget change and an expense change, and SHALL apply to whatever categories remain after a deletion.
 - **No reorder SHALL move any figure on the page.** The free margin SHALL stay at 974 €, the expenses total at 1.700 €, and every card total, budget bar, pie slice and summary row SHALL be unchanged.
 
-**Other add controls on the demo:**
-- The add income and add savings movement controls SHALL be enabled.
-- Activating one SHALL NOT change any amount or row. It SHALL show a message saying the action is not available in the demo.
+**The savings add control on the demo:**
+- The add savings movement control SHALL be enabled.
+- Activating it SHALL NOT change any amount or row. It SHALL show a message saying the action is not available in the demo.
 - The message SHALL be exposed to assistive technology as a status, and SHALL disappear on its own within 5 seconds.
-- Activating the other add control while the message is shown SHALL keep a single message visible and restart its timeout.
+- Activating it again while the message is shown SHALL keep a single message visible and restart its timeout.
 - Month navigation and log out SHALL stay disabled.
 
 #### Scenario: Visitor opens the demo
@@ -120,17 +137,27 @@ All totals in the sample SHALL be derived from its own rows. The sample SHALL se
 
 #### Scenario: Demo in English
 - **WHEN** the active language is English
-- **THEN** the sample category, expense and income-source names are shown in English, "Vivienda" as "Housing" and "Gimnasio" as "Gym"
+- **THEN** the sample category, expense and income-entry names are shown in English, "Vivienda" as "Housing", "Gimnasio" as "Gym" and "Salario" as "Salary"
 
 #### Scenario: Add action in the demo
-- **WHEN** a visitor on `/demo` in Spanish activates "Añadir ingreso" in the income panel
-- **THEN** the income total and rows are unchanged
+- **WHEN** a visitor on `/demo` in Spanish activates "Añadir movimiento de ahorro" in the savings panel
+- **THEN** the savings total and rows are unchanged
 - **AND** a message "Esta acción no está disponible en la demo" is visible and exposed as a status
 - **AND** within 5 seconds, without further input, the message is no longer visible
 
 #### Scenario: Repeated add actions
-- **WHEN** the visitor activates "Añadir ingreso" and then, while the message is shown, "Añadir movimiento de ahorro"
+- **WHEN** the visitor activates "Añadir movimiento de ahorro" and then activates it again while the message is shown
 - **THEN** exactly one message is visible
+
+#### Scenario: Added income moves the income total and the free margin
+- **WHEN** on `/demo` in Spanish, with the income total at 2.820 € and the free margin at 974 €, a visitor opens the income panel and adds 300 € described as "Bonus"
+- **THEN** "Bonus" is listed in the panel with 300 € and its date, the income column shows 3.120 € and the free margin shows 1.274 €
+- **AND** the expenses total still shows 1.700 €, and the "Próximos cobros" footer still reads 1.025 €
+
+#### Scenario: Deleted income can be undone
+- **WHEN** the visitor swipes the "Freelance" row (420 €) and activates "Eliminar", then activates "Deshacer"
+- **THEN** after the deletion the income column shows 2.400 € and the free margin 554 €
+- **AND** after the undo the row is listed again with 420 €, the income column shows 2.820 € and the free margin 974 €
 
 #### Scenario: Added expense moves every figure
 - **WHEN** on `/demo` in Spanish a visitor adds an expense of 20 described as "Panadería" to "comida"
@@ -156,7 +183,7 @@ All totals in the sample SHALL be derived from its own rows. The sample SHALL se
 - **THEN** that card is still named "Mercado", and "ocio" is shown as "Leisure"
 
 #### Scenario: Editing stays in the browser
-- **WHEN** a visitor on `/demo` creates, edits, deletes and restores expenses, and renames, recolours and deletes categories, while network traffic is recorded
+- **WHEN** a visitor on `/demo` creates, edits, deletes and restores expenses and income entries, and renames, recolours and deletes categories, while network traffic is recorded
 - **THEN** the browser sends no POST request and no request to a Supabase host, and no login is requested
 
 #### Scenario: Edits survive a language switch
@@ -311,7 +338,7 @@ The fixed-expenses card has no add row (*Expense card states*).
 
 #### Scenario: Hover with a pointer
 - **WHEN** a mouse pointer moves over the "add income" row
-- **THEN** the row's background equals the background an income-source row shows on hover
+- **THEN** the row's background equals the background an income row shows on hover
 - **AND** the badge background equals the brand colour and the badge's scale is greater than 1
 - **AND** after the pointer leaves, the row and badge return to their rest appearance
 
@@ -404,7 +431,7 @@ The pie chart SHALL have one slice per expense card with a non-zero total, a thi
 Income, expenses and savings SHALL be shown as three columns of one grouped surface, each column showing a label and its total. Activating a column SHALL disclose its panel inside the same surface, below the columns. All three columns SHALL behave the same, with at most one panel open at a time. The open column SHALL be marked by an indicator under it and an upward chevron, in addition to any colour change. A panel SHALL NOT repeat its column's total.
 
 Panel contents:
-- **Income:** each income source with its actual amount and its estimated amount as muted reference, followed by an "add income" row.
+- **Income:** each income entry of the cycle with its amount and, under its name, its date in the active language, ordered by date from newest to oldest, followed by an "add income" row. No estimated or expected amount SHALL be shown beside an entry.
 - **Expenses:** every expense card's name, colour dot and total, sorted from highest to lowest total, ending with a "view all expenses" row that scrolls smoothly to the expense cards. The scroll SHALL leave the first card visible below the top bar.
 - **Savings:** the accumulated balance, then the individual movements with deposits signed with a plus and withdrawals with a minus, followed by an "add savings movement" row.
 
@@ -424,6 +451,11 @@ Panel contents:
 #### Scenario: Panel does not repeat the total
 - **WHEN** the income panel is open and the cycle income is 2 820, in Spanish
 - **THEN** "2.820 €" appears exactly once inside the grouped surface
+
+#### Scenario: Income rows are dated entries
+- **WHEN** the income panel is open on `/demo` in Spanish
+- **THEN** each row shows an income entry's name, its date under the name, and its amount
+- **AND** no row shows a second, muted amount as an estimate or an expected figure
 
 #### Scenario: Signed savings movements
 - **WHEN** the savings panel lists a deposit of 50 and a withdrawal of 20

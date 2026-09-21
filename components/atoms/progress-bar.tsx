@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { BudgetStatus } from '@/lib/data/dashboard'
 
 type ProgressBarProps = {
@@ -16,17 +16,35 @@ const LEVEL_VARS: Record<BudgetStatus['level'], string> = {
 export function ProgressBar({ usage, level, valueText }: ProgressBarProps) {
   const target = Math.min(1, Math.max(0, usage)) * 100
   const colorVar = LEVEL_VARS[level]
-  // Starts at 0 and springs to `target` right after mount, so the fill (and value changes
-  // afterwards) always animate in instead of snapping straight to their final width.
-  const [width, setWidth] = useState(0)
+  const ref = useRef<HTMLDivElement>(null)
+  // Holds at 0 until the bar is actually on screen, so a card below the fold is scrolled to and
+  // then springs to `target` instead of arriving already full. Once revealed, later value changes
+  // follow `target` straight away and animate through the same transition.
+  const [revealed, setRevealed] = useState(false)
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => setWidth(target))
-    return () => cancelAnimationFrame(frame)
-  }, [target])
+    const el = ref.current
+    if (!el) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setRevealed(true)
+      return
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return
+        setRevealed(true)
+        observer.disconnect()
+      },
+      // Waits until the bar clears the bottom edge, so the fill plays in view and not under it.
+      { rootMargin: '0px 0px -15% 0px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <div
+      ref={ref}
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
@@ -37,7 +55,7 @@ export function ProgressBar({ usage, level, valueText }: ProgressBarProps) {
       <div
         className="progress-fill h-full rounded-full"
         style={{
-          width: `${width}%`,
+          width: revealed ? `${target}%` : 0,
           background: `linear-gradient(90deg, color-mix(in oklab, var(${colorVar}) 88%, black) 0%, var(${colorVar}) 60%, color-mix(in oklab, var(${colorVar}) 90%, white) 100%)`,
         }}
       />

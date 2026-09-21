@@ -1,6 +1,7 @@
 import type { LocalDate, ExpenseMutations } from './expenses'
 import type { CategoryMutations } from './categories'
 import type { RecurringMutations } from './recurring'
+import type { IncomeEntry, IncomeMutations } from './income'
 
 // = check in supabase/migrations/0004_categorias.sql
 export type CategoryColor =
@@ -54,7 +55,7 @@ export type DashboardData = {
   user: { name: string; phone: string; photoUrl: string | null; currency: string; timezone: string }
   cycle: { start: string; end: string; today: LocalDate; month: string; inProgress: boolean }
   freeMargin: number
-  income: { total: number; sources: { id: string; name: string; estimated: number; actual: number }[] }
+  income: { total: number; entries: IncomeEntry[] }
   savings: { cycle: number; accumulated: number; movements: { id: string; name: string; date: string; amount: number }[] }
   expenses: { total: number; groups: ExpenseGroup[] }
   history: { month: string; total: number }[]
@@ -67,7 +68,7 @@ export type DashboardActions = Partial<{
   expenses: ExpenseMutations
   categories: CategoryMutations
   recurring: RecurringMutations
-  addIncome(): void
+  income: IncomeMutations
   addSavingsMovement(): void
   signOut(): void
   changeLanguage(l: 'es' | 'en'): Promise<void>
