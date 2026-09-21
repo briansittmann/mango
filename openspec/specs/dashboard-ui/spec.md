@@ -22,7 +22,7 @@ The dashboard SHALL render entirely from a data object and optional action handl
 - **THEN** the project lint check fails
 
 ### Requirement: Controls without a handler are disabled
-Every control that triggers a data action (previous/next cycle, add expense, add income, add savings movement, log out) SHALL be rendered disabled when the mounting page supplies no handler for it.
+Every control that triggers a data action (previous/next cycle, add expense, add income, add savings movement, add category, log out) SHALL be rendered disabled when the mounting page supplies no handler for it.
 
 When the mounting page supplies no expense operations:
 - the "add expense" rows SHALL be disabled
@@ -37,6 +37,7 @@ When the mounting page supplies no income operations:
 When the mounting page supplies no category operations:
 - the options control on every category card header SHALL be disabled
 - activating it SHALL NOT open the category sheet
+- the "Añadir categoría" tile SHALL be disabled, SHALL NOT open the category sheet, and SHALL show neither its hover nor its pressed appearance. It SHALL stay in place rather than disappear, so the end of the list does not change shape according to what the page supplies.
 
 #### Scenario: Demo without month navigation
 - **WHEN** the dashboard is mounted without previous/next cycle handlers
@@ -56,6 +57,11 @@ When the mounting page supplies no category operations:
 - **WHEN** the dashboard is mounted without category operations
 - **THEN** the options control on each category card header is disabled, and activating it opens nothing
 - **AND** the disclosure still expands and collapses the card
+
+#### Scenario: The tile without a create handler
+- **WHEN** the dashboard is mounted without category operations
+- **THEN** the "Añadir categoría" tile is present at the end of the list and exposed as disabled
+- **AND** activating it opens no sheet, and hovering and pressing it leave its appearance unchanged
 
 ### Requirement: Public demo route
 The application SHALL serve `/demo` without authentication. It SHALL render the full dashboard from a fictional sample billing cycle held in memory. The sample SHALL include:

@@ -91,6 +91,8 @@ The sheet SHALL be reachable without a gesture. Any press-and-hold or swipe SHAL
 
 ### Requirement: Category sheet layout
 
+This requirement describes the sheet as it opens **for an existing category**. The same sheet also opens in a create mode, described by the `category-creation` capability: the panel, the sizes, the colour rules and the viewport constraints below apply to it unchanged, while its title, its primary action and the contents of its body differ.
+
 The sheet SHALL present the category's name, colour and budget together on one surface, and SHALL resolve every one of its steps on that same surface. It SHALL NOT open a second sheet, dialog or menu over itself.
 
 **Panel:** it SHALL follow the entry sheet's appearance — a floating panel at most 440px wide, 12–16px from the left, right and bottom edges plus the bottom safe area on a narrow viewport, all four corners rounded, a drag handle centred at the top, and a dimmed scrim behind it. Every label, value, caption, icon and button SHALL be drawn at full opacity.
@@ -167,7 +169,15 @@ At a 390px-wide viewport, with the longest label of either language, a category 
 - **WHEN** the sheet is open at a 390px-wide viewport for a category named "Comida fuera de casa y bebidas para compartir", with text scaled to 200%
 - **THEN** no text is clipped and the document does not scroll horizontally
 
+#### Scenario: Create mode shares the panel and drops the two rows
+
+- **WHEN** the sheet is opened in create mode at a 390 × 844 viewport
+- **THEN** the panel's geometry, handle, scrim and row sizes are the same as when it is open for "comida"
+- **AND** its body ends with the colour picker, showing no "Reordenar" row and no "Eliminar categoría" row
+
 ### Requirement: Category fields and validation
+
+The fields below are the sheet's fields in both of its modes. Their **preloaded values** are described here for the sheet opened on an existing category; the values create mode starts from are described by the `category-creation` capability.
 
 **Name:**
 - A text field holding the category's current name, focused when the sheet opens.
@@ -175,11 +185,12 @@ At a 390px-wide viewport, with the longest label of either language, a category 
 - A name already used by another category SHALL report in place, next to the field, and SHALL keep what was typed. The message SHALL be exposed to assistive technology.
 
 **Colour:**
-- The eight palette colours SHALL be offered inline as swatches, in one group with radio semantics, exposing which one is selected.
+- The palette colours SHALL be offered inline as swatches, in one group with radio semantics, exposing which one is selected. The palette SHALL be a closed list: there SHALL be no free colour input.
 - Each swatch's accessible name SHALL be the colour's name in the active language, never its hex value.
 - Each swatch SHALL be a 28px circular token inside a hit area of at least 44 × 44px, and SHALL carry a hairline ring so that the lightest and darkest swatches stay distinguishable from the sheet in both themes.
 - The selected swatch SHALL be marked by a checkmark as well as by its ring, so selection never rests on colour alone.
-- Amber, red and lime SHALL NOT be offered.
+- The brand lime, the warning colour and the destructive colour SHALL NOT be offered, those three being reserved for the brand and for budget state. A category colour that merely reads as red SHALL NOT be confused with them: it is its own palette token and SHALL NOT be drawn from the warning or destructive tokens.
+- Both modes SHALL offer the same swatches in the same order.
 
 **Budget:**
 - An optional amount field, empty when the category has no budget.
@@ -203,9 +214,14 @@ At a 390px-wide viewport, with the longest label of either language, a category 
 #### Scenario: Swatches are named and marked
 
 - **WHEN** the colour picker is rendered in Spanish and then in English
-- **THEN** the swatches are exposed as a radio group of eight options whose accessible names are the colour names in the active language, and none of the names contains a hex value
+- **THEN** the swatches are exposed as a radio group whose accessible names are the colour names in the active language, and none of the names contains a hex value
 - **AND** the selected swatch is exposed as checked and shows a checkmark
-- **AND** no swatch offers amber, red or lime
+- **AND** no swatch is drawn from the brand lime, the warning colour or the destructive colour
+
+#### Scenario: The same swatches in both modes
+
+- **WHEN** the picker is rendered for "comida" and then in create mode
+- **THEN** both show the same number of swatches, with the same accessible names in the same order
 
 #### Scenario: Swatch targets and hairline
 
@@ -333,14 +349,16 @@ After a deletion the sheet SHALL close, the card SHALL disappear from the dashbo
 
 ### Requirement: Saving, dismissal and errors
 
+The rules below govern the sheet in both of its modes. Where they name the category being edited, the create mode's equivalent is the category being created, as the `category-creation` capability describes.
+
 **Saving:** the name, the colour and the budget SHALL be saved together by the primary action, as one change. Renaming, recolouring and changing a budget SHALL NOT ask for confirmation.
 
 **Dismissal:**
 - "Cancelar" and Escape SHALL close the sheet without saving.
 - Pressing the scrim or swiping the panel down SHALL close it only while every field still holds its initial value. Otherwise the sheet SHALL stay open.
-- On close, keyboard focus SHALL return to the options control that opened the sheet, or to the header of its card when that control no longer exists.
+- On close, keyboard focus SHALL return to the control that opened the sheet — the card's options control, or the "Añadir categoría" tile in create mode — or to the header of its card when that control no longer exists.
 
-**Opening:** the sheet SHALL NOT load anything when it opens. Its values SHALL come from the card that opened it, so it has no loading state of its own.
+**Opening:** the sheet SHALL NOT load anything when it opens. Its values SHALL come from the card that opened it, or from the defaults create mode starts with, so it has no loading state of its own.
 
 **While saving or deleting:**
 - the activated action SHALL show a progress indicator
@@ -382,3 +400,8 @@ After a deletion the sheet SHALL close, the card SHALL disappear from the dashbo
 
 - **WHEN** the sheet was opened from the "comida" card's options control with the keyboard and is closed with Escape
 - **THEN** keyboard focus is on that card's options control
+
+#### Scenario: Create mode returns focus to the tile
+
+- **WHEN** the sheet was opened from the "Añadir categoría" tile with the keyboard and is closed with Escape
+- **THEN** keyboard focus is on the tile

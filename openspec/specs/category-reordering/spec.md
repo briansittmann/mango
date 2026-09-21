@@ -103,6 +103,8 @@ While the mode is on, the category list SHALL be the only part of the screen tha
 
 **The list narrows and the cards shrink to their identity.** Each card SHALL give up width on its trailing side to open a lane for its handle. Each card SHALL be collapsed, SHALL hide its amount, its budget bar and its remaining text, and SHALL keep its colour dot and its name.
 
+**The "Añadir categoría" tile is not part of the mode.** It SHALL be absent from the list for as long as the mode is on — not merely dimmed or disabled — because it is an empty slot rather than a card and there is nothing to reorder it against. It SHALL return to the end of the list when the mode is left, in the same state it was in before.
+
 **The handle sits outside the card.** It SHALL be drawn in the lane over the card's trailing edge, not inside the card, and SHALL replace no element of the card. It SHALL show three horizontal lines, SHALL have a hit area of at least 44 × 44px, and SHALL be present on every card including the first and the last.
 
 **The reorder bar.** A bar fixed to the top of the viewport SHALL hold the mode's name and the "Listo" control, drawn sharp and above the pushed-back layer. The dashboard's own top bar SHALL be part of the pushed-back layer and SHALL NOT be reachable.
@@ -122,6 +124,12 @@ While the mode is on, the category list SHALL be the only part of the screen tha
 - **WHEN** reorder mode is on with the "comida" card having been open beforehand
 - **THEN** each card shows its colour dot and its name, and shows no amount, no "of budget" text, no progress bar, no remaining text and no chevron
 - **AND** no expense row is visible or focusable
+
+#### Scenario: The tile leaves and comes back
+
+- **WHEN** reorder mode is entered on `/demo`
+- **THEN** no control labelled "Añadir categoría" is present in the document
+- **AND** after "Listo" is activated, the tile is once more the last child of the category list
 
 #### Scenario: The handle is beside the card, not inside it
 
