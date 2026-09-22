@@ -1,16 +1,15 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { DemoNotice } from '@/components/molecules/demo-notice'
-import { DemoToast } from '@/components/molecules/demo-toast'
 import { DashboardTemplate } from '@/components/templates/dashboard-template'
 import { createDemoExpenseMutations, deriveDemoData, noDemoEdits } from '@/lib/demo/demo-expenses'
 import { createDemoCategoryMutations, noDemoCategoryEdits } from '@/lib/demo/demo-categories'
 import { createDemoIncomeMutations, noDemoIncomeEdits } from '@/lib/demo/demo-income'
 import { createDemoRecurringMutations, noDemoRecurringEdits } from '@/lib/demo/demo-recurring'
+import { createDemoSavingsMutations, noDemoSavingsEdits } from '@/lib/demo/demo-savings'
 import { selectUpcomingCharges } from '@/lib/data/upcoming-charges'
-import { getSavingsProgress } from '@/lib/data/savings'
 import type { DashboardData } from '@/lib/data/dashboard'
 import type { RecurringDefinition } from '@/lib/data/recurring'
 
@@ -21,25 +20,20 @@ type DemoDashboardProps = {
 }
 
 export function DemoDashboard({ data, recurringDefinitions, changeLanguage }: DemoDashboardProps) {
-  const [messageOpen, setMessageOpen] = useState(false)
   const [edits, setEdits] = useState(noDemoEdits)
   const [categoryEdits, setCategoryEdits] = useState(noDemoCategoryEdits)
   const [recurringEdits, setRecurringEdits] = useState(noDemoRecurringEdits)
   const [incomeEdits, setIncomeEdits] = useState(noDemoIncomeEdits)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [savingsEdits, setSavingsEdits] = useState(noDemoSavingsEdits)
   const { data: view, definitions } = useMemo(
-    () => deriveDemoData(data, recurringDefinitions, edits, categoryEdits, recurringEdits, incomeEdits),
-    [data, recurringDefinitions, edits, categoryEdits, recurringEdits, incomeEdits],
+    () => deriveDemoData(data, recurringDefinitions, edits, categoryEdits, recurringEdits, incomeEdits, savingsEdits),
+    [data, recurringDefinitions, edits, categoryEdits, recurringEdits, incomeEdits, savingsEdits],
   )
   const charges = useMemo(() => selectUpcomingCharges(view.expenses.groups, definitions), [view, definitions])
-  const savingsTarget = view.savings.target
-  const savingsProgress = useMemo(
-    () => (savingsTarget != null ? getSavingsProgress({ target: savingsTarget, movements: view.savings.movements }) : null),
-    [savingsTarget, view.savings.movements],
-  )
   const expenses = useMemo(() => createDemoExpenseMutations(setEdits), [])
   const recurring = useMemo(() => createDemoRecurringMutations(setRecurringEdits), [])
   const income = useMemo(() => createDemoIncomeMutations(setIncomeEdits), [])
+  const savings = useMemo(() => createDemoSavingsMutations(setSavingsEdits), [])
   // Test-only seam for Playwright coverage of the reorder failure path (11.3): the demo has no
   // network layer to intercept, so `?e2eFailReorder=1` makes `reorder` reject deterministically.
   const [failReorder] = useState(
@@ -59,36 +53,20 @@ export function DemoDashboard({ data, recurringDefinitions, changeLanguage }: De
     return { ...base, reorder: () => Promise.reject(new Error('e2e-forced-reorder-failure')) }
   }, [view, failReorder])
 
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    }
-  }, [])
-
-  function showUnavailable() {
-    setMessageOpen(true)
-    if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    timeoutRef.current = setTimeout(() => setMessageOpen(false), 2500)
-  }
-
   return (
-    <>
-      <DashboardTemplate
-        data={view}
-        charges={charges}
-        definitions={definitions}
-        savingsProgress={savingsProgress}
-        actions={{
-          changeLanguage,
-          expenses,
-          categories: noCategoryActions ? undefined : categories,
-          recurring,
-          income,
-          addSavingsMovement: showUnavailable,
-        }}
-        notice={<DemoNotice />}
-      />
-      <DemoToast open={messageOpen} />
-    </>
+    <DashboardTemplate
+      data={view}
+      charges={charges}
+      definitions={definitions}
+      actions={{
+        changeLanguage,
+        expenses,
+        categories: noCategoryActions ? undefined : categories,
+        recurring,
+        income,
+        savings,
+      }}
+      notice={<DemoNotice />}
+    />
   )
 }

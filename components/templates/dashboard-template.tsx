@@ -19,8 +19,6 @@ import { useFormatter, useTranslations } from 'next-intl'
 import { currencyFormatOptions } from '@/i18n/formats'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/atoms/avatar'
-import { Money } from '@/components/atoms/money'
-import { SavingsSparkline } from '@/components/atoms/savings-sparkline'
 import { AddCategoryTile } from '@/components/molecules/add-category-tile'
 import { AddRow } from '@/components/molecules/add-row'
 import { CATEGORY_COLORS } from '@/components/molecules/color-swatch-picker'
@@ -34,22 +32,22 @@ import { AccountMenu } from '@/components/organisms/account-menu'
 import { CategoryCard } from '@/components/organisms/category-card'
 import { CategoryPieChart } from '@/components/organisms/category-pie-chart'
 import { CategorySheet } from '@/components/organisms/category-sheet'
-import { EntrySheet, expenseEntry, incomeEntry } from '@/components/organisms/entry-sheet'
+import { EntrySheet, expenseEntry, incomeEntry, savingsEntry } from '@/components/organisms/entry-sheet'
 import { FreeMarginCard } from '@/components/organisms/free-margin-card'
 import { MonthlyBarsChart } from '@/components/organisms/monthly-bars-chart'
 import { RecurringSheet } from '@/components/organisms/recurring-sheet'
-import { SavingsProgressBar } from '@/components/molecules/savings-progress'
 import { SummaryGroup } from '@/components/organisms/summary-group'
 import { UpcomingChargesCard } from '@/components/organisms/upcoming-charges-card'
+import { AnimatedAmount } from '@/components/ui/counter/animated-amount'
 import { AnimatedContent } from '@/components/ui/animated-content'
 import type { DashboardActions, DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
 import type { CategoryDraft } from '@/lib/data/categories'
-import type { SavingsProgress } from '@/lib/data/savings'
 
 gsap.registerPlugin(ScrollTrigger, Flip)
 import type { ExpenseDraft } from '@/lib/data/expenses'
 import type { IncomeEntry } from '@/lib/data/income'
 import type { RecurringDefinition, RecurringDraft } from '@/lib/data/recurring'
+import type { SavingsMovementDraft } from '@/lib/data/savings'
 import type { UpcomingCharge } from '@/lib/data/upcoming-charges'
 
 type DashboardTemplateProps = {
@@ -57,8 +55,6 @@ type DashboardTemplateProps = {
   actions: DashboardActions
   charges: UpcomingCharge[]
   definitions: RecurringDefinition[]
-  /** Absent exactly when `data.savings.target` is null — computed by the caller (`@/lib/data/savings`). */
-  savingsProgress: SavingsProgress | null
   notice?: ReactNode
 }
 
@@ -69,6 +65,7 @@ type SheetTarget =
   | { kind: 'expense'; mode: 'edit'; group: ExpenseGroup; expense: Expense }
   | { kind: 'income'; mode: 'create' }
   | { kind: 'income'; mode: 'edit'; entry: IncomeEntry }
+  | { kind: 'savings'; mode: 'create' }
 
 type CategorySheetTarget = { mode: 'create' } | { mode: 'edit'; group: ExpenseGroup }
 
@@ -137,7 +134,7 @@ function neighbourShift(index: number, visual: DragVisual): number {
   return index >= targetIndex && index < startIndex ? rowHeight : 0
 }
 
-export function DashboardTemplate({ data, actions, charges, definitions, savingsProgress, notice }: DashboardTemplateProps) {
+export function DashboardTemplate({ data, actions, charges, definitions, notice }: DashboardTemplateProps) {
   const t = useTranslations('dashboard')
   const tResumen = useTranslations('resumen')
   const tMenu = useTranslations('menuCuenta')
@@ -187,6 +184,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, savings
     committed: [],
   })
   const initialFocusRef = useRef<HTMLInputElement>(null)
+  const savingsInitialFocusRef = useRef<HTMLInputElement>(null)
   const toasts = useMemo(() => Toast.createToastManager(), [])
   const currency = data.user.currency
 
@@ -210,6 +208,11 @@ export function DashboardTemplate({ data, actions, charges, definitions, savings
     flushSync(() => setSheet({ open: true, target: { kind: 'income', mode: 'edit', entry } }))
     initialFocusRef.current?.focus({ preventScroll: true })
     initialFocusRef.current?.select()
+  }
+
+  function openSavingsCreateSheet() {
+    flushSync(() => setSheet({ open: true, target: { kind: 'savings', mode: 'create' } }))
+    savingsInitialFocusRef.current?.focus({ preventScroll: true })
   }
 
   function openCategorySheet(group: ExpenseGroup) {
@@ -692,7 +695,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, savings
   }
 
   async function handleSaveEntry(values: ExpenseDraft) {
-    if (!sheet.target) return
+    if (!sheet.target || sheet.target.kind === 'savings') return
     if (sheet.target.kind === 'income') {
       if (!actions.income) return
       if (sheet.target.mode === 'create') {
@@ -714,8 +717,15 @@ export function DashboardTemplate({ data, actions, charges, definitions, savings
     setStatusMessage(sheet.target.mode === 'create' ? tHojaGasto('gastoAnadido') : tHojaGasto('cambiosGuardados'))
   }
 
+  async function handleSaveSavingsEntry(values: SavingsMovementDraft) {
+    if (!actions.savings) return
+    await actions.savings.addSavingsMovement(values)
+    setSheet((prev) => ({ ...prev, open: false }))
+    setStatusMessage(tHojaGasto('movimientoAhorroAnadido'))
+  }
+
   async function handleSaveRecurrence(draft: RecurringDraft) {
-    if (!actions.recurring || sheet.target?.mode !== 'create') return
+    if (!actions.recurring || sheet.target?.mode !== 'create' || sheet.target.kind === 'savings') return
     if (sheet.target.kind === 'income') {
       await actions.recurring.create({ tipo: 'ingreso' }, draft)
       return
@@ -753,7 +763,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, savings
           kind: 'category' as const,
           name: sheetGroup.name,
           color: sheetGroup.color,
-          recurring: sheet.target?.mode === 'edit' && sheet.target.expense.fixed != null,
+          recurring: sheet.target?.kind === 'expense' && sheet.target.mode === 'edit' && sheet.target.expense.fixed != null,
         }
   const sheetInitialValues: Partial<ExpenseDraft> =
     sheet.target?.mode === 'edit'
@@ -769,6 +779,8 @@ export function DashboardTemplate({ data, actions, charges, definitions, savings
             date: localDateOf(sheet.target.expense.date, data.user.timezone),
           }
       : { date: clampDate(data.cycle.today, data.cycle.start, data.cycle.end) }
+
+  const savingsInitialValues: Partial<SavingsMovementDraft> = { kind: 'deposit', date: data.cycle.today }
 
   const categorySheetMode = categorySheet.target?.mode ?? 'edit'
   const categorySheetTargetGroup = categorySheet.target?.mode === 'edit' ? categorySheet.target.group : null
@@ -1144,14 +1156,12 @@ export function DashboardTemplate({ data, actions, charges, definitions, savings
               key: 'savings',
               label: tResumen('ahorro'),
               total: data.savings.cycle,
-              below: savingsProgress ? <SavingsProgressBar progress={savingsProgress} currency={currency} /> : undefined,
               panel: (
                 <>
                   <div className="flex flex-col">
-                    <div className="flex items-center gap-3 px-inset pb-6 pt-2.5">
-                      <p className="min-w-0 flex-1 truncate text-body-sm text-muted-foreground">{tResumen('acumulado')}</p>
-                      <SavingsSparkline history={data.savings.history} />
-                      <Money amount={data.savings.accumulated} currency={currency} className="shrink-0 text-body-lg text-foreground" />
+                    <div className="flex items-center gap-3 px-inset py-4">
+                      <p className="min-w-0 flex-1 truncate text-headline-sm text-muted-foreground">{tResumen('acumulado')}</p>
+                      <AnimatedAmount amount={data.savings.accumulated} currency={currency} className="shrink-0 text-headline-sm text-foreground" />
                     </div>
                     {data.savings.movements.map((movement, index) => (
                       <SavingsMovementRow
@@ -1166,7 +1176,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, savings
                         index={index}
                       />
                     ))}
-                    <AddRow label={t('anadirMovimientoAhorro')} onClick={actions.addSavingsMovement} />
+                    <AddRow label={t('anadirMovimientoAhorro')} onClick={actions.savings ? openSavingsCreateSheet : undefined} />
                   </div>
                 </>
               ),
@@ -1357,7 +1367,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, savings
       />
       <EntrySheet
         config={sheetIsIncome ? incomeEntry : expenseEntry}
-        open={sheet.open}
+        open={sheet.open && sheet.target?.kind !== 'savings'}
         onOpenChange={(open) => setSheet((prev) => ({ ...prev, open }))}
         mode={sheet.target?.mode ?? 'create'}
         context={sheetContext}
@@ -1367,6 +1377,17 @@ export function DashboardTemplate({ data, actions, charges, definitions, savings
         onSave={handleSaveEntry}
         onDelete={sheet.target?.mode === 'edit' ? handleSheetDelete : undefined}
         onSaveRecurrence={actions.recurring ? handleSaveRecurrence : undefined}
+      />
+      <EntrySheet
+        config={savingsEntry({ deposit: tResumen('deposito'), withdrawal: tResumen('retiro') })}
+        open={sheet.open && sheet.target?.kind === 'savings'}
+        onOpenChange={(open) => setSheet((prev) => ({ ...prev, open }))}
+        mode="create"
+        context={{ kind: 'savings' }}
+        initialValues={savingsInitialValues}
+        fieldOptions={{ amount: { currency }, date: { min: data.cycle.start, max: data.cycle.end } }}
+        initialFocusRef={savingsInitialFocusRef}
+        onSave={handleSaveSavingsEntry}
       />
       <CategorySheet
         open={categorySheet.open}

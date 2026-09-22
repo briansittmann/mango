@@ -22,7 +22,7 @@
     "ahorro": "Ahorro",
     "verTodosLosGastos": "Ver todos los gastos",
     "acumulado": "Acumulado",
-    "deposito": "Ingreso",
+    "deposito": "Depósito",
     "retiro": "Retiro",
     "incomeSources": "Fuentes de ingreso",
     "cycleSavings": "Ahorro del ciclo",
@@ -61,8 +61,7 @@
   },
   "demo": {
     "aviso": "Estás viendo datos de ejemplo",
-    "cerrarAviso": "Cerrar aviso",
-    "accionNoDisponible": "Esta acción no está disponible en la demo"
+    "cerrarAviso": "Cerrar aviso"
   },
   "hojaGasto": {
     "nuevoGasto": "Nuevo gasto",
@@ -93,7 +92,12 @@
     "ingresoEliminado": "Ingreso eliminado",
     "errorEliminarIngreso": "No se pudo eliminar el ingreso",
     "ingreso": "Ingreso",
-    "soloEsteIngreso": "Solo el ingreso de este mes"
+    "soloEsteIngreso": "Solo el ingreso de este mes",
+    "nuevoMovimientoAhorro": "Nuevo movimiento de ahorro",
+    "tipo": "Tipo",
+    "nombre": "Nombre",
+    "nombreObligatorio": "El nombre es obligatorio",
+    "movimientoAhorroAnadido": "Movimiento de ahorro añadido"
   },
   "hojaCategoria": {
     "cancelar": "Cancelar",

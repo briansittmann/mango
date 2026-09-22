@@ -398,10 +398,11 @@ body {
 
 .hero-value {
   color: var(--hero-value-color);
-  /* A `drop-shadow` rather than a `text-shadow`: the glow then follows the digits' own alpha,
-     including the currency symbol beside them. */
-  filter: drop-shadow(0 0 18px var(--hero-glow-near)) drop-shadow(0 0 36px var(--hero-glow-far));
-  transition: color 400ms ease-out, filter 400ms ease-out;
+  /* A `text-shadow` rather than a `filter: drop-shadow`: the filter rasterizes into a rectangular
+     layer whose edge showed as a box while the counter repainted. The shadow inherits to the
+     currency symbol too. */
+  text-shadow: 0 0 18px var(--hero-glow-near), 0 0 36px var(--hero-glow-far);
+  transition: color 400ms ease-out, text-shadow 400ms ease-out;
 }
 
 .liquid-glass {

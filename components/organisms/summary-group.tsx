@@ -8,8 +8,6 @@ type SummaryGroupItem = {
   label: string
   total: number
   panel: ReactNode
-  /** Rendered under the total, inside the same button. Only the savings tile supplies this today. */
-  below?: ReactNode
 }
 
 type SummaryGroupProps = {
@@ -55,8 +53,7 @@ export function SummaryGroup({ items, openKey, onToggle, currency }: SummaryGrou
                 currency={currency}
                 className={`mt-2 whitespace-nowrap text-foreground ${item.total >= 100000 ? 'text-tabular-numeric-md' : 'text-tabular-numeric-lg'}`}
               />
-              {item.below}
-              {open ? <span aria-hidden className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-brand" /> : null}
+              {open ?<span aria-hidden className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-brand" /> : null}
             </button>
           )
         })}

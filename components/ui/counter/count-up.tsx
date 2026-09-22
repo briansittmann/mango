@@ -1,6 +1,6 @@
 'use client'
 
-import { useInView, useMotionValue, useSpring } from 'motion/react'
+import { animate, useInView, useMotionValue } from 'motion/react'
 import { useCallback, useEffect, useRef } from 'react'
 
 type CountUpProps = {
@@ -33,14 +33,6 @@ export default function CountUp({
 }: CountUpProps) {
   const ref = useRef<HTMLSpanElement>(null)
   const motionValue = useMotionValue(direction === 'down' ? to : from)
-
-  const damping = 20 + 40 * (1 / duration)
-  const stiffness = 100 * (1 / duration)
-
-  const springValue = useSpring(motionValue, {
-    damping,
-    stiffness,
-  })
 
   const isInView = useInView(ref, { once: true, margin: '0px' })
 
@@ -89,9 +81,12 @@ export default function CountUp({
     if (isInView && startWhen) {
       if (typeof onStart === 'function') onStart()
 
-      const timeoutId = setTimeout(() => {
-        motionValue.set(direction === 'down' ? from : to)
-      }, delay * 1000)
+      // A tween, not a spring: the spring's tail kept the last digits crawling long after `duration`.
+      const controls = animate(motionValue, direction === 'down' ? from : to, {
+        duration,
+        delay,
+        ease: [0.16, 1, 0.3, 1],
+      })
 
       const durationTimeoutId = setTimeout(
         () => {
@@ -101,21 +96,21 @@ export default function CountUp({
       )
 
       return () => {
-        clearTimeout(timeoutId)
+        controls.stop()
         clearTimeout(durationTimeoutId)
       }
     }
   }, [isInView, startWhen, motionValue, direction, from, to, delay, onStart, onEnd, duration])
 
   useEffect(() => {
-    const unsubscribe = springValue.on('change', (latest) => {
+    const unsubscribe = motionValue.on('change', (latest) => {
       if (ref.current) {
         ref.current.textContent = formatValue(latest)
       }
     })
 
     return () => unsubscribe()
-  }, [springValue, formatValue])
+  }, [motionValue, formatValue])
 
   return <span className={className} ref={ref} />
 }

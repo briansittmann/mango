@@ -61,8 +61,7 @@
   },
   "demo": {
     "aviso": "You're viewing sample data",
-    "cerrarAviso": "Dismiss notice",
-    "accionNoDisponible": "This action isn't available in the demo"
+    "cerrarAviso": "Dismiss notice"
   },
   "hojaGasto": {
     "nuevoGasto": "New expense",
@@ -93,7 +92,12 @@
     "ingresoEliminado": "Income deleted",
     "errorEliminarIngreso": "Couldn't delete the income entry",
     "ingreso": "Income",
-    "soloEsteIngreso": "This month's income only"
+    "soloEsteIngreso": "This month's income only",
+    "nuevoMovimientoAhorro": "New savings movement",
+    "tipo": "Type",
+    "nombre": "Name",
+    "nombreObligatorio": "A name is required",
+    "movimientoAhorroAnadido": "Savings movement added"
   },
   "hojaCategoria": {
     "cancelar": "Cancel",

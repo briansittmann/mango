@@ -7,6 +7,7 @@ import type { RecurringDefinition, RecurringDraft, RecurringTarget } from '@/lib
 import type { DemoCategoryEdits } from '@/lib/demo/demo-categories'
 import type { DemoIncomeEdits } from '@/lib/demo/demo-income'
 import type { DemoRecurringEdits } from '@/lib/demo/demo-recurring'
+import type { DemoSavingsEdits } from '@/lib/demo/demo-savings'
 
 export type DemoExpenseEdits = {
   created: { id: string; categoryId: string; draft: ExpenseDraft }[]
@@ -210,6 +211,7 @@ export function deriveDemoData(
   categoryEdits: DemoCategoryEdits,
   recurringEdits: DemoRecurringEdits,
   incomeEdits: DemoIncomeEdits,
+  savingsEdits: DemoSavingsEdits,
 ): { data: DashboardData; definitions: RecurringDefinition[] } {
   const today = Number(base.cycle.today.slice(8, 10))
   const start = Number(base.cycle.start.slice(8, 10))
@@ -295,10 +297,32 @@ export function deriveDemoData(
   const incomeResolved = resolveIncome(base.income.entries, incomeEdits)
   const incomeEntries = attachCreatedIncomeDefinition(incomeResolved, recurringEdits.created, base.cycle.start)
   const incomeTotal = incomeEntries.reduce((sum, entry) => sum + entry.amount, 0)
-  const freeMargin = incomeTotal - total - base.savings.cycle
+
+  // 10. Savings resolves after income: created movements append to the base ones and are
+  //     stable-sorted by date, so a same-day addition lands after the existing movement(s).
+  const createdMovements = savingsEdits.created.map(({ id, draft }) => ({
+    id,
+    name: draft.name,
+    date: `${draft.date}T12:00:00Z`,
+    amount: draft.kind === 'withdrawal' ? -draft.amount : draft.amount,
+  }))
+  const movements = [...base.savings.movements, ...createdMovements].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+  const savingsCycle = movements.reduce((sum, movement) => sum + movement.amount, 0)
+  const savingsAccumulated = base.savings.accumulated - base.savings.cycle + savingsCycle
+  const savingsHistory = base.savings.history.map((entry) =>
+    entry.month === base.cycle.month ? { ...entry, accumulated: savingsAccumulated } : entry,
+  )
+  const freeMargin = incomeTotal - total - savingsCycle
 
   return {
-    data: { ...base, expenses: { total, groups }, income: { total: incomeTotal, entries: incomeEntries }, freeMargin, history },
+    data: {
+      ...base,
+      expenses: { total, groups },
+      income: { total: incomeTotal, entries: incomeEntries },
+      savings: { ...base.savings, cycle: savingsCycle, accumulated: savingsAccumulated, history: savingsHistory, movements },
+      freeMargin,
+      history,
+    },
     definitions: relocatedDefinitions,
   }
 }

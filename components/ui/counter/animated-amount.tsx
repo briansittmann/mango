@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useSyncExternalStore } from 'react'
 import { useLocale } from 'next-intl'
 import { currencyFormatOptions } from '@/i18n/formats'
 import { Money } from '@/components/atoms/money'
@@ -17,15 +17,25 @@ type AnimatedAmountProps = {
 /** How long a figure takes to reach its value, in seconds. */
 const DURATION = 1
 
+function subscribeToReducedMotion(onChange: () => void) {
+  const query = matchMedia('(prefers-reduced-motion: reduce)')
+  query.addEventListener('change', onChange)
+  return () => query.removeEventListener('change', onChange)
+}
+
+function getAnimateSnapshot() {
+  return !matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+// The server has no `matchMedia`, so it paints the plain number; nothing swaps under hydration
+// until the client subscribes and reads the real preference.
+function getAnimateServerSnapshot() {
+  return false
+}
+
 export function AnimatedAmount({ amount, currency, className, currencyClassName }: AnimatedAmountProps) {
   const locale = useLocale()
-  // Reduced motion is read once, on mount: until then the plain number renders, which is also what
-  // the server paints, so nothing swaps under hydration.
-  const [animate, setAnimate] = useState(false)
-
-  useEffect(() => {
-    setAnimate(!matchMedia('(prefers-reduced-motion: reduce)').matches)
-  }, [])
+  const animate = useSyncExternalStore(subscribeToReducedMotion, getAnimateSnapshot, getAnimateServerSnapshot)
 
   const format = useMemo(() => {
     const formatter = new Intl.NumberFormat(locale, { ...currencyFormatOptions, currency })

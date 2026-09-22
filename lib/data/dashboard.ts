@@ -2,6 +2,7 @@ import type { LocalDate, ExpenseMutations } from './expenses'
 import type { CategoryMutations } from './categories'
 import type { RecurringMutations } from './recurring'
 import type { IncomeEntry, IncomeMutations } from './income'
+import type { SavingsMutations } from './savings'
 
 // = check in supabase/migrations/0004_categorias.sql
 export type CategoryColor =
@@ -77,7 +78,7 @@ export type DashboardActions = Partial<{
   categories: CategoryMutations
   recurring: RecurringMutations
   income: IncomeMutations
-  addSavingsMovement(): void
+  savings: SavingsMutations
   signOut(): void
   changeLanguage(l: 'es' | 'en'): Promise<void>
 }>

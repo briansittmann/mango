@@ -5,6 +5,7 @@ import { deriveDemoData, noDemoEdits } from '@/lib/demo/demo-expenses'
 import { noDemoCategoryEdits } from '@/lib/demo/demo-categories'
 import { noDemoIncomeEdits } from '@/lib/demo/demo-income'
 import { noDemoRecurringEdits } from '@/lib/demo/demo-recurring'
+import { noDemoSavingsEdits } from '@/lib/demo/demo-savings'
 
 type Locale = 'es' | 'en'
 type Localized = { es: string; en: string }
@@ -216,5 +217,13 @@ export function buildDemoData(locale: Locale): DashboardData {
     history,
   }
 
-  return deriveDemoData(sample, buildDemoRecurringDefinitions(locale), noDemoEdits, noDemoCategoryEdits, noDemoRecurringEdits, noDemoIncomeEdits).data
+  return deriveDemoData(
+    sample,
+    buildDemoRecurringDefinitions(locale),
+    noDemoEdits,
+    noDemoCategoryEdits,
+    noDemoRecurringEdits,
+    noDemoIncomeEdits,
+    noDemoSavingsEdits,
+  ).data
 }

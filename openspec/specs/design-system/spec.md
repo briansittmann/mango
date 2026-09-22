@@ -93,17 +93,13 @@ Reaching a target SHALL be shown by a mark, not by a colour change, and SHALL NO
 - **THEN** its bar's fill computes the brand colour, the warning colour and the danger colour respectively
 
 #### Scenario: A progress bar stays brand
-- **WHEN** a savings target is 0 %, 49 %, 100 % and 140 % reached, in both themes
+- **WHEN** a progress bar is rendered at 0 %, 49 %, 100 % and 140 % of its target, in both themes
 - **THEN** the bar's fill computes the brand colour in every case
 - **AND** it computes neither the warning colour nor the danger colour in any case
 
 #### Scenario: Reaching the target is marked, not recoloured
 - **WHEN** a progress bar reaches its target
 - **THEN** a mark appears at the end of its track and the fill's computed colour is unchanged from the value below the target
-
-#### Scenario: Both kinds are on screen together
-- **WHEN** `/demo` is rendered with the "comida" card open and a savings target supplied
-- **THEN** the budget bar and the savings bar have the same height and corner radius, and differ only in their fill and in what sits under them
 
 ### Requirement: Translucent materials
 Translucent blurred materials SHALL be used only for navigation and transient controls:

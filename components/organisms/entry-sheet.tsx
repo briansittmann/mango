@@ -15,6 +15,7 @@ import type { CategoryColor } from '@/lib/data/dashboard'
 import type { ExpenseDraft, LocalDate } from '@/lib/data/expenses'
 import type { IncomeDraft } from '@/lib/data/income'
 import type { RecurringDraft } from '@/lib/data/recurring'
+import type { SavingsMovementDraft } from '@/lib/data/savings'
 import type esMessages from '@/messages/es.json'
 
 type FieldKind = 'amount' | 'text' | 'date'
@@ -26,6 +27,18 @@ export type TextFieldDescriptor<V> = {
   labelKey: HojaGastoKey
   placeholderKey?: HojaGastoKey
   optional?: boolean
+  /** Shown when a required field (no `optional: true`) is empty after trim. */
+  invalidMessageKey?: HojaGastoKey
+}
+
+/** A pill radiogroup, its value a plain string in `fieldState`. Options carry already-resolved
+ * labels — the caller resolves them (they live outside `hojaGasto`), not a `HojaGastoKey`. */
+export type ChoiceFieldDescriptor<V> = {
+  name: keyof V & string
+  kind: 'choice'
+  /** The radiogroup's accessible name — read from `hojaGasto`, unlike `options[].label`. */
+  labelKey: HojaGastoKey
+  options: { value: string; label: string }[]
 }
 
 /** The switch plus its revealed day/ending/count block (D3) — one composite kind, not three
@@ -33,7 +46,7 @@ export type TextFieldDescriptor<V> = {
  * create mode only, and only when the sheet is given `onSaveRecurrence`. */
 export type RecurrenceFieldDescriptor = { kind: 'recurrence' }
 
-export type FieldDescriptor<V> = TextFieldDescriptor<V> | RecurrenceFieldDescriptor
+export type FieldDescriptor<V> = TextFieldDescriptor<V> | ChoiceFieldDescriptor<V> | RecurrenceFieldDescriptor
 
 export type EntryConfig<V> = {
   fields: FieldDescriptor<V>[]
@@ -69,7 +82,37 @@ export const incomeEntry: EntryConfig<IncomeDraft> = {
   deleteKey: 'eliminarIngreso',
 }
 
-type EntrySheetContext = { kind: 'category'; name: string; color: CategoryColor; recurring: boolean } | { kind: 'income'; recurring: boolean }
+/** Built by the caller, not exported as a static config like `expenseEntry`/`incomeEntry`: the
+ * type labels come from `resumen.deposito` / `resumen.retiro` (D4), outside `hojaGasto`, so the
+ * caller resolves them and passes them in. Create mode only — no `deleteKey` is ever shown since
+ * the sheet mounts with no `onDelete`. */
+export function savingsEntry(typeOptions: { deposit: string; withdrawal: string }): EntryConfig<SavingsMovementDraft> {
+  return {
+    fields: [
+      {
+        name: 'kind',
+        kind: 'choice',
+        labelKey: 'tipo',
+        options: [
+          { value: 'deposit', label: typeOptions.deposit },
+          { value: 'withdrawal', label: typeOptions.withdrawal },
+        ],
+      },
+      { name: 'amount', kind: 'amount', labelKey: 'importe' },
+      { name: 'name', kind: 'text', labelKey: 'nombre', invalidMessageKey: 'nombreObligatorio' },
+      { name: 'date', kind: 'date', labelKey: 'fecha' },
+    ],
+    initialFocus: 'amount',
+    titleKeys: { create: 'nuevoMovimientoAhorro', edit: 'nuevoMovimientoAhorro' },
+    submitKeys: { create: 'anadir', edit: 'anadir' },
+    deleteKey: 'eliminarGasto',
+  }
+}
+
+type EntrySheetContext =
+  | { kind: 'category'; name: string; color: CategoryColor; recurring: boolean }
+  | { kind: 'income'; recurring: boolean }
+  | { kind: 'savings' }
 
 type EntrySheetProps<V> = {
   config: EntryConfig<V>
@@ -130,7 +173,7 @@ function buildValues<V>(config: EntryConfig<V>, state: FieldState, amount: numbe
 const RECURRENCE_ENDINGS = ['none', 'count'] as const
 type RecurrenceEnding = (typeof RECURRENCE_ENDINGS)[number]
 
-function isTextField<V>(field: FieldDescriptor<V>): field is TextFieldDescriptor<V> {
+function isTextField<V>(field: FieldDescriptor<V>): field is TextFieldDescriptor<V> | ChoiceFieldDescriptor<V> {
   return field.kind !== 'recurrence'
 }
 
@@ -201,11 +244,17 @@ export function EntrySheet<V>({
   const isDirty = config.fields.filter(isTextField).some((field) => fieldState[field.name] !== initialSnapshot[field.name])
   const disabled = status !== 'idle'
 
+  const requiredTextFields = config.fields.filter(
+    (field): field is TextFieldDescriptor<V> & { kind: 'text' } => field.kind === 'text' && !field.optional,
+  )
+  const emptyRequiredTextFields = requiredTextFields.filter((field) => (fieldState[field.name] ?? '').trim() === '')
+
   const recurrenceDayValid = parseInteger(recurrenceDay, { min: 1, max: 31 }) !== null
   const recurrenceCountValid = recurrenceEnding !== 'count' || parseInteger(recurrenceCount, { min: 1 }) !== null
   const recurrenceValid = !recurrenceOn || (recurrenceDayValid && recurrenceCountValid)
 
-  const primaryDisabled = disabled || (amountFieldDescriptor ? amountValue === null : false) || !recurrenceValid
+  const primaryDisabled =
+    disabled || (amountFieldDescriptor ? amountValue === null : false) || emptyRequiredTextFields.length > 0 || !recurrenceValid
 
   function updateField(name: string, value: string) {
     setFieldState((prev) => ({ ...prev, [name]: value }))
@@ -213,6 +262,10 @@ export function EntrySheet<V>({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (emptyRequiredTextFields.length > 0) {
+      setTouched((prev) => ({ ...prev, ...Object.fromEntries(emptyRequiredTextFields.map((field) => [field.name, true])) }))
+      return
+    }
     if (amountFieldDescriptor && amountValue === null) {
       setTouched((prev) => ({ ...prev, [amountFieldDescriptor.name]: true }))
       return
@@ -357,7 +410,7 @@ export function EntrySheet<V>({
     const value = fieldState[field.name] ?? ''
 
     if (field.kind === 'amount') {
-      const invalid = Boolean(touched[field.name]) && value.trim() !== '' && parseAmount(value) === null
+      const invalid = Boolean(touched[field.name]) && parseAmount(value) === null
       return (
         <AmountField
           id={id}
@@ -380,21 +433,59 @@ export function EntrySheet<V>({
     }
 
     if (field.kind === 'text') {
+      const invalid = !field.optional && Boolean(touched[field.name]) && value.trim() === ''
       return (
-        <FieldRow label={t(field.labelKey)} htmlFor={id}>
-          <input
-            id={id}
-            type="text"
-            data-base-ui-swipe-ignore
-            enterKeyHint="done"
-            autoCapitalize="sentences"
-            readOnly={disabled}
-            placeholder={field.placeholderKey ? t(field.placeholderKey) : undefined}
-            value={value}
-            onChange={(event) => updateField(field.name, event.target.value)}
-            className="field-focus w-40 rounded-lg bg-muted px-2 py-1.5 text-right text-body-lg text-foreground placeholder:text-muted-foreground outline-none"
-          />
-        </FieldRow>
+        <>
+          <FieldRow label={t(field.labelKey)} htmlFor={id}>
+            <input
+              id={id}
+              type="text"
+              data-base-ui-swipe-ignore
+              enterKeyHint="done"
+              autoCapitalize="sentences"
+              readOnly={disabled}
+              aria-invalid={invalid || undefined}
+              aria-describedby={invalid ? `${id}-error` : undefined}
+              placeholder={field.placeholderKey ? t(field.placeholderKey) : undefined}
+              value={value}
+              onChange={(event) => updateField(field.name, event.target.value)}
+              onBlur={() => setTouched((prev) => ({ ...prev, [field.name]: true }))}
+              className="field-focus w-40 rounded-lg bg-muted px-2 py-1.5 text-right text-body-lg text-foreground placeholder:text-muted-foreground outline-none"
+            />
+          </FieldRow>
+          {invalid && field.invalidMessageKey ? (
+            <p id={`${id}-error`} className="px-inset pb-2 text-body-sm text-destructive-ink">
+              {t(field.invalidMessageKey)}
+            </p>
+          ) : null}
+        </>
+      )
+    }
+
+    if (field.kind === 'choice') {
+      return (
+        <div role="radiogroup" aria-label={t(field.labelKey)} className="flex gap-2 px-inset pb-3">
+          {field.options.map((option) => {
+            const selected = value === option.value
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                disabled={disabled}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => updateField(field.name, option.value)}
+                className={cn(
+                  'pressable min-h-target flex-1 rounded-full border px-3 text-body-sm font-medium',
+                  selected ? 'border-transparent bg-primary text-primary-foreground' : 'border-border text-foreground',
+                )}
+              >
+                {option.label}
+              </button>
+            )
+          })}
+        </div>
       )
     }
 
@@ -469,9 +560,9 @@ export function EntrySheet<V>({
             <CategoryDot color={context.color} className="size-2 shrink-0" />
             <span className="truncate">{context.recurring ? t('soloEsteMes', { categoria: context.name }) : context.name}</span>
           </>
-        ) : (
+        ) : context.kind === 'income' ? (
           <span className="truncate">{context.recurring ? t('soloEsteIngreso') : t('ingreso')}</span>
-        )
+        ) : undefined
       }
     >
       <form id={formId} onSubmit={handleSubmit} aria-busy={disabled} className="flex min-h-0 flex-1 flex-col">
