@@ -348,8 +348,13 @@ body {
     radial-gradient(130% 100% at 102% 108%, color-mix(in oklab, var(--brand) 24%, transparent) 0%, transparent 62%),
     radial-gradient(90% 70% at 100% 0%, color-mix(in oklab, #84CC16 15%, transparent) 0%, transparent 50%),
     linear-gradient(135deg, color-mix(in oklab, white 10%, #EAEFEA) 0%, color-mix(in oklab, white 10%, #E3E7E3) 35%, color-mix(in oklab, white 10%, #EDEFEA) 70%, color-mix(in oklab, white 10%, #DEE2DE) 100%);
-  background-attachment: fixed;
   color: var(--foreground);
+
+  /* Desktop only: on touch browsers a fixed background is repainted as the toolbar collapses
+     mid-scroll, and flickers. */
+  @media (hover: hover) and (pointer: fine) {
+    background-attachment: fixed;
+  }
   font-variant-numeric: tabular-nums;
 
   @variant dark {

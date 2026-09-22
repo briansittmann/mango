@@ -175,7 +175,9 @@ export function ColorBends({
     const pointer = { x: 0, y: 0 }
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
 
+    let lastElapsed = 0
     const draw = (elapsed: number) => {
+      lastElapsed = elapsed
       const p = propsRef.current
       const [r, g, b] = toRgb(p.color)
       const rad = ((p.rotation % 360) * Math.PI) / 180
@@ -205,7 +207,8 @@ export function ColorBends({
       canvas.width = width
       canvas.height = height
       gl.viewport(0, 0, width, height)
-      if (reduced) draw(0)
+      // Setting the size clears the canvas; repaint now instead of leaving it blank until the next frame.
+      draw(lastElapsed)
     }
 
     resize()
