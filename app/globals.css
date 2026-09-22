@@ -271,6 +271,14 @@
   }
 }
 
+/* Savings bar's hatched tail: follows the fill's own reveal transition. */
+@utility progress-hatch {
+  transition: left 700ms var(--ease-spring), width 700ms var(--ease-spring);
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
 @utility pressable {
   -webkit-tap-highlight-color: transparent;
   transition: scale 200ms var(--ease-spring), background-color 150ms ease-out;

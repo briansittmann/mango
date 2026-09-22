@@ -56,7 +56,15 @@ export type DashboardData = {
   cycle: { start: string; end: string; today: LocalDate; month: string; inProgress: boolean }
   freeMargin: number
   income: { total: number; entries: IncomeEntry[] }
-  savings: { cycle: number; accumulated: number; movements: { id: string; name: string; date: string; amount: number }[] }
+  savings: {
+    cycle: number
+    accumulated: number
+    /** `usuarios.meta_ahorro_mensual` (0016) — null means the user never set one. */
+    target: number | null
+    /** Accumulated balance per cycle, most recent last, same shape as `history` above. */
+    history: { month: string; accumulated: number }[]
+    movements: { id: string; name: string; date: string; amount: number }[]
+  }
   expenses: { total: number; groups: ExpenseGroup[] }
   history: { month: string; total: number }[]
 }

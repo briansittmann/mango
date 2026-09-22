@@ -163,6 +163,15 @@ export function buildDemoData(locale: Locale): DashboardData {
   const savingsCycle = savingsMovements.reduce((sum, movement) => sum + movement.amount, 0)
   const savingsAccumulatedBeforeCycle = 2500
 
+  const savingsHistory = [
+    { month: '2026-04', accumulated: 2200 },
+    { month: '2026-05', accumulated: 2290 },
+    { month: '2026-06', accumulated: 2350 },
+    { month: '2026-07', accumulated: 2410 },
+    { month: '2026-08', accumulated: savingsAccumulatedBeforeCycle },
+    { month: '2026-09', accumulated: savingsAccumulatedBeforeCycle + savingsCycle },
+  ]
+
   const history = [
     { month: '2026-04', total: 1400 },
     { month: '2026-05', total: 1550 },
@@ -199,6 +208,8 @@ export function buildDemoData(locale: Locale): DashboardData {
     savings: {
       cycle: savingsCycle,
       accumulated: savingsAccumulatedBeforeCycle + savingsCycle,
+      target: 300,
+      history: savingsHistory,
       movements: savingsMovements.map(({ id, name: movementName, date, amount }) => ({ id, name: movementName, date, amount })),
     },
     expenses: { total: expensesTotal, groups },

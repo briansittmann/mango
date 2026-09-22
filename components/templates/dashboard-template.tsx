@@ -19,12 +19,14 @@ import { useFormatter, useTranslations } from 'next-intl'
 import { currencyFormatOptions } from '@/i18n/formats'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/atoms/avatar'
-import { ShortDate } from '@/components/atoms/short-date'
+import { Money } from '@/components/atoms/money'
+import { SavingsSparkline } from '@/components/atoms/savings-sparkline'
 import { AddCategoryTile } from '@/components/molecules/add-category-tile'
 import { AddRow } from '@/components/molecules/add-row'
 import { CATEGORY_COLORS } from '@/components/molecules/color-swatch-picker'
 import { ExpenseRow } from '@/components/molecules/expense-row'
 import { MonthSelector } from '@/components/molecules/month-selector'
+import { SavingsMovementRow } from '@/components/molecules/savings-movement-row'
 import { SummaryRow } from '@/components/molecules/summary-row'
 import { SwipeToDelete } from '@/components/molecules/swipe-to-delete'
 import { UndoToast } from '@/components/molecules/undo-toast'
@@ -36,11 +38,13 @@ import { EntrySheet, expenseEntry, incomeEntry } from '@/components/organisms/en
 import { FreeMarginCard } from '@/components/organisms/free-margin-card'
 import { MonthlyBarsChart } from '@/components/organisms/monthly-bars-chart'
 import { RecurringSheet } from '@/components/organisms/recurring-sheet'
+import { SavingsProgressBar } from '@/components/molecules/savings-progress'
 import { SummaryGroup } from '@/components/organisms/summary-group'
 import { UpcomingChargesCard } from '@/components/organisms/upcoming-charges-card'
 import { AnimatedContent } from '@/components/ui/animated-content'
 import type { DashboardActions, DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
 import type { CategoryDraft } from '@/lib/data/categories'
+import type { SavingsProgress } from '@/lib/data/savings'
 
 gsap.registerPlugin(ScrollTrigger, Flip)
 import type { ExpenseDraft } from '@/lib/data/expenses'
@@ -53,6 +57,8 @@ type DashboardTemplateProps = {
   actions: DashboardActions
   charges: UpcomingCharge[]
   definitions: RecurringDefinition[]
+  /** Absent exactly when `data.savings.target` is null — computed by the caller (`@/lib/data/savings`). */
+  savingsProgress: SavingsProgress | null
   notice?: ReactNode
 }
 
@@ -138,7 +144,7 @@ function neighbourShift(index: number, visual: DragVisual): number {
   return index >= targetIndex && index < startIndex ? rowHeight : 0
 }
 
-export function DashboardTemplate({ data, actions, charges, definitions, notice }: DashboardTemplateProps) {
+export function DashboardTemplate({ data, actions, charges, definitions, savingsProgress, notice }: DashboardTemplateProps) {
   const t = useTranslations('dashboard')
   const tResumen = useTranslations('resumen')
   const tMenu = useTranslations('menuCuenta')
@@ -1148,18 +1154,26 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
               label: tResumen('ahorro'),
               total: data.savings.cycle,
               places: TOTAL_PLACES,
+              below: savingsProgress ? <SavingsProgressBar progress={savingsProgress} currency={currency} /> : undefined,
               panel: (
                 <>
                   <div className="flex flex-col">
-                    <SummaryRow name={tResumen('acumulado')} amount={data.savings.accumulated} currency={currency} />
-                    {data.savings.movements.map((movement) => (
-                      <SummaryRow
+                    <div className="flex items-center gap-3 px-inset pb-6 pt-2.5">
+                      <p className="min-w-0 flex-1 truncate text-body-sm text-muted-foreground">{tResumen('acumulado')}</p>
+                      <SavingsSparkline history={data.savings.history} />
+                      <Money amount={data.savings.accumulated} currency={currency} className="shrink-0 text-body-lg text-foreground" />
+                    </div>
+                    {data.savings.movements.map((movement, index) => (
+                      <SavingsMovementRow
                         key={movement.id}
                         name={movement.name}
+                        date={movement.date}
                         amount={movement.amount}
                         currency={currency}
-                        detail={<ShortDate date={movement.date} timeZone={data.user.timezone} />}
-                        signed
+                        timeZone={data.user.timezone}
+                        depositLabel={tResumen('deposito')}
+                        withdrawalLabel={tResumen('retiro')}
+                        index={index}
                       />
                     ))}
                     <AddRow label={t('anadirMovimientoAhorro')} onClick={actions.addSavingsMovement} />

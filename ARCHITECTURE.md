@@ -450,6 +450,7 @@ Deliberadamente no modela principal, interés ni una tabla de amortización — 
 - `foto_url` (nullable — avatar; si está vacío se muestra la inicial del nombre, ver sección 9)
 - `cargas_confirmadas` (int, default `0` — contador para la confirmación progresiva, ver sección 3)
 - `modo_confirmacion` (`auto` | `texto` | `reaccion`, default `auto` — ver sección 3)
+- `meta_ahorro_mensual` (numeric, nullable — meta de ahorro por ciclo; `null` es "sin meta fijada", ver sección 9)
 **`invitaciones`**
 - `id`
 - `codigo` (único, aleatorio, 8+ caracteres)
@@ -687,7 +688,7 @@ Por qué al final y no en el menú global: crear categorías se hace al principi
 Las tres tarjetas chicas (Ingresos, Gastos, Ahorro) se expanden al tocarlas, **las tres con el mismo comportamiento**. La tentación era que Gastos desplazara a la lista en vez de expandirse; se descartó: tres tarjetas idénticas con dos comportamientos distintos es el mismo botón haciendo cosas diferentes.
  
 - **Ingresos** → lista de fuentes (sueldo, extras y propinas), cada una editable, con fila "Añadir ingreso" al final.
-- **Ahorro** → total del mes, saldo acumulado, progreso hacia la meta, movimientos individuales con depósitos y retiros distinguidos, y "Añadir movimiento".
+- **Ahorro** → total del mes, saldo acumulado con sparkline de los últimos 6 ciclos, barra de progreso hacia `meta_ahorro_mensual` cuando el usuario la fijó (oculta si es `null`), movimientos individuales con depósitos y retiros distinguidos, y "Añadir movimiento".
 - **Gastos** → desglose por categoría, una fila por categoría con su punto de color, ordenadas de mayor a menor, y una fila "Ver todos los gastos" que desplaza suavemente a las tarjetas de abajo.
 ### Avatar de cuenta
  

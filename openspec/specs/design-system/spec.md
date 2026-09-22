@@ -46,13 +46,20 @@ At a 390px-wide viewport the gutter SHALL be 16px, the section gap 32px, the sta
 ### Requirement: Touch targets
 Every interactive element SHALL have a hit area of at least 44 × 44 CSS pixels at a 390px-wide viewport. Every list row SHALL be at least 48px tall. A control's visible shape can be smaller than its hit area.
 
+A decorative mark inside a row — a colour dot, a direction icon — is not a control. It SHALL NOT be focusable, SHALL NOT respond to a pointer, and its own size SHALL NOT be held to the 44px minimum. Adding one SHALL NOT reduce the row's height below the minimum, and SHALL NOT shrink the hit area of any control in the same row.
+
 #### Scenario: Targets in every state
-- **WHEN** `/demo` is rendered at a 390px-wide viewport in each of these states: all collapsed, scrolled with the compact bar showing, the income panel open, the "comida" card open, the month picker open, and the account sheet open
+- **WHEN** `/demo` is rendered at a 390px-wide viewport in each of these states: all collapsed, scrolled with the compact bar showing, the income panel open, the savings panel open, the "comida" card open, the month picker open, and the account sheet open
 - **THEN** every visible button, link and radio control has a bounding box at least 44px wide and 44px tall
 
 #### Scenario: Row height
-- **WHEN** the "comida" card and the income panel are open
-- **THEN** every expense row, summary row and add row is at least 48px tall
+- **WHEN** the "comida" card, the income panel and the savings panel are open
+- **THEN** every expense row, summary row, savings movement row and add row is at least 48px tall
+
+#### Scenario: A direction icon is not a control
+- **WHEN** the savings panel is open and the keyboard is tabbed through it
+- **THEN** no movement's direction icon receives focus
+- **AND** each movement row is still at least 48px tall
 
 ### Requirement: Interaction states
 Every tappable surface and button SHALL show pressed feedback while a pointer is held down on it. It SHALL show a focus ring at least 2px wide in the ring colour when it receives keyboard focus, and no ring after a pointer click. An open, selected or current state SHALL be conveyed by at least one cue other than colour: shape, icon orientation, font weight or text. That state SHALL also be exposed to assistive technology as expanded, checked or current.
@@ -69,6 +76,34 @@ Every tappable surface and button SHALL show pressed feedback while a pointer is
 #### Scenario: Open state not shown by colour alone
 - **WHEN** the income column is open
 - **THEN** it is exposed to assistive technology as expanded, its chevron points up, and an indicator mark is shown under it that closed columns do not have
+
+### Requirement: A progress bar's colour says what it measures
+The interface has two kinds of progress bar and they measure opposite things. Their colour SHALL be decided by which kind a bar is, never by how full it is alone.
+
+**A consumption bar** measures spending against a ceiling the user is trying not to cross. It SHALL take the three-step ramp: the brand colour while there is room, the warning colour as the ceiling is approached, and the danger colour once it is crossed.
+
+**A progress bar** measures accumulation towards a target the user is trying to reach. It SHALL use the brand colour at every value, including zero and including values above the target. It SHALL NOT use the warning colour or the danger colour at any value.
+
+The warning and danger colours SHALL be reserved to budget state. No bar that is not a consumption bar SHALL use either, because on a bar that measures accumulation a red fill would mark success as failure.
+
+Reaching a target SHALL be shown by a mark, not by a colour change, and SHALL NOT be celebrated with motion that outlives the fill.
+
+#### Scenario: A consumption bar takes the ramp
+- **WHEN** a category's budget is 40 %, 85 % and 110 % spent
+- **THEN** its bar's fill computes the brand colour, the warning colour and the danger colour respectively
+
+#### Scenario: A progress bar stays brand
+- **WHEN** a savings target is 0 %, 49 %, 100 % and 140 % reached, in both themes
+- **THEN** the bar's fill computes the brand colour in every case
+- **AND** it computes neither the warning colour nor the danger colour in any case
+
+#### Scenario: Reaching the target is marked, not recoloured
+- **WHEN** a progress bar reaches its target
+- **THEN** a mark appears at the end of its track and the fill's computed colour is unchanged from the value below the target
+
+#### Scenario: Both kinds are on screen together
+- **WHEN** `/demo` is rendered with the "comida" card open and a savings target supplied
+- **THEN** the budget bar and the savings bar have the same height and corner radius, and differ only in their fill and in what sits under them
 
 ### Requirement: Translucent materials
 Translucent blurred materials SHALL be used only for navigation and transient controls:
@@ -129,6 +164,7 @@ When the operating system requests reduced motion:
 - after a drag is released, an expense row SHALL settle, slide out and collapse without animated movement
 - toasts SHALL appear and disappear without movement
 - entering and leaving reorder mode SHALL change the screen without animated movement, and a card moved by a drop, by a keyboard press or by a failed save SHALL appear in its new position rather than travel to it
+- a progress bar SHALL be drawn at its final width, and the rows of a summary panel SHALL be at full opacity and in place in the first frame after the panel opens
 - a held card SHALL still follow the pointer, because that movement is the user's own and not the interface's
 
 Every state change SHALL still happen when motion is reduced; only the movement SHALL be dropped.
@@ -137,6 +173,8 @@ No dashboard element SHALL animate indefinitely in either motion setting.
 
 Without the reduced-motion request:
 - opening and closing an expense card or a summary panel SHALL animate its height
+- a progress bar SHALL grow from zero width to its value over successive frames the first time it is revealed, and SHALL NOT replay that growth on later openings of whatever contains it
+- the rows of a summary panel SHALL enter one after another rather than all at once, and the whole sequence SHALL finish within the panel's own opening
 - the entry sheet and the category sheet SHALL move in from below their resting position and leave the same way
 - a released expense row SHALL move to its resting position rather than jump to it
 - a deleted row SHALL slide out and collapse over successive frames
@@ -146,6 +184,11 @@ Without the reduced-motion request:
 - **WHEN** reduced motion is emulated and `/demo` is loaded
 - **THEN** every section is visible without scrolling it into view and has no transform applied
 - **AND** opening the "comida" card shows its rows at full height immediately
+
+#### Scenario: Reduced motion on the savings card
+- **WHEN** reduced motion is emulated and `/demo` is loaded with a savings target supplied
+- **THEN** in the first frame, the savings bar's fill is already at its final width
+- **AND** in the first frame after the savings panel is opened, every movement row is at full opacity and in its final position
 
 #### Scenario: Reduced motion while editing
 - **WHEN** reduced motion is emulated, the entry sheet is opened from the "comida" card and closed, and an expense row is then dragged 60px left and released
@@ -166,10 +209,21 @@ Without the reduced-motion request:
 #### Scenario: No endless animation
 - **WHEN** `/demo` is rendered for a cycle that is in progress
 - **THEN** no running animation on the page has an infinite iteration count
+- **AND** the savings bar's fill and the check mark at its end are both at rest once the fill has finished
 
 #### Scenario: Animated disclosure
 - **WHEN** motion is not reduced and the user opens the "comida" card
 - **THEN** the card's height grows over successive frames before settling, rather than jumping to its final height
+
+#### Scenario: The savings bar fills once
+- **WHEN** motion is not reduced and `/demo` is loaded with a savings target supplied
+- **THEN** the bar's fill width changes over successive frames from zero to its value
+- **AND** after opening and closing the savings panel, the fill stays at its value rather than growing again
+
+#### Scenario: Staggered panel rows
+- **WHEN** motion is not reduced and the savings panel is opened
+- **THEN** the movement rows reach full opacity one after another rather than in the same frame
+- **AND** every row has finished entering by the time the panel has finished opening
 
 #### Scenario: Animated sheet and swipe
 - **WHEN** motion is not reduced and the entry sheet opens

@@ -10,6 +10,7 @@ import { createDemoCategoryMutations, noDemoCategoryEdits } from '@/lib/demo/dem
 import { createDemoIncomeMutations, noDemoIncomeEdits } from '@/lib/demo/demo-income'
 import { createDemoRecurringMutations, noDemoRecurringEdits } from '@/lib/demo/demo-recurring'
 import { selectUpcomingCharges } from '@/lib/data/upcoming-charges'
+import { getSavingsProgress } from '@/lib/data/savings'
 import type { DashboardData } from '@/lib/data/dashboard'
 import type { RecurringDefinition } from '@/lib/data/recurring'
 
@@ -31,6 +32,11 @@ export function DemoDashboard({ data, recurringDefinitions, changeLanguage }: De
     [data, recurringDefinitions, edits, categoryEdits, recurringEdits, incomeEdits],
   )
   const charges = useMemo(() => selectUpcomingCharges(view.expenses.groups, definitions), [view, definitions])
+  const savingsTarget = view.savings.target
+  const savingsProgress = useMemo(
+    () => (savingsTarget != null ? getSavingsProgress({ target: savingsTarget, movements: view.savings.movements }) : null),
+    [savingsTarget, view.savings.movements],
+  )
   const expenses = useMemo(() => createDemoExpenseMutations(setEdits), [])
   const recurring = useMemo(() => createDemoRecurringMutations(setRecurringEdits), [])
   const income = useMemo(() => createDemoIncomeMutations(setIncomeEdits), [])
@@ -71,6 +77,7 @@ export function DemoDashboard({ data, recurringDefinitions, changeLanguage }: De
         data={view}
         charges={charges}
         definitions={definitions}
+        savingsProgress={savingsProgress}
         actions={{
           changeLanguage,
           expenses,

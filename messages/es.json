@@ -25,7 +25,10 @@
     "deposito": "Ingreso",
     "retiro": "Retiro",
     "incomeSources": "Fuentes de ingreso",
-    "cycleSavings": "Ahorro del ciclo"
+    "cycleSavings": "Ahorro del ciclo",
+    "progresoAhorro": "{ahorrado} de {meta}",
+    "progresoAhorroDetalle": "{ahorrado} de {meta}",
+    "metaAlcanzada": "Meta alcanzada"
   },
   "categoria": {
     "gastadoDePresupuesto": "<montoGastado>{gastado}</montoGastado> <muted>de {presupuesto}</muted>",
