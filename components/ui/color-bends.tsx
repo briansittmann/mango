@@ -147,7 +147,14 @@ export function ColorBends({
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const gl = canvas.getContext('webgl', { alpha: true, antialias: false, powerPreference: 'high-performance' })
+    // `preserveDrawingBuffer`: mobile browsers can composite a scroll frame without a fresh draw, and
+    // with a discarded buffer that frame showed the background gone for a few milliseconds.
+    const gl = canvas.getContext('webgl', {
+      alpha: true,
+      antialias: false,
+      powerPreference: 'high-performance',
+      preserveDrawingBuffer: true,
+    })
     if (!gl) return
 
     const vertex = compile(gl, gl.VERTEX_SHADER, VERTEX_SHADER)
@@ -200,7 +207,10 @@ export function ColorBends({
     }
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      // The bands are soft blurs, so touch screens render at 1x: a full-screen 2x shader every frame
+      // while scrolling is what a phone GPU drops first.
+      const coarse = matchMedia('(pointer: coarse)').matches
+      const dpr = coarse ? 1 : Math.min(window.devicePixelRatio || 1, 2)
       const width = Math.max(1, Math.round(canvas.clientWidth * dpr))
       const height = Math.max(1, Math.round(canvas.clientHeight * dpr))
       if (canvas.width === width && canvas.height === height) return
