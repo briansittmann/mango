@@ -5,10 +5,9 @@ import { cn } from '@/lib/utils'
 type FreeMarginCardProps = {
   amount: number
   currency: string
-  places: number
 }
 
-export function FreeMarginCard({ amount, currency, places }: FreeMarginCardProps) {
+export function FreeMarginCard({ amount, currency }: FreeMarginCardProps) {
   const t = useTranslations('dashboard')
 
   return (
@@ -17,7 +16,6 @@ export function FreeMarginCard({ amount, currency, places }: FreeMarginCardProps
       <AnimatedAmount
         amount={amount}
         currency={currency}
-        places={places}
         currencyClassName="text-headline-md"
         className="hero-value mt-2 block font-display text-display-mobile sm:text-display"
       />

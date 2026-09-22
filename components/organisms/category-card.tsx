@@ -14,8 +14,6 @@ import type { Expense, ExpenseGroup } from '@/lib/data/dashboard'
 type CategoryCardProps = {
   group: ExpenseGroup
   currency: string
-  /** Integer digits the header total is built for — see `AnimatedAmount`. */
-  places: number
   timeZone: string
   open: boolean
   onToggle: () => void
@@ -31,7 +29,6 @@ type CategoryCardProps = {
 export function CategoryCard({
   group,
   currency,
-  places,
   timeZone,
   open,
   onToggle,
@@ -86,7 +83,7 @@ export function CategoryCard({
                 presupuesto: format.number(group.budget.amount, { ...currencyFormatOptions, currency }),
                 // The tag wraps the formatted `gastado` — which is what `t.markup` reads for the
                 // progress bar's value text; on screen the counter takes its place.
-                montoGastado: () => <AnimatedAmount amount={group.budget!.spent} currency={currency} places={places} />,
+                montoGastado: () => <AnimatedAmount amount={group.budget!.spent} currency={currency} />,
                 muted: (chunks) => <span className="font-normal text-muted-foreground">{chunks}</span>,
               })}
             </span>
@@ -95,7 +92,6 @@ export function CategoryCard({
               <AnimatedAmount
                 amount={group.total}
                 currency={currency}
-                places={places}
                 className="text-tabular-numeric-md font-semibold text-foreground"
               />
             </span>

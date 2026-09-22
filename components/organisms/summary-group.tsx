@@ -7,8 +7,6 @@ type SummaryGroupItem = {
   key: string
   label: string
   total: number
-  /** Integer digits the tile is built for — see `AnimatedAmount`. */
-  places: number
   panel: ReactNode
   /** Rendered under the total, inside the same button. Only the savings tile supplies this today. */
   below?: ReactNode
@@ -55,7 +53,6 @@ export function SummaryGroup({ items, openKey, onToggle, currency }: SummaryGrou
               <AnimatedAmount
                 amount={item.total}
                 currency={currency}
-                places={item.places}
                 className={`mt-2 whitespace-nowrap text-foreground ${item.total >= 100000 ? 'text-tabular-numeric-md' : 'text-tabular-numeric-lg'}`}
               />
               {item.below}
