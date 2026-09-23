@@ -52,7 +52,7 @@ export function MonthSelector({ variant, month, start, end, inProgress, onPrevio
         <button
           type="button"
           onClick={onNext}
-          disabled={!onNext}
+          disabled={!onNext || inProgress}
           aria-label={t('cicloSiguiente')}
           className="pressable grid size-target place-items-center rounded-full text-muted-foreground [--press-scale:0.9] disabled:pointer-events-none disabled:opacity-30"
         >
@@ -111,7 +111,7 @@ export function MonthSelector({ variant, month, start, end, inProgress, onPrevio
           <button
             type="button"
             onClick={onNext}
-            disabled={!onNext}
+            disabled={!onNext || inProgress}
             aria-label={t('cicloSiguiente')}
             className="pressable grid size-target place-items-center rounded-full text-muted-foreground [--press-scale:0.9] disabled:pointer-events-none disabled:opacity-30"
           >

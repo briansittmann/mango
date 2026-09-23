@@ -37,7 +37,7 @@ test('adding an income entry moves the income total and the free margin', async 
   await expect(page.locator('div[role="status"].sr-only')).toHaveText('Ingreso añadido')
 
   await expect.poll(() => body(page)).toMatch(/Ingresos\s*3\.120\s?€/)
-  await expect.poll(() => body(page)).toMatch(/1\.274/)
+  await expect.poll(() => body(page)).toMatch(/Margen libre\s*1\.144\s?€/)
   await expect.poll(() => body(page)).toMatch(/Gastos\s*1\.700\s?€/)
 
   await expect(page.locator('#summary-group-panel').getByText('Bonus')).toBeVisible()

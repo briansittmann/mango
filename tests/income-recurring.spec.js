@@ -42,7 +42,7 @@ test('a recurring income entry produces one row and never becomes a charge', asy
   // One row, not two: the entry create and the definition create correlate into a single row.
   await expect(page.locator('#summary-group-panel').getByRole('button', { name: /^Alquiler cobrado/ })).toHaveCount(1)
   await expect.poll(() => body(page)).toMatch(/Ingresos\s*4\.020\s?€/)
-  await expect.poll(() => body(page)).toMatch(/2\.174/)
+  await expect.poll(() => body(page)).toMatch(/Margen libre\s*2\.044\s?€/)
 
   // The recurrence never reaches "Próximos cobros", collapsed or open.
   await expect(chargesButton).toHaveAccessibleName(/Parking · día 15/)

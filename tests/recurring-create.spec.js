@@ -17,7 +17,7 @@ const COPY = {
     dayError: 'Elige un día del mes',
     explanation: 'Cada día 15 anotaremos 50 € en Transporte. Puedes cambiarlo cuando quieras.',
     categoryId: 'transporte',
-    categoryLine: /Transporte\s*180\s?€\s*de\s*100\s?€/,
+    categoryLine: /Transporte\s*80\s?€\s*de\s*100\s?€/,
     total: /1\.750\s?€/,
   },
   en: {
@@ -28,7 +28,7 @@ const COPY = {
     dayError: 'Choose a day of the month',
     explanation: "On day 15 of every month we'll record €50 in Transport. You can change it anytime.",
     categoryId: 'transporte',
-    categoryLine: /Transport€?180\s*of\s*€?100/,
+    categoryLine: /Transport€?80\s*of\s*€?100/,
     total: /Expenses€1,750/,
   },
 }
@@ -86,7 +86,7 @@ for (const locale of /** @type {const} */ (['es', 'en'])) {
       })
     await expect.poll(body).toMatch(copy.categoryLine)
     await expect.poll(body).toMatch(copy.total)
-    await expect.poll(body).toContain('924')
+    await expect.poll(body).toMatch(/(Margen libre|Free margin)\s*€?794/)
 
     await page.locator('button[aria-controls="upcoming-charges-panel"]').click()
     await expect(page.locator('#upcoming-charges-panel').getByText('Peaje')).toBeVisible()

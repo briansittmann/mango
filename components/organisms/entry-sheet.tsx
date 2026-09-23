@@ -562,7 +562,9 @@ export function EntrySheet<V>({
           </>
         ) : context.kind === 'income' ? (
           <span className="truncate">{context.recurring ? t('soloEsteIngreso') : t('ingreso')}</span>
-        ) : undefined
+        ) : (
+          <span className="truncate">{t('ahorro')}</span>
+        )
       }
     >
       <form id={formId} onSubmit={handleSubmit} aria-busy={disabled} className="flex min-h-0 flex-1 flex-col">

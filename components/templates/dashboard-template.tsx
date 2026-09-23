@@ -14,7 +14,7 @@ import { Toast } from '@base-ui/react/toast'
 import { gsap } from 'gsap'
 import { Flip } from 'gsap/Flip'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { currencyFormatOptions } from '@/i18n/formats'
 import { cn } from '@/lib/utils'
@@ -1159,10 +1159,16 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
               panel: (
                 <>
                   <div className="flex flex-col">
-                    <div className="flex items-center gap-3 px-inset py-4">
-                      <p className="min-w-0 flex-1 truncate text-headline-sm text-muted-foreground">{tResumen('acumulado')}</p>
+                    <button
+                      type="button"
+                      onClick={actions.openSavingsHistory}
+                      disabled={!actions.openSavingsHistory}
+                      className="pressable flex w-full items-center gap-3 px-inset py-4 text-left [--press-tint:8%] hover:bg-foreground/[0.04] disabled:pointer-events-none"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-headline-sm text-muted-foreground">{tResumen('acumulado')}</span>
                       <AnimatedAmount amount={data.savings.accumulated} currency={currency} className="shrink-0 text-headline-sm text-foreground" />
-                    </div>
+                      {actions.openSavingsHistory ? <ChevronRight aria-hidden className="-mr-1 size-4 shrink-0 text-muted-foreground" /> : null}
+                    </button>
                     {data.savings.movements.map((movement, index) => (
                       <SavingsMovementRow
                         key={movement.id}

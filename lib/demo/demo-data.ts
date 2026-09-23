@@ -1,4 +1,4 @@
-import { getBudgetStatus } from '@/lib/data/budget'
+import type { BudgetRow } from '@/lib/data/budget'
 import type { CategoryColor, DashboardData, ExpenseGroup } from '@/lib/data/dashboard'
 import type { RecurringDefinition } from '@/lib/data/recurring'
 import { deriveDemoData, noDemoEdits } from '@/lib/demo/demo-expenses'
@@ -10,8 +10,6 @@ import { noDemoSavingsEdits } from '@/lib/demo/demo-savings'
 type Locale = 'es' | 'en'
 type Localized = { es: string; en: string }
 
-const CURRENT_DAY = 10
-const CYCLE_DAYS = 30
 const TIMEZONE = 'Europe/Dublin'
 const CYCLE_START = '2026-09-01'
 const CYCLE_END = '2026-09-30'
@@ -86,12 +84,21 @@ export function buildDemoRecurringDefinitions(locale: Locale): RecurringDefiniti
   }))
 }
 
+// Budgets are stored for the cycle before the sample's and none for the sample's cycle, so the
+// figures on load are the copy (`category-editing` → *Budgets belong to one cycle*).
+export function buildDemoBudgetRows(): BudgetRow[] {
+  return [
+    { categoryId: 'comida', cycle: '2026-08-01', amount: 400 },
+    { categoryId: 'ocio', cycle: '2026-08-01', amount: 150 },
+    { categoryId: 'transporte', cycle: '2026-08-01', amount: 100 },
+  ]
+}
+
 function buildCategory(
   locale: Locale,
   id: string,
   nameKey: keyof typeof NAMES,
   color: CategoryColor,
-  amount: number | null,
   items: { nameKey: keyof typeof NAMES; amount: number; date: string; fixed?: { definitionId: string; day: number; charged: boolean } }[],
 ): ExpenseGroup {
   const expenses = items.map((item, index) => ({
@@ -101,47 +108,47 @@ function buildCategory(
     date: item.date,
     ...(item.fixed ? { fixed: item.fixed } : {}),
   }))
-  const spent = expenses.reduce((sum, expense) => sum + expense.amount, 0)
+  const total = expenses.reduce((sum, expense) => sum + expense.amount, 0)
 
   return {
     id,
     kind: 'category',
     name: name(locale, nameKey),
     color,
-    total: spent,
-    budget: amount != null ? getBudgetStatus({ amount, spent, currentDay: CURRENT_DAY, cycleDays: CYCLE_DAYS }) : null,
+    total,
+    budget: null,
     expenses,
   }
 }
 
 export function buildDemoData(locale: Locale): DashboardData {
   const categoryGroups: ExpenseGroup[] = [
-    buildCategory(locale, 'vivienda', 'vivienda', 'gris_oscuro', null, [
+    buildCategory(locale, 'vivienda', 'vivienda', 'gris_oscuro', [
       { nameKey: 'alquiler', amount: 820, date: '2026-09-01T09:00:00Z', fixed: { definitionId: 'def-alquiler', day: 1, charged: true } },
       { nameKey: 'internet', amount: 45, date: '2026-09-03T09:00:00Z', fixed: { definitionId: 'def-internet', day: 3, charged: true } },
       { nameKey: 'seguro', amount: 35, date: '2026-09-08T09:00:00Z', fixed: { definitionId: 'def-seguro', day: 8, charged: true } },
     ]),
-    buildCategory(locale, 'salud', 'salud', 'verde_profundo', null, [
+    buildCategory(locale, 'salud', 'salud', 'verde_profundo', [
       { nameKey: 'gimnasio', amount: 40, date: '2026-09-22T11:00:00Z', fixed: { definitionId: 'def-gimnasio', day: 22, charged: false } },
     ]),
-    buildCategory(locale, 'hogar', 'hogar', 'gris_calido', null, [
+    buildCategory(locale, 'hogar', 'hogar', 'gris_calido', [
       { nameKey: 'limpieza', amount: 35, date: '2026-09-20T10:00:00Z', fixed: { definitionId: 'def-limpieza', day: 20, charged: false } },
       { nameKey: 'decoracion', amount: 60, date: '2026-09-09T10:00:00Z' },
     ]),
-    buildCategory(locale, 'comida', 'comida', 'naranja_calido', 400, [
+    buildCategory(locale, 'comida', 'comida', 'naranja_calido', [
       { nameKey: 'supermercado', amount: 180, date: '2026-09-03T12:00:00Z' },
       { nameKey: 'restaurante', amount: 67.6, date: '2026-09-07T20:00:00Z' },
       { nameKey: 'cafe', amount: 62.4, date: '2026-09-02T23:30:00Z' },
     ]),
-    buildCategory(locale, 'ocio', 'ocio', 'violeta_metalico', 150, [
+    buildCategory(locale, 'ocio', 'ocio', 'violeta_metalico', [
       { nameKey: 'cine', amount: 45, date: '2026-09-05T19:00:00Z' },
       { nameKey: 'conciertos', amount: 85, date: '2026-09-08T21:00:00Z' },
     ]),
-    buildCategory(locale, 'transporte', 'transporte', 'azul_apagado', 100, [
+    buildCategory(locale, 'transporte', 'transporte', 'azul_apagado', [
       { nameKey: 'gasolina', amount: 80, date: '2026-09-04T08:00:00Z' },
       { nameKey: 'parking', amount: 50, date: '2026-09-15T08:00:00Z', fixed: { definitionId: 'def-parking', day: 15, charged: false } },
     ]),
-    buildCategory(locale, 'compras', 'compras', 'granate', null, [
+    buildCategory(locale, 'compras', 'compras', 'granate', [
       { nameKey: 'ropa', amount: 65, date: '2026-09-06T15:00:00Z' },
       { nameKey: 'electronica', amount: 30, date: '2026-09-10T15:00:00Z' },
     ]),
@@ -182,7 +189,8 @@ export function buildDemoData(locale: Locale): DashboardData {
     { month: '2026-09', total: expensesTotal },
   ]
 
-  // The budgets built above are placeholders: deriveDemoData recomputes them all from this date.
+  // Budgets and the free margin are left out here: deriveDemoData computes them from the budget
+  // rows and this date.
   const realToday = new Intl.DateTimeFormat('en-CA', { timeZone: TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
   const today = realToday < CYCLE_START ? CYCLE_START : realToday > CYCLE_END ? CYCLE_END : realToday
 
@@ -195,7 +203,7 @@ export function buildDemoData(locale: Locale): DashboardData {
       timezone: TIMEZONE,
     },
     cycle: { start: CYCLE_START, end: CYCLE_END, today, month: '2026-09', inProgress: realToday >= CYCLE_START && realToday <= CYCLE_END },
-    freeMargin: incomeTotal - expensesTotal - savingsCycle,
+    freeMargin: 0,
     income: {
       total: incomeTotal,
       entries: incomeEntries.map(({ id, nameKey, amount, date, recurring }) => ({
@@ -220,6 +228,7 @@ export function buildDemoData(locale: Locale): DashboardData {
   return deriveDemoData(
     sample,
     buildDemoRecurringDefinitions(locale),
+    buildDemoBudgetRows(),
     noDemoEdits,
     noDemoCategoryEdits,
     noDemoRecurringEdits,

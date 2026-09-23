@@ -61,7 +61,8 @@
   },
   "demo": {
     "aviso": "You're viewing sample data",
-    "cerrarAviso": "Dismiss notice"
+    "cerrarAviso": "Dismiss notice",
+    "accionNoDisponible": "This action isn't available in the demo"
   },
   "hojaGasto": {
     "nuevoGasto": "New expense",
@@ -93,7 +94,8 @@
     "errorEliminarIngreso": "Couldn't delete the income entry",
     "ingreso": "Income",
     "soloEsteIngreso": "This month's income only",
-    "nuevoMovimientoAhorro": "New savings movement",
+    "nuevoMovimientoAhorro": "New movement",
+    "ahorro": "Savings",
     "tipo": "Type",
     "nombre": "Name",
     "nombreObligatorio": "A name is required",

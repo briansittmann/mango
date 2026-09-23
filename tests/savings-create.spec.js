@@ -27,7 +27,7 @@ async function openSavingsCreateSheet(page) {
   await openSavingsPanel(page)
   await page.locator('#summary-group-panel').getByRole('button', { name: 'Añadir movimiento de ahorro' }).click()
   const sheet = dialog(page)
-  await expect(sheet.getByText('Nuevo movimiento de ahorro')).toBeVisible()
+  await expect(sheet.getByText('Nuevo movimiento')).toBeVisible()
   return sheet
 }
 
@@ -43,7 +43,7 @@ test('a deposit moves the savings total, the accumulated balance and the free ma
 
   await expect.poll(() => body(page)).toMatch(/Ahorro\s*196\s?€/)
   await expect.poll(() => body(page)).toMatch(/Acumulado\s*2\.696\s?€/)
-  await expect.poll(() => body(page)).toMatch(/Margen libre\s*924\s?€/)
+  await expect.poll(() => body(page)).toMatch(/Margen libre\s*794\s?€/)
 })
 
 test('a withdrawal lists a typographic minus sign and moves the totals down', async ({ page }) => {
@@ -64,7 +64,7 @@ test('a withdrawal lists a typographic minus sign and moves the totals down', as
 
   await expect.poll(() => body(page)).toMatch(/Ahorro\s*116\s?€/)
   await expect.poll(() => body(page)).toMatch(/Acumulado\s*2\.616\s?€/)
-  await expect.poll(() => body(page)).toMatch(/Margen libre\s*1\.004\s?€/)
+  await expect.poll(() => body(page)).toMatch(/Margen libre\s*874\s?€/)
 })
 
 test('submitting with an empty amount keeps the sheet open, adds nothing and marks the amount field', async ({ page }) => {
@@ -83,7 +83,7 @@ test('submitting with an empty amount keeps the sheet open, adds nothing and mar
   await expect(sheet).toBeHidden()
 
   await expect.poll(() => body(page)).toMatch(/Ahorro\s*146\s?€/)
-  await expect.poll(() => body(page)).toMatch(/Margen libre\s*974\s?€/)
+  await expect.poll(() => body(page)).toMatch(/Margen libre\s*844\s?€/)
 })
 
 test('a deposit does not persist across a reload', async ({ page }) => {
@@ -100,5 +100,5 @@ test('a deposit does not persist across a reload', async ({ page }) => {
 
   await expect.poll(() => body(page)).toMatch(/Ahorro\s*146\s?€/)
   await expect.poll(() => body(page)).toMatch(/Acumulado\s*2\.646\s?€/)
-  await expect.poll(() => body(page)).toMatch(/Margen libre\s*974\s?€/)
+  await expect.poll(() => body(page)).toMatch(/Margen libre\s*844\s?€/)
 })

@@ -16,13 +16,13 @@ A charge of the displayed cycle is an expense that:
 
 Each charge SHALL carry the name, the amount and the colour of the category it belongs to. That colour SHALL be the same value as the dot on that category's card.
 
-The charges SHALL be derived from the same expense rows the category cards render, so that any change to a charge — its amount, its description, its deletion or its restoration — moves the card, its footer total and the free margin in the same render.
+The charges SHALL be derived from the same expense rows the category cards render, so that any change to a charge — its amount, its description, its deletion or its restoration — moves the card, its footer total and the free margin in the same render. The footer total SHALL equal the fixed expenses term of the free margin (`category-editing` → *A budget reserves its amount in the free margin*).
 
 The card SHALL NOT be rendered at all when the cycle has no charges.
 
 #### Scenario: Same rows as the cards
 - **WHEN** on `/demo` in Spanish the visitor opens the "Vivienda" card, changes "Alquiler" from 820 € to 880 € and saves
-- **THEN** the "Próximos cobros" row for "Alquiler" shows 880 €, its footer total shows 1.085 €, the "Vivienda" card shows 960 €, and the free margin shows 914 €
+- **THEN** the "Próximos cobros" row for "Alquiler" shows 880 €, its footer total shows 1.085 €, the "Vivienda" card shows 960 €, and the free margin shows 784 €
 
 #### Scenario: Deleted charge leaves the card
 - **WHEN** the visitor deletes the "Parking" charge from the "Transporte" card

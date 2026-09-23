@@ -1,8 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { DemoNotice } from '@/components/molecules/demo-notice'
+import { DemoToast } from '@/components/molecules/demo-toast'
 import { DashboardTemplate } from '@/components/templates/dashboard-template'
 import { createDemoExpenseMutations, deriveDemoData, noDemoEdits } from '@/lib/demo/demo-expenses'
 import { createDemoCategoryMutations, noDemoCategoryEdits } from '@/lib/demo/demo-categories'
@@ -10,24 +11,28 @@ import { createDemoIncomeMutations, noDemoIncomeEdits } from '@/lib/demo/demo-in
 import { createDemoRecurringMutations, noDemoRecurringEdits } from '@/lib/demo/demo-recurring'
 import { createDemoSavingsMutations, noDemoSavingsEdits } from '@/lib/demo/demo-savings'
 import { selectUpcomingCharges } from '@/lib/data/upcoming-charges'
+import type { BudgetRow } from '@/lib/data/budget'
 import type { DashboardData } from '@/lib/data/dashboard'
 import type { RecurringDefinition } from '@/lib/data/recurring'
 
 type DemoDashboardProps = {
   data: DashboardData
   recurringDefinitions: RecurringDefinition[]
+  budgetRows: BudgetRow[]
   changeLanguage: (l: 'es' | 'en') => Promise<void>
 }
 
-export function DemoDashboard({ data, recurringDefinitions, changeLanguage }: DemoDashboardProps) {
+export function DemoDashboard({ data, recurringDefinitions, budgetRows, changeLanguage }: DemoDashboardProps) {
   const [edits, setEdits] = useState(noDemoEdits)
   const [categoryEdits, setCategoryEdits] = useState(noDemoCategoryEdits)
   const [recurringEdits, setRecurringEdits] = useState(noDemoRecurringEdits)
   const [incomeEdits, setIncomeEdits] = useState(noDemoIncomeEdits)
   const [savingsEdits, setSavingsEdits] = useState(noDemoSavingsEdits)
+  const [messageOpen, setMessageOpen] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { data: view, definitions } = useMemo(
-    () => deriveDemoData(data, recurringDefinitions, edits, categoryEdits, recurringEdits, incomeEdits, savingsEdits),
-    [data, recurringDefinitions, edits, categoryEdits, recurringEdits, incomeEdits, savingsEdits],
+    () => deriveDemoData(data, recurringDefinitions, budgetRows, edits, categoryEdits, recurringEdits, incomeEdits, savingsEdits),
+    [data, recurringDefinitions, budgetRows, edits, categoryEdits, recurringEdits, incomeEdits, savingsEdits],
   )
   const charges = useMemo(() => selectUpcomingCharges(view.expenses.groups, definitions), [view, definitions])
   const expenses = useMemo(() => createDemoExpenseMutations(setEdits), [])
@@ -53,20 +58,41 @@ export function DemoDashboard({ data, recurringDefinitions, changeLanguage }: De
     return { ...base, reorder: () => Promise.reject(new Error('e2e-forced-reorder-failure')) }
   }, [view, failReorder])
 
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
+  }, [])
+
+  function showUnavailable() {
+    setMessageOpen(true)
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    timeoutRef.current = setTimeout(() => setMessageOpen(false), 2500)
+  }
+
   return (
-    <DashboardTemplate
-      data={view}
-      charges={charges}
-      definitions={definitions}
-      actions={{
-        changeLanguage,
-        expenses,
-        categories: noCategoryActions ? undefined : categories,
-        recurring,
-        income,
-        savings,
-      }}
-      notice={<DemoNotice />}
-    />
+    <>
+      <DashboardTemplate
+        data={view}
+        charges={charges}
+        definitions={definitions}
+        actions={{
+          changeLanguage,
+          expenses,
+          categories: noCategoryActions ? undefined : categories,
+          recurring,
+          income,
+          savings,
+          previousCycle: showUnavailable,
+          nextCycle: showUnavailable,
+          selectCycle: (month) => {
+            if (month !== view.cycle.month) showUnavailable()
+          },
+          openSavingsHistory: showUnavailable,
+        }}
+        notice={<DemoNotice />}
+      />
+      <DemoToast open={messageOpen} />
+    </>
   )
 }

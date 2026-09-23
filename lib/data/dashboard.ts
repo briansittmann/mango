@@ -74,6 +74,7 @@ export type DashboardActions = Partial<{
   previousCycle(): void
   nextCycle(): void
   selectCycle(month: string): void
+  openSavingsHistory(): void
   expenses: ExpenseMutations
   categories: CategoryMutations
   recurring: RecurringMutations

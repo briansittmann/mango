@@ -82,6 +82,8 @@ on conflict (usuario_id, nombre) do update set
 
 -- Presupuestos. Comida NO es gasto fijo (aunque en la planilla vieja figurara como tal):
 -- el monto varía, lo que importa es el seguimiento contra el techo (§9).
+-- periodo es el primer día del ciclo actual, como texto porque la columna todavía es text:
+-- 0018 la castea a date.
 insert into presupuestos (usuario_id, categoria_id, monto, periodo)
 select
   (select id from usuarios where telefono = '+353000000000'),
@@ -89,7 +91,10 @@ select
     where usuario_id = (select id from usuarios where telefono = '+353000000000')
     and nombre = v.categoria),
   v.monto,
-  'mensual'
+  (select (c.inicio at time zone u.timezone)::date::text
+    from usuarios u
+    cross join lateral rango_ciclo_usuario(u.id) c
+    where u.telefono = '+353000000000')
 from (values
   ('comida', 250::numeric),
   ('ocio',   250::numeric)

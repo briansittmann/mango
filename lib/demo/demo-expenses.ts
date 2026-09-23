@@ -1,9 +1,10 @@
 import type { Dispatch, SetStateAction } from 'react'
-import { getBudgetStatus } from '@/lib/data/budget'
+import { getBudgetStatus, getFreeMargin, type BudgetRow } from '@/lib/data/budget'
 import type { DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
 import type { ExpenseDraft, ExpenseMutations } from '@/lib/data/expenses'
 import type { IncomeDraft, IncomeEntry } from '@/lib/data/income'
 import type { RecurringDefinition, RecurringDraft, RecurringTarget } from '@/lib/data/recurring'
+import { budgetFor, copyForward, dropCategory, setBudget } from '@/lib/demo/demo-budgets'
 import type { DemoCategoryEdits } from '@/lib/demo/demo-categories'
 import type { DemoIncomeEdits } from '@/lib/demo/demo-income'
 import type { DemoRecurringEdits } from '@/lib/demo/demo-recurring'
@@ -187,6 +188,10 @@ function attachCreatedIncomeDefinition(entries: IncomeEntry[], created: DemoRecu
   return [...tagged, ...additions]
 }
 
+function sumVariable(expenses: Expense[]): number {
+  return expenses.filter((expense) => !expense.fixed).reduce((sum, expense) => sum + expense.amount, 0)
+}
+
 function finalizeGroup(
   group: ExpenseGroup,
   expenses: Expense[],
@@ -195,11 +200,13 @@ function finalizeGroup(
   cycleDays: number,
 ): ExpenseGroup {
   const total = expenses.reduce((sum, expense) => sum + expense.amount, 0)
+  // Recurring charges count as fixed expenses, never against the budget.
+  const variableSpent = sumVariable(expenses)
 
   return {
     ...group,
     total,
-    budget: budgetAmount != null ? getBudgetStatus({ amount: budgetAmount, spent: total, currentDay, cycleDays }) : null,
+    budget: budgetAmount != null ? getBudgetStatus({ amount: budgetAmount, spent: variableSpent, currentDay, cycleDays }) : null,
     expenses,
   }
 }
@@ -207,6 +214,7 @@ function finalizeGroup(
 export function deriveDemoData(
   base: DashboardData,
   baseDefinitions: RecurringDefinition[],
+  baseBudgetRows: BudgetRow[],
   expenseEdits: DemoExpenseEdits,
   categoryEdits: DemoCategoryEdits,
   recurringEdits: DemoRecurringEdits,
@@ -232,11 +240,22 @@ export function deriveDemoData(
   // 3. A definition created in this submit claims the plain expense the same submit created.
   const resolved = attachCreatedDefinitions(expenseResolved, recurringEdits.created, currentDay, base.cycle.start)
 
-  // 4. Category updates override name, colour and budget amount.
+  // 4. Budgets come from the per-cycle rows (D4): the copy into the sample cycle first, then
+  //    updates and creations write that cycle only, then deletions drop every cycle's rows.
+  //    Category updates override name and colour.
+  const cycle = base.cycle.start
+  let budgetRows = copyForward(baseBudgetRows, cycle)
+  for (const [id, draft] of Object.entries(categoryEdits.updated)) budgetRows = setBudget(budgetRows, id, draft.budget, cycle)
+  for (const { id, draft } of categoryEdits.created) {
+    if (draft.budget != null) budgetRows = setBudget(budgetRows, id, draft.budget, cycle)
+  }
+  for (const { id } of categoryEdits.deleted) budgetRows = dropCategory(budgetRows, id)
+
   const updated = resolved.map(({ group, expenses }) => {
     const draft = categoryEdits.updated[group.id]
-    if (!draft) return { group, expenses, budgetAmount: group.budget?.amount ?? null }
-    return { group: { ...group, name: draft.name, color: draft.color }, expenses, budgetAmount: draft.budget }
+    const budgetAmount = budgetFor(budgetRows, group.id, cycle)
+    if (!draft) return { group, expenses, budgetAmount }
+    return { group: { ...group, name: draft.name, color: draft.color }, expenses, budgetAmount }
   })
 
   // 5. Category deletions append the deleted group's resolved rows onto the receiving group and remove the group.
@@ -257,7 +276,7 @@ export function deriveDemoData(
   const created = categoryEdits.created.map(({ id, draft }) => ({
     group: { id, kind: 'category' as const, name: draft.name, color: draft.color, total: 0, budget: null, expenses: [] },
     expenses: [] as Expense[],
-    budgetAmount: draft.budget,
+    budgetAmount: budgetFor(budgetRows, id, cycle),
   }))
   const withCreated = [...survivors, ...created]
 
@@ -312,7 +331,12 @@ export function deriveDemoData(
   const savingsHistory = base.savings.history.map((entry) =>
     entry.month === base.cycle.month ? { ...entry, accumulated: savingsAccumulated } : entry,
   )
-  const freeMargin = incomeTotal - total - savingsCycle
+  const freeMargin = getFreeMargin({
+    income: incomeTotal,
+    savings: savingsCycle,
+    fixed: groups.reduce((sum, group) => sum + group.total - sumVariable(group.expenses), 0),
+    categories: groups.map((group) => ({ budget: group.budget?.amount ?? null, spent: sumVariable(group.expenses) })),
+  })
 
   return {
     data: {

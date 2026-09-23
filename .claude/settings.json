@@ -132,7 +132,9 @@
       "Skill(opsx:propose)",
       "Skill(opsx:propose:*)",
       "Skill(opsx:sync)",
-      "Skill(opsx:sync:*)"
+      "Skill(opsx:sync:*)",
+      "Skill(opsx:archive)",
+      "Skill(opsx:archive:*)"
     ],
     "additionalDirectories": [
       "/Users/brianrebagliati/Documents/Work/mango-finanzas/mango/baseline-shots"

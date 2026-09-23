@@ -21,14 +21,16 @@ Update SHALL NOT change an expense's category, its type, its fixed flag, the rec
 
 A soft-deleted expense SHALL NOT count anywhere: not in expense lists, card totals, budget progress, the expenses total, the charts or the free margin. Once restored, it SHALL count in all of them again.
 
+How an expense moves the free margin SHALL follow `category-editing` → *A budget reserves its amount in the free margin*: an expense in a category with a budget moves the free margin only by the part of the category's spending beyond its budget, and a recurring charge or an expense in a category without a budget moves it by its whole amount.
+
 #### Scenario: Deleted expense leaves every figure
 - **WHEN** the "Café" expense (62,40 €) in "comida" is soft-deleted on `/demo`, in Spanish
 - **THEN** it is no longer listed
-- **AND** the "comida" card shows 247,60 € of 400 €, the expenses total shows 1.637,60 € and the free margin shows 1.036,40 €
+- **AND** the "comida" card shows 247,60 € of 400 €, the expenses total shows 1.637,60 € and the free margin still shows 844 €, because "comida" is still within its budget
 
 #### Scenario: Restore brings the expense back
 - **WHEN** the same expense is restored
-- **THEN** "Café" is listed in "comida" with 62,40 € and its date, the card shows 310 € of 400 €, and the free margin shows 974 €
+- **THEN** "Café" is listed in "comida" with 62,40 € and its date, the card shows 310 € of 400 €, and the free margin shows 844 €
 
 #### Scenario: Same operations on another data source
 - **WHEN** the dashboard is mounted with an implementation of the four operations that records its calls instead of the demo's
@@ -77,7 +79,7 @@ The sheet SHALL open from exactly these triggers:
 #### Scenario: Recurring charge edits this month only
 - **WHEN** the visitor opens the "Vivienda" card on `/demo` in Spanish and taps "Alquiler" (820 €)
 - **THEN** the sheet opens in edit mode with a header caption reading "Vivienda · Solo el cargo de este mes"
-- **AND** after changing the amount to 880 and saving, the "Vivienda" card total is 960 € and the free margin is 914 €
+- **AND** after changing the amount to 880 and saving, the "Vivienda" card total is 960 € and the free margin is 784 €
 
 #### Scenario: Recurring charge update carries only the charge
 - **WHEN** a recording implementation of the operations is mounted and the user saves an edit to a recurring charge's row
@@ -217,14 +219,19 @@ Every label, value, caption, icon and button SHALL be drawn at full opacity, nev
 - Its actions SHALL be enabled again.
 
 #### Scenario: Create updates the free margin
-- **WHEN** on `/demo` in Spanish, with the free margin at 974 €, the visitor adds an expense of 20 described as "Panadería" to "comida"
+- **WHEN** on `/demo` in Spanish, with the free margin at 844 €, the visitor adds an expense of 20 described as "Ferretería" to "hogar", which has no budget
+- **THEN** the sheet closes and "Ferretería" is listed in "hogar" with 20 €
+- **AND** the card shows 115 €, the pie centre shows 1.720 €, and the free margin shows 824 €
+
+#### Scenario: Create within a budget leaves the free margin
+- **WHEN** on `/demo` in Spanish, with the free margin at 844 €, the visitor adds an expense of 20 described as "Panadería" to "comida"
 - **THEN** the sheet closes and "Panadería" is listed in "comida" with 20 €
-- **AND** the card shows 330 € of 400 € with the "near limit" label, the pie centre shows 1.720 €, and the free margin shows 954 €
+- **AND** the card shows 330 € of 400 € with the "near limit" label, the pie centre shows 1.720 €, and the free margin still shows 844 €
 
 #### Scenario: Edit pushes a category over budget
 - **WHEN** the visitor changes "Conciertos" in "ocio" from 85 to 125 and saves
 - **THEN** "ocio" shows 170 € of 150 €, a full bar in the danger colour and "20 € por encima del presupuesto"
-- **AND** the free margin shows 934 €
+- **AND** the free margin shows 824 €
 
 #### Scenario: Pending save
 - **WHEN** an injected update takes one second to succeed and the user activates "Guardar"
@@ -274,7 +281,7 @@ Every expense row in an open card SHALL support a leftward drag with touch or a 
 #### Scenario: Long swipe deletes directly
 - **WHEN** a touch drags the "Gasolina" row 250px left (70% of its width)
 - **THEN** before release the delete panel fills the uncovered width
-- **AND** on release the row slides out and collapses, the "transporte" card shows 50 € of 100 €, and the undo toast appears
+- **AND** on release the row slides out and collapses, the "transporte" card shows 0 € of 100 €, and the undo toast appears
 
 #### Scenario: Vertical scrolling is unaffected
 - **WHEN** a touch on an expense row moves 80px down and 10px left
@@ -306,7 +313,7 @@ Deleting an expense SHALL NOT ask for confirmation, whether it comes from the sw
 
 #### Scenario: Undo after a long swipe
 - **WHEN** the visitor long-swipes "Café" in "comida" and then activates "Deshacer"
-- **THEN** "Café" is listed in "comida" again with 62,40 €, the card shows 310 € of 400 €, and the free margin shows 974 €
+- **THEN** "Café" is listed in "comida" again with 62,40 €, the card shows 310 € of 400 €, and the free margin shows 844 €
 
 #### Scenario: Delete from the sheet
 - **WHEN** the visitor opens "Gimnasio" in "salud" and activates "Eliminar gasto"

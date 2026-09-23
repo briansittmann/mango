@@ -61,7 +61,8 @@
   },
   "demo": {
     "aviso": "Estás viendo datos de ejemplo",
-    "cerrarAviso": "Cerrar aviso"
+    "cerrarAviso": "Cerrar aviso",
+    "accionNoDisponible": "Esta acción no está disponible en la demo"
   },
   "hojaGasto": {
     "nuevoGasto": "Nuevo gasto",
@@ -93,7 +94,8 @@
     "errorEliminarIngreso": "No se pudo eliminar el ingreso",
     "ingreso": "Ingreso",
     "soloEsteIngreso": "Solo el ingreso de este mes",
-    "nuevoMovimientoAhorro": "Nuevo movimiento de ahorro",
+    "nuevoMovimientoAhorro": "Nuevo movimiento",
+    "ahorro": "Ahorro",
     "tipo": "Tipo",
     "nombre": "Nombre",
     "nombreObligatorio": "El nombre es obligatorio",
