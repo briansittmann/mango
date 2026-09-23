@@ -41,23 +41,22 @@ export function getBudgetStatus({
 
 /**
  * The free margin, derived on every read and never stored (`category-editing` → *A budget
- * reserves its amount in the free margin*). `fixed` is every recurring charge of the cycle;
- * each category's `spent` leaves recurring charges out, so every expense counts once.
+ * reserves its amount in the free margin*). Each category's `spent` is its total for the cycle,
+ * recurring charges included: a charge due this cycle counts at its expected amount until it is
+ * charged, then at the real one. There is no separate fixed-expenses term.
  */
 export function getFreeMargin({
   income,
   savings,
-  fixed,
   categories,
 }: {
   income: number
   savings: number
-  fixed: number
   categories: { budget: number | null; spent: number }[]
 }): number {
   const reserved = categories.reduce(
     (sum, { budget, spent }) => sum + (budget == null ? spent : Math.max(budget, spent)),
     0,
   )
-  return income - savings - fixed - reserved
+  return income - savings - reserved
 }

@@ -87,13 +87,13 @@ test('every total counts up on mount and settles on its figure', async ({ page }
   await page.locator(COUNTERS.transporte).scrollIntoViewIfNeeded()
   expectCounted(await collectFrames(page), 'transporte')
 
-  await expect(value(page, 'freeMargin')).toHaveText(/^844/)
+  await expect(value(page, 'freeMargin')).toHaveText(/^864/)
   await expect(value(page, 'income')).toHaveText(/^2\.820/)
   await expect(value(page, 'expenses')).toHaveText(/^1\.700/)
   await expect(value(page, 'savings')).toHaveText(/^146/)
   await expect(value(page, 'vivienda')).toHaveText(/^900/)
   // A budgeted category animates the spent half of "gastado de presupuesto"; the budget stays put.
-  await expect(value(page, 'transporte')).toHaveText(/^80/)
+  await expect(value(page, 'transporte')).toHaveText(/^130/)
   await expect(page.locator('#category-amount-transporte')).toContainText('de')
 
   // The count lands on the same figure the accessible twin reads — the spring's tail takes a few
@@ -108,7 +108,7 @@ test('reduced motion renders the plain figure, with no counter at all', async ({
   await page.waitForTimeout(2000)
 
   await expect(page.locator('.count-up')).toHaveCount(0)
-  await expect(page.locator('.hero-value')).toHaveText(/844/)
+  await expect(page.locator('.hero-value')).toHaveText(/864/)
   await expect(page.locator('#category-amount-vivienda')).toHaveText(/900/)
 
   const frames = await collectFrames(page, 0)
@@ -132,7 +132,7 @@ test.describe('separators follow the locale', () => {
 test('a created, edited and deleted expense each re-counts the totals it moves', async ({ page }) => {
   await page.goto('/demo')
   const panel = await openTransporte(page)
-  await expect(value(page, 'transporte')).toHaveText(/^80/)
+  await expect(value(page, 'transporte')).toHaveText(/^130/)
 
   // Create — 234,50 lands a decimal in every total it touches, and carries "Gastos" past a
   // thousands separator, so both of the locale's separators are on screen at once.
@@ -148,7 +148,7 @@ test('a created, edited and deleted expense each re-counts the totals it moves',
   expectCounted(frames, 'transporte')
   await expect(value(page, 'freeMargin')).toHaveText(/^629,50/)
   await expect(value(page, 'expenses')).toHaveText(/^1\.934,50/)
-  await expect(value(page, 'transporte')).toHaveText(/^314,50/)
+  await expect(value(page, 'transporte')).toHaveText(/^364,50/)
   await expect(page.locator(COUNTERS.expenses)).toHaveText('1.934,50', { timeout: 15000 })
 
   // Edit.
@@ -163,7 +163,7 @@ test('a created, edited and deleted expense each re-counts the totals it moves',
   expectCounted(frames, 'transporte')
   await expect(value(page, 'freeMargin')).toHaveText(/^829,50/)
   await expect(value(page, 'expenses')).toHaveText(/^1\.734,50/)
-  await expect(value(page, 'transporte')).toHaveText(/^114,50/)
+  await expect(value(page, 'transporte')).toHaveText(/^164,50/)
 
   // Delete.
   await panel.getByRole('button', { name: /Peaje/ }).click()
@@ -174,7 +174,7 @@ test('a created, edited and deleted expense each re-counts the totals it moves',
   expectCounted(frames, 'freeMargin')
   expectCounted(frames, 'expenses')
   expectCounted(frames, 'transporte')
-  await expect(value(page, 'freeMargin')).toHaveText(/^844/)
+  await expect(value(page, 'freeMargin')).toHaveText(/^864/)
   await expect(value(page, 'expenses')).toHaveText(/^1\.700/)
-  await expect(value(page, 'transporte')).toHaveText(/^80/)
+  await expect(value(page, 'transporte')).toHaveText(/^130/)
 })

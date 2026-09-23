@@ -34,7 +34,7 @@ test('editing "Salario" moves the income total and the free margin', async ({ pa
 
   await expect(page.locator('div[role="status"].sr-only')).toHaveText('Cambios guardados')
   await expect.poll(() => body(page)).toMatch(/Ingresos\s*2\.920\s?€/)
-  await expect.poll(() => body(page)).toMatch(/Margen libre\s*944\s?€/)
+  await expect.poll(() => body(page)).toMatch(/Margen libre\s*964\s?€/)
 })
 
 test('deleting "Freelance" from its sheet and undoing restores every figure', async ({ page }) => {
@@ -47,10 +47,10 @@ test('deleting "Freelance" from its sheet and undoing restores every figure', as
 
   await expect(page.getByText('Ingreso eliminado')).toBeVisible()
   await expect.poll(() => body(page)).toMatch(/Ingresos\s*2\.400\s?€/)
-  await expect.poll(() => body(page)).toMatch(/Margen libre\s*424\s?€/)
+  await expect.poll(() => body(page)).toMatch(/Margen libre\s*444\s?€/)
 
   await page.getByRole('button', { name: 'Deshacer' }).click()
   await expect.poll(() => body(page)).toMatch(/Ingresos\s*2\.820\s?€/)
-  await expect.poll(() => body(page)).toMatch(/Margen libre\s*844\s?€/)
+  await expect.poll(() => body(page)).toMatch(/Margen libre\s*864\s?€/)
   await expect(page.locator('#summary-group-panel').getByText('Freelance')).toBeVisible()
 })

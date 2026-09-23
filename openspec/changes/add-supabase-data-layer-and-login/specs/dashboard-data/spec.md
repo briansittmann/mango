@@ -49,8 +49,8 @@ For the shown cycle the dashboard SHALL be supplied with:
 - six history entries ending with the shown cycle: each cycle's expenses total, and the accumulated balance at each cycle's end, whose last point equals the accumulated balance above
 
 #### Scenario: Seeded cycle
-- **WHEN** the test user's cycle holds income 2 820, expenses 1 700 of which 1 025 are recurring charges, savings movements of +176, −80 and +50, and budgets of 400 on comida (310 spent), 150 on ocio (130 spent) and 100 on transporte (80 spent outside its 50 € recurring charge)
-- **THEN** the summary shows income 2.820 €, expenses 1.700 €, savings 146 € and the free margin 844 €
+- **WHEN** the test user's cycle holds income 2 820, expenses 1 700 of which 1 025 are recurring charges, savings movements of +176, −80 and +50, and budgets of 400 on comida (310 spent), 150 on ocio (130 spent) and 100 on transporte (130 spent, 50 € of it a recurring charge)
+- **THEN** the summary shows income 2.820 €, expenses 1.700 €, savings 146 € and the free margin 864 €
 
 #### Scenario: Accumulated across cycles
 - **WHEN** the user saved 2 500 net before the shown cycle and 146 net inside it
@@ -66,7 +66,7 @@ The dashboard SHALL be supplied with one group per category of the user, in the 
 - a row marked "no budget", or no row, means the category has no budget in that cycle
 - a past cycle SHALL show its own rows
 
-Its progress SHALL be computed from the category's spending in the cycle outside recurring charges, today, and the cycle's length. Each expense row SHALL carry its description, amount and instant. A row produced by a recurring definition SHALL carry the definition's id, the definition's day of the month, and whether it is already taken: taken when the row's local date is not after today. A definition with no day of the month SHALL be presented with day 1. The dashboard SHALL be supplied with every recurring definition of the user, stopped ones included.
+Its progress SHALL be computed from the category's total spending in the cycle, recurring charges included, today, and the cycle's length. Each expense row SHALL carry its description, amount and instant. A row produced by a recurring definition SHALL carry the definition's id, the definition's day of the month, and whether it is already taken: taken when the row's local date is not after today. A definition with no day of the month SHALL be presented with day 1. The dashboard SHALL be supplied with every recurring definition of the user, stopped ones included.
 
 #### Scenario: Empty category
 - **WHEN** a category has no expense in the shown cycle
@@ -80,9 +80,9 @@ Its progress SHALL be computed from the category's spending in the cycle outside
 - **WHEN** "comida" has a budget row of 400 for the shown cycle and expense rows summing 310 in a cycle whose today is its 10th of 30 days
 - **THEN** the card shows 310 of 400 and 30 left per week
 
-#### Scenario: A recurring charge stays out of the bar
+#### Scenario: A recurring charge counts in the bar
 - **WHEN** "transporte" has a budget of 100, a variable expense of 80 and a recurring charge of 50 in the shown cycle
-- **THEN** the card shows 80 of 100, and the expenses panel lists "transporte" with 130
+- **THEN** the card shows 130 of 100, and the expenses panel lists "transporte" with 130
 
 #### Scenario: A new cycle copies the previous budgets once
 - **WHEN** the cycle in progress has no budget row, the previous cycle holds comida 400 and ocio 150, and the user opens `/dashboard` and then reloads it

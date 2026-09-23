@@ -248,7 +248,7 @@ Each move SHALL be saved when it is made. The mode SHALL never hold unsaved move
 
 - **WHEN** the injected reorder operation rejects and the visitor drags "comida" from position 2 to position 5
 - **THEN** "comida" is shown at position 5 and then returns to position 2 over successive frames
-- **AND** a message says the order could not be saved, and the free margin still reads 844 €
+- **AND** a message says the order could not be saved, and the free margin still reads 864 €
 
 #### Scenario: A failure after leaving the mode still reverts
 
@@ -306,4 +306,4 @@ The mode SHALL change the order of category cards among themselves and nothing e
 
 - **WHEN** the seven cards are reordered into the reverse of their starting order
 - **THEN** each card still holds exactly the expenses it held before, with the same amounts and dates
-- **AND** the expenses total still reads 1.700 €, the free margin 844 €, and each budget bar is at the same level as before
+- **AND** the expenses total still reads 1.700 €, the free margin 864 €, and each budget bar is at the same level as before

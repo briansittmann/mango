@@ -119,14 +119,14 @@ Dashboard components SHALL create categories only through this operation.
 
 #### Scenario: Creating changes no other figure
 
-- **WHEN** on `/demo` in Spanish, with the expenses total at 1.700 € and the free margin at 844 €, the visitor creates "Viajes" with no budget
-- **THEN** the expenses total still shows 1.700 € and the free margin still shows 844 €
+- **WHEN** on `/demo` in Spanish, with the expenses total at 1.700 € and the free margin at 864 €, the visitor creates "Viajes" with no budget
+- **THEN** the expenses total still shows 1.700 € and the free margin still shows 864 €
 - **AND** every existing card keeps its name, colour, total and budget
 
 #### Scenario: Creating with a budget reserves it
 
-- **WHEN** on `/demo` in Spanish, with the free margin at 844 €, the visitor creates "Viajes" with a budget of 200
-- **THEN** the "Viajes" card shows 0 € of 200 € and the free margin shows 644 €
+- **WHEN** on `/demo` in Spanish, with the free margin at 864 €, the visitor creates "Viajes" with a budget of 200
+- **THEN** the "Viajes" card shows 0 € of 200 € and the free margin shows 664 €
 - **AND** the expenses total still shows 1.700 €, and every existing card keeps its name, colour, total and budget
 
 #### Scenario: A failed create leaves nothing behind

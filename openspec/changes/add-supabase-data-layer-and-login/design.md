@@ -13,7 +13,7 @@ See proposal.md → *Why* and *Gaps*. What shapes the approach:
   - `presupuestos.periodo` is a `date`, the cycle's first day, with `unique (usuario_id, categoria_id, periodo)`. `monto` is nullable, and null is the "no budget in this cycle" marker (0018).
   - `lib/data/budget.ts` has `getFreeMargin` and `BudgetRow`.
   - `category-editing` → *Budgets belong to one cycle* defines the copy into a new current cycle, current-cycle-only writes, the marker on clear, and no future rows.
-  - `category-editing` → *A budget reserves its amount in the free margin* defines the margin and the "spent" a bar uses: spending outside recurring charges.
+  - `category-editing` → *A budget reserves its amount in the free margin* defines the margin and the "spent" a bar uses: the category's total, recurring charges included. There is no separate fixed-expenses term.
   - `month-selector.tsx` disables "next" while `inProgress`.
 
 ## Goals / Non-Goals
@@ -73,9 +73,9 @@ See proposal.md → *Why* and *Gaps*. What shapes the approach:
 
 Assembly (pure, in `dashboard.ts`):
 - Bucket rows by the six ranges. Build groups from every category (D11 for `fixed`). A row with `movimiento_recurrente_id` is a recurring charge.
-- Budget: the category's row of the shown cycle, where `monto null` (the marker) or no row means no budget. `getBudgetStatus` receives the category's spending *without* recurring charges, with `currentDay = daysBetween(start, today) + 1` and `cycleDays = daysBetween(start, end) + 1`. The group's `total` keeps every row.
+- Budget: the category's row of the shown cycle, where `monto null` (the marker) or no row means no budget. `getBudgetStatus` receives the category's total, recurring charges included (a pending charge is a row dated after today, at its expected amount), with `currentDay = daysBetween(start, today) + 1` and `cycleDays = daysBetween(start, end) + 1`. The group's `total` keeps every row.
 - Income entries with `recurring: { definitionId, day }` when linked. Savings movements. `savings.cycle`, `accumulated` (cumulative sum of query 4 at each range's `fin`), `target = meta_ahorro_mensual ?? null`, `history`. `expenses.total`, `history` (six totals).
-- `freeMargin = getFreeMargin({ income, savings: savings.cycle, fixed: Σ recurring charges, categories: [{ budget, spent }] })`. `definitions` mapped from `movimientos_recurrentes` (`day = dia_del_mes ?? 1`, `repetitions = totales == null ? null : { total, done: insertadas }`). Amounts are wrapped in `Number()` regardless of how PostgREST serialised `numeric`.
+- `freeMargin = getFreeMargin({ income, savings: savings.cycle, categories: [{ budget, spent: group total }] })`. `definitions` mapped from `movimientos_recurrentes` (`day = dia_del_mes ?? 1`, `repetitions = totales == null ? null : { total, done: insertadas }`). Amounts are wrapped in `Number()` regardless of how PostgREST serialised `numeric`.
 
 **D9. Cycle arithmetic.** A cycle is named after the calendar month of `fin − 1 day` (local). For a month `YYYY-MM` the reference instant is `YYYY-MM-01T12:00:00Z`: local day 1 is `< dia_inicio` for every allowed start day above 1, so `rango_ciclo` returns the cycle that ends in that month, and for `dia_inicio = 1` it returns the calendar month. `cycle.start = localDateOf(inicio)`, `cycle.end = localDateOf(fin − 1 ms)`, `cycle.today = clamp(localDateOf(now), start, end)`, `inProgress = inicio <= now < fin`. `parseMonthParam` accepts `^\d{4}-(0[1-9]|1[0-2])$` only. A month after the cycle in progress (compared as `YYYY-MM` strings against `cycleMonthOf(cycleRange(now))`) is replaced by the cycle in progress, the same as an invalid value, so no URL shows a future cycle or asks for its budgets.
 

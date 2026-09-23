@@ -55,7 +55,7 @@ test.describe('creating a category', () => {
 
     // No other figure moves.
     await expect.poll(() => body(page)).toMatch(/Gastos\s*1\.700\s?€/)
-    await expect.poll(() => body(page)).toMatch(/Margen libre\s*844\s?€/)
+    await expect.poll(() => body(page)).toMatch(/Margen libre\s*864\s?€/)
   })
 
   test('a budget given at creation shows its bar', async ({ page }) => {
@@ -67,7 +67,7 @@ test.describe('creating a category', () => {
 
     await expect.poll(() => body(page)).toMatch(/Viajes.*0\s?€\s*de\s*200\s?€/)
     // The new budget reserves its whole amount in the free margin.
-    await expect.poll(() => body(page)).toMatch(/Margen libre\s*644\s?€/)
+    await expect.poll(() => body(page)).toMatch(/Margen libre\s*664\s?€/)
   })
 })
 

@@ -26,11 +26,11 @@ A soft-deleted income entry SHALL NOT count anywhere: not in the income panel's 
 #### Scenario: Deleted income leaves every figure
 - **WHEN** the "Freelance" entry (420 €) is soft-deleted on `/demo`, in Spanish
 - **THEN** it is no longer listed in the income panel
-- **AND** the income column shows 2.400 € and the free margin shows 424 €
+- **AND** the income column shows 2.400 € and the free margin shows 444 €
 
 #### Scenario: Restore brings the entry back
 - **WHEN** the same entry is restored
-- **THEN** "Freelance" is listed again with 420 € and its date, the income column shows 2.820 € and the free margin shows 844 €
+- **THEN** "Freelance" is listed again with 420 € and its date, the income column shows 2.820 € and the free margin shows 864 €
 
 #### Scenario: Same operations on another data source
 - **WHEN** the dashboard is mounted with an implementation of the four operations that records its calls instead of the demo's
@@ -95,7 +95,7 @@ An income entry SHALL NOT be opened from anywhere else. In particular the `upcom
 #### Scenario: A recurring entry edits this month only
 - **WHEN** the visitor activates the "Salario" row (2 400 €), which came from a recurring definition, and changes the amount to 2 500 and saves
 - **THEN** the header caption stated that only this cycle's entry changes
-- **AND** the income column shows 2.920 € and the free margin 944 €
+- **AND** the income column shows 2.920 € and the free margin 964 €
 - **AND** a recording implementation receives one update call, for that entry, and no call on the recurring operations
 
 ### Requirement: Income fields and validation
@@ -151,7 +151,7 @@ An income definition SHALL never produce a row, a dot or a total in the `upcomin
 #### Scenario: Recurring income creates one row
 - **WHEN** on `/demo` in Spanish the visitor adds 1 200 € described as "Alquiler cobrado", with the recurrence switch on, day 5 and "sin final"
 - **THEN** the income panel lists exactly one row named "Alquiler cobrado" with 1.200 €
-- **AND** the income column shows 4.020 € and the free margin 2.044 €
+- **AND** the income column shows 4.020 € and the free margin 2.064 €
 
 #### Scenario: The definition carries the income type and no category
 - **WHEN** a recording implementation of the operations is mounted and the visitor saves a recurring income entry of 1 200 € on day 5, ending after 10 repetitions
@@ -180,9 +180,9 @@ Dismissal, the absence of any loading state on open, and the busy behaviour whil
 - When the entry saved but the recurring definition did not, the entry SHALL stay created and the alert SHALL be the save alert, so the entry is never silently duplicated by a retry.
 
 #### Scenario: Create updates the income total and the free margin
-- **WHEN** on `/demo` in Spanish, with the free margin at 844 €, the visitor adds an income entry of 300 € described as "Bonus"
+- **WHEN** on `/demo` in Spanish, with the free margin at 864 €, the visitor adds an income entry of 300 € described as "Bonus"
 - **THEN** the sheet closes and "Bonus" is listed with 300 €
-- **AND** the income column shows 3.120 €, the free margin 1.144 €, and "Ingreso añadido" is announced
+- **AND** the income column shows 3.120 €, the free margin 1.164 €, and "Ingreso añadido" is announced
 
 #### Scenario: Failed save
 - **WHEN** the injected income update fails
@@ -216,12 +216,12 @@ At most one row SHALL be open across the whole page: opening an income row's del
 #### Scenario: Undo after a long swipe
 - **WHEN** the visitor long-swipes the "Freelance" row (420 €) and then activates "Deshacer"
 - **THEN** the toast read "Ingreso eliminado" before the undo
-- **AND** "Freelance" is listed again with 420 €, the income column shows 2.820 € and the free margin 844 €
+- **AND** "Freelance" is listed again with 420 €, the income column shows 2.820 € and the free margin 864 €
 
 #### Scenario: Delete from the sheet
 - **WHEN** the visitor opens "Freelance" and activates "Eliminar ingreso"
 - **THEN** no confirmation is requested, the sheet closes, and a toast offers "Deshacer"
-- **AND** the income column shows 2.400 € and the free margin 424 €
+- **AND** the income column shows 2.400 € and the free margin 444 €
 
 #### Scenario: One open row on the page
 - **WHEN** an expense row is swiped open in the "comida" card and the visitor then swipes an income row open
@@ -242,13 +242,13 @@ Income entries SHALL NOT appear in any expense surface: not in a category card, 
 #### Scenario: Income does not touch expenses
 - **WHEN** on `/demo` in Spanish the visitor adds 300 € of income, edits it to 350 €, and deletes it
 - **THEN** after each of those steps the expenses total shows 1.700 €, the pie centre shows 1.700 €, every card total is unchanged, and the "Próximos cobros" footer reads 1.025 €
-- **AND** the free margin reads 1.144 €, then 1.194 €, then 844 €
+- **AND** the free margin reads 1.164 €, then 1.214 €, then 864 €
 
 #### Scenario: Income stays out of the expense surfaces
 - **WHEN** an income entry named "Bonus" exists and every category card, the expenses panel, the pie legend and the monthly chart are inspected
 - **THEN** "Bonus" appears in none of them
 
 #### Scenario: Free margin follows the three totals
-- **WHEN** on `/demo` the income total is 2 820, the cycle's savings 146, and the expense side of the free margin 1 830 (recurring charges 1 025, budgets reserved 650, unbudgeted spending 155)
-- **THEN** the free margin shows 844 €
-- **AND** after an income entry of 300 € is added it shows 1.144 €
+- **WHEN** on `/demo` the income total is 2 820, the cycle's savings 146, and the expense side of the free margin 1 810 (budgeted categories 680 — comida max(400, 310), ocio max(150, 130), transporte max(100, 130) — and unbudgeted categories 1 130, recurring charges included in both)
+- **THEN** the free margin shows 864 €
+- **AND** after an income entry of 300 € is added it shows 1.164 €

@@ -32,7 +32,7 @@ Dashboard components SHALL change categories only through these operations.
 - **WHEN** on `/demo` in Spanish the visitor renames "Comida" to "Comida y bebida", changes its colour to `blanco` and its budget to 600, and saves
 - **THEN** the card header, the expenses summary row and the pie legend all read "Comida y bebida" with the new colour dot
 - **AND** the card shows 310 € of 600 € with "Te quedan 96 € por semana"
-- **AND** the expenses total shows 1.700 € and the free margin shows 644 €
+- **AND** the expenses total shows 1.700 € and the free margin shows 664 €
 
 #### Scenario: Same operations on another data source
 
@@ -273,7 +273,7 @@ After a deletion the sheet SHALL close, the card SHALL disappear from the dashbo
 - **WHEN** on `/demo` in Spanish the visitor opens the sheet for "hogar" (95 €, two expenses), activates "Eliminar categoría", chooses "Compras" as the receiving category and confirms
 - **THEN** the confirmation named "Hogar" and said it holds two expenses this cycle
 - **AND** the sheet closes, no "Hogar" card is listed, and the "compras" card shows 190 € of 180 € with "10 € por encima del presupuesto"
-- **AND** the expenses total still shows 1.700 € and the free margin still shows 844 €
+- **AND** the expenses total still shows 1.700 € and the free margin still shows 864 €
 
 #### Scenario: Cancel keeps the category and the edits
 
@@ -290,7 +290,7 @@ After a deletion the sheet SHALL close, the card SHALL disappear from the dashbo
 
 - **WHEN** the visitor deletes the only expense of "salud" and then opens the sheet for "salud" and activates "Eliminar categoría"
 - **THEN** the confirmation is shown without any receiving-category picker
-- **AND** confirming removes the card, leaving the expenses total at 1.660 € and the free margin at 884 €
+- **AND** confirming removes the card, leaving the expenses total at 1.660 € and the free margin at 904 €
 
 #### Scenario: The destructive action is not the primary one
 
@@ -358,27 +358,27 @@ The rules below govern the sheet in both of its modes. Where they name the categ
 
 ### Requirement: A budget reserves its amount in the free margin
 
-A budget SHALL drive what is shown for its own category: the progress bar and its colour, the "spent of budget" header figure, the remaining and weekly available text, and the pace answer. In all of them, **spent** SHALL be the sum of the category's non-deleted expenses in the cycle that are not recurring charges. A recurring charge SHALL stay listed in its category's card and SHALL count in the card's total in the expenses panel and the pie chart, but SHALL NOT count against the budget.
+A budget SHALL drive what is shown for its own category: the progress bar and its colour, the "spent of budget" header figure, and the remaining and weekly available text. In all of them, **spent** SHALL be the category's total for the cycle: the sum of its non-deleted expenses, recurring charges included, each counted once. A recurring charge due in the cycle SHALL count at its expected amount from the first day of the cycle, before it is charged, and at its real amount once charged. The pace answer SHALL leave recurring charges out.
 
 The free margin SHALL be derived every time it is shown and SHALL NOT be stored. It SHALL equal:
 
-income − savings − fixed expenses − Σ over budgeted categories of max(budget, spent) − Σ over categories without a budget of spent
+income − savings − Σ over budgeted categories of max(budget, spent) − Σ over categories without a budget of spent
 
 where:
 - **income** is the sum of the cycle's non-deleted income entries
 - **savings** is the signed sum of the cycle's savings movements
-- **fixed expenses** is the sum of every non-deleted recurring charge in the cycle, pending or charged, whatever its category
 - **budget** is the category's budget for the displayed cycle (*Budgets belong to one cycle*), and **spent** is as above
 
-Every definition of the free margin in another capability SHALL refer to this one. Consequently:
+There SHALL be no separate term for fixed expenses. Every definition of the free margin in another capability SHALL refer to this one. Consequently:
 
 - A budget SHALL reserve its whole amount from the first day of the cycle, whether or not any of it has been spent.
-- Spending within a budget SHALL NOT change the free margin.
+- Spending within a budget, recurring charges included, SHALL NOT change the free margin.
 - Spending past a budget SHALL lower the free margin by exactly the amount beyond the budget.
 - The maximum SHALL be taken per category. Money left in one category's budget SHALL NOT offset spending past another's.
 - Raising or lowering a budget SHALL move the free margin by exactly the change in max(budget, spent) for that category: a raise reserves the part of the new amount above both the old amount and what is spent, and a lowering releases money only down to what is spent.
+- Setting a budget below what a category has already spent, recurring charges included, SHALL NOT change the free margin.
 - Clearing a budget SHALL turn the category into one without a budget, whose spending then lowers the free margin directly.
-- A recurring charge SHALL count exactly once, as a fixed expense, whether or not its category has a budget.
+- A recurring charge SHALL count exactly once, inside its category, whether or not that category has a budget.
 
 Setting a budget SHALL make the progress bar appear on that category's card; clearing it SHALL leave the plain total and no bar.
 
@@ -386,55 +386,67 @@ Unused budget SHALL stay reserved until the cycle ends. It SHALL NOT flow back i
 
 #### Scenario: A budget is reserved from the start
 
-- **WHEN** `/demo` is rendered in Spanish, with income 2.820 €, savings 146 €, recurring charges of 1.025 €, "comida" 310 € of 400 €, "ocio" 130 € of 150 €, "transporte" 80 € of 100 €, and 155 € spent outside recurring charges in categories without a budget
-- **THEN** the free margin shows 844 €
+- **WHEN** `/demo` is rendered in Spanish, with income 2.820 €, savings 146 €, "comida" 310 € of 400 €, "ocio" 130 € of 150 €, "transporte" 130 € of 100 €, and 1.130 € spent in categories without a budget, recurring charges included
+- **THEN** the free margin shows 864 €
 
 #### Scenario: Spending within a budget leaves the free margin alone
 
 - **WHEN** on `/demo` in Spanish the visitor adds an expense of 20 € to "comida"
-- **THEN** the card shows 330 € of 400 € and the free margin still shows 844 €
+- **THEN** the card shows 330 € of 400 € and the free margin still shows 864 €
 - **AND** the expenses total shows 1.720 €
 
 #### Scenario: Spending over budget costs only the excess
 
-- **WHEN** on `/demo` in Spanish the visitor adds an expense of 30 € to "transporte", which shows 80 € of 100 €
-- **THEN** the card shows 110 € of 100 € and the free margin shows 834 €
-- **AND** in a separate run, clearing "transporte"'s budget first shows the free margin at 864 €, and adding the same 30 € then leaves it at 834 €
+- **WHEN** on `/demo` in Spanish the visitor adds an expense of 30 € to "transporte", which shows 130 € of 100 €
+- **THEN** the card shows 160 € of 100 € and the free margin shows 834 €
+- **AND** in a separate run, clearing "transporte"'s budget first leaves the free margin at 864 €, and adding the same 30 € then leaves it at 834 €
 
 #### Scenario: One budget's leftover does not cover another's excess
 
 - **WHEN** on `/demo` in Spanish, with "comida" 90 € under its budget, the visitor adds an expense of 30 € to "transporte"
-- **THEN** the free margin shows 834 €, not 844 €
+- **THEN** the free margin shows 834 €, not 864 €
 
 #### Scenario: Raising a budget reserves the raise
 
-- **WHEN** on `/demo` in Spanish, with the free margin at 844 €, the visitor changes "comida" from 400 to 600 and saves
+- **WHEN** on `/demo` in Spanish, with the free margin at 864 €, the visitor changes "comida" from 400 to 600 and saves
 - **THEN** the "comida" card shows 310 € of 600 € with a bar below the warning threshold
-- **AND** the free margin shows 644 € and the expenses total still shows 1.700 €
+- **AND** the free margin shows 664 € and the expenses total still shows 1.700 €
 
 #### Scenario: Lowering a budget releases down to what is spent
 
 - **WHEN** the visitor changes "comida" from 400 to 350 and saves
-- **THEN** the free margin shows 894 €
-- **AND** in a separate run, changing it from 400 to 200 shows 310 € of 200 €, a full bar in the danger colour, "110 € por encima del presupuesto", and a free margin of 934 €
+- **THEN** the free margin shows 914 €
+- **AND** in a separate run, changing it from 400 to 200 shows 310 € of 200 €, a full bar in the danger colour, "110 € por encima del presupuesto", and a free margin of 954 €
 
 #### Scenario: Clearing a budget counts what was spent
 
 - **WHEN** the visitor clears the budget field for "comida" and saves
 - **THEN** the card header shows 310 € as a plain total, and no progress bar or remaining text is shown on it
-- **AND** the free margin shows 934 € and the expenses total still shows 1.700 €
+- **AND** the free margin shows 954 € and the expenses total still shows 1.700 €
 
 #### Scenario: Setting a budget brings the bar back
 
 - **WHEN** the visitor then sets "comida" back to 400 and saves
 - **THEN** the card shows 310 € of 400 € with "Te quedan 30 € por semana"
-- **AND** the free margin shows 844 €
+- **AND** the free margin shows 864 €
 
-#### Scenario: A recurring charge counts once, outside the budget
+#### Scenario: A recurring charge counts once, inside its category's budget
 
 - **WHEN** `/demo` is rendered in Spanish
-- **THEN** the "transporte" card shows 80 € of 100 € and still lists "Parking" (50 €), and the expenses panel lists "transporte" with 130 €
-- **AND** after the visitor deletes "Parking", the card still shows 80 € of 100 € and the free margin shows 894 €
+- **THEN** the "transporte" card shows 130 € of 100 € and lists "Gasolina" (80 €) and "Parking" (50 €), and the expenses panel lists "transporte" with 130 €
+- **AND** after the visitor deletes "Parking", the card shows 80 € of 100 € and the free margin shows 894 €
+
+#### Scenario: A budget below spending made of recurring charges changes nothing
+
+- **WHEN** on `/demo` in Spanish, with the free margin at 864 €, the visitor sets a budget of 150 on "vivienda", whose 900 € are all recurring charges
+- **THEN** the card shows 900 € of 150 €, a full bar in the danger colour, and "750 € por encima del presupuesto"
+- **AND** the free margin still shows 864 €
+
+#### Scenario: A pending recurring charge counts at its expected amount
+
+- **WHEN** `/demo` is rendered in Spanish, with the recurring "Gimnasio" in "salud" not yet charged and expected at 40 €
+- **THEN** the "salud" card shows 40 € and the free margin shows 864 €, which already counts it
+- **AND** after the visitor changes its expected amount to 45, the free margin shows 859 €
 
 #### Scenario: A finished cycle keeps its figures
 

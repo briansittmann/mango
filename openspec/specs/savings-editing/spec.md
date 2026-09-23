@@ -86,15 +86,15 @@ The savings total, the accumulated balance and the free margin SHALL animate fro
 No savings movement SHALL move an income or expense figure: the income total, the expenses total, card totals, budget bars, the charts and the `upcoming-charges` card SHALL stay as they were.
 
 #### Scenario: A deposit of 50
-- **WHEN** on `/demo` in Spanish, with savings at 146 €, the accumulated balance at 2.646 € and the free margin at 844 €, the visitor saves a deposit of 50 named "Extra"
-- **THEN** the savings column shows 196 €, the accumulated balance 2.696 € and the free margin 794 €
+- **WHEN** on `/demo` in Spanish, with savings at 146 €, the accumulated balance at 2.646 € and the free margin at 864 €, the visitor saves a deposit of 50 named "Extra"
+- **THEN** the savings column shows 196 €, the accumulated balance 2.696 € and the free margin 814 €
 - **AND** "Extra" is listed in the savings panel with "+50 €"
 - **AND** the income total still shows 2.820 € and the expenses total 1.700 €
 
 #### Scenario: A withdrawal of 30
 - **WHEN** on `/demo` in Spanish the visitor saves a withdrawal of 30 named "Imprevisto"
 - **THEN** "Imprevisto" is listed with "−30 €", its minus sign being U+2212
-- **AND** the savings column shows 116 €, the accumulated balance 2.616 € and the free margin 874 €
+- **AND** the savings column shows 116 €, the accumulated balance 2.616 € and the free margin 894 €
 
 #### Scenario: Date order
 - **WHEN** the visitor saves a deposit dated 5 September 2026 while the panel lists movements dated 3, 8 and 9 September

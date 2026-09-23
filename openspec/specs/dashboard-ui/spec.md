@@ -107,7 +107,7 @@ All totals in the sample SHALL be derived from its own rows, and the free margin
 - Reordering SHALL work as described in the `category-reordering` capability, through an in-memory implementation of the same reorder operation the real route supplies.
 - A new order SHALL be kept in the page's memory, SHALL NOT be sent over the network, and SHALL be discarded on reload.
 - A new order SHALL survive a language switch, a rename, a recolour, a budget change and an expense change, and SHALL apply to whatever categories remain after a deletion.
-- **No reorder SHALL move any figure on the page.** The free margin SHALL stay at 844 €, the expenses total at 1.700 €, and every card total, budget bar, pie slice and summary row SHALL be unchanged.
+- **No reorder SHALL move any figure on the page.** The free margin SHALL stay at 864 €, the expenses total at 1.700 €, and every card total, budget bar, pie slice and summary row SHALL be unchanged.
 
 **Savings editing on the demo:**
 - Adding savings movements SHALL work as described in the `savings-editing` capability, through an in-memory implementation of the same savings operation the real route supplies.
@@ -125,7 +125,7 @@ All totals in the sample SHALL be derived from its own rows, and the free margin
 - **WHEN** `/demo` is rendered in Spanish
 - **THEN** seven category cards are listed, "Vivienda" totalling 900 € among them, and no card is named "Gastos fijos"
 - **AND** the "Próximos cobros" card lists six charges — Alquiler día 1, Internet día 3 and Seguro día 8 already taken; Parking día 15, Limpieza día 20 and Gimnasio día 22 pending
-- **AND** the expenses total shows 1.700 € and the free margin 844 €
+- **AND** the expenses total shows 1.700 € and the free margin 864 €
 
 #### Scenario: Sample totals are consistent
 - **WHEN** the demo is rendered, and again after one expense has been created, another edited and a third deleted
@@ -134,7 +134,7 @@ All totals in the sample SHALL be derived from its own rows, and the free margin
 #### Scenario: Reordering on the demo moves nothing but the cards
 - **WHEN** the visitor enters reorder mode on `/demo` and drags "Comida" from position 2 to position 5
 - **THEN** the cards read vivienda · ocio · transporte · comida · salud · hogar · compras
-- **AND** the free margin still reads 844 €, the expenses total 1.700 €, and "Comida" still reads 310 € of 400 €
+- **AND** the free margin still reads 864 €, the expenses total 1.700 €, and "Comida" still reads 310 € of 400 €
 
 #### Scenario: A new order survives a language switch and an edit
 - **WHEN** the visitor reorders the cards, switches the language to English, renames one category and adds an expense to another
@@ -151,26 +151,26 @@ All totals in the sample SHALL be derived from its own rows, and the free margin
 
 #### Scenario: Add action in the demo
 - **WHEN** on `/demo` in Spanish a visitor opens the savings panel and adds a deposit of 50 named "Extra"
-- **THEN** "Extra" is listed in the panel, the savings column shows 196 €, the accumulated balance 2.696 € and the free margin 794 €
+- **THEN** "Extra" is listed in the panel, the savings column shows 196 €, the accumulated balance 2.696 € and the free margin 814 €
 - **AND** the expenses total still shows 1.700 € and the income total 2.820 €
 
 #### Scenario: Repeated add actions
 - **WHEN** on `/demo` in Spanish the visitor adds a deposit of 50 and then a withdrawal of 30
-- **THEN** both movements are listed, the savings column shows 166 €, the accumulated balance 2.666 € and the free margin 824 €
+- **THEN** both movements are listed, the savings column shows 166 €, the accumulated balance 2.666 € and the free margin 844 €
 
 #### Scenario: Reload discards savings movements
 - **WHEN** the visitor has added a deposit of 50 and reloads the page
-- **THEN** the savings column shows 146 €, the accumulated balance 2.646 € and the free margin 844 €, and the added movement is not listed
+- **THEN** the savings column shows 146 €, the accumulated balance 2.646 € and the free margin 864 €, and the added movement is not listed
 
 #### Scenario: Added income moves the income total and the free margin
-- **WHEN** on `/demo` in Spanish, with the income total at 2.820 € and the free margin at 844 €, a visitor opens the income panel and adds 300 € described as "Bonus"
-- **THEN** "Bonus" is listed in the panel with 300 € and its date, the income column shows 3.120 € and the free margin shows 1.144 €
+- **WHEN** on `/demo` in Spanish, with the income total at 2.820 € and the free margin at 864 €, a visitor opens the income panel and adds 300 € described as "Bonus"
+- **THEN** "Bonus" is listed in the panel with 300 € and its date, the income column shows 3.120 € and the free margin shows 1.164 €
 - **AND** the expenses total still shows 1.700 €, and the "Próximos cobros" footer still reads 1.025 €
 
 #### Scenario: Deleted income can be undone
 - **WHEN** the visitor swipes the "Freelance" row (420 €) and activates "Eliminar", then activates "Deshacer"
-- **THEN** after the deletion the income column shows 2.400 € and the free margin 424 €
-- **AND** after the undo the row is listed again with 420 €, the income column shows 2.820 € and the free margin 844 €
+- **THEN** after the deletion the income column shows 2.400 € and the free margin 444 €
+- **AND** after the undo the row is listed again with 420 €, the income column shows 2.820 € and the free margin 864 €
 
 #### Scenario: Added expense moves every figure
 - **WHEN** on `/demo` in Spanish a visitor adds an expense of 20 described as "Regalo" to "compras", which has no budget
@@ -178,23 +178,23 @@ All totals in the sample SHALL be derived from its own rows, and the free margin
 - **AND** the expenses column shows 1.720 €, and the expenses panel lists "compras" with 115 €
 - **AND** the September total exposed by the bar chart to assistive technology is 1.720 €
 - **AND** the pie centre shows 1.720 €, and the "compras" legend entry shows "7 %"
-- **AND** the free margin shows 824 €
+- **AND** the free margin shows 844 €
 - **AND** the "Próximos cobros" footer still reads 1.025 €, because the new expense is not a recurring charge
 
 #### Scenario: Added expense within a budget moves every figure but the free margin
 - **WHEN** on `/demo` in Spanish a visitor adds an expense of 20 described as "Panadería" to "comida"
 - **THEN** the "comida" card shows 330 € of 400 €
 - **AND** the expenses column, the bar chart's September total and the pie centre show 1.720 €, and the "comida" legend entry shows "19 %"
-- **AND** the free margin still shows 844 €, because "comida" is still within its budget
+- **AND** the free margin still shows 864 €, because "comida" is still within its budget
 
-#### Scenario: Category changes leave the free margin at 974
-- **WHEN** on `/demo` in Spanish the visitor adds 130 € of income, bringing the free margin to 974 €, and then renames "comida", changes its colour, reorders the cards and deletes "hogar" onto "compras"
-- **THEN** after each of those changes the free margin shows 974 €
+#### Scenario: Category changes leave the free margin at 994
+- **WHEN** on `/demo` in Spanish the visitor adds 130 € of income, bringing the free margin to 994 €, and then renames "comida", changes its colour, reorders the cards and deletes "hogar" onto "compras"
+- **THEN** after each of those changes the free margin shows 994 €
 - **AND** the expenses total shows 1.700 € throughout
 
 #### Scenario: Category changes move the free margin only through budgets
 - **WHEN** on `/demo` in Spanish the visitor renames "comida", changes its colour, raises its budget to 600, clears "ocio"'s budget, and deletes "hogar" onto "compras"
-- **THEN** the free margin shows 844 € after the rename and the recolour, 644 € after the raise, and 664 € after clearing "ocio"'s budget and after the deletion
+- **THEN** the free margin shows 864 € after the rename and the recolour, 664 € after the raise, and 684 € after clearing "ocio"'s budget and after the deletion
 - **AND** the expenses total shows 1.700 € throughout
 
 #### Scenario: A deleted category carries its charges
@@ -212,15 +212,15 @@ All totals in the sample SHALL be derived from its own rows, and the free margin
 
 #### Scenario: Edits survive a language switch
 - **WHEN** the visitor adds 20 € described as "Panadería" to "comida", deletes "Cine", and then switches the language to English
-- **THEN** "Food" lists "Panadería" with €20, "Leisure" does not list "Cinema", and the free margin shows €844
+- **THEN** "Food" lists "Panadería" with €20, "Leisure" does not list "Cinema", and the free margin shows €864
 
 #### Scenario: Reload discards edits
 - **WHEN** the visitor has deleted "Café" and reloads the page
-- **THEN** "Café" is listed in "comida" again, and the free margin shows 844 €
+- **THEN** "Café" is listed in "comida" again, and the free margin shows 864 €
 
 #### Scenario: Reload discards category changes
 - **WHEN** the visitor has deleted the "hogar" category and reloads the page
-- **THEN** the "Hogar" card is listed again with 95 €, and the free margin shows 844 €
+- **THEN** the "Hogar" card is listed again with 95 €, and the free margin shows 864 €
 
 ### Requirement: Savings target and history on the demo
 The `/demo` sample SHALL supply a savings target and at least six cycles of accumulated savings balance in its data. Neither is shown on the dashboard today: the savings column shows its label and its total, and the panel shows the accumulated balance as a number alone.
@@ -229,7 +229,7 @@ Carrying them SHALL move no existing figure: before any savings movement is adde
 
 #### Scenario: The demo figures are unchanged
 - **WHEN** `/demo` is rendered in Spanish
-- **THEN** the savings total reads 146 €, the free margin 844 € and the expenses total 1.700 €
+- **THEN** the savings total reads 146 €, the free margin 864 € and the expenses total 1.700 €
 - **AND** the savings column shows no progress track and no caption
 
 #### Scenario: The history agrees with the balance
@@ -407,7 +407,7 @@ The fixed-expenses card has no add row (*Expense card states*).
 ### Requirement: Budget progress on budgeted categories
 A card whose category has a budget SHALL show "spent of budget" in its header and a progress bar.
 
-**Spent** SHALL be the category's spending outside recurring charges, as `category-editing` → *A budget reserves its amount in the free margin* defines. The header, the bar, its assistive-technology value and the text under the bar SHALL all use that figure. The card's recurring charges SHALL stay listed among its rows.
+**Spent** SHALL be the category's total for the cycle, recurring charges included and pending ones at their expected amount, as `category-editing` → *A budget reserves its amount in the free margin* defines. The header, the bar, its assistive-technology value and the text under the bar SHALL all use that figure. The card's recurring charges SHALL stay listed among its rows.
 
 **Bar:**
 - Its colour SHALL depend on consumption (spent ÷ budget): the brand colour below 80 %, the warning colour from 80 % to 100 %, and the danger colour above 100 %.
@@ -442,9 +442,9 @@ Categories without a budget SHALL show only their total.
 - **WHEN** the "comida" card (310 spent of 400) is rendered in Spanish
 - **THEN** its bar is exposed as a progress value of 77.5 out of 100 with a text equivalent containing "310 € de 400 €"
 
-#### Scenario: A recurring charge stays out of the bar
+#### Scenario: A recurring charge counts in the bar
 - **WHEN** the "transporte" card on `/demo` (budget 100, "Gasolina" 80 € and the recurring "Parking" 50 €) is rendered in Spanish
-- **THEN** its header shows 80 € of 100 € and its bar uses the warning colour
+- **THEN** its header shows 130 € of 100 €, its bar is full in the danger colour, and the text states "30 € por encima del presupuesto"
 - **AND** when expanded it lists both "Gasolina" and "Parking", and the expenses panel lists "transporte" with 130 €
 
 ### Requirement: Category colour placement
@@ -613,8 +613,8 @@ Below the header, a free-margin card SHALL show a "free margin" label and the su
 - **AND** when the user scrolls back to the top, the bar is transparent, shows the app name, and its month controls cannot be reached by keyboard
 
 #### Scenario: Free-margin card content
-- **WHEN** the free margin is 844 and the cycle income is 2 820, in Spanish
-- **THEN** the card shows its label and "844 €" as the largest text on the page, and contains no badge and no "2.820 €"
+- **WHEN** the free margin is 864 and the cycle income is 2 820, in Spanish
+- **THEN** the card shows its label and "864 €" as the largest text on the page, and contains no badge and no "2.820 €"
 
 ### Requirement: Mobile visual hierarchy
 At a 390px-wide viewport, the dashboard SHALL rank text sizes by importance:

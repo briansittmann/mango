@@ -38,10 +38,10 @@ async function setComidaBudget(page, amount) {
 }
 
 test.describe('a budget reserves its amount in the free margin', () => {
-  test('on load, a recurring charge sits outside the envelope but inside the expenses panel', async ({ page }) => {
+  test('on load, a recurring charge counts inside its category\'s envelope', async ({ page }) => {
     await page.goto('/demo')
-    await expect.poll(() => body(page)).toMatch(margin('844'))
-    await expect.poll(() => body(page)).toMatch(/Transporte\s*80\s?€\s*de\s*100\s?€/)
+    await expect.poll(() => body(page)).toMatch(margin('864'))
+    await expect.poll(() => body(page)).toMatch(/Transporte\s*130\s?€\s*de\s*100\s?€/)
 
     await page.getByRole('button', { name: /^Gastos/ }).click()
     await expect(page.locator('#summary-group-panel')).toContainText(/Transporte\s*130\s?€/)
@@ -51,13 +51,13 @@ test.describe('a budget reserves its amount in the free margin', () => {
     await page.goto('/demo')
     await addExpense(page, 'comida', '20')
     await expect.poll(() => body(page)).toMatch(/Comida\s*330\s?€\s*de\s*400\s?€/)
-    await expect.poll(() => body(page)).toMatch(margin('844'))
+    await expect.poll(() => body(page)).toMatch(margin('864'))
   })
 
   test('spending past a budget costs only the overspend', async ({ page }) => {
     await page.goto('/demo')
     await addExpense(page, 'transporte', '30')
-    await expect.poll(() => body(page)).toMatch(/Transporte\s*110\s?€\s*de\s*100\s?€/)
+    await expect.poll(() => body(page)).toMatch(/Transporte\s*160\s?€\s*de\s*100\s?€/)
     await expect.poll(() => body(page)).toMatch(margin('834'))
   })
 
@@ -65,14 +65,14 @@ test.describe('a budget reserves its amount in the free margin', () => {
     await page.goto('/demo')
 
     await setComidaBudget(page, '600')
-    await expect.poll(() => body(page)).toMatch(margin('644'))
+    await expect.poll(() => body(page)).toMatch(margin('664'))
 
     await setComidaBudget(page, '200')
-    await expect.poll(() => body(page)).toMatch(margin('934'))
+    await expect.poll(() => body(page)).toMatch(margin('954'))
     await expect.poll(() => body(page)).toMatch(/110\s?€ por encima del presupuesto/)
 
     await setComidaBudget(page, '')
-    await expect.poll(() => body(page)).toMatch(margin('934'))
+    await expect.poll(() => body(page)).toMatch(margin('954'))
   })
 })
 

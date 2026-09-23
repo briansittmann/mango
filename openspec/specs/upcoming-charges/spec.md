@@ -22,7 +22,7 @@ The card SHALL NOT be rendered at all when the cycle has no charges.
 
 #### Scenario: Same rows as the cards
 - **WHEN** on `/demo` in Spanish the visitor opens the "Vivienda" card, changes "Alquiler" from 820 € to 880 € and saves
-- **THEN** the "Próximos cobros" row for "Alquiler" shows 880 €, its footer total shows 1.085 €, the "Vivienda" card shows 960 €, and the free margin shows 784 €
+- **THEN** the "Próximos cobros" row for "Alquiler" shows 880 €, its footer total shows 1.085 €, the "Vivienda" card shows 960 €, and the free margin shows 804 €
 
 #### Scenario: Deleted charge leaves the card
 - **WHEN** the visitor deletes the "Parking" charge from the "Transporte" card

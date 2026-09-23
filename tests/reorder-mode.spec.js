@@ -67,7 +67,7 @@ test.describe('reorder mode', () => {
 
     // A reorder never changes the figures the rest of the dashboard depends on.
     await page.getByRole('button', { name: 'Listo' }).click()
-    await expect(page.locator('.hero-value')).toContainText(/844\s?€/)
+    await expect(page.locator('.hero-value')).toContainText(/864\s?€/)
   })
 
   test('a failed save reverts the card and shows a toast', async ({ page }) => {
@@ -78,7 +78,7 @@ test.describe('reorder mode', () => {
 
     await expect(page.getByText('No se pudo guardar el orden').first()).toBeVisible()
     await expect(page.getByRole('button', { name: /^Mover Comida, posición 4 de 7$/ })).toBeVisible()
-    await expect(page.locator('.hero-value')).toContainText(/844\s?€/)
+    await expect(page.locator('.hero-value')).toContainText(/864\s?€/)
   })
 
   test('reduced motion still enters the mode and moves cards', async ({ page }) => {

@@ -36,7 +36,7 @@ test.describe('recurring scope: touching a charge vs touching a definition', () 
     await expect(sheet).toBeHidden()
 
     await expect(page.locator('#category-amount-vivienda')).toContainText('960')
-    await expect.poll(() => body(page)).toMatch(/Margen libre\s*784\s?€/)
+    await expect.poll(() => body(page)).toMatch(/Margen libre\s*804\s?€/)
 
     const defSheet = await openDefinition(page, 'Alquiler')
     await expect(defSheet.getByLabel('Monto esperado')).toHaveValue('820')
@@ -52,7 +52,7 @@ test.describe('recurring scope: touching a charge vs touching a definition', () 
 
     await expect(page.locator('#category-amount-salud')).toContainText('45')
     await expect(page.locator('#upcoming-charges-panel')).toContainText(/1\.030/)
-    await expect.poll(() => body(page)).toMatch(/Margen libre\s*839\s?€/)
+    await expect.poll(() => body(page)).toMatch(/Margen libre\s*859\s?€/)
 
     const gimnasioRow = page.locator('#upcoming-charges-panel').getByRole('button', { name: /^Gimnasio ·/ })
     await expect(gimnasioRow).not.toContainText('esperado')
@@ -67,7 +67,7 @@ test.describe('recurring scope: touching a charge vs touching a definition', () 
 
     await expect(page.locator('#category-amount-vivienda')).toContainText('900')
     await expect(page.locator('#upcoming-charges-panel')).toContainText(/1\.025/)
-    await expect.poll(() => body(page)).toMatch(/Margen libre\s*844\s?€/)
+    await expect.poll(() => body(page)).toMatch(/Margen libre\s*864\s?€/)
 
     const row = page.locator('#upcoming-charges-panel').getByRole('button', { name: /^Alquiler ·/ })
     await expect(row).toContainText(/820/)
@@ -105,7 +105,7 @@ test.describe('recurring scope: touching a charge vs touching a definition', () 
 
     await expect(page.locator('#category-amount-salud')).toContainText('40')
     await expect(page.locator('#upcoming-charges-panel')).toContainText(/1\.025/)
-    await expect.poll(() => body(page)).toMatch(/Margen libre\s*844\s?€/)
+    await expect.poll(() => body(page)).toMatch(/Margen libre\s*864\s?€/)
     await expect(page.locator('#upcoming-charges-panel').getByText('Gimnasio')).toBeVisible()
   })
 
@@ -118,7 +118,7 @@ test.describe('recurring scope: touching a charge vs touching a definition', () 
 
     await expect(page.locator('#category-amount-vivienda')).toContainText('865')
     await expect(page.locator('#upcoming-charges-panel')).toContainText(/990/)
-    await expect.poll(() => body(page)).toMatch(/Margen libre\s*879\s?€/)
+    await expect.poll(() => body(page)).toMatch(/Margen libre\s*899\s?€/)
     await expect(page.locator('#upcoming-charges-panel').getByText('Seguro')).toHaveCount(0)
   })
 })

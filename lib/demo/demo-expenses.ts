@@ -188,10 +188,6 @@ function attachCreatedIncomeDefinition(entries: IncomeEntry[], created: DemoRecu
   return [...tagged, ...additions]
 }
 
-function sumVariable(expenses: Expense[]): number {
-  return expenses.filter((expense) => !expense.fixed).reduce((sum, expense) => sum + expense.amount, 0)
-}
-
 function finalizeGroup(
   group: ExpenseGroup,
   expenses: Expense[],
@@ -199,14 +195,13 @@ function finalizeGroup(
   currentDay: number,
   cycleDays: number,
 ): ExpenseGroup {
+  // Recurring charges count inside their category's budget, pending ones at their expected amount.
   const total = expenses.reduce((sum, expense) => sum + expense.amount, 0)
-  // Recurring charges count as fixed expenses, never against the budget.
-  const variableSpent = sumVariable(expenses)
 
   return {
     ...group,
     total,
-    budget: budgetAmount != null ? getBudgetStatus({ amount: budgetAmount, spent: variableSpent, currentDay, cycleDays }) : null,
+    budget: budgetAmount != null ? getBudgetStatus({ amount: budgetAmount, spent: total, currentDay, cycleDays }) : null,
     expenses,
   }
 }
@@ -334,8 +329,7 @@ export function deriveDemoData(
   const freeMargin = getFreeMargin({
     income: incomeTotal,
     savings: savingsCycle,
-    fixed: groups.reduce((sum, group) => sum + group.total - sumVariable(group.expenses), 0),
-    categories: groups.map((group) => ({ budget: group.budget?.amount ?? null, spent: sumVariable(group.expenses) })),
+    categories: groups.map((group) => ({ budget: group.budget?.amount ?? null, spent: group.total })),
   })
 
   return {

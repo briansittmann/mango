@@ -180,10 +180,10 @@ Punto clave: **una sola capa de datos, dos presentaciones**. Una función tipo `
 El **margen libre** que devuelve no se guarda en ningún lado: se deriva en cada lectura con una función pura de la capa de datos compartida (`getFreeMargin` en `lib/data/budget.ts`), la misma para la web, el bot y el demo:
 
 ```
-margen libre = ingresos − ahorro − fijos − Σ max(presupuesto, gastado) por categoría con presupuesto − gastado en categorías sin presupuesto
+margen libre = ingresos − ahorro − Σ max(presupuesto, gastado) por categoría con presupuesto − gastado en categorías sin presupuesto
 ```
 
-"Fijos" son todos los cobros recurrentes del ciclo, cobrados o pendientes; "gastado" en una categoría es lo que no es cobro recurrente, así cada gasto cuenta una sola vez (sección 9, *Presupuestado vs real*).
+No hay un término aparte para los fijos: "gastado" en una categoría es su total del ciclo, fijos incluidos, y cada gasto cuenta una sola vez. Un fijo que vence en el ciclo cuenta desde el día 1 a su monto esperado, aunque todavía no se haya cobrado, para que el margen no sea optimista los primeros días; cuando se cobra, el monto real reemplaza al esperado (sección 9, *Presupuestado vs real*).
  
 ### Flujo de carga
  
@@ -537,7 +537,7 @@ Se arranca **plano**: el usuario crea las categorías que quiera y listo. Las je
 Estructura de la vista mensual, de arriba hacia abajo:
  
 1. **Selector de mes**
-2. **Margen libre** — `ingresos − ahorro − fijos − Σ max(presupuesto, gastado) − gastado sin presupuesto`. El número más grande de la pantalla: es la pregunta principal que la app tiene que contestar. Cada presupuesto funciona como un sobre: reserva su monto entero, se haya gastado o no, y lo que se gasta dentro del sobre no mueve el margen (ver *Presupuestado vs real*, más abajo).
+2. **Margen libre** — `ingresos − ahorro − Σ max(presupuesto, gastado) − gastado sin presupuesto`. El número más grande de la pantalla: es la pregunta principal que la app tiene que contestar. Cada presupuesto funciona como un sobre: reserva su monto entero, se haya gastado o no, y lo que se gasta dentro del sobre no mueve el margen (ver *Presupuestado vs real*, más abajo).
 3. **Ingresos** del mes
 4. **Próximos cobros** — calendario de cuándo, no de cuánto: qué cargo recurrente ya se cobró este ciclo y cuál falta, con su día del mes; cada fila abre la definición
 5. **Gastos** — una tarjeta por categoría, **con avance contra el presupuesto de cada categoría** (*"comida: 310 de 400"*)
@@ -764,9 +764,9 @@ Arriba de todo, antes de cualquier gráfico, van **cuatro tarjetas**:
 | **Ingresos** | **Fijo** — se sabe desde el día 1 | Suma de transacciones `tipo = ingreso` |
 | **Ahorro** | **Fijo** — se aparta a principio de mes | Suma de `tipo = ahorro` |
 | **Gastos totales** | **Sube** con cada carga | Suma de `tipo = gasto` (fijos + variables) |
-| **Margen libre** | **Baja** al reservar un presupuesto o con un gasto que ningún sobre cubre | `ingresos − ahorro − fijos − Σ max(presupuesto, gastado) − gastado sin presupuesto` |
+| **Margen libre** | **Baja** al reservar un presupuesto o con un gasto que ningún sobre cubre | `ingresos − ahorro − Σ max(presupuesto, gastado) − gastado sin presupuesto` |
  
-Los dos últimos **ya no se mueven juntos**. Gastos totales sube con cada carga. El margen libre ya descontó los fijos y el monto entero de cada presupuesto desde el día 1, así que un gasto dentro de su sobre no lo toca; solo baja con un gasto en una categoría sin presupuesto, o con lo que un gasto pasa del presupuesto de su categoría. No es información duplicada — uno responde *"cuánto llevo gastado"* (pasado) y el otro *"cuánto me queda sin romper ningún sobre"* (futuro), y la segunda es la pregunta que motiva la app.
+Los dos últimos **ya no se mueven juntos**. Gastos totales sube con cada carga. El margen libre ya descontó desde el día 1 el monto entero de cada presupuesto y cada fijo del ciclo a su monto esperado, así que un gasto dentro de su sobre no lo toca; solo baja con un gasto en una categoría sin presupuesto, o con lo que un gasto pasa del presupuesto de su categoría. No es información duplicada — uno responde *"cuánto llevo gastado"* (pasado) y el otro *"cuánto me queda sin romper ningún sobre"* (futuro), y la segunda es la pregunta que motiva la app.
  
 ---
  
@@ -851,7 +851,7 @@ En la práctica solo **dos categorías** llevan presupuesto — **comida** y **o
 | **Ocio** | Sí | Sí | *"Llevás 90 de 120. Vas adelantado, te quedan 12 por semana."* |
 | **Margen libre** | **No** | **No** | *"Te quedan 640 libres este mes."* |
  
-**El margen libre no tiene ritmo y es a propósito.** No es un presupuesto: es lo que queda de los ingresos después del ahorro, los fijos, los sobres de cada presupuesto (o lo gastado, si lo pasó) y lo gastado en categorías sin presupuesto. No hay techo que romper — hay más o hay menos. Ponerle una barra de progreso sería inventarle un límite que no existe.
+**El margen libre no tiene ritmo y es a propósito.** No es un presupuesto: es lo que queda de los ingresos después del ahorro, los sobres de cada presupuesto (o lo gastado, si lo pasó) y lo gastado en categorías sin presupuesto, fijos incluidos en ambos casos. No hay techo que romper — hay más o hay menos. Ponerle una barra de progreso sería inventarle un límite que no existe.
  
 Son **tres preguntas distintas** que se le hacen al bot por separado: *cómo voy de comida*, *cómo voy de ocio*, *cuánto me queda libre*. Las dos primeras responden con ritmo y disponible semanal; la tercera, con un número a secas.
  
@@ -861,7 +861,7 @@ Las demás categorías (supermercado, transporte, salud) se registran y se ven e
  
 - **El día del mes se calcula en el timezone del usuario**, no en UTC (ver sección 6). Un desfase de un día distorsiona el ritmo, sobre todo a principio de mes.
 - **Los primeros 2–3 días del mes el ritmo es inestable**: con `avance_mes` cercano a cero, cualquier gasto lo dispara a valores absurdos. Solución: no mostrar el ritmo antes del día 4, solo el consumo.
-- **Los gastos fijos quedan fuera de este cálculo y de la barra.** Ya están comprometidos y no tienen ritmo — se pagan una vez y listo. Un cobro recurrente en una categoría con presupuesto se lista en su tarjeta y suma en el total de la categoría y en la torta, pero no cuenta contra el presupuesto: ni en la barra, ni en *"gastado de presupuesto"*, ni en el disponible semanal. Entra al margen libre una sola vez, como fijo. El seguimiento de ritmo aplica solo a **categorías con presupuesto**.
+- **Los gastos fijos quedan fuera de este cálculo, no de la barra.** Ya están comprometidos y no tienen ritmo — se pagan una vez y listo. Un cobro recurrente en una categoría con presupuesto sí cuenta contra el presupuesto: la barra y *"gastado de presupuesto"* muestran el total, fijos incluidos (*"suplementos: 45 de 80"*), y el color de la barra sale de ese consumo. Entra al margen libre una sola vez, dentro del sobre de su categoría. El seguimiento de ritmo aplica solo a **categorías con presupuesto**.
 - **Categorías sin presupuesto asignado** muestran solo el total gastado, sin barra ni ritmo.
 - Todo esto vive en la **capa de datos compartida** (sección 3): la misma función alimenta la barra de progreso de la web y la frase que el **bot de WhatsApp** devuelve cuando se le pregunta *"¿cómo vengo?"*. Se calcula una vez, se presenta de dos formas.
 ### Gráficos
@@ -888,7 +888,7 @@ Son **dos números distintos** y el dashboard tiene que mostrarlos lado a lado, 
  
 - **Presupuestado** → sale de la tabla `presupuestos`.
 - **Real** → sale de las transacciones.
-La comparación categoría por categoría es lo que dice si hubo exceso o sobró. Y el **margen real** del mes es: `ingresos − ahorro − fijos − Σ max(presupuesto, gastado) − gastado sin presupuesto`. Cada presupuesto reserva su monto entero como un sobre: lo que sobra en un sobre queda reservado hasta que cierra el ciclo y no vuelve al margen, y el exceso de una categoría nunca se compensa con lo que sobra en otra (el `max` es por categoría).
+La comparación categoría por categoría es lo que dice si hubo exceso o sobró. Y el **margen real** del mes es: `ingresos − ahorro − Σ max(presupuesto, gastado) − gastado sin presupuesto`. Cada presupuesto reserva su monto entero como un sobre: lo que sobra en un sobre queda reservado hasta que cierra el ciclo y no vuelve al margen, y el exceso de una categoría nunca se compensa con lo que sobra en otra (el `max` es por categoría).
  
 **Por qué va en fase 1 (revisado):** originalmente estaba en fase 3, con el argumento de que presupuestar sin historial lleva a inventar números. Ese argumento **no aplica acá**: Brian ya lleva un Excel y conoce sus montos reales. El presupuesto no es una estimación aspiracional, es un dato que ya tiene.
  
@@ -899,15 +899,16 @@ Por eso la vista del mes arranca con el **margen libre** bien arriba:
 ```
 Ingresos                 2.400
 − Ahorro                    300
-− Fijos                     980   (todos los cobros recurrentes del ciclo, cobrados o pendientes)
+− Vivienda                  880   (sin presupuesto: el alquiler, un fijo, cuenta entero)
 − Comida                    400   (presupuesto 400, gastado 310: se reserva el sobre entero)
 − Ocio                      135   (presupuesto 120, gastado 135: cuenta lo gastado)
-− Sin presupuesto            60   (lo gastado en transporte y salud)
+− Suplementos                80   (presupuesto 80, un fijo de 45 todavía sin cobrar: se reserva el sobre entero)
+− Resto sin presupuesto     160   (transporte, salud y suscripciones: fijos 100 + variables 60)
 ──────────────────────────────
-= Margen libre              525
+= Margen libre              445
 ```
 
-El día 1, con comida y ocio todavía en cero, el margen ya descuenta 400 + 120: esa plata no está libre aunque no se haya gastado.
+El día 1, con comida y ocio todavía en cero, el margen ya descuenta 400 + 120, y el alquiler y el fijo de suplementos a su monto esperado: esa plata no está libre aunque no se haya gastado ni cobrado.
  
 Ese número es la respuesta a "cuánto puedo gastar este mes sin romper nada".
  

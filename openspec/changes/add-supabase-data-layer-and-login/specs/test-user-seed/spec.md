@@ -35,7 +35,7 @@ The seed SHALL describe the cycle containing the moment the script runs, with ev
 
 #### Scenario: Figures on first login
 - **WHEN** the user logs in during the cycle the script was run in
-- **THEN** the dashboard shows expenses 1.700 €, income 2.820 €, savings 146 €, accumulated 2.646 €, free margin 844 €, "comida" at 310 of 400, "transporte" at 80 of 100, and six bars in the monthly chart
+- **THEN** the dashboard shows expenses 1.700 €, income 2.820 €, savings 146 €, accumulated 2.646 €, free margin 864 €, "comida" at 310 of 400, "transporte" at 130 of 100, and six bars in the monthly chart
 
 #### Scenario: Past cycles carry their own budgets
 - **WHEN** the user opens the previous cycle
