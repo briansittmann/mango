@@ -803,9 +803,11 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   useEffect(() => {
     const el = titleRef.current
     if (!el) return
-    const observer = new IntersectionObserver(([entry]) => setTitleInView(entry.isIntersecting), {
+    // The bar turns solid once half of the month title has slid under it, not after the whole
+    // block (padding included) is gone, so it takes little scroll to switch.
+    const observer = new IntersectionObserver(([entry]) => setTitleInView(entry.intersectionRatio >= 0.5), {
       rootMargin: `-${BAR_HEIGHT}px 0px 0px 0px`,
-      threshold: 0,
+      threshold: 0.5,
     })
     observer.observe(el)
     return () => observer.disconnect()
@@ -1001,19 +1003,19 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
               type="button"
               onClick={() => window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })}
               aria-label={t('irArriba')}
-              className="pressable relative -top-px -ms-3 grid size-11 shrink-0 animate-header-pop place-items-center rounded-full [--press-scale:0.9] motion-reduce:animate-none"
+              className="pressable relative -top-px -ms-3 grid size-12 shrink-0 animate-header-pop place-items-center rounded-full [--press-scale:0.9] motion-reduce:animate-none"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/mango-logo-light.svg" alt="" aria-hidden className="size-11 object-contain dark:hidden" />
+              <img src="/mango-logo-light.svg" alt="" aria-hidden className="size-12 object-contain dark:hidden" />
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/mango-logo-dark.svg" alt="" aria-hidden className="hidden size-11 object-contain dark:block" />
+              <img src="/mango-logo-dark.svg" alt="" aria-hidden className="hidden size-12 object-contain dark:block" />
             </button>
             <div className="relative min-w-0 flex-1 animate-header-in [animation-delay:90ms] motion-reduce:animate-none">
               <span
                 aria-hidden={!titleInView}
                 inert={!titleInView}
                 className={cn(
-                  'absolute inset-0 flex items-center font-display text-headline-sm text-foreground transition-[opacity,translate] duration-500 ease-spring motion-reduce:transition-none',
+                  'absolute inset-0 flex items-center font-display text-headline-md text-foreground transition-[opacity,translate] duration-500 ease-spring motion-reduce:transition-none',
                   titleInView ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-2 opacity-0',
                 )}
               >
@@ -1056,18 +1058,22 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
         </div>
       </div>
       <div className="mx-auto w-full max-w-[640px] px-gutter">
-      <div ref={titleRef} className="relative z-20" aria-hidden={reordering} inert={reordering}>
-        <AnimatedContent className="pb-3 pt-5" distance={20} delay={0.12}>
-          <MonthSelector
-            variant="title"
-            month={data.cycle.month}
-            start={data.cycle.start}
-            end={data.cycle.end}
-            inProgress={data.cycle.inProgress}
-            onPrevious={actions.previousCycle}
-            onNext={actions.nextCycle}
-            onSelect={actions.selectCycle}
-          />
+      <div className="relative z-20" aria-hidden={reordering} inert={reordering}>
+        {/* Without a notice the hero sits a section away from the title, the same gap the summary
+            tiles keep from "Desglose de gastos"; the demo's notice fills that space itself. */}
+        <AnimatedContent className={notice ? 'pb-3 pt-3' : 'pb-section pt-3'} distance={20} delay={0.12}>
+          <div ref={titleRef}>
+            <MonthSelector
+              variant="title"
+              month={data.cycle.month}
+              start={data.cycle.start}
+              end={data.cycle.end}
+              inProgress={data.cycle.inProgress}
+              onPrevious={actions.previousCycle}
+              onNext={actions.nextCycle}
+              onSelect={actions.selectCycle}
+            />
+          </div>
         </AnimatedContent>
       </div>
       {notice ? (

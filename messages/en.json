@@ -189,5 +189,20 @@
     "cambiosGuardados": "{nombre}: {monto} every month",
     "errorGuardar": "Couldn't save. Try again.",
     "errorEliminar": "Couldn't delete the recurrence"
+  },
+  "inicio": {
+    "titulo": "Mango",
+    "demo": "Demo",
+    "entrar": "Log in"
+  },
+  "acceso": {
+    "titulo": "Log in to Mango",
+    "email": "Email",
+    "enviarEnlace": "Send link",
+    "enlaceEnviado": "If that email has an account, a sign-in link is on its way. Check your inbox.",
+    "errorEnvio": "Couldn't send the link. Try again in a few minutes.",
+    "enlaceInvalido": "The link expired or was already used. Request a new one.",
+    "cuentaSinVincular": "You're signed in, but this account isn't linked to a Mango user yet.",
+    "cerrarSesion": "Log out"
   }
 }

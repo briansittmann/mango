@@ -189,5 +189,20 @@
     "cambiosGuardados": "{nombre}: {monto} cada mes",
     "errorGuardar": "No se pudo guardar. Inténtalo de nuevo.",
     "errorEliminar": "No se pudo eliminar la recurrencia"
+  },
+  "inicio": {
+    "titulo": "Mango",
+    "demo": "Demo",
+    "entrar": "Entrar"
+  },
+  "acceso": {
+    "titulo": "Entrar a Mango",
+    "email": "Correo electrónico",
+    "enviarEnlace": "Enviar enlace",
+    "enlaceEnviado": "Si el correo tiene una cuenta, te llegó un enlace para entrar. Revisa tu bandeja.",
+    "errorEnvio": "No se pudo enviar el enlace. Inténtalo de nuevo en unos minutos.",
+    "enlaceInvalido": "El enlace venció o ya se usó. Pide uno nuevo.",
+    "cuentaSinVincular": "Tu sesión está abierta, pero esta cuenta todavía no está vinculada a ningún usuario de Mango.",
+    "cerrarSesion": "Cerrar sesión"
   }
 }

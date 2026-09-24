@@ -134,7 +134,14 @@
       "Skill(opsx:sync)",
       "Skill(opsx:sync:*)",
       "Skill(opsx:archive)",
-      "Skill(opsx:archive:*)"
+      "Skill(opsx:archive:*)",
+      "mcp__supabase__list_migrations",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__apply_migration",
+      "mcp__supabase__get_project_url",
+      "Skill(opsx:apply)",
+      "Skill(opsx:apply:*)",
+      "mcp__supabase__query_logs"
     ],
     "additionalDirectories": [
       "/Users/brianrebagliati/Documents/Work/mango-finanzas/mango/baseline-shots"
