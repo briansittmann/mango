@@ -15,21 +15,21 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 
 - [x] 🤖 `metadata` en `app/layout.tsx`: título "Mango", descripción real, imagen Open Graph (hoy dice "Create Next App")
 - [x] 🤖 Actualizar el estado en `CLAUDE.md` con el dominio `usemango.dev` (sacar "sin evidencia de deploy") y sumar `ROADMAP.md` al repo como referencia
-- [ ] 👤 Supabase Auth: Site URL `https://www.usemango.dev` + redirect `https://www.usemango.dev/auth/confirm`
-- [ ] 👤 Confirmar que las variables de Supabase están en Vercel y que `/dashboard` funciona en producción con magic link
-- [ ] 👤 Redeploy después de cualquier cambio de variables
+- [x] 👤 Supabase Auth: Site URL `https://www.usemango.dev` + redirect `https://www.usemango.dev/auth/confirm`
+- [x] 👤 Confirmar que las variables de Supabase están en Vercel y que `/dashboard` funciona en producción con magic link
+- [x] 👤 Redeploy después de cualquier cambio de variables
 
 ## 1 · Cerrar los changes abiertos y poner la documentación al día
 
 - [x] 🤖 `add-recurring-expense-management` — verificar y marcar la 2.1
 - [x] 🤖 `restyle-dashboard-to-v0` — verificación final 6.1–6.3, archivar ambos (archivado sin 6.1–6.3: lo reemplazaron `refine-mobile-ui-apple-hig` y `design-system`)
-- [ ] 🤖 Actualizar `ARCHITECTURE.md` con el cambio de modelo, **antes de empezar el bloque 4**:
+- [x] 🤖 Actualizar `ARCHITECTURE.md` con el cambio de modelo, **antes de empezar el bloque 4**:
   - §1: la web deja de ser solo para ver y editar; también es puerta de entrada y se puede usar sin bot
   - §4: "El bot es la puerta de entrada" pasa a ser dos entradas (web abierta, WhatsApp por invitación) y dos onboardings que terminan en la misma cuenta; acceso a la web con Google o magic link
   - §8: tabla `canales`, `usuarios.telefono` nullable, `mensaje_id_externo` en vez de `wa_message_id`
   - §10: registro web abierto, WhatsApp sigue por invitación
   - §13: repartir las fases según este roadmap y sumar la Fase 4 (número propio y pagos)
-- [ ] 🤖 Reflejar lo mismo en el estado de `CLAUDE.md` (Proyección)
+- [x] 🤖 Reflejar lo mismo en el estado de `CLAUDE.md` (Proyección)
 
 ## 2 · WhatsApp de punta a punta (sin lógica todavía)
 
@@ -52,7 +52,10 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [ ] 🤖 `usuarios.telefono` deja de ser obligatorio: una cuenta creada por la web no tiene
 - [ ] 🤖 Migrar el usuario de prueba a una fila de `canales`; `findUserIdByPhone` pasa a buscar en `canales`
 - [ ] 🤖 Idempotencia por canal: `wa_message_id` se generaliza a `mensaje_id_externo` + tipo de canal
+- [ ] 🤖 Nada asume el número de prueba: sin tope de 5 ni cupo de 1000 en el código; el número emisor sale de `WHATSAPP_PHONE_NUMBER_ID`
+- [ ] 🤖 Interruptor de invitación obligatoria: hoy encendido; con número propio se apaga sin tocar código (ARCHITECTURE.md §4)
 - [ ] 👤 Decidir si una cuenta puede tener WhatsApp y Telegram a la vez, o uno solo
+- [ ] 👤 Decidir dónde vive el interruptor: variable de entorno o valor en la base
 
 ## 5 · Bot funcional
 
@@ -117,7 +120,7 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [ ] 🤖 Pantalla de datos básicos: nombre, país → moneda y timezone, día de inicio de ciclo
 - [ ] 🤖 Pantallas 2–4 de Stitch: categorías, ingresos y fijos, presupuestos (con margen libre en vivo)
 - [ ] 🤖 Meta de ahorro dentro del onboarding (hoy `meta_ahorro_mensual` no tiene UI)
-- [ ] 🤖 Cierre: WhatsApp presentado como opcional y por invitación
+- [ ] 🤖 Cierre: número de WhatsApp (+ código mientras la invitación sea obligatoria) → Mango le manda un mensaje para vincular el canal; si no, "Seguir sin WhatsApp"
 
 **Onboarding WhatsApp** (por invitación)
 - [ ] 🤖 Por chat: código → nombre → país → día de ciclo → gasto de prueba → link a la web
@@ -129,15 +132,20 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [ ] 🤖 Sección "WhatsApp" en ajustes: estado del canal, explicación de que hoy es por invitación y por qué, y vinculación con código si la persona tiene uno
 - [ ] 👤 Revisar en Stitch la nueva pantalla 1 y la de datos básicos
 
-## 10 · WhatsApp para amigos
+## 10 · WhatsApp: invitaciones y número propio
 
 - [ ] 🤖 Tabla `invitaciones` + "Invitar a alguien" en el menú global; tres errores distintos (no existe / usado / vencido)
 - [ ] 🤖 Una invitación sirve tanto para crear la cuenta por chat como para vincular WhatsApp a una cuenta web existente
 - [ ] 🤖 Rate limiting (mensajes e intentos de código)
 - [ ] 👤 Verificar RLS con dos usuarios reales
-- [ ] 👤 Cargar los números en Meta (máx. 5 con el número de prueba)
-- [ ] 👤 Medir consumo del cupo de 1000 mensajes en WhatsApp Manager
+- [ ] 👤 Cargar los números en Meta (máx. 5 con el número de prueba; mientras se use ese número)
+- [ ] 👤 Medir consumo del cupo de 1000 mensajes en WhatsApp Manager (número de prueba)
 - [ ] 🤖 Aviso de suscripción por vencer (template de Meta, §14.1)
+- [ ] 👤 Pedir en Meta la plantilla del mensaje de vinculación que se manda desde el onboarding web (lo inicia Mango: fuera de la ventana de 24 h)
+- [ ] 👤 Decidir cuándo se compra el número propio y cuánto gasto se acepta (rompe el "coste cero")
+- [ ] 👤 Número propio para la Cloud API (virtual o fijo, que no esté en WhatsApp) — adelantado desde el bloque 14
+- [ ] 👤 Cambiar credenciales en Vercel y redeploy
+- [ ] 🤖 Apagar la invitación obligatoria y probar una vinculación sin código
 
 ## 11 · Telegram como segundo canal
 
@@ -170,11 +178,10 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [ ] Bot y parser en inglés
 - [ ] Movimiento lento del fondo de metal cepillado
 
-## 14 · Fase 4 — número propio y pagos (a futuro)
+## 14 · Fase 4 — pagos (a futuro)
 
-> Solo si la señal de Fase 2 aparece: gente cargando gastos a los tres meses.
+> Solo si la señal de Fase 2 aparece: gente cargando gastos a los tres meses. El número propio se adelantó al bloque 10.
 
-- [ ] 👤 Número propio para la Cloud API (virtual o fijo, que no esté en WhatsApp)
 - [ ] 👤 Decidir el modelo: qué es gratis (¿web?) y qué se paga (¿bot?)
 - [ ] 👤 Decidir qué pasa si alguien deja de pagar: se corta el bot, el acceso, o nada de los datos
 - [ ] 🤖 Tabla de suscripciones colgando de `usuarios` (plan, estado, renovación), independiente de los canales

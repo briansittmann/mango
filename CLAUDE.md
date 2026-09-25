@@ -99,7 +99,7 @@
 - Hecho: la base real tiene aplicadas `0001`–`0019` (2026-09-24). Antes de la `0018` hubo que pasar los dos `presupuestos` de Brian de `periodo = 'mensual'` a `2026-08-26` (venian del `0012` viejo). La `0017` paso los smoke tests de la 3.3; la `0019` se agrego y aplico durante la 8.3.
 - Hecho: deploy en Vercel, en https://www.usemango.dev (el dominio sin `www` redirige a `www`). `/demo` es publico y funciona.
 - Hecho: Auth por e-mail con sign-ups apagados.
-- Pendiente (Brian, en el panel): Supabase Auth sigue con Site URL `http://localhost:3000` y redirect `http://localhost:3000/auth/confirm`; falta sumar `https://www.usemango.dev` y `https://www.usemango.dev/auth/confirm`. Hasta entonces el magic link no sirve en produccion.
+- Hecho (Brian, en el panel): Supabase Auth con Site URL `https://www.usemango.dev` y redirect `https://www.usemango.dev/auth/confirm`; `/dashboard` funciona en produccion con magic link (bloque 0 de `ROADMAP.md`).
 
 **OpenSpec**
 - Archivados (10): `translate-code-to-english`, `land-finance-dashboard`, `refine-mobile-ui-apple-hig`, `unify-add-action-rows`, `add-expense-sheet`, `add-category-sheet`, `add-category-reorder-mode`, `replace-fixed-card-with-upcoming-charges`, `add-project-status-to-claude-md`, `add-income-management` (26/27 — 1.4 quedo bloqueada, ver Deuda tecnica).
@@ -114,12 +114,12 @@
 
 La hoja de ruta vive en `ROADMAP.md`, en bloques numerados con dueno (👤 Brian, 🤖 Claude Code). Aca no se repite la lista: el orden y el detalle los manda `ROADMAP.md`.
 
-- **Fase 1** (uso personal): bloques 0–7. En curso: bloque 0 (arreglos rapidos de produccion).
+- **Fase 1** (uso personal): bloques 0–7. Cerrados: 0 (arreglos de produccion) y 1 (changes y documentacion).
 - **Fase 2** (abrir a otras personas): bloques 8–11.
 - **Deuda tecnica**: bloque 12; el detalle sigue en la seccion de abajo.
-- **Fase 3** (refinamiento): bloque 13. **Fase 4** (numero propio y pagos): bloque 14.
+- **Fase 3** (refinamiento): bloque 13. **Fase 4** (pagos): bloque 14. El numero propio se adelanto a fase 2 (bloque 10).
 
-`ARCHITECTURE.md` §13 todavia reparte las fases segun el modelo anterior; se alinea con `ROADMAP.md` en el bloque 1.
+`ARCHITECTURE.md` ya esta alineado con el cambio de modelo (2026-09-25): registro web abierto con Google o magic link, WhatsApp opcional y por invitacion, dos onboardings que terminan en la misma cuenta (§4), tabla `canales` y `usuarios.telefono` nullable (§8), proyeccion a 6 ciclos con `proyectarCiclo` compartida con el cron (§3, §9) y fases 1–4 iguales a las de `ROADMAP.md` (§13). El sistema se disena como si ya hubiera numero propio de WhatsApp: nada asume el tope de 5 ni el cupo de 1000 del numero de prueba, y exigir el codigo de invitacion es un interruptor, hoy encendido (§1, §4). Lo abierto figura ahi como "Pendiente de decidir".
 
 ## Deuda tecnica
 > Lo que un change dejo afuera a proposito. Se actualiza al archivar: lo que en el change vivia en *Out of scope* o en *Risks* se copia aca, porque al archivarse desaparece de la vista.

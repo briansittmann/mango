@@ -83,7 +83,7 @@ ARCHITECTURE.md
 
 # ARCHITECTURE.md — Mango
  
-**Mango** — app de finanzas personales con dos interfaces: un bot de **WhatsApp** para cargar y consultar rápido, y una web para ver gráficos y editar en profundidad.
+**Mango** — app de finanzas personales con dos interfaces: una **web** donde uno se registra, carga, ve gráficos y edita en profundidad, y un bot de **WhatsApp** opcional, por invitación, para cargar y consultar rápido.
  
 ---
  
@@ -93,11 +93,15 @@ Registrar gastos e ingresos con la menor fricción posible (un mensaje de texto)
  
 Dos modos de uso:
  
-- **WhatsApp** → carga rápida, consultas cortas, alta de usuario.
+- **Web** → puerta de entrada y uso completo: registro, dashboard, gráficos, carga y edición a mano, gestión de fijos y categorías. Mango se puede usar entero sin el bot.
+- **WhatsApp** → carga rápida y consultas cortas. Canal opcional, por invitación.
+> **Decisión (sept 2026):** la web deja de ser solo "ver y editar". Antes el bot era la única puerta de entrada (WhatsApp → carga rápida, consultas cortas, **alta de usuario**; web → dashboard, gráficos, edición, gestión de fijos y categorías) y la cuenta nacía con el teléfono. Ahora el dashboard ya permite cargar todo a mano, así que cualquiera puede registrarse por la web y usar Mango sin bot; WhatsApp queda como canal opcional, por invitación, limitado por el cupo del número de prueba de Meta. Motivo: el techo de 5 destinatarios es de Meta, no de Mango; sin registro web, la app no puede crecer hasta que haya número propio. Dos onboardings, una cuenta: ver sección 4.
+
 - **Mensajería** → WhatsApp Business API (Cloud API de Meta). Se arranca con el **número de prueba** de Meta: gratis, hasta 5 destinatarios y 1000 mensajes/mes, sin verificación de negocio. Alcanza para los 3 usuarios previstos.
+> **Decisión (sept 2026):** el sistema se diseña **como si ya hubiera número propio**. El número de prueba (5 destinatarios, 1000 mensajes/mes) es una restricción temporal de hoy, no una premisa de diseño: nada en el código asume el tope de 5 ni el cupo de 1000, y el número emisor sale de `WHATSAPP_PHONE_NUMBER_ID` (sección 2). Lo único que hoy depende del número de prueba, la invitación obligatoria, es un **interruptor de configuración** (sección 4). Por qué: si el diseño se ata al número de prueba, el día que llegue el número propio hay que desarmarlo; así, pasar es cambiar credenciales y apagar un interruptor.
+
 > **Decisión (sept 2026):** se cambió de Telegram a WhatsApp. Motivo: Brian y sus dos amigos usan WhatsApp y ninguno usa Telegram. Telegram era técnicamente más cómodo (API más simple, botones sin límite, sin ventana de 24 h), pero la fricción de instalar otra app mataba la adopción.
  
-- **Web** → dashboard, gráficos, edición, gestión de fijos y categorías.
 Restricción transversal: **coste cero**. Todo se elige dentro de capas gratuitas.
  
 ---
@@ -115,10 +119,12 @@ Restricción transversal: **coste cero**. Todo se elige dentro de capas gratuita
 | Front | React / Next.js + Tailwind | Preferencia propia |
 | Gráficos | Recharts | Se integra directo con React |
 | Componentes UI | shadcn/ui | Look profesional de entrada, theming incluido |
-| Auth | Supabase Auth (magic link) | Sin contraseñas que mantener |
+| Auth | Supabase Auth: Google, con magic link como alternativa | Sin contraseñas que mantener. Google trae el mail verificado y evita los dos problemas del magic link |
 | Idiomas | next-intl (o equivalente) | Estructura desde el día uno, ver más abajo |
  
 **Un repo, un deploy, coste cero.**
+
+> **Decisión (sept 2026):** Auth pasa de solo magic link a **login con Google, con magic link como alternativa**. Con registro abierto (sección 4), el login es la primera pantalla que ve cualquiera, y el magic link solo tiene dos problemas: el mail sale sin marca (sin SMTP propio, Supabase no deja editar la plantilla) y el link `?code=` solo abre sesión en el mismo navegador donde se pidió. Google trae el mail ya verificado y no depende de ninguno de los dos. El magic link se queda para quien no usa Google.
  
 ### Variables de entorno
  
@@ -161,8 +167,9 @@ Nota sobre Java: se evaluó hacer el backend en Spring Boot (por el objetivo lab
 ## 3. Arquitectura
  
 ```
-WhatsApp ──webhook──> /api/whatsapp ──> adaptador ──> lógica del bot
-                                                          │
+WhatsApp ──webhook──> /api/whatsapp ──> adaptador ──┐
+Telegram ──webhook──> /api/telegram ──> adaptador ──┴──> lógica del bot
+            (previsto)                                    │
                                             parser (Gemini + Zod)
                                                           │
 Navegador ──────────> /api/... ─────────────────────> Supabase
@@ -174,6 +181,10 @@ Navegador ──────────> /api/... ─────────�
 ```
  
 **La lógica del bot va desacoplada de la capa de mensajería.** El route handler de WhatsApp es un adaptador fino: traduce el payload de Meta a un formato interno (`{ usuarioId, texto, mensajeId }`) y llama a la lógica, que no sabe nada de WhatsApp. Si mañana se agrega Telegram o Signal, se escribe otro adaptador y nada más.
+
+**El adaptador identifica al usuario por canal, no por teléfono.** Busca el remitente en `canales` (`tipo` + `identificador_externo`, sección 8) y le pasa a la lógica el mismo `{ usuarioId, texto, mensajeId }` de siempre. Por qué: con registro web abierto, una cuenta puede no tener teléfono; el teléfono pasa a ser un canal más, y la lógica nunca supo de teléfonos, así que no cambia.
+
+**Telegram queda previsto como segundo adaptador** (`/api/telegram`). Se activa cuando se llenen los 5 destinatarios del número de prueba de Meta (mientras se use ese número), o cuando alguien lo prefiera. Es exactamente el caso para el que existe el desacople: otro adaptador, la misma lógica.
  
 Punto clave: **una sola capa de datos, dos presentaciones**. Una función tipo `resumenMensual(userId, mes)` consulta la base y la consumen los dos frentes: el bot la renderiza como texto, la web como gráficos. No se duplica lógica.
 
@@ -184,15 +195,17 @@ margen libre = ingresos − ahorro − Σ max(presupuesto, gastado) por categor�
 ```
 
 No hay un término aparte para los fijos: "gastado" en una categoría es su total del ciclo, fijos incluidos, y cada gasto cuenta una sola vez. Un fijo que vence en el ciclo cuenta desde el día 1 a su monto esperado, aunque todavía no se haya cobrado, para que el margen no sea optimista los primeros días; cuando se cobra, el monto real reemplaza al esperado (sección 9, *Presupuestado vs real*).
+
+**El cron de fijos y la proyección de meses futuros usan la misma función pura**, `proyectarCiclo`, en la capa de datos compartida. La proyección calcula qué va a pasar en un ciclo (sección 9, *Meses futuros: proyección*) y el cron lo escribe cuando llega el día (sección 7). Por qué una sola función: si fueran dos cálculos, tarde o temprano el mes proyectado y el que el cron inserta dirían cosas distintas. Así nunca se contradicen.
  
 ### Flujo de carga
  
 1. El usuario manda `30 euros disco`.
-2. El webhook valida la **firma del payload** (header `X-Hub-Signature-256`, HMAC con el App Secret de Meta) y el **número de teléfono** contra los usuarios dados de alta (sección 4).
+2. El webhook valida la **firma del payload** (header `X-Hub-Signature-256`, HMAC con el App Secret de Meta) y el **número de teléfono** contra los canales dados de alta (`canales`, secciones 4 y 8).
 3. Gemini parsea → `{ monto: 30, moneda: "EUR", descripcion: "disco", categoria: "ocio", tipo: "gasto" }`.
 4. Zod valida la forma.
 5. Si la categoría no matchea ninguna existente, **se guarda en `otros`** — sin repreguntar.
-6. Se guarda con el **`wa_message_id`** para evitar duplicados.
+6. Se guarda con el **`mensaje_id_externo`** y el tipo de canal (antes `wa_message_id`, sección 8) para evitar duplicados.
 #### Sin repregunta de categoría
  
 **Todo lo que no mapea contra una categoría existente va a `otros`.** No se pregunta y no se inventan categorías nuevas.
@@ -222,6 +235,10 @@ El cupo del número de prueba es de **1000 mensajes/mes** y cada gasto cuesta do
 **Esquema:** en `usuarios`, `cargas_confirmadas` (int, default `0`) y `modo_confirmacion` (`auto` | `texto` | `reaccion`, default `auto`). `auto` aplica la regla del umbral; los otros dos la fuerzan desde ajustes.
  
 El umbral (15) es una constante del código, no un campo: si hay que moverlo, se mueve para todos.
+
+**Solo aplica a WhatsApp.** La confirmación progresiva existe para cuidar el cupo de Meta. En Telegram no hay cupo que cuidar, así que la confirmación es **siempre en texto con Deshacer**. Como el formato lo elige el adaptador (arriba), la regla vive en el de WhatsApp y el de Telegram simplemente no la tiene.
+
+**Con número propio se queda.** El cupo de 1000 desaparece, pero los otros motivos no: pasada la carga 15, la confirmación en texto es ruido que la persona ya no lee, y el consumo de mensajes pasa a medirse en plata, según las tarifas de Meta, en vez de en cupo. Un mensaje menos por gasto sigue valiendo.
  
 ---
  
@@ -244,16 +261,50 @@ El umbral (15) es una constante del código, no un campo: si hay que moverlo, se
 **Rate limiting sobre los intentos de código**, por número: sin eso, un desconocido puede probar códigos por fuerza bruta. Va junto al rate limiting de la sección 10.
  
 **Lo que la invitación no saltea:** el número de prueba de Meta admite **5 destinatarios**, y ese límite es de Meta, no de la app. El sexto número no se puede dar de alta aunque tenga un código válido. El código empieza a rendir de verdad con número propio, donde el tope desaparece y pasa a pagarse por mensaje.
+
+**Una invitación sirve para dos cosas:** crear la cuenta por chat (el flujo de arriba), o **vincular WhatsApp a una cuenta web que ya existe**. Con registro abierto, el código deja de ser la llave de la cuenta y pasa a ser la llave del canal.
+
+**Exigir el código es un interruptor, no una regla fija.** Mientras se use el número de prueba está **encendido**: sin código no hay WhatsApp, porque el tope de 5 es de Meta. Con número propio se **apaga**, sin tocar código: cualquier cuenta vincula su número desde la web, y un número desconocido que le escribe al bot arranca el onboarding por chat sin que se le pida código. Los códigos siguen existiendo; dejan de ser obligatorios.
+
+> **Pendiente de decidir:** dónde vive el interruptor (variable de entorno o valor en la base).
  
 > No confundir con el **código de acceso a la web** (más abajo): ese es para entrar al dashboard de una cuenta que ya existe. Este es para crear la cuenta.
  
-### El bot es la puerta de entrada
- 
-La cuenta se crea **desde WhatsApp**, no desde la web. Al primer mensaje, el bot da de alta al usuario **solo con el número de teléfono**: sin mail, sin contraseña, sin formulario.
- 
-Esto es deliberado. Es el momento que vende el producto: mandás un mensaje y ya quedó registrado el gasto.
- 
+### Dos puertas de entrada, una cuenta
+
+Mango tiene **dos entradas**: el **registro web, abierto a cualquiera**, y **WhatsApp, por invitación**. Cada una tiene su onboarding, y los dos terminan en la misma cuenta y el mismo dashboard. La diferencia es de dónde viene la persona y qué datos ya se tienen.
+
+**Hoy** (número de prueba, invitación obligatoria): WhatsApp es para **cinco personas** (justo el tope del número de prueba de Meta), y pueden llegar por cualquiera de las dos puertas: arrancando por chat, o registrándose en la web e ingresando su código en el onboarding. **Todos los demás** hacen el onboarding web, siguen sin WhatsApp y manejan sus finanzas por la web.
+
+> **Decisión (sept 2026):** reemplaza a "El bot es la puerta de entrada", que decía: la cuenta se crea **desde WhatsApp**, no desde la web; al primer mensaje, el bot da de alta al usuario **solo con el número de teléfono** — sin mail, sin contraseña, sin formulario —, porque es el momento que vende el producto: mandás un mensaje y ya quedó registrado el gasto. Ese momento sigue existiendo en el onboarding de WhatsApp; lo que cambia es que deja de ser la única puerta. Motivo: el dashboard ya permite cargar todo a mano, y el techo de 5 destinatarios es de Meta, no de Mango. Con el bot como única entrada, la app no podía crecer hasta tener número propio.
+
+#### Onboarding web (registro abierto)
+
+1. **Registro** con Google o magic link (sección 2).
+2. **Bienvenida sin gasto cargado.** No reusa la pantalla 1 de WhatsApp ("Ya cargaste tu primer gasto"): acá todavía no se cargó nada, y felicitar por algo que no pasó confunde.
+3. **Datos básicos:** nombre, país → moneda y timezone, día de inicio de ciclo. Es lo que en WhatsApp pregunta el chat; sin eso no hay ciclo (sección 6) ni moneda contra la que sumar.
+4. **Categorías.**
+5. **Ingresos y fijos.**
+6. **Presupuestos**, con el **margen libre en vivo**: es la pregunta que la app contesta (sección 9), y verla moverse mientras se cargan los sobres explica el modelo sin tutorial.
+7. **Meta de ahorro.** Hoy `meta_ahorro_mensual` no tiene UI en ningún lado; este paso es donde se fija por primera vez.
+8. **WhatsApp**, opcional. La persona ingresa **su número de WhatsApp** y, mientras la invitación sea obligatoria (hoy), también **su código de invitación**. Mango le manda un mensaje a ese número para vincular el canal. Quien no tiene código, o no quiere el bot, toca **"Seguir sin WhatsApp"** y termina el onboarding. Va al final, después de que todo lo demás ya funciona, para que nadie sienta que la app queda a medias sin el bot.
+   Ese primer mensaje lo inicia Mango, no la persona: cae fuera de la ventana de 24 h y necesita una plantilla aprobada por Meta (sección 14). Con el número de prueba, además, el número tiene que estar entre los 5 destinatarios cargados en Meta.
+
+#### Onboarding WhatsApp (por invitación)
+
+El guion de abajo (*Primera interacción*) queda como está: código → nombre → país → ciclo → gasto de prueba → link. El link lleva un **código de un solo uso que abre sesión y vincula el teléfono a la cuenta**. En la web siguen las pantallas de `mango-stitch-onboarding.md`, con la pantalla 1 **"Ya cargaste tu primer gasto"** y **saltando lo que el chat ya preguntó** (nombre, país, ciclo): preguntar dos veces lo mismo es la forma más rápida de que alguien abandone.
+
+#### Comunes
+
+- **`onboarding_completo`** y redirección al paso pendiente si alguien abandona a mitad. Sin eso, quien cierra la pestaña en el paso 4 vuelve a un dashboard a medio configurar y no sabe por qué los números no cierran.
+- **Una invitación sirve para dos cosas:** crear la cuenta por chat, o vincular WhatsApp a una cuenta web existente (ver *Alta por código de invitación*, arriba).
+- **Sección "WhatsApp" en ajustes:** estado del canal, una explicación clara de que hoy es por invitación y por qué (el cupo de Meta), y vinculación del número (con código mientras la invitación sea obligatoria). Existe para que un usuario web no descubra el límite recién cuando quiere usar el bot (sección 11).
+- **`/login` no puede fallar en silencio** con un mail que no existe. Con registro abierto, el mismo formulario sirve para entrar y para crearse la cuenta.
+- **La home explica qué es Mango** y que el bot es por invitación, junto a "Demo" y "Entrar".
+
 ### Setup partido: lo mínimo en el chat, la carga pesada en la web
+
+*Aplica al onboarding de WhatsApp. En la web, todo el setup se hace en pantalla (arriba).*
  
 Sin moneda ni categorías cargadas, Gemini no tiene contra qué mapear. Pero **el setup completo no se hace por chat**: cargar una lista de categorías y de gastos fijos a ciegas, sin ver lo que ya escribiste, es incómodo. En pantalla es una tabla y se resuelve en dos minutos.
  
@@ -299,16 +350,21 @@ El wizard **no se repite**. La web expone después una pantalla de ajustes para 
  
 ### Acceso a la web
  
-El mail aparece recién cuando la persona quiere entrar al dashboard. El flujo:
- 
-1. El usuario le pide el acceso al bot.
-2. El bot le manda el link a la web con un **código de un solo uso**.
-3. Entra, deja su mail, y de ahí en adelante usa **magic link** de Supabase Auth.
+Se entra con **Google o magic link** (sección 2). Depende de por dónde llegó la persona:
+
+- **Registro web:** el mail está desde el primer paso, porque es con lo que se registra.
+- **WhatsApp:** la primera vez entra con el link de **código de un solo uso** que manda el bot al final del chat, que abre sesión y vincula el teléfono. Ahí deja su mail o conecta Google, y de ahí en adelante entra como cualquiera.
 El teléfono queda vinculado a la cuenta web. Un solo usuario, dos puertas.
+
+> **Decisión (sept 2026):** antes el mail aparecía recién cuando la persona quería entrar al dashboard: le pedía el acceso al bot, el bot le mandaba el link con código de un solo uso, entraba, dejaba su mail y de ahí en adelante usaba magic link. Con registro abierto la web ya no depende del bot para entrar, y el login suma Google.
  
 ### Cómo presentarlo a alguien nuevo
  
-Siempre por el chat. Se le muestra la web **después**, cuando ya tiene 3–4 gastos cargados y los gráficos dicen algo. Un dashboard vacío no convence a nadie.
+**Con invitación a WhatsApp:** por el chat. Se le muestra la web **después**, cuando ya tiene 3–4 gastos cargados y los gráficos dicen algo. Un dashboard vacío no convence a nadie.
+
+**Sin invitación:** la `/demo` primero (sección 12), que ya tiene los gráficos poblados, y después el registro web. El onboarding web existe justamente para que el dashboard no arranque vacío: con categorías, fijos y presupuestos cargados, el margen libre dice algo desde el primer día.
+
+> **Decisión (sept 2026):** antes era "siempre por el chat". Con registro abierto, alguien sin invitación también es un usuario, y el chat no es un camino que tenga.
  
 ---
  
@@ -339,7 +395,7 @@ Todas las consultas filtran `borrado_en IS NULL`. Motivos:
  
 - Un bug en el bot no destruye datos de forma irreversible.
 - Se puede revertir un borrado accidental.
-- El `wa_message_id` sigue en la tabla, así que **un reintento del webhook no resucita** una transacción borrada como si fuera nueva.
+- El `mensaje_id_externo` (antes `wa_message_id`) sigue en la tabla, así que **un reintento del webhook no resucita** una transacción borrada como si fuera nueva.
 Las filas borradas no aparecen en ningún total, gráfico ni cálculo de ritmo. Se pueden purgar de verdad con un job periódico si algún día molestan, pero con este volumen no hace falta.
  
 ---
@@ -366,7 +422,9 @@ El bot responde el **total del mes + desglose por categoría (top 5)**. Nada má
  
 Lo único que hay que definir bien es la **zona horaria**. Si se guarda todo en UTC y el usuario está en Dublín, un gasto de las 23:00 puede caer al día siguiente y contarse en el mes equivocado. Solución: guardar la zona horaria del usuario (derivada del país en el onboarding) y agrupar con ella, no con UTC.
  
-En el dashboard esto se traduce en un **selector de mes** arriba de todo, para navegar a cualquier mes pasado.
+En el dashboard esto se traduce en un **selector de mes** arriba de todo, para navegar a cualquier mes pasado y hasta **6 ciclos adelante**, que se muestran como proyección (sección 9, *Meses futuros: proyección*).
+
+> **Decisión (sept 2026):** el selector deja de terminar en el ciclo en curso (hoy `?mes=` se recorta ahí). Seis ciclos alcanzan para ver cuándo termina una cuota o arranca otra, que es lo que la proyección tiene para decir.
  
 ---
  
@@ -430,6 +488,8 @@ Un fijo de monto variable (luz, gas) se carga por chat como cualquier gasto — 
 **Los fijos se descuentan del margen libre desde el día 1 del ciclo**, estén pendientes o confirmados. Esa es la pregunta que la app contesta: cuánto queda realmente, no cuánto hay en la cuenta antes de pagar lo que ya se debe. Si el alquiler apareciera recién el día que se cobra, el margen libre sería optimista justo los primeros días, que es cuando se decide.
  
 **Beneficio lateral:** la tarjeta «Próximos cobros» (sección 9) existe justamente para esto — muestra **qué falta confirmar este ciclo**.
+
+**El cron no decide por su cuenta qué insertar:** usa `proyectarCiclo` (sección 3), la misma función que calcula los meses futuros del dashboard. La proyección calcula qué va a pasar y el cron lo escribe cuando llega el día, así que un ciclo proyectado y el mismo ciclo ya insertado nunca se contradicen.
  
 > El aviso proactivo de *"inserté tus fijos"* cae fuera de la ventana de 24 h de WhatsApp y requiere una *template* aprobada por Meta. Para fase 1 se insertan en silencio y se ven en el dashboard.
  
@@ -440,6 +500,10 @@ No todos los fijos son "para siempre" — una compra en cuotas también es un ga
 Deliberadamente no modela principal, interés ni una tabla de amortización — eso, si hace falta, es una capacidad nueva que *referencia* una definición, no una reescritura de esta.
  
 > **Implementado (add-recurring-expense-management, sept 2026):** la definición se edita desde una hoja propia que abre "Próximos cobros" (sección 9) — nunca se construyó una pantalla dedicada a los fijos. El alta sigue siendo el interruptor "recurrente" al crear un gasto (arriba). Ese interruptor solo aparece al crear, nunca al editar una fila ya existente — pasar un gasto suelto a recurrente se hace borrándolo y cargándolo de nuevo.
+
+#### Gastos puntuales planificados
+
+> **Pendiente de decidir:** si se suman gastos puntuales planificados en meses futuros (*"viaje en febrero, 600"*). Necesitan `transacciones.estado` (sección 8), que todavía no existe.
  
 ---
  
@@ -447,9 +511,9 @@ Deliberadamente no modela principal, interés ni una tabla de amortización — 
  
 **`usuarios`**
 - `id`
-- `telefono` (E.164, ej. `+353...`) — identificador principal
-- `nombre` (se pregunta en el primer mensaje del onboarding, ver sección 4)
-- `email` (nullable — se completa solo si accede a la web)
+- `telefono` (E.164, ej. `+353...`, **nullable** — una cuenta creada por la web no tiene; el bot identifica por `canales`, abajo)
+- `nombre` (se pregunta en el primer paso de cualquiera de los dos onboardings, ver sección 4)
+- `email` (nullable — una cuenta web lo tiene desde el registro; una de WhatsApp, desde que entra a la web)
 - `pais`
 - `timezone`
 - `moneda_default`
@@ -461,6 +525,18 @@ Deliberadamente no modela principal, interés ni una tabla de amortización — 
 - `cargas_confirmadas` (int, default `0` — contador para la confirmación progresiva, ver sección 3)
 - `modo_confirmacion` (`auto` | `texto` | `reaccion`, default `auto` — ver sección 3)
 - `meta_ahorro_mensual` (numeric, nullable — meta de ahorro por ciclo; `null` es "sin meta fijada", ver sección 9)
+
+> **Decisión (sept 2026):** `telefono` deja de ser el identificador principal y pasa a nullable. El usuario es una identidad sin teléfono; el teléfono es un canal más (`canales`, abajo). Por qué ahora, antes de escribir el bot: si el bot escribe pegado al teléfono, migrarlo después cuesta más que dejar el hueco hoy.
+
+**`canales`**
+- `id`
+- `usuario_id`
+- `tipo` (`whatsapp` | `telegram`)
+- `identificador_externo` (en WhatsApp, el teléfono en E.164)
+Único por `tipo` + `identificador_externo`: un mismo número no puede quedar vinculado a dos cuentas. Es lo que lee el adaptador para saber quién escribe (sección 3).
+
+> **Pendiente de decidir:** si una cuenta puede tener WhatsApp y Telegram a la vez, o uno solo.
+
 **`invitaciones`**
 - `id`
 - `codigo` (único, aleatorio, 8+ caracteres)
@@ -488,7 +564,7 @@ Un código está disponible si `usada_en IS NULL AND vence_en > now()`. No hace 
 - `es_fijo` (bool)
 - `gasto_fijo_id` (nullable — si vino de un fijo recurrente)
 - `estado` (`pendiente` | `confirmada`, default `confirmada` — solo las filas que inserta el cron nacen `pendiente`, ver sección 7)
-- `wa_message_id` (idempotencia — único por usuario)
+- `mensaje_id_externo` + tipo de canal (idempotencia — único por canal; generaliza al `wa_message_id` original, que era único por usuario y solo servía para WhatsApp)
 - `borrado_en` (timestamp nullable — borrado suave, ver sección 4)
 **`gastos_fijos`**
 - `id`
@@ -508,6 +584,13 @@ Un código está disponible si `usada_en IS NULL AND vence_en > now()`. No hace 
 - `monto` (nullable — `null` es la marca explícita de "sin presupuesto en este ciclo", ver abajo)
 - `periodo` (`date` — el primer día del ciclo, calculado con `rango_ciclo_usuario` desde `dia_inicio_ciclo`; para día 26, el ciclo de septiembre es `2026-08-26`)
 Una fila por categoría por ciclo (`unique (usuario_id, categoria_id, periodo)`). Cuando un ciclo pasa a ser el actual y no tiene filas, marcas incluidas, se copian todas las filas del ciclo anterior más reciente que tenga alguna. Nunca se crea una fila para un ciclo futuro. Editar o crear un presupuesto escribe solo la fila del ciclo actual, así los ciclos cerrados no cambian y los siguientes heredan el monto por la copia; borrarlo escribe una marca (`monto` null) en vez de borrar la fila, para que la copia no lo traiga de vuelta. Migración `0018_presupuestos_periodo_ciclo.sql`.
+
+> **Decisión (sept 2026):** se levanta la regla "nunca se crea una fila para un ciclo futuro", porque la proyección (sección 9) permite editar presupuestos de un ciclo futuro. Tres reglas nuevas:
+> - La hoja pregunta **"solo este mes"** o **"desde este mes en adelante"**.
+> - "Solo este mes" **escribe también el ciclo siguiente con el valor anterior**, para que el cambio no se arrastre por la copia.
+> - Editar un ciclo futuro **materializa todas las categorías de ese ciclo**, no solo la editada. Si no, la copia ve el ciclo "con filas" y las demás categorías quedan sin presupuesto.
+>
+> Para el ciclo actual y los cerrados, lo de arriba sigue igual.
 **`ingresos_esperados`**
 - `id`
 - `usuario_id`
@@ -663,7 +746,7 @@ En el código: **deslizamiento largo elimina directo** sin soltar en el botón, 
 **Menú global** — se abre tocando el **avatar**, arriba a la derecha:
 - Bloque de cuenta: avatar grande, nombre y teléfono. Insignia de cámara en la esquina del avatar para cambiar la foto — no hace falta pantalla de perfil aparte.
 - APLICACIÓN: tema (claro/oscuro/automático), idioma, moneda
-- BOT DE WHATSAPP: recordatorios (toggle), gastos fijos, **modo de confirmación** (automático / siempre texto / siempre reacción, ver sección 3)
+- BOT DE WHATSAPP: recordatorios (toggle), gastos fijos, **modo de confirmación** (automático / siempre texto / siempre reacción, ver sección 3). **Se adapta a quien no tiene el canal:** en vez de esas opciones, lleva a la sección "WhatsApp" de ajustes (sección 4), con el estado, por qué hoy es por invitación y la vinculación con código. Con registro abierto, el teléfono del bloque de cuenta tampoco está siempre.
 - **Invitar a alguien** — genera un código de un solo uso y lo deja listo para compartir (ver sección 4)
 - *(divisor)* Cerrar sesión
 No lleva nada de la vista del mes.
@@ -915,17 +998,38 @@ Ese número es la respuesta a "cuánto puedo gastar este mes sin romper nada".
 **Comida es un caso particular:** funciona como fijo en la cabeza (todos los meses se gasta) pero el monto varía. Va como **categoría con presupuesto**, no como gasto fijo — así el seguimiento es contra el techo (*"llevás 310 de 400"*), que es justamente la pregunta que importa.
  
 Lo que **sí** se gana con 2–3 meses de historial es **ajustar** los presupuestos con datos en vez de con memoria. Pero eso es refinamiento, no requisito de arranque.
+
+### Meses futuros: proyección
+
+**Un ciclo futuro se calcula, no se guarda.** El selector de mes llega hasta 6 ciclos adelante (sección 6), y cada uno se arma con `proyectarCiclo` (sección 3):
+
+- **Ingresos recurrentes.**
+- **Fijos activos a `monto_actual`**, respetando `repeticiones_totales`: una cuota que termina deja de aparecer en el ciclo siguiente al último pago (sección 7, *Recurrencias con un final*).
+- **Presupuestos heredados** del último ciclo con filas, igual que la copia (sección 8).
+- **Meta de ahorro.**
+- **Margen libre proyectado**, con la misma `getFreeMargin` del mes en curso.
+
+**Cómo se ve:** marca visible de **"Proyección"**, barras de presupuesto en cero, y sin ritmo ni "gastado": en un ciclo que no empezó no se gastó nada, y un ritmo sobre cero días no significa nada.
+
+**Por qué:** lo valioso sale solo. Se ve que el margen **sube cuando termina una cuota o baja cuando arranca otra**, sin que nadie tenga que hacer la cuenta. Y como el cron escribe con la misma función (sección 7), lo proyectado y lo que después se inserta nunca se contradicen.
+
+`/demo` también la muestra.
+
+Los presupuestos de un ciclo futuro se pueden editar; las reglas de escritura están en la sección 8 (*presupuestos*).
  
 ---
  
 ## 10. Multiusuario y control de abuso
  
 Son **3 usuarios en total**: Brian y dos amigos. Cada usuario se identifica por `user_id` + `telefono`.
+
+> **Decisión (sept 2026):** el **registro web es abierto**: cualquiera puede crearse una cuenta y usar Mango sin bot. El techo de 5 destinatarios del número de prueba **aplica solo al bot**, y WhatsApp sigue por invitación. Cada usuario se identifica por `usuarios.id`; el teléfono pasa a ser un canal (sección 8), y la cantidad de usuarios web deja de estar atada al cupo de Meta. Hoy son **cinco personas por WhatsApp**, justo el tope; el resto usa solo la web. El tope es del número de prueba, no del diseño: con número propio se apaga la invitación obligatoria (sección 4) y el bot queda abierto a cualquier cuenta.
  
 Medidas:
  
-- **Alta por código de invitación** (sección 4) — un número desconocido no puede darse de alta solo. Reemplaza a la whitelist de teléfonos, que obligaba a cargar cada número a mano. Además, el número de prueba de Meta ya limita a 5 destinatarios.
-- **Rate limiting** — en base o con Upstash Redis. Incluye los **intentos de código de invitación** por número, para cortar la fuerza bruta.
+- **Registro web abierto**, sin invitación (sección 4).
+- **WhatsApp por código de invitación** (sección 4), mientras el interruptor esté encendido — un número desconocido no puede darse de alta solo. Reemplaza a la whitelist de teléfonos, que obligaba a cargar cada número a mano. Además, el número de prueba de Meta ya limita a 5 destinatarios.
+- **Rate limiting** — en base o con Upstash Redis. Cubre tres cosas: **mensajes** al bot, **intentos de código de invitación** por número (para cortar la fuerza bruta) y **registro** web (para que el sign-up abierto no se llene de cuentas basura).
 - **Validación de firma del webhook** — HMAC SHA-256 con el App Secret; sin eso, cualquiera puede pegarle al endpoint.
 - **Verify token** — solo para el handshake inicial de suscripción del webhook (Meta manda un GET con `hub.challenge`).
 ### Volumen esperado
@@ -933,6 +1037,8 @@ Medidas:
 Brian carga **más de 200 gastos al mes** él solo. Con los tres usuarios, el límite de 1000 mensajes/mes del número de prueba queda justo — y cada gasto puede implicar 2 mensajes (carga + confirmación). La **confirmación progresiva** (sección 3) es la mitigación principal: pasadas las primeras 15 cargas, la confirmación deja de consumir cupo. Si aun así se ajusta, queda pasar a número propio.
  
 **El techo real es el cupo, no la cantidad de usuarios.** Con cinco personas y confirmación por reacción, los 1000 mensajes alcanzan; con cinco personas y confirmación en texto, no.
+
+Todo este cálculo es del número de prueba. Con número propio el cupo desaparece y el techo pasa a ser el costo por mensaje; la confirmación progresiva sigue siendo la mitigación (sección 3).
  
 ---
  
@@ -944,8 +1050,9 @@ Brian carga **más de 200 gastos al mes** él solo. Con los tres usuarios, el l�
 | Gemini inventa categorías | Mapeo estricto contra la lista existente; lo que no matchea cae en `otros` |
 | `otros` se infla y esconde información | Revisión mensual en el dashboard: si pesa, falta una categoría — se crea y se reasigna |
 | Mensajes ambiguos (*"gasté 50"*) | El bot repregunta antes de guardar (esto sí se pregunta: falta el dato, no la categoría) |
-| Meta reintenta el webhook y duplica el gasto | Guardar `wa_message_id` con constraint único y chequear antes de insertar |
-| Se agota el cupo de 1000 mensajes/mes | Confirmación progresiva (sección 3); medir consumo desde el mes 1 |
+| Meta reintenta el webhook y duplica el gasto | Guardar `mensaje_id_externo` (antes `wa_message_id`) con constraint único por canal y chequear antes de insertar |
+| Se agota el cupo de 1000 mensajes/mes (número de prueba) | Confirmación progresiva (sección 3); medir consumo desde el mes 1 |
+| Pasar a número propio obliga a reescribir el bot | Nada asume el número de prueba: sin tope de 5 ni cupo de 1000 en el código, número emisor por variable de entorno, invitación obligatoria como interruptor (secciones 1 y 4) |
 | El usuario no ve la reacción y cree que el gasto no se cargó | El umbral de 15 existe para que ya conozca el patrón. Si igual pasa, se fuerza `modo_confirmacion = texto` desde ajustes |
 | Un código de invitación se filtra | Un solo uso + vencimiento a 7 días + rate limiting de intentos por número |
 | Ventana de 24 h de WhatsApp | No afecta: el bot siempre **responde** a un mensaje del usuario. Solo aplicaría a los avisos proactivos de gastos fijos, que necesitarían una *template* aprobada |
@@ -953,6 +1060,8 @@ Brian carga **más de 200 gastos al mes** él solo. Con los tres usuarios, el l�
 | Gasto de fin de mes a las 23:00 cae en el mes equivocado | Agrupar por timezone del usuario, no por UTC |
 | Fijos duplicados si el job corre dos veces | Constraint único por `gasto_fijo_id` + mes |
 | Cold starts | Aceptables en Vercel (~100–300 ms) |
+| Un usuario web espera usar WhatsApp y no puede | La sección "WhatsApp" de ajustes lo explica desde el principio: que hoy es por invitación y por qué (sección 4). El onboarding web lo presenta como opcional |
+| Registros basura con el sign-up abierto | Rate limiting sobre el registro (sección 10) |
  
 ---
  
@@ -979,16 +1088,27 @@ Esto hay que escribirlo así **desde el primer componente**. Hacerlo después si
  
 ## 13. Fases
  
+> **Decisión (sept 2026):** las fases se alinean con `ROADMAP.md`, que las baja a bloques de tareas. Antes eran: **Fase 1 — Uso personal**: onboarding partido (nombre, país, ciclo y gasto de prueba por WhatsApp; categorías y fijos en la web), carga de gastos, confirmación progresiva, gastos fijos automáticos, tipo ahorro, presupuestos por categoría y margen libre, dashboard con selector de mes y los dos gráficos. **Fase 2 — Amigos y demo**: abrir hasta 5 usuarios (el tope del número de prueba), alta por código de invitación, rate limiting, RLS verificado, feedback real, y la ruta `/demo`. Lo que cambió: la web, el dashboard con presupuestos y margen libre, y `/demo` ya están hechos; el registro abierto (sección 4) entra en fase 2; y se suma una fase 4.
+
 **Fase 1 — Uso personal**
-Onboarding partido (nombre, país, ciclo y gasto de prueba por WhatsApp; categorías y fijos en la web), carga de gastos, **confirmación progresiva** (sección 3), gastos fijos automáticos, tipo ahorro, **presupuestos por categoría y margen libre**, dashboard con selector de mes y los dos gráficos.
+**Bot** funcional (carga, confirmación progresiva, correcciones y consultas cortas), con la identidad ya separada del canal (`canales`, sección 8) antes de escribirlo; **cron de gastos fijos**; y **proyección a 6 ciclos** (sección 9). Bloques 0–7 de `ROADMAP.md`.
  
-**Fase 2 — Amigos y demo**
-Abrir hasta 5 usuarios (el tope del número de prueba). **Alta por código de invitación**, rate limiting, RLS verificado, feedback real. Y la **ruta `/demo`** (sección 12), que a esta altura ya es publicable y es lo que se manda en las postulaciones.
+**Fase 2 — Abrir a otras personas**
+**Registro abierto con Google** (y magic link), **dos onboardings** que terminan en la misma cuenta (sección 4), **invitaciones de WhatsApp** con rate limiting y RLS verificado con usuarios reales, **número propio** para la Cloud API (con la invitación obligatoria apagada, sección 4), y **Telegram** como segundo canal (sección 3). Bloques 8–11.
  
 > **La señal que se busca en fase 2:** si a los tres meses los cinco siguen cargando gastos, recién ahí tiene sentido gastar en número propio o en una estructura legal. Antes de eso, cualquier inversión es adelantarse a un dato que todavía no se tiene.
+
+> **Decisión (sept 2026):** el número propio se adelanta de fase 4 a fase 2, y el sistema se diseña desde ahora como si ya estuviera (sección 1). La señal de arriba queda para los pagos y la estructura legal (fase 4).
+
+> **Pendiente de decidir:** cuándo se compra el número dentro de fase 2 y cómo convive con la restricción de **coste cero** (sección 1): el número y los mensajes de plantilla se pagan.
  
 **Fase 3 — Refinamiento**
 Alertas al acercarse al techo de una categoría, ajuste de presupuestos sugerido a partir del historial, modo asesor con más contexto, recordatorios opcionales (ver sección 14), **reordenar categorías y gastos arrastrando** (ver sección 9) y **traducción al inglés** (la estructura ya viene de fase 1, ver sección 2).
+
+**Fase 4 — Pagos** *(solo si aparece la señal de fase 2)*
+El número propio ya no está acá: pasó a fase 2 (nota arriba). **Tabla de suscripciones** colgando de `usuarios` (plan, estado, renovación), **independiente de los canales**: se paga una cuenta, no un teléfono. Integración con el proveedor de pagos y sus webhooks. Bloque 14 de `ROADMAP.md`.
+
+> **Pendiente de decidir:** qué es gratis y qué se paga (¿la web gratis y el bot pago?), y qué pasa si alguien deja de pagar: se corta el bot, el acceso, o nada de los datos.
  
 ---
  
