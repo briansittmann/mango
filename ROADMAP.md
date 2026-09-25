@@ -13,16 +13,16 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 
 ## 0 · Arreglos rápidos de producción
 
-- [ ] 🤖 `metadata` en `app/layout.tsx`: título "Mango", descripción real, imagen Open Graph (hoy dice "Create Next App")
-- [ ] 🤖 Actualizar el estado en `CLAUDE.md` con el dominio `usemango.dev` (sacar "sin evidencia de deploy") y sumar `ROADMAP.md` al repo como referencia
+- [x] 🤖 `metadata` en `app/layout.tsx`: título "Mango", descripción real, imagen Open Graph (hoy dice "Create Next App")
+- [x] 🤖 Actualizar el estado en `CLAUDE.md` con el dominio `usemango.dev` (sacar "sin evidencia de deploy") y sumar `ROADMAP.md` al repo como referencia
 - [ ] 👤 Supabase Auth: Site URL `https://www.usemango.dev` + redirect `https://www.usemango.dev/auth/confirm`
 - [ ] 👤 Confirmar que las variables de Supabase están en Vercel y que `/dashboard` funciona en producción con magic link
 - [ ] 👤 Redeploy después de cualquier cambio de variables
 
 ## 1 · Cerrar los changes abiertos y poner la documentación al día
 
-- [ ] 🤖 `add-recurring-expense-management` — verificar y marcar la 2.1
-- [ ] 🤖 `restyle-dashboard-to-v0` — verificación final 6.1–6.3, archivar ambos
+- [x] 🤖 `add-recurring-expense-management` — verificar y marcar la 2.1
+- [x] 🤖 `restyle-dashboard-to-v0` — verificación final 6.1–6.3, archivar ambos (archivado sin 6.1–6.3: lo reemplazaron `refine-mobile-ui-apple-hig` y `design-system`)
 - [ ] 🤖 Actualizar `ARCHITECTURE.md` con el cambio de modelo, **antes de empezar el bloque 4**:
   - §1: la web deja de ser solo para ver y editar; también es puerta de entrada y se puede usar sin bot
   - §4: "El bot es la puerta de entrada" pasa a ser dos entradas (web abierta, WhatsApp por invitación) y dos onboardings que terminan en la misma cuenta; acceso a la web con Google o magic link
