@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Inter, Manrope } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { DynamicBackground } from "@/components/theme/dynamic-background";
 import { ThemeSync } from "@/components/theme/theme-sync";
+import { socialMetadata } from "@/lib/metadata";
 import "./globals.css";
 
 const inter = Inter({
@@ -21,9 +22,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Mango",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("metadatos");
+
+  return {
+    metadataBase: new URL("https://www.usemango.dev"),
+    title: { default: t("nombre"), template: t("plantillaTitulo") },
+    description: t("descripcion"),
+    ...(await socialMetadata("/")),
+  };
+}
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const locale = await getLocale();

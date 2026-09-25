@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,11 @@ import { findCurrentUsuario } from "@/lib/data/supabase/user";
 import { supabaseServer } from "@/lib/supabase/server";
 import { signOut } from "./actions";
 import { SupabaseDashboard } from "./supabase-dashboard";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("metadatos");
+  return { title: t("tituloDashboard"), robots: { index: false, follow: false } };
+}
 
 export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   const client = await supabaseServer();

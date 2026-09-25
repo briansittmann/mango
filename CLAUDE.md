@@ -58,7 +58,7 @@
 
 ---
 
-## Estado actual (al 2026-09-24)
+## Estado actual (al 2026-09-25)
 > Se actualiza al archivar un change de OpenSpec o al cerrar un hito. Ante duda, mandan el codigo y `openspec list`.
 
 **Donde estamos**: la web ya corre sobre Supabase. `/dashboard` lee y escribe la base real como el usuario logueado (magic link + RLS), con la misma UI que `/demo`, que sigue en memoria. Verificado a mano contra el proyecto real (`add-supabase-data-layer-and-login`, 8.1–8.7). El siguiente salto es el bot y el cron, no mas web.
@@ -72,6 +72,7 @@
 - Hecho: ajustes de UI en `dashboard-template.tsx` hechos fuera de las tasks: `pb-section` sobre el hero cuando no hay `notice` (la demo sigue con `pb-3`); el header se vuelve solido cuando la mitad del titulo del mes pasa bajo la barra (`intersectionRatio >= 0.5`); `pt-3` en el titulo; logo de 48px (`size-12`); "Mango" en `text-headline-md`.
 - Hecho: el panel de ingresos es editable igual que gastos — alta, edicion, borrado con deshacer y recurrencia, via el mismo `entry-sheet` y `swipe-to-delete` (`add-income-management`). Ya no quedan "fuentes estimadas"; el panel lista entradas fechadas.
 - Hecho: el margen libre usa sobres (`fix-free-margin-envelope-budgets`): `getFreeMargin` en `lib/data/budget.ts` descuenta `max(presupuesto, gastado)` por categoria con presupuesto y lo gastado sin presupuesto, sin termino aparte de fijos: los cobros recurrentes cuentan dentro de su categoria (los pendientes a su monto esperado) y entran en la barra de presupuesto; el ritmo los deja afuera. Presupuestos por ciclo (`BudgetRow`, copia al ciclo actual, marca `monto` null al borrar) implementados en `lib/demo/demo-budgets.ts` y en la base (funciones de `0017`). `/demo` arranca en 864 €. El boton de ciclo siguiente queda deshabilitado en el ciclo en curso.
+- Hecho: metadata (bloque 0 de `ROADMAP.md`): `generateMetadata` en `app/layout.tsx` con textos de `metadatos` en `messages/*.json`, `metadataBase` `https://www.usemango.dev`, plantilla `%s · Mango`, Open Graph y Twitter (`lib/metadata.ts`, que `/demo` reusa con su propia URL). Imagen OG en `app/opengraph-image.tsx` (Manrope desde `assets/`, siempre en espanol porque los crawlers no mandan cookie de idioma). Iconos `app/icon.svg`, `app/favicon.ico` y `app/apple-icon.png` recortados de `public/mango-logo-light.svg`. `/login` y `/dashboard` con `noindex`; `/auth/*` con `X-Robots-Tag` desde `next.config.ts`.
 
 **Bot de WhatsApp**
 - Hecho: webhook (`app/api/whatsapp/route.ts`), validacion HMAC (`lib/whatsapp/signature.ts`), adaptador y extraccion de payload.
@@ -96,8 +97,9 @@
 - Hecho: `.env.local` con `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` del proyecto real (`noemlszbjqzqbzagahyd`).
 - Hecho: MCP de Supabase conectado (`.mcp.json`, con escritura) — usar `list_tables`, `execute_sql`, `apply_migration` para consultar y migrar la base real en vez de pedirle SQL al usuario. Pedir confirmacion antes de cualquier escritura.
 - Hecho: la base real tiene aplicadas `0001`–`0019` (2026-09-24). Antes de la `0018` hubo que pasar los dos `presupuestos` de Brian de `periodo = 'mensual'` a `2026-08-26` (venian del `0012` viejo). La `0017` paso los smoke tests de la 3.3; la `0019` se agrego y aplico durante la 8.3.
-- Hecho: Auth por e-mail con sign-ups apagados; Site URL `http://localhost:3000` y redirect `http://localhost:3000/auth/confirm`. Para produccion hay que sumar la URL de Vercel.
-- Pendiente: sin evidencia de deploy en Vercel.
+- Hecho: deploy en Vercel, en https://www.usemango.dev (el dominio sin `www` redirige a `www`). `/demo` es publico y funciona.
+- Hecho: Auth por e-mail con sign-ups apagados.
+- Pendiente (Brian, en el panel): Supabase Auth sigue con Site URL `http://localhost:3000` y redirect `http://localhost:3000/auth/confirm`; falta sumar `https://www.usemango.dev` y `https://www.usemango.dev/auth/confirm`. Hasta entonces el magic link no sirve en produccion.
 
 **OpenSpec**
 - Archivados (10): `translate-code-to-english`, `land-finance-dashboard`, `refine-mobile-ui-apple-hig`, `unify-add-action-rows`, `add-expense-sheet`, `add-category-sheet`, `add-category-reorder-mode`, `replace-fixed-card-with-upcoming-charges`, `add-project-status-to-claude-md`, `add-income-management` (26/27 — 1.4 quedo bloqueada, ver Deuda tecnica).
@@ -110,17 +112,14 @@
 
 ## Proyeccion
 
-Proximos pasos, en orden:
-1. Bot: parser Gemini + Zod, carga de transacciones, confirmacion progresiva (ARCHITECTURE.md §3), reusando `lib/data/supabase/*` con el cliente admin.
-2. Cron de gastos fijos (con repeticiones) junto con `transacciones.estado`, que reemplaza las reglas provisorias de cobrado/pendiente (ARCHITECTURE.md §7).
-3. Deploy en Vercel, variables de entorno, URL de produccion en Supabase Auth, y SMTP propio con el template de magic link (ARCHITECTURE.md §2).
-4. Onboarding por chat e invitaciones con rate limiting (ARCHITECTURE.md §4, §10).
-5. Mas tests (unitarios de ritmo/presupuesto, Playwright sobre los sheets restantes).
+La hoja de ruta vive en `ROADMAP.md`, en bloques numerados con dueno (👤 Brian, 🤖 Claude Code). Aca no se repite la lista: el orden y el detalle los manda `ROADMAP.md`.
 
-Mapeo a fases (ARCHITECTURE.md §13):
-- **Fase 1** (uso personal): la UI y la web real (capa de datos, login, dashboard) estan hechas; faltan el bot funcional, el cron y el deploy (pasos 1-3).
-- **Fase 2** (amigos y demo): invitaciones y rate limiting (paso 4); la demo publica (§12) ya esta hecha via `/demo`.
-- **Fase 3** (refinamiento): sin empezar, salvo la traduccion a ingles (§2) que ya esta hecha.
+- **Fase 1** (uso personal): bloques 0–7. En curso: bloque 0 (arreglos rapidos de produccion).
+- **Fase 2** (abrir a otras personas): bloques 8–11.
+- **Deuda tecnica**: bloque 12; el detalle sigue en la seccion de abajo.
+- **Fase 3** (refinamiento): bloque 13. **Fase 4** (numero propio y pagos): bloque 14.
+
+`ARCHITECTURE.md` §13 todavia reparte las fases segun el modelo anterior; se alinea con `ROADMAP.md` en el bloque 1.
 
 ## Deuda tecnica
 > Lo que un change dejo afuera a proposito. Se actualiza al archivar: lo que en el change vivia en *Out of scope* o en *Risks* se copia aca, porque al archivarse desaparece de la vista.

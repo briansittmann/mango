@@ -190,6 +190,16 @@
     "errorGuardar": "Couldn't save. Try again.",
     "errorEliminar": "Couldn't delete the recurrence"
   },
+  "metadatos": {
+    "nombre": "Mango",
+    "plantillaTitulo": "%s · Mango",
+    "descripcion": "Personal finance without spreadsheets: log expenses over WhatsApp and see your free margin and per-category budgets.",
+    "frase": "Your finances, one message away.",
+    "altImagen": "Mango logo with the line “Your finances, one message away”",
+    "tituloDemo": "Demo",
+    "tituloLogin": "Log in",
+    "tituloDashboard": "Your month"
+  },
   "inicio": {
     "titulo": "Mango",
     "demo": "Demo",

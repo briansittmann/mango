@@ -190,6 +190,16 @@
     "errorGuardar": "No se pudo guardar. Inténtalo de nuevo.",
     "errorEliminar": "No se pudo eliminar la recurrencia"
   },
+  "metadatos": {
+    "nombre": "Mango",
+    "plantillaTitulo": "%s · Mango",
+    "descripcion": "Finanzas personales sin planillas: carga tus gastos por WhatsApp y mira tu margen libre y tus presupuestos por categoría.",
+    "frase": "Tus finanzas, a un mensaje de distancia.",
+    "altImagen": "Logo de Mango con la frase «Tus finanzas, a un mensaje de distancia»",
+    "tituloDemo": "Demo",
+    "tituloLogin": "Entrar",
+    "tituloDashboard": "Tu mes"
+  },
   "inicio": {
     "titulo": "Mango",
     "demo": "Demo",
