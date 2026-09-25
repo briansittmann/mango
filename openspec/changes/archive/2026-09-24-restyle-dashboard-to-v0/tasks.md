@@ -178,6 +178,8 @@
 
 ## 6. Verification
 
+> **Closed without 6.1–6.3 (2026-09-24).** Superseded by the changes archived after it: `refine-mobile-ui-apple-hig` and the `design-system` spec replaced the v0 look (Inter/Manrope instead of Geist Sans, a 640px column instead of 480px, a new hierarchy, type and material rules), so its final checks would test a design the product no longer has. Archived without syncing its deltas: "Dashboard follows the v0 visual reference" and the MODIFIED `dashboard-ui` / `theming` texts would overwrite the current specs with the old ones.
+
 - [ ] 6.1 Walk through every behavioural scenario in this change's `specs/` on `/demo` in es/en × light/dark, and save "after" screenshots next to the 1.2 ones for the same states. For visual values, check the `DESIGN.md` values from tasks 2.4–5.6. Where they conflict with *Dashboard follows the v0 visual reference* or *Floating glass sheet* (Geist, 480px column, 22/24/26px radii, 64px hero, inset glass sheet), the tasks win. Verify: every check passes, no console errors or hydration warnings appear, and each state has a before/after pair.
 - [ ] 6.2 Guards. Run the land-finance-dashboard 6.1 greps unchanged, plus:
   - `grep -rn "Arial" app`

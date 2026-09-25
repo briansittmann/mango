@@ -28,6 +28,7 @@ When the mounting page supplies no expense operations:
 - the "add expense" rows SHALL be disabled
 - expense rows SHALL NOT open the entry sheet and SHALL NOT move when dragged
 - expense amounts SHALL be shown as plain text, without the editable-looking background
+- the entry sheet's recurrence switch SHALL NOT be reachable, since the sheet never opens
 
 When the mounting page supplies no income operations:
 - the "add income" row SHALL be disabled
@@ -38,6 +39,11 @@ When the mounting page supplies no category operations:
 - the options control on every category card header SHALL be disabled
 - activating it SHALL NOT open the category sheet
 - the "Añadir categoría" tile SHALL be disabled, SHALL NOT open the category sheet, and SHALL show neither its hover nor its pressed appearance. It SHALL stay in place rather than disappear, so the end of the list does not change shape according to what the page supplies.
+
+When the mounting page supplies no recurring-definition operations:
+- the rows of the `upcoming-charges` card SHALL be rendered disabled, and activating one SHALL NOT open the definition sheet
+- the card SHALL still expand, collapse and list every charge with its day, amount, progress and captions
+- the entry sheet SHALL NOT show the recurrence switch, since no definition could be created
 
 #### Scenario: Demo without month navigation
 - **WHEN** the dashboard is mounted without previous/next cycle handlers
@@ -63,6 +69,15 @@ When the mounting page supplies no category operations:
 - **THEN** the "Añadir categoría" tile is present at the end of the list and exposed as disabled
 - **AND** activating it opens no sheet, and hovering and pressing it leave its appearance unchanged
 
+#### Scenario: Dashboard without definition operations
+- **WHEN** the dashboard is mounted without recurring-definition operations and the "Próximos cobros" card is expanded
+- **THEN** each row is disabled and activating it opens nothing
+- **AND** the rows still show their day, dot, name, amount and progress, and the footer still shows the committed total
+
+#### Scenario: No recurrence switch without definition operations
+- **WHEN** the dashboard is mounted with expense operations but without recurring-definition operations, and the entry sheet is opened in create mode
+- **THEN** no recurrence switch is shown in the sheet
+
 ### Requirement: Public demo route
 The application SHALL serve `/demo` without authentication. It SHALL render the full dashboard from a fictional sample billing cycle held in memory. The sample SHALL include:
 - at least two income entries, each with a calendar date inside the cycle, one of them produced by a recurring definition
@@ -71,11 +86,12 @@ The application SHALL serve `/demo` without authentication. It SHALL render the 
 - a budgeted category that also holds a recurring charge
 - other variable categories
 - at least six recurring charges spread over several categories, each with a day of the month and a charged-or-pending state, with at least three of each state
+- a recurring definition behind every one of those charges, carrying its expected amount, its day, its category and its active state, with at least one of them ending after a number of repetitions and partway through that number
 - savings movements
 - at least six cycles of history
 - budgets stored for the cycle before the sample's cycle and none for the sample's cycle, so that the sample cycle's budgets are the copy described in `category-editing` → *Budgets belong to one cycle*
 
-All totals in the sample SHALL be derived from its own rows, and the free margin SHALL be derived as `category-editing` → *A budget reserves its amount in the free margin* defines. The sample SHALL set its own "today" inside its cycle, so that default dates and budget pace do not depend on the real date. Whether a charge is already taken SHALL be part of the sample, not derived from the real date, so that both states stay visible whenever the demo is opened. The page SHALL show a permanent notice that the data is sample data. Reloading SHALL reset the page to the initial sample. The sample SHALL NOT contain any real user's data.
+All totals in the sample SHALL be derived from its own rows, and the free margin SHALL be derived as `category-editing` → *A budget reserves its amount in the free margin* defines. The sample SHALL set its own "today" inside its cycle, so that default dates and budget pace do not depend on the real date. Whether a charge is already taken SHALL be part of the sample, not derived from the real date, so that both states stay visible whenever the demo is opened. Every charge in the sample SHALL start equal to its definition's expected amount, so that no difference caption is shown before the visitor causes one. The page SHALL show a permanent notice that the data is sample data. Reloading SHALL reset the page to the initial sample. The sample SHALL NOT contain any real user's data.
 
 **Expense editing on the demo:**
 - Creating, editing, deleting and restoring expenses SHALL work as described in the `expense-editing` capability, through an in-memory implementation of the same expense operations the real route supplies.
@@ -109,6 +125,13 @@ All totals in the sample SHALL be derived from its own rows, and the free margin
 - A new order SHALL survive a language switch, a rename, a recolour, a budget change and an expense change, and SHALL apply to whatever categories remain after a deletion.
 - **No reorder SHALL move any figure on the page.** The free margin SHALL stay at 864 €, the expenses total at 1.700 €, and every card total, budget bar, pie slice and summary row SHALL be unchanged.
 
+**Recurring definitions on the demo:**
+- Creating a definition from the entry sheet, editing one from "Próximos cobros", stopping it and deleting it SHALL work as described in the `recurring-expenses` capability, through an in-memory implementation of the same definition operations the real route supplies.
+- After each change, every figure derived from the affected charge SHALL be recalculated, in the same render: its card total and budget progress, the expenses total, the pie, the current cycle's bar, the free margin, and the rows and footer total of the `upcoming-charges` card.
+- **What moves a figure and what does not:** changing a definition's expected amount SHALL move figures only while this cycle's charge is still pending; deleting a definition SHALL remove its charge and move every figure derived from it; stopping a definition SHALL move no figure at all.
+- A definition's typed name SHALL survive a language switch, while definitions that have not been renamed SHALL still be shown in the new language.
+- Changes SHALL stay in the page's memory, SHALL NOT be sent over the network, and SHALL be discarded on reload.
+
 **Savings editing on the demo:**
 - Adding savings movements SHALL work as described in the `savings-editing` capability, through an in-memory implementation of the same savings operation the real route supplies.
 - After each add, the savings total, the accumulated balance, the last point of the savings history, the progress against the target and the free margin SHALL be recalculated from the resulting movements.
@@ -126,6 +149,32 @@ All totals in the sample SHALL be derived from its own rows, and the free margin
 - **THEN** seven category cards are listed, "Vivienda" totalling 900 € among them, and no card is named "Gastos fijos"
 - **AND** the "Próximos cobros" card lists six charges — Alquiler día 1, Internet día 3 and Seguro día 8 already taken; Parking día 15, Limpieza día 20 and Gimnasio día 22 pending
 - **AND** the expenses total shows 1.700 € and the free margin 864 €
+
+#### Scenario: Sample definitions
+- **WHEN** `/demo` is rendered in Spanish and "Próximos cobros" is expanded
+- **THEN** the "Seguro" row shows "4 de 10", and no other row shows a progress
+- **AND** no row shows an expected-amount caption, every charge matching its definition
+
+#### Scenario: A definition change moves a pending charge
+- **WHEN** on `/demo` in Spanish the visitor opens the "Gimnasio" row in "Próximos cobros" and saves an expected amount of 45 €
+- **THEN** the "Salud" card shows 45 €, the expenses total 1.705 €, the "Próximos cobros" footer 1.030 € and the free margin 859 €
+- **AND** the pie centre shows 1.705 €
+
+#### Scenario: Stopping a definition moves nothing
+- **WHEN** the visitor opens the "Gimnasio" definition and activates "Dejar de repetir"
+- **THEN** the free margin still shows 864 €, the expenses total 1.700 € and the "Próximos cobros" footer 1.025 €
+- **AND** the "Gimnasio" charge is still listed in the "Salud" card and in "Próximos cobros"
+
+#### Scenario: Deleting a definition takes its charge
+- **WHEN** the visitor opens the "Seguro" definition, activates the delete action and confirms
+- **THEN** "Seguro" is no longer listed in the "Vivienda" card or in "Próximos cobros"
+- **AND** the "Vivienda" card shows 865 €, the expenses total 1.665 €, the footer 990 € and the free margin 899 €
+
+#### Scenario: A definition created on the demo appears in both places
+- **WHEN** on `/demo` in Spanish the visitor adds an expense of 50 € named "Peaje" to "Transporte" with the recurrence switch on and day 15
+- **THEN** "Peaje" is listed in the "Transporte" card, which shows 180 € of 100 €
+- **AND** "Próximos cobros" lists "Peaje" with día 15 and 50 € among the pending charges, after "Seguro" and before "Limpieza"
+- **AND** the expenses total shows 1.750 € and the free margin 814 €
 
 #### Scenario: Sample totals are consistent
 - **WHEN** the demo is rendered, and again after one expense has been created, another edited and a third deleted
@@ -148,6 +197,7 @@ All totals in the sample SHALL be derived from its own rows, and the free margin
 #### Scenario: Demo in English
 - **WHEN** the active language is English
 - **THEN** the sample category, expense and income-entry names are shown in English, "Vivienda" as "Housing", "Gimnasio" as "Gym" and "Salario" as "Salary"
+- **AND** the "Seguro" definition is named "Insurance" in its sheet and its row
 
 #### Scenario: Add action in the demo
 - **WHEN** on `/demo` in Spanish a visitor opens the savings panel and adds a deposit of 50 named "Extra"

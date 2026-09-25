@@ -101,23 +101,25 @@
 
 **OpenSpec**
 - Archivados (10): `translate-code-to-english`, `land-finance-dashboard`, `refine-mobile-ui-apple-hig`, `unify-add-action-rows`, `add-expense-sheet`, `add-category-sheet`, `add-category-reorder-mode`, `replace-fixed-card-with-upcoming-charges`, `add-project-status-to-claude-md`, `add-income-management` (26/27 — 1.4 quedo bloqueada, ver Deuda tecnica).
-- Specs vivas en `openspec/specs/`: `dashboard-ui`, `design-system`, `theming`, `localization`, `expense-editing`, `category-editing`, `category-reordering`, `upcoming-charges`, `income-editing`.
-- Archivado 2026-09-24: `add-supabase-data-layer-and-login` (36/36); sumo las specs vivas `dashboard-data`, `web-access` y `test-user-seed`.
-- Abiertos: `add-recurring-expense-management` 26/27 (solo falta marcar/verificar 2.1, la migracion 0013 ya existe), `restyle-dashboard-to-v0` 17/20 (faltan 6.1-6.3, verificacion final).
+- Specs vivas en `openspec/specs/` (15): `dashboard-ui`, `design-system`, `theming`, `localization`, `expense-editing`, `category-editing`, `category-creation`, `category-reordering`, `upcoming-charges`, `income-editing`, `savings-editing`, `recurring-expenses`, `dashboard-data`, `web-access`, `test-user-seed`.
+- Archivados 2026-09-24:
+  - `add-supabase-data-layer-and-login` (36/36): suma las specs vivas `dashboard-data`, `web-access` y `test-user-seed`.
+  - `add-recurring-expense-management` (27/27, la 2.1 verificada contra la base real): suma la spec viva `recurring-expenses`. Sus MODIFIED se integraron a mano sobre las specs actuales (`dashboard-ui`, `design-system`, `expense-editing`, `upcoming-charges`), con los montos al dia.
+  - `restyle-dashboard-to-v0` (17/20, cerrado sin 6.1-6.3 y sin sincronizar): lo reemplazaron `refine-mobile-ui-apple-hig` y `design-system`.
+- Abiertos: ninguno.
 
 ## Proyeccion
 
 Proximos pasos, en orden:
-1. Cerrar los dos changes abiertos (`add-recurring-expense-management` 2.1, `restyle-dashboard-to-v0` 6.1-6.3).
-2. Bot: parser Gemini + Zod, carga de transacciones, confirmacion progresiva (ARCHITECTURE.md §3), reusando `lib/data/supabase/*` con el cliente admin.
-3. Cron de gastos fijos (con repeticiones) junto con `transacciones.estado`, que reemplaza las reglas provisorias de cobrado/pendiente (ARCHITECTURE.md §7).
-4. Deploy en Vercel, variables de entorno, URL de produccion en Supabase Auth, y SMTP propio con el template de magic link (ARCHITECTURE.md §2).
-5. Onboarding por chat e invitaciones con rate limiting (ARCHITECTURE.md §4, §10).
-6. Mas tests (unitarios de ritmo/presupuesto, Playwright sobre los sheets restantes).
+1. Bot: parser Gemini + Zod, carga de transacciones, confirmacion progresiva (ARCHITECTURE.md §3), reusando `lib/data/supabase/*` con el cliente admin.
+2. Cron de gastos fijos (con repeticiones) junto con `transacciones.estado`, que reemplaza las reglas provisorias de cobrado/pendiente (ARCHITECTURE.md §7).
+3. Deploy en Vercel, variables de entorno, URL de produccion en Supabase Auth, y SMTP propio con el template de magic link (ARCHITECTURE.md §2).
+4. Onboarding por chat e invitaciones con rate limiting (ARCHITECTURE.md §4, §10).
+5. Mas tests (unitarios de ritmo/presupuesto, Playwright sobre los sheets restantes).
 
 Mapeo a fases (ARCHITECTURE.md §13):
-- **Fase 1** (uso personal): la UI y la web real (capa de datos, login, dashboard) estan hechas; faltan el bot funcional, el cron y el deploy (pasos 2-4).
-- **Fase 2** (amigos y demo): invitaciones y rate limiting (paso 5); la demo publica (§12) ya esta hecha via `/demo`.
+- **Fase 1** (uso personal): la UI y la web real (capa de datos, login, dashboard) estan hechas; faltan el bot funcional, el cron y el deploy (pasos 1-3).
+- **Fase 2** (amigos y demo): invitaciones y rate limiting (paso 4); la demo publica (§12) ya esta hecha via `/demo`.
 - **Fase 3** (refinamiento): sin empezar, salvo la traduccion a ingles (§2) que ya esta hecha.
 
 ## Deuda tecnica

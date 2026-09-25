@@ -9,11 +9,14 @@
 
 ## 2. Schema
 
-- [ ] 2.1 Write `supabase/migrations/0013_gastos_fijos_repeticiones.sql`: add `repeticiones_totales integer` (nullable, `check (... is null or ... > 0)`) and `repeticiones_insertadas integer not null default 0` (`check (>= 0)`), plus the cross-column check `repeticiones_totales is null or repeticiones_insertadas <= repeticiones_totales`. Head it with a comment in the file's existing style stating that null means "sin final", that the counter tracks *insertions* and not surviving rows (D5), and that the cron deactivates the definition on the insert that reaches the total.
+- [x] 2.1 Write `supabase/migrations/0013_gastos_fijos_repeticiones.sql`: add `repeticiones_totales integer` (nullable, `check (... is null or ... > 0)`) and `repeticiones_insertadas integer not null default 0` (`check (>= 0)`), plus the cross-column check `repeticiones_totales is null or repeticiones_insertadas <= repeticiones_totales`. Head it with a comment in the file's existing style stating that null means "sin final", that the counter tracks *insertions* and not surviving rows (D5), and that the cron deactivates the definition on the insert that reaches the total.
 
   **Written, not yet verified.** `supabase`, `psql` and `docker` are all absent from this machine, so there is no local Supabase project to apply the migration against. Deferred by request — do this last, alongside the rest of the Supabase-dependent verification.
 
   Verify: applying the migration against the local Supabase project succeeds, `0012_seed_brian.sql` still loads, and `\d gastos_fijos` shows both columns with the three checks. Then verify each check rejects what it should: `repeticiones_totales = 0`, `repeticiones_insertadas = -1`, and `insertadas = 5` with `totales = 3` are each refused, while `totales = null, insertadas = 7` is accepted.
+
+  - 2026-09-24: verified on the real project instead of a local one (0013 applied there with 0001–0019; the table is `movimientos_recurrentes` since 0015). `repeticiones_totales integer` nullable, `repeticiones_insertadas integer not null default 0`, and the three checks present. In an aborted `do` block on one definition of the test user: `totales = 0`, `insertadas = -1` and 5 of 3 each → `check_violation`; `totales = null, insertadas = 7` accepted; nothing committed. `0012` is loaded (Brian's 13 definitions).
+  - Specs synced by hand at archive time: this change's MODIFIED requirements were written against texts that later changes (income, savings, category creation, envelope budgets) had already rewritten, so only its recurring additions were merged into the current main specs, and its free-margin figures were updated to the envelope rule (974 → 864, 969 → 859, 914 → 804, 1.009 → 899, 924 → 814), matching `tests/recurring-scope.spec.js` and `recurring-create.spec.js` (21/21 on chromium).
 
 ## 3. Contract
 

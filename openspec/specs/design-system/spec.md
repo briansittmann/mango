@@ -156,7 +156,9 @@ Text on a translucent material SHALL keep at least 4.5:1 contrast against that m
 ### Requirement: Motion respects user preference
 When the operating system requests reduced motion:
 - content SHALL appear in its final position without entrance movement
-- disclosures, the month picker, the account sheet, the entry sheet and the category sheet SHALL open and close without animated movement
+- disclosures, the month picker, the account sheet, the entry sheet, the category sheet and the definition sheet SHALL open and close without animated movement
+- a switch SHALL change state without its thumb travelling, and the fields it reveals or hides SHALL appear and disappear at their final height
+- a row appearing in or leaving the `upcoming-charges` card SHALL do so without animated movement
 - after a drag is released, an expense row SHALL settle, slide out and collapse without animated movement
 - toasts SHALL appear and disappear without movement
 - entering and leaving reorder mode SHALL change the screen without animated movement, and a card moved by a drop, by a keyboard press or by a failed save SHALL appear in its new position rather than travel to it
@@ -171,7 +173,9 @@ Without the reduced-motion request:
 - opening and closing an expense card or a summary panel SHALL animate its height
 - a progress bar SHALL grow from zero width to its value over successive frames the first time it is revealed, and SHALL NOT replay that growth on later openings of whatever contains it
 - the rows of a summary panel SHALL enter one after another rather than all at once, and the whole sequence SHALL finish within the panel's own opening
-- the entry sheet and the category sheet SHALL move in from below their resting position and leave the same way
+- the entry sheet, the category sheet and the definition sheet SHALL move in from below their resting position and leave the same way
+- turning a switch on or off SHALL move its thumb over successive frames on an eased curve rather than a linear one, and its track colour SHALL change over that same movement rather than after it
+- fields revealed or hidden by a switch SHALL animate their height, in place, and SHALL NOT displace anything above them or be overlaid on the content below, in a transition between 150 ms and 250 ms that uses one of the project's easing tokens
 - a released expense row SHALL move to its resting position rather than jump to it
 - a deleted row SHALL slide out and collapse over successive frames
 - in reorder mode, a card displaced by the held one SHALL move aside over successive frames, a released card SHALL travel to its resting position over successive frames, and a card reverted by a failed save SHALL travel back rather than jump
@@ -195,6 +199,11 @@ Without the reduced-motion request:
 - **WHEN** reduced motion is emulated and the category sheet is opened from the "comida" card
 - **THEN** in the first frame after opening, the sheet is at its resting position
 - **AND** selecting another colour and opening the delete confirmation each change state immediately, with no animated movement
+
+#### Scenario: Reduced motion on a switch
+- **WHEN** reduced motion is emulated and the recurrence switch is turned on in the entry sheet
+- **THEN** in the first frame the switch is in its on state and the day field is at its full height
+- **AND** the definition sheet, opened from "Próximos cobros", is at its resting position in the first frame
 
 #### Scenario: Reduced motion in reorder mode
 - **WHEN** reduced motion is emulated, reorder mode is entered, and "comida" is moved down one position with the keyboard
@@ -230,6 +239,17 @@ Without the reduced-motion request:
 - **WHEN** motion is not reduced and the category sheet opens
 - **THEN** the panel's vertical position changes over successive frames, from below its resting position to it
 - **AND** swiping it down dismisses it
+
+#### Scenario: Animated definition sheet
+- **WHEN** motion is not reduced and a "Próximos cobros" row is activated
+- **THEN** the panel's vertical position changes over successive frames, from below its resting position to it
+- **AND** swiping it down dismisses it
+
+#### Scenario: Animated switch
+- **WHEN** motion is not reduced and the recurrence switch is turned on
+- **THEN** the thumb's position changes over successive frames, on a non-linear easing, and the track's colour changes over those same frames
+- **AND** the revealed day field's height grows over successive frames, in a transition between 150 ms and 250 ms
+- **AND** the content above the switch stays at the same position throughout, and the content below it is pushed rather than covered
 
 #### Scenario: Animated reorder
 - **WHEN** motion is not reduced, reorder mode is on, and "comida" is dragged down over two cards and released
