@@ -22,15 +22,19 @@ The script SHALL live outside `supabase/migrations/` and SHALL never run automat
 - **THEN** that expense is still listed, and every seeded row is back to the script's values
 
 ### Requirement: The account is linked the way RLS expects
-The script SHALL link the `usuarios` row to the auth user through `usuarios.auth_user_id`, which is what the policies resolve through, and SHALL set the user's e-mail to the placeholder. The `usuarios` row SHALL use a placeholder phone of the required shape, timezone Europe/Dublin, currency EUR, Spanish, cycle start day 26, onboarding complete and a monthly savings goal of 300. After logging in, the user SHALL see the seeded rows and nothing else.
+The script SHALL link the `usuarios` row to the auth user through `usuarios.auth_user_id`, which is what the policies resolve through, and SHALL set the user's e-mail to the placeholder. It SHALL find an existing row for that auth user through `auth_user_id`, not through the phone. The `usuarios` row SHALL have no phone and the script SHALL NOT create any messaging channel for it; timezone Europe/Dublin, currency EUR, Spanish, cycle start day 26, onboarding complete and a monthly savings goal of 300. After logging in, the user SHALL see the seeded rows and nothing else.
 
 #### Scenario: Login sees the seed
 - **WHEN** the script has run and the user logs in with the placeholder e-mail
-- **THEN** `/dashboard` shows the seeded categories, charges, income and savings, and the account menu shows the seeded name and phone
+- **THEN** `/dashboard` shows the seeded categories, charges, income and savings, and the account menu shows the seeded name and no phone
 
 #### Scenario: Another user sees nothing of it
 - **WHEN** a different linked user logs in
 - **THEN** none of the seeded rows appears in their dashboard
+
+#### Scenario: No channel for the test user
+- **WHEN** the script has run
+- **THEN** the test user has no phone and no row in the channel table
 
 ### Requirement: The seeded cycle is believable and current
 The seed SHALL describe the cycle containing the moment the script runs, with every date placed relative to that cycle's start so the seed is current whenever it runs. It SHALL mirror the demo sample: seven categories with distinct colours (vivienda, salud, hogar, comida, ocio, transporte, compras), budget rows of 400 on comida, 150 on ocio and 100 on transporte for the current cycle and for each of the five past cycles, each row keyed by its cycle's first day, six expense definitions (alquiler 820 day 1, internet 45 day 3, seguro 35 day 8 as instalment 4 of 10, parking 50 day 15, limpieza 35 day 20, gimnasio 40 day 22) and one income definition (salario 2 400 day 1), each with this cycle's charge linked to it, variable expenses giving comida 310, ocio 130, transporte 130, hogar 95 and compras 95, income of 2 820 in total, savings movements of +176, −80 and +50, and five past cycles with expense totals of 1 400, 1 550, 1 600, 1 450 and 1 750 (oldest first) and one savings deposit of 500 each.
