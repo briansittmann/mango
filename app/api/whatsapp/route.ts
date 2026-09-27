@@ -1,8 +1,8 @@
 import { after, type NextRequest } from 'next/server'
 
-import { handleMessages } from '@/lib/whatsapp/adapter'
+import { handleMessages, maskPhone } from '@/lib/whatsapp/adapter'
 import { safeCompare, isValidSignature } from '@/lib/whatsapp/signature'
-import { extractTextMessages } from '@/lib/whatsapp/payload'
+import { describeEvents, extractTextMessages } from '@/lib/whatsapp/payload'
 
 /**
  * WhatsApp Cloud API webhook.
@@ -28,9 +28,11 @@ export async function GET(request: NextRequest) {
   const challenge = params.get('hub.challenge')
 
   if (mode !== 'subscribe' || !token || !challenge || !safeCompare(token, verifyToken)) {
+    console.log(`[whatsapp] verification rejected (mode=${JSON.stringify(mode)?.slice(0, 20) ?? 'none'})`)
     return new Response('Forbidden', { status: 403 })
   }
 
+  console.log('[whatsapp] webhook verified')
   return new Response(challenge, {
     status: 200,
     headers: { 'content-type': 'text/plain' },
@@ -61,6 +63,13 @@ export async function POST(request: NextRequest) {
   }
 
   const messages = extractTextMessages(payload)
+
+  if (messages.length === 0) {
+    console.log(`[whatsapp] event without text message: ${describeEvents(payload).join(', ') || 'unknown'}`)
+  }
+  for (const message of messages) {
+    console.log(`[whatsapp] message ${message.messageId} from ${maskPhone(message.phone)}`)
+  }
 
   // Meta retries if the response is slow or fails, and every retry is a
   // potential duplicate (§11). It answers 200 right away and the real work —

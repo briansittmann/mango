@@ -90,6 +90,6 @@ async function sendReply(phone: string, reply: BotReply): Promise<void> {
 }
 
 /** Only the last 4 digits: the full number doesn't go into the logs. */
-function maskPhone(phone: string): string {
+export function maskPhone(phone: string): string {
   return `…${phone.slice(-4)}`
 }

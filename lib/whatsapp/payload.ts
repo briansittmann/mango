@@ -33,6 +33,33 @@ export function extractTextMessages(payload: unknown): WhatsAppMessage[] {
   return messages
 }
 
+/**
+ * Event types in a payload that carries no text message (`status:read`,
+ * `message:image`…), for the logs. Never reads contents, only types.
+ */
+export function describeEvents(payload: unknown): string[] {
+  const events: string[] = []
+  if (!isObject(payload)) return events
+
+  for (const entry of asArray(payload.entry)) {
+    if (!isObject(entry)) continue
+
+    for (const change of asArray(entry.changes)) {
+      if (!isObject(change) || !isObject(change.value)) continue
+
+      for (const status of asArray(change.value.statuses)) {
+        if (isObject(status)) events.push(`status:${String(status.status)}`)
+      }
+      for (const message of asArray(change.value.messages)) {
+        if (isObject(message)) events.push(`message:${String(message.type)}`)
+      }
+      if (events.length === 0) events.push(`field:${String(change.field)}`)
+    }
+  }
+
+  return events
+}
+
 function extractMessage(message: unknown): WhatsAppMessage | null {
   if (!isObject(message)) return null
 

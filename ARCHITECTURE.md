@@ -239,6 +239,20 @@ El umbral (15) es una constante del código, no un campo: si hay que moverlo, se
 **Solo aplica a WhatsApp.** La confirmación progresiva existe para cuidar el cupo de Meta. En Telegram no hay cupo que cuidar, así que la confirmación es **siempre en texto con Deshacer**. Como el formato lo elige el adaptador (arriba), la regla vive en el de WhatsApp y el de Telegram simplemente no la tiene.
 
 **Con número propio se queda.** El cupo de 1000 desaparece, pero los otros motivos no: pasada la carga 15, la confirmación en texto es ruido que la persona ya no lee, y el consumo de mensajes pasa a medirse en plata, según las tarifas de Meta, en vez de en cupo. Un mensaje menos por gasto sigue valiendo.
+
+### Historial de conversación: solo usuarios VIP
+
+**Decisión (sept 2026):** para los usuarios marcados como VIP, el bot guarda la conversación (lo que escribe el usuario y lo que responde el bot) y el parser recibe los últimos mensajes como contexto. Así entiende *"lo mismo que ayer"* o la respuesta a una repregunta (*"gasté 50"* → *"¿en qué?"* → *"súper"*) sin volver a preguntar.
+
+**Por qué solo VIP:** cada mensaje de contexto son tokens de Gemini en cada carga, y guardar el texto de los mensajes es guardar datos personales. Para el resto de los usuarios no se guarda ningún texto: el bot sigue como está descrito arriba, sin memoria entre mensajes.
+
+**Cómo se marca:** `usuarios.vip`, a mano por SQL. No hay UI, ni para el usuario ni de administración.
+
+**Qué recibe el parser:** los últimos 10 mensajes de las últimas 24 horas, en orden. Tiene dos topes porque un mensaje de hace tres días confunde más de lo que ayuda. Los dos son constantes del código, igual que el umbral de 15.
+
+**Dónde vive:** la lógica del bot lee y escribe `mensajes` (sección 8) con el `usuarioId` que le pasa el adaptador. No sabe de qué canal vino, solo lo registra. Un mensaje duplicado, que corta la idempotencia, no se guarda dos veces.
+
+> **Pendiente de decidir:** cuánto tiempo se guardan los mensajes. El parser solo usa las últimas 24 horas; lo demás es historia que nadie lee.
  
 ---
  
@@ -525,6 +539,7 @@ Deliberadamente no modela principal, interés ni una tabla de amortización — 
 - `cargas_confirmadas` (int, default `0` — contador para la confirmación progresiva, ver sección 3)
 - `modo_confirmacion` (`auto` | `texto` | `reaccion`, default `auto` — ver sección 3)
 - `meta_ahorro_mensual` (numeric, nullable — meta de ahorro por ciclo; `null` es "sin meta fijada", ver sección 9)
+- `vip` (bool, default `false` — se marca a mano; activa el historial de conversación, ver sección 3)
 
 > **Decisión (sept 2026):** `telefono` deja de ser el identificador principal y pasa a nullable. El usuario es una identidad sin teléfono; el teléfono es un canal más (`canales`, abajo). Por qué ahora, antes de escribir el bot: si el bot escribe pegado al teléfono, migrarlo después cuesta más que dejar el hueco hoy.
 
@@ -536,6 +551,16 @@ Deliberadamente no modela principal, interés ni una tabla de amortización — 
 Único por `tipo` + `identificador_externo`: un mismo número no puede quedar vinculado a dos cuentas. Es lo que lee el adaptador para saber quién escribe (sección 3).
 
 > **Pendiente de decidir:** si una cuenta puede tener WhatsApp y Telegram a la vez, o uno solo.
+
+**`mensajes`** *(solo usuarios VIP, ver sección 3)*
+- `id`
+- `usuario_id`
+- `canal` (`whatsapp` | `telegram`)
+- `direccion` (`entrante` | `saliente`)
+- `texto`
+- `transaccion_id` (nullable — la carga que produjo el mensaje entrante; FK compuesta con `usuario_id`, igual que en `0019`)
+- `creado_en`
+Índice por `usuario_id` + `creado_en`. RLS encendido y sin políticas: solo lo toca el bot con el cliente admin; la web no lo lee.
 
 **`invitaciones`**
 - `id`

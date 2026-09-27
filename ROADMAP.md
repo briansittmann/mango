@@ -67,6 +67,8 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [ ] 🤖 Confirmación progresiva: `cargas_confirmadas`, `modo_confirmacion`, texto + Deshacer las primeras 15, reacción después
 - [ ] 🤖 Correcciones por texto sobre la última carga: "borrá eso", "no, era 40"
 - [ ] 🤖 Consultas cortas: "¿cómo vengo?", total del mes + top 5, link a la web
+- [ ] 🤖 Historial solo para VIP: `usuarios.vip` + tabla `mensajes`; guardar entrantes y salientes; el parser recibe los últimos 10 de 24 h (ARCHITECTURE.md §3)
+- [ ] 👤 Marcarte VIP por SQL y decidir cuánto tiempo se guardan los mensajes
 - [ ] 👤 Ronda de prueba con los mensajes del bloque 3 y lista de fallos
 
 ## 6 · Cron de gastos fijos
