@@ -1,6 +1,6 @@
 # ROADMAP.md — Mango
 
-> Lista de tareas a gran escala, al 24/9/2026. Cada bloque se baja a detalle cuando toque trabajarlo.
+> Lista de tareas a gran escala, al 27/9/2026. Cada bloque se baja a detalle cuando toque trabajarlo.
 > **👤 = Brian** (cuentas, paneles, decisiones) · **🤖 = Claude Code** (código, migraciones)
 
 Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `https://www.usemango.dev/demo`, webhook de WhatsApp escrito pero con la lógica del bot en stub.
@@ -39,10 +39,10 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 
 ## 3 · Insumos del parser (decisiones tuyas — bloquean el bloque 5)
 
-- [ ] 👤 Categorías reales (8–12)
-- [ ] 👤 Gastos fijos reales: nombre, monto, día, categoría. Decidir si se registra medio de pago
-- [ ] 👤 15–20 mensajes de ejemplo tal como los escribirías (set de pruebas del parser)
-- [ ] 🤖 Reemplazar los datos de prueba de la base por los reales
+- [x] 👤 Categorías reales (8–12) → 9, con Supermercado dentro de Comida; el ciclo pasa a empezar el día 1
+- [x] 👤 Gastos fijos reales: nombre, monto, día, categoría. Decidir si se registra medio de pago → sin medio de pago por ahora; Gamepass Papá (13 €, día 14) se sumó a la base el 27/9 con su cargo de septiembre
+- [x] 👤 15–20 mensajes de ejemplo tal como los escribirías (set de pruebas del parser) → `lib/bot/parser-cases.json`
+- [x] 🤖 Reemplazar los datos de prueba de la base por los reales → `supabase/seed/brian.sql`, aplicado el 27/9; una sola cuenta (la de la web) con el canal de WhatsApp
 
 ## 4 · Identidad separada del canal (antes del bot)
 
@@ -57,28 +57,17 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [x] 👤 Decidir si una cuenta puede tener WhatsApp y Telegram a la vez, o uno solo → las dos, una de cada tipo
 - [x] 👤 Decidir dónde vive el interruptor: variable de entorno o valor en la base → `WHATSAPP_REQUIRE_INVITE`
 
-## 5 · Bot funcional
-
-- [ ] 🤖 Sumar Zod y el SDK de Gemini a `package.json`
-- [ ] 🤖 Parser: prompt con categorías del usuario, schema Zod, reintento ante JSON inválido
-- [ ] 🤖 Carga de transacciones reusando `lib/data/supabase/*` con cliente admin; idempotencia; lo que no matchea va a `otros`
-- [ ] 🤖 Tipos `gasto` / `ingreso` / `ahorro` (incluido retiro en negativo)
-- [ ] 🤖 Dato faltante ("gasté 50") → repregunta en texto
-- [ ] 🤖 Confirmación progresiva: `cargas_confirmadas`, `modo_confirmacion`, texto + Deshacer las primeras 15, reacción después
-- [ ] 🤖 Correcciones por texto sobre la última carga: "borrá eso", "no, era 40"
-- [ ] 🤖 Consultas cortas: "¿cómo vengo?", total del mes + top 5, link a la web
-- [ ] 🤖 Crear categoría por chat, solo a pedido explícito ("creá la categoría Mascotas"); avisa si hay una parecida (ARCHITECTURE.md §3)
-- [ ] 🤖 Historial solo para VIP: `usuarios.vip` + tabla `mensajes`; guardar entrantes y salientes; el parser recibe los últimos 10 de 24 h (ARCHITECTURE.md §3)
-- [ ] 👤 Marcarte VIP por SQL y decidir cuánto tiempo se guardan los mensajes
-- [ ] 👤 Ronda de prueba con los mensajes del bloque 3 y lista de fallos
-
 ## 6 · Cron de gastos fijos
+
+> **Orden (27/9):** los bloques 6 y 7 van antes del bloque 5 y se hacen en un solo change de OpenSpec, `add-cycle-projection-and-recurring-cron`: el cron usa la misma `proyectarCiclo` que calcula los meses futuros. Fecha límite: el ciclo de octubre arranca el 1/10; si el cron no está en producción, se insertan los cargos de octubre a mano con `supabase/seed/octubre-2026.sql`.
 
 - [ ] 🤖 Migración `transacciones.estado` (`pendiente` | `confirmada`) y reemplazo de las reglas provisorias (`isCharged`, `actualizar_movimiento_recurrente`)
 - [ ] 🤖 Reconciliación: carga manual completa la fila pendiente del mismo fijo en vez de duplicar
 - [ ] 🤖 Cron diario (`vercel.json`): inserta pendientes al inicio del ciclo, cuenta `repeticiones_insertadas`, desactiva al llegar al total, cierra pendientes al fin de ciclo
-- [ ] 🤖 Constraint único por `gasto_fijo_id` + ciclo
-- [ ] 👤 Decidir si `dia_del_mes` pasa a `NOT NULL`
+- [ ] 🤖 Constraint único por `gasto_fijo_id` + ciclo → ya existe desde la `0008` (`movimiento_recurrente_id` + `ciclo_mes`); el change lo usa y lo verifica
+- [x] 👤 Decidir si `dia_del_mes` pasa a `NOT NULL` → sí, en la `0021`
+- [x] 👤 Decidir a qué hora corre el cron → 05:00 UTC, todos los días; el ciclo de cada usuario se calcula en su timezone
+- [x] 👤 Decidir cuándo un fijo se muestra cobrado → confirmado o con su día ya pasado; `estado` concilia
 - [ ] 👤 Confirmar que el cron dispara en producción
 
 ## 7 · Meses futuros: proyección a 6 ciclos
@@ -90,12 +79,32 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [ ] 🤖 Margen libre proyectado con la misma `getFreeMargin`
 - [ ] 🤖 Selector de mes: habilitar hasta **6 ciclos adelante** (hoy `?mes=` se recorta al ciclo en curso)
 - [ ] 🤖 Vista de ciclo futuro: marca visible de "Proyección", barras en cero, sin ritmo ni "gastado"
+- [x] 👤 Decidir cómo se muestra un fijo cuyo día no existe en ese mes del ciclo (el 31 en septiembre) → último día de ese mes
 - [ ] 🤖 `/demo` con proyección también
 - [ ] 🤖 Editar presupuestos de un ciclo futuro:
   - la hoja pregunta **"solo este mes"** o **"desde este mes en adelante"**; "solo este mes" deja escrito el ciclo siguiente con el valor anterior para que el cambio no se arrastre
   - al editar, materializar **todas** las categorías de ese ciclo, no solo la tocada (si no, la copia ve el ciclo "con filas" y las demás quedan sin presupuesto)
   - levantar la regla "nunca crear filas para un ciclo futuro" de la `0018`
-- [ ] 👤 Decidir si más adelante se suman gastos puntuales planificados ("viaje en febrero, 600") — necesita `transacciones.estado`
+- [ ] 👤 Decidir si más adelante se suman gastos puntuales planificados ("viaje en febrero, 600") — necesita `transacciones.estado`. Fuera de `add-cycle-projection-and-recurring-cron`
+
+## 5 · Bot funcional
+
+> Va después de los bloques 6 y 7 (decisión del 27/9).
+
+- [ ] 🤖 Sumar Zod y el SDK de Gemini a `package.json`
+- [ ] 🤖 Parser: prompt con categorías del usuario, schema Zod, reintento ante JSON inválido
+- [ ] 🤖 Carga de transacciones reusando `lib/data/supabase/*` con cliente admin; idempotencia; lo que no matchea va a `otros`
+- [ ] 🤖 Tipos `gasto` / `ingreso` / `ahorro` (incluido retiro en negativo)
+- [ ] 🤖 Dato faltante ("gasté 50") → repregunta en texto
+- [ ] 🤖 Confirmación progresiva: `cargas_confirmadas`, `modo_confirmacion`, texto + Deshacer las primeras 15, reacción después
+- [ ] 🤖 Correcciones por texto sobre la última carga: "borrá eso", "no, era 40"
+- [ ] 🤖 Consultas cortas: "¿cómo vengo?", total del mes + top 5, link a la web
+- [ ] 🤖 Crear categoría por chat, solo a pedido explícito ("creá la categoría Mascotas"); avisa si hay una parecida (ARCHITECTURE.md §3)
+- [ ] 🤖 Historial solo para VIP: `usuarios.vip` + tabla `mensajes`; guardar entrantes y salientes; el parser recibe los últimos 10 de 24 h (ARCHITECTURE.md §3)
+- [ ] 👤 Marcarte VIP por SQL
+- [x] 👤 Decidir cuánto tiempo se guardan los mensajes → 30 días, los borra el cron diario (ARCHITECTURE.md §3)
+- [ ] 🤖 El cron diario del bloque 6 borra los `mensajes` de más de 30 días (pasado acá desde el bloque 6: la tabla nace en este bloque)
+- [ ] 👤 Ronda de prueba con los mensajes del bloque 3 y lista de fallos
 
 **→ Con los bloques 0–7 cerrados, Fase 1 terminada: uso personal real.**
 

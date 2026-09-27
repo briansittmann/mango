@@ -257,7 +257,7 @@ El umbral (15) es una constante del código, no un campo: si hay que moverlo, se
 
 **Dónde vive:** la lógica del bot lee y escribe `mensajes` (sección 8) con el `usuarioId` que le pasa el adaptador. No sabe de qué canal vino, solo lo registra. Un mensaje duplicado, que corta la idempotencia, no se guarda dos veces.
 
-> **Pendiente de decidir:** cuánto tiempo se guardan los mensajes. El parser solo usa las últimas 24 horas; lo demás es historia que nadie lee.
+> **Decisión (27/9/2026):** los mensajes se guardan **30 días**. El parser solo usa las últimas 24 horas; los 30 días alcanzan para revisar a mano por qué falló una carga, y pasado eso es texto personal que nadie lee. El cron diario (sección 7) borra los de más de 30 días; es una constante del código, igual que los dos topes de arriba.
  
 ---
  

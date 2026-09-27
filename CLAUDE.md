@@ -58,7 +58,7 @@
 
 ---
 
-## Estado actual (al 2026-09-25)
+## Estado actual (al 2026-09-27)
 > Se actualiza al archivar un change de OpenSpec o al cerrar un hito. Ante duda, mandan el codigo y `openspec list`.
 
 **Donde estamos**: la web ya corre sobre Supabase. `/dashboard` lee y escribe la base real como el usuario logueado (magic link + RLS), con la misma UI que `/demo`, que sigue en memoria. Verificado a mano contra el proyecto real (`add-supabase-data-layer-and-login`, 8.1–8.7). El siguiente salto es el bot y el cron, no mas web.
@@ -78,12 +78,14 @@
 - Hecho: webhook (`app/api/whatsapp/route.ts`), validacion HMAC (`lib/whatsapp/signature.ts`), adaptador y extraccion de payload.
 - Hecho (`separate-identity-from-channel`): el adaptador resuelve al remitente por `canales` (`findUserIdByPhone`), no por `usuarios.telefono`; idempotencia por `canal` + `mensaje_id_externo` (`messageAlreadyProcessed`); `processUnknownNumber` recibe `{ channel, externalId, text, inviteRequired }`. El interruptor `WHATSAPP_REQUIRE_INVITE` (`lib/whatsapp/invite.ts`, `isInviteRequired`) lo lee el adaptador dentro de la rama de numero desconocido; solo `'false'` lo apaga.
 - A medias: `lib/bot/logic.ts` es stub — `processMessage` y `processUnknownNumber` devuelven `{ kind: 'none' }`. Faltan parser Gemini + Zod, onboarding, invitaciones y rate limiting (TODOs en el archivo).
+- Hecho (bloque 3): set de pruebas del parser en `lib/bot/parser-cases.json` — 15 mensajes reales de Brian con el resultado esperado, sobre sus 9 categorias. "cobre 2100" y "propina 500" son ingresos aparte: no completan el ingreso recurrente. El historial VIP se guarda 30 dias (ARCHITECTURE.md §3).
 - Pendiente: Zod y el SDK de Gemini no estan en `package.json`.
 
 **Base de datos**
 - Hecho: 20 migraciones en `supabase/migrations/`, todas aplicadas a la base real. `0017_funciones_dashboard.sql`: funciones `security invoker` con `p_usuario_id` explicito para categorias (crear/actualizar/eliminar/reordenar), presupuestos por ciclo (`copiar_presupuestos_ciclo`) y recurrentes (crear/actualizar/eliminar), atomicas. `0019_referencias_mismo_usuario.sql`: FKs compuestas con `usuario_id`, asi la base rechaza una transaccion, definicion o presupuesto que apunte a una categoria o definicion de otro usuario (lo encontro 8.3: RLS solo miraba `usuario_id`). `0020_canales.sql` (`separate-identity-from-channel`): tabla `canales` (RLS sin politicas, solo cliente admin), `usuarios.telefono` pasa a nullable, `transacciones.wa_message_id` se renombra a `mensaje_id_externo` y suma `canal`, unique `(usuario_id, canal, mensaje_id_externo)`.
 - Hecho: `lib/data/supabase/` (contexto, ciclo, usuario, `resumenMensual`, y las implementaciones de los cinco contratos). Toman un cliente y un `usuarios.id`, asi el bot las puede reusar con el cliente admin. El bot sigue usando solo `users.ts` (`findUserIdByPhone`, ahora sobre `canales`) y `transactions.ts` (`messageAlreadyProcessed`, ahora por canal).
-- Hecho: usuario de prueba sembrado con `supabase/seed/test-user.sql` (e-mail placeholder en el repo; al correrlo se cambia solo `v_email`): 45 transacciones, 7 categorias, 7 definiciones, 18 presupuestos, sin telefono ni canal (`separate-identity-from-channel`, D7) — el upsert identifica la fila por `auth_user_id`. Hoy los datos de la base son descartables hasta que se carguen los reales.
+- Hecho: `supabase/seed/test-user.sql` siembra un usuario de prueba (45 transacciones, 7 categorias, 7 definiciones, 18 presupuestos, sin telefono ni canal) — el upsert identifica la fila por `auth_user_id`. Ya no esta cargado en la base real: su cuenta paso a tener los datos reales.
+- Hecho (bloque 3, 2026-09-27): `supabase/seed/brian.sql` (e-mail y telefono placeholder en el repo) cargo los datos reales en la cuenta de la web (`brianrebadj@gmail.com`) y la unifico: se borro la fila vieja "Brian" del `0012` y su canal `whatsapp` paso a esta cuenta, que ahora tiene `telefono`. La base tiene un solo usuario: `dia_inicio_ciclo = 1`, 9 categorias, 22 recurrentes (18 gastos, 4 ingresos; cuotas Hacienda 1 de 3, DB Bank 0 de 4, Cetelem 0 de 12), presupuestos Comida 300 y Suplementos 100 en `2026-09-01`, y los 20 cargos de septiembre insertados a mano por el seed. Sin meta de ahorro. El script no corre si la cuenta ya tiene transacciones, salvo con `v_reemplazar := true`. Estos datos ya son reales: no se borran.
 - Pendiente: el cron que inserta los gastos fijos y decrementa/desactiva por repeticiones.
 
 **i18n/tema**
@@ -97,7 +99,7 @@
 **Deploy/entorno**
 - Hecho: `.env.local` con `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` del proyecto real (`noemlszbjqzqbzagahyd`).
 - Hecho: MCP de Supabase conectado (`.mcp.json`, con escritura) — usar `list_tables`, `execute_sql`, `apply_migration` para consultar y migrar la base real en vez de pedirle SQL al usuario. Pedir confirmacion antes de cualquier escritura.
-- Hecho: la base real tiene aplicadas `0001`–`0020` (`0020` el 2026-09-27). Antes de la `0018` hubo que pasar los dos `presupuestos` de Brian de `periodo = 'mensual'` a `2026-08-26` (venian del `0012` viejo). La `0017` paso los smoke tests de la 3.3; la `0019` se agrego y aplico durante la 8.3. Con la `0020`, ademas, se corrio a mano el ajuste de datos del usuario de prueba (D7 de `separate-identity-from-channel`): se borro su canal `whatsapp` y su `telefono` quedo en null.
+- Hecho: la base real tiene aplicadas `0001`–`0020` (`0020` el 2026-09-27). Antes de la `0018` hubo que pasar los dos `presupuestos` de Brian de `periodo = 'mensual'` a `2026-08-26` (venian del `0012` viejo). La `0017` paso los smoke tests de la 3.3; la `0019` se agrego y aplico durante la 8.3. Con la `0020`, ademas, se corrio a mano el ajuste de datos del usuario de prueba (D7 de `separate-identity-from-channel`): se borro su canal `whatsapp` y su `telefono` quedo en null. El 2026-09-27 se corrio `supabase/seed/brian.sql` (ver Base de datos).
 - Hecho: deploy en Vercel, en https://www.usemango.dev (el dominio sin `www` redirige a `www`). `/demo` es publico y funciona.
 - Hecho: Auth por e-mail con sign-ups apagados.
 - Hecho (Brian, en el panel): Supabase Auth con Site URL `https://www.usemango.dev` y redirect `https://www.usemango.dev/auth/confirm`; `/dashboard` funciona en produccion con magic link (bloque 0 de `ROADMAP.md`).
@@ -115,7 +117,7 @@
 
 La hoja de ruta vive en `ROADMAP.md`, en bloques numerados con dueno (👤 Brian, 🤖 Claude Code). Aca no se repite la lista: el orden y el detalle los manda `ROADMAP.md`.
 
-- **Fase 1** (uso personal): bloques 0–7. Cerrados: 0 (arreglos de produccion) y 1 (changes y documentacion).
+- **Fase 1** (uso personal): bloques 0–7. Cerrados: 0 (arreglos de produccion), 1 (changes y documentacion), 2 (webhook de punta a punta), 3 (insumos del parser) y 4 (identidad separada del canal).
 - **Fase 2** (abrir a otras personas): bloques 8–11.
 - **Deuda tecnica**: bloque 12; el detalle sigue en la seccion de abajo.
 - **Fase 3** (refinamiento): bloque 13. **Fase 4** (pagos): bloque 14. El numero propio se adelanto a fase 2 (bloque 10).
@@ -125,9 +127,9 @@ La hoja de ruta vive en `ROADMAP.md`, en bloques numerados con dueno (👤 Brian
 ## Deuda tecnica
 > Lo que un change dejo afuera a proposito. Se actualiza al archivar: lo que en el change vivia en *Out of scope* o en *Risks* se copia aca, porque al archivarse desaparece de la vista.
 
-- **Cron de movimientos recurrentes** — nada genera la fila del ciclo ni descuenta `repeticiones_insertadas`; las definiciones existen y no producen cargos. Desde el ciclo que empieza el 26 de septiembre, "Proximos cobros" del usuario de prueba queda vacio hasta que exista el cron. Diferido por `add-recurring-expense-management`, `add-income-management` y `add-supabase-data-layer-and-login` (ARCHITECTURE.md §7, §11).
+- **Cron de movimientos recurrentes** — nada genera la fila del ciclo ni descuenta `repeticiones_insertadas`; las definiciones existen y no producen cargos. El seed del bloque 3 inserto a mano los cargos de septiembre; desde el ciclo que empieza el 1 de octubre, los fijos de Brian no aparecen hasta que exista el cron. Diferido por `add-recurring-expense-management`, `add-income-management` y `add-supabase-data-layer-and-login` (ARCHITECTURE.md §7, §11).
 - **`transacciones.estado`** — §7 y §8 lo dan por hecho (`pendiente` | `confirmada`) para reconciliar un fijo de monto variable con la carga manual, pero la columna nunca se creo: `0008` no la tiene. Regla provisoria en los dos lados: un cargo esta cobrado cuando su fecha local no es posterior a hoy (`isCharged` en `lib/data/supabase/dashboard.ts`, y `actualizar_movimiento_recurrente` en `0017` solo reescribe el cargo pendiente). Se reemplaza junto con el cron.
-- **`dia_del_mes` null** — la columna admite null y el `0012` siembra las definiciones de Brian sin dia; la UI necesita un numero. Regla provisoria: null se muestra como dia 1 (mapeo de definiciones y `Expense.fixed.day`). Falta decidir si pasa a `NOT NULL`. `add-supabase-data-layer-and-login` (gap 3).
+- **`dia_del_mes` null** — la columna admite null (el `0012` sembraba definiciones sin dia; hoy ninguna fila de la base lo tiene null); la UI necesita un numero. Regla provisoria: null se muestra como dia 1 (mapeo de definiciones y `Expense.fixed.day`). Falta decidir si pasa a `NOT NULL`. `add-supabase-data-layer-and-login` (gap 3).
 - **`repeticiones_insertadas` distinto entre demo y Supabase** — al crear un plan desde la hoja, Supabase vincula el cargo de este ciclo y cuenta 1 de N; el demo muestra 0 de N. Se resuelve cuando el cron sea duenio del contador. `add-supabase-data-layer-and-login` (gap 5).
 - **Monedas mezcladas** — las mutaciones escriben `usuarios.moneda_default` y `resumenMensual` suma `monto` sin mirar `moneda`. Si el bot llega a guardar filas en otra moneda, se sumarian sin convertir. `add-supabase-data-layer-and-login` (gap 6).
 - **UI de ahorro** — el alta ya tiene `SavingsMutations` y hoja propia (`add-savings-mutations`), en memoria y en Supabase; falta editar y borrar un movimiento (`add-savings-sheet`).

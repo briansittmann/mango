@@ -1,0 +1,36 @@
+## Why
+
+Recurring definitions exist and produce nothing: the 20 September charges were inserted by hand by `supabase/seed/brian.sql` (plus Gamepass Papá, inserted on 2026-09-27), and from the cycle that starts on 1 October 2026 Brian's fixed charges will not appear until something inserts them. At the same time the dashboard stops at the cycle in progress, so the question the app exists to answer — how much is free — can only be asked about this month, never about when an instalment plan ends or starts. Blocks 6 (cron) and 7 (projection) are one change because the cron writes exactly what the projection computes: one pure function, `proyectarCiclo`, decides both, so a projected cycle and the same cycle once inserted never disagree (ARCHITECTURE.md §3). Both move ahead of block 5 (bot), and the October start sets a hard date.
+
+## What Changes
+
+- **`proyectarCiclo`**, a pure function in the shared data layer: for a cycle after the last generated one, the recurring income, the active recurring expenses at `monto_actual` (an instalment plan appears only while it has repetitions left), each on its date inside the cycle, the budgets inherited from the latest cycle with rows, and the savings target. The free margin of a projected cycle is computed with the same `getFreeMargin`.
+- **Cycle generation marker**: `usuarios.ciclo_generado_hasta` (first day of the last cycle whose charges were inserted). The cron generates a cycle once; the marker, not the day of the month, decides it, so a missed run catches up and September's 21 charges are never inserted or counted again.
+- **`transacciones.estado`** (`pendiente` | `confirmada`, default `confirmada`) — replaces the provisional "charged when its local date is not after today" rule in `isCharged` and in `actualizar_movimiento_recurrente` (0017). Existing rows are back-filled with that same rule so nothing changes on screen the day the migration lands.
+- **Reconciliation**: saving a pending charge from its row confirms it with the amount entered instead of adding a second row; a new SQL function lets a later caller (the bot, block 5) complete the pending charge of a definition in a cycle or insert a confirmed one when there is none.
+- **Daily cron** (`vercel.json` → `app/api/cron/recurrentes/route.ts`, `CRON_SECRET`, service-role client): per user, inserts the pending charges of the next cycle once it has started (via `proyectarCiclo`), counts `repeticiones_insertadas` only for rows actually inserted, deactivates a plan in the statement that reaches its total, and closes every pending charge of a cycle that has ended at its expected amount. The unique `(movimiento_recurrente_id, ciclo_mes)` already exists (0008/0015) and backs the idempotency.
+- **Month selector up to 6 cycles ahead** (today `?mes=` is clamped to the cycle in progress). A future cycle is shown as a **projection**: a visible "Proyección" label, budgets with empty bars, no pace, no "gastado", no spend chart, projected rows read-only, and no way to add movements.
+- **`/demo` projects too**, from its in-memory definitions and budget rows, with the same function.
+- **Budgets of a future cycle can be edited**: the category sheet asks "solo este mes" or "desde este mes en adelante"; editing a future cycle first materialises every category of that cycle; "solo este mes" also materialises the following cycle with the previous values. The rule "no row is ever written for a cycle after the current one" (0018, `category-editing`) is lifted — **BREAKING** for that requirement.
+- **October fallback**: if the cron is not in production before 1 October 2026, a hand-run SQL script inserts October's 23 charges with the instalments counted (Hacienda 2 of 3, DB Bank 1 of 4, Cetelem 1 of 12) and moves the marker, so the cron later skips October.
+- **ROADMAP.md**: blocks 6 and 7 move before block 5; deleting `mensajes` older than 30 days moves from block 6 to block 5, where the table is born.
+- **Not in this change**: deleting old `mensajes` (block 5), planned one-off expenses in future cycles (block 7's last item, still a decision), the bot's own matching of a message to a definition (block 5), multi-currency.
+
+## Capabilities
+
+### New Capabilities
+- `cycle-projection`: what a future cycle contains and how it is computed (`proyectarCiclo`), the date a recurring charge falls on inside a cycle, the projected free margin, what a projected cycle looks like and allows (the "Próximos cobros" card and `/demo` included).
+- `recurring-charge-generation`: the daily job that inserts each cycle's recurring charges from the projection, counts and ends instalment plans, closes pending charges when a cycle ends, and the pending/confirmed state with its reconciliation.
+
+### Modified Capabilities
+- `dashboard-data`: *Figures are scoped to one billing cycle* — `?mes=` reaches 6 cycles ahead instead of falling back; *Categories, budgets and recurring charges* — a charge is taken when it is confirmed, not by date; *Every dashboard operation persists* — saving a pending charge confirms it, updating a definition rewrites the pending charge by state, budget writes reach future cycles.
+- `category-editing`: *Budgets belong to one cycle* — "no future cycles" is replaced by the future-cycle rules; *Category changes go through injected operations* — `update` receives the shown cycle and, for a future one, the scope; new requirement *A future cycle's budget asks how far it reaches* — the sheet's "solo este mes" / "desde este mes en adelante" choice.
+- `dashboard-ui`: *Cycle header and free margin* — navigation and the month picker reach 6 cycles ahead and a projected cycle is labelled "Proyección"; *Budget progress on budgeted categories* — a projected cycle shows the budget with an empty bar and no pace text.
+- `recurring-expenses`: *A recurrence can end, and ends itself* — the count and the deactivation happen when a charge is generated, and a projected cycle shows a plan only while repetitions remain.
+
+## Impact
+
+- **New**: `lib/data/projection.ts` (+ `projection.test.mjs`), `app/api/cron/recurrentes/route.ts`, `vercel.json`, `supabase/migrations/0021_estado_y_generacion.sql`, `supabase/migrations/0022_presupuestos_ciclo_futuro.sql`, `supabase/seed/octubre-2026.sql` (fallback only), `openspec/specs/cycle-projection/`, `openspec/specs/recurring-charge-generation/`.
+- **Changed**: `lib/data/supabase/dashboard.ts` (projection branch, `isCharged` removed), `lib/data/supabase/cycle.ts` (`parseMonthParam` horizon), `lib/data/supabase/expenses.ts` (confirm on update), `lib/data/supabase/categories.ts` + `lib/data/categories.ts` (budget scope and cycle), `app/dashboard/actions.ts`, `lib/data/dashboard.ts` (`cycle.projected`), `lib/demo/*` (projection, budget scope), `components/molecules/month-selector.tsx`, `components/molecules/month-picker.tsx`, `components/templates/dashboard-template.tsx`, the category sheet, `messages/es.json` + `en.json`, `ROADMAP.md`, `ARCHITECTURE.md` §7/§8/§9 where decisions land, `CLAUDE.md` status and *Deuda técnica*.
+- **Real database** (production since 2026-09-27): two migrations and possibly the October script, each applied through the Supabase MCP only after Brian confirms.
+- **Vercel**: `CRON_SECRET` and `SUPABASE_SERVICE_ROLE_KEY` must exist in Production; the cron runs on the plan's daily schedule.

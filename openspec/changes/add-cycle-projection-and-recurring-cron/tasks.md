@@ -1,0 +1,55 @@
+> Order matters: groups 1–2 are the October critical path (design D5, D10) and ship before anything else. Groups 3–8 do not block 1 October. Every write to the real database (production since 2026-09-27) is confirmed by Brian first.
+
+## 1. October critical path — database
+
+- [ ] 1.1 Write `supabase/migrations/0021_estado_y_generacion.sql` (design D3, D4, D5, Q1): `transacciones.estado` with its check, default and back-fill by the old date rule; partial index on pending rows; `usuarios.ciclo_generado_hasta` back-filled with `max(ciclo_mes)`; `dia_del_mes set not null` preceded by a check that raises if any null exists; `generar_ciclo`, `cerrar_pendientes`, `completar_cargo_recurrente` (`security invoker`, `execute` revoked from `public`, `anon`, `authenticated`); `actualizar_movimiento_recurrente` rewriting only `estado = 'pendiente'` and local date after today; updated comments on `ciclo_mes`, `estado` and the marker — verify by static review against the constraint and column names in design *Context*
+- [ ] 1.2 Dry-run 0021 on the real database via `execute_sql` inside a `do` block that ends in `raise` (design *Migration Plan* step 1) — verify inside the block: only charges dated after today are pending; the marker is `2026-09-01`; `generar_ciclo` for `2026-10-01` with the 23 expected charges inserts 23 rows and leaves Hacienda 2/3, DB Bank 1/4, Cetelem 1/12, every other definition +1, all active, marker `2026-10-01`; a second call inserts nothing and counts nothing; a call for `2026-09-01` inserts nothing; `cerrar_pendientes` leaves September alone while it is in progress; `completar_cargo_recurrente` on a pending row confirms it and on a confirmed one raises `already-confirmed`; a definition insert without `dia_del_mes` fails; afterwards nothing persisted. Record the results here
+- [ ] 1.3 👤 Brian confirms, then apply 0021 through `apply_migration` — verify with `list_migrations` and a read-only query: the same pending/confirmed split as `isCharged` gives today, marker `2026-09-01`, `/dashboard` renders unchanged in production
+- [ ] 1.4 Write `supabase/seed/octubre-2026.sql` (design D10): refuses to run when October already has linked rows or the marker is `2026-10-01`; inserts the 23 October rows with the D1 date rule; counts and deactivates with 0013's rule; sets the marker when the column exists — verify with a rolled-back dry-run on the real database (23 rows, dates 1–29 October, Hacienda 2/3, DB Bank 1/4, Cetelem 1/12) and record the results here
+
+## 2. October critical path — projection function and cron
+
+- [ ] 2.1 Create `lib/data/projection.ts` with `proyectarCiclo` and `fechaEnCiclo` (design D1), type-only imports — verify `lib/data/projection.test.mjs` passes under `npm run test:unit` with the `cycle-projection` scenarios: Hacienda in October and November but not December; DB Bank October–January but not February; the projected margin of 2 600 through `getFreeMargin`; day 14 → 14 October; start day 26 with days 3 and 29; day 31 → 30 September; day 30 in the 26/2–25/3/2027 cycle → 28 February 2027; an inactive definition absent; budgets inherited from the latest cycle with rows
+- [ ] 2.2 Create `app/api/cron/recurrentes/route.ts` (design D2): `GET`, `Authorization: Bearer ${CRON_SECRET}` or 401, 500 with no writes when `CRON_SECRET` or the service-role key is missing, per-user `try`, cycles from the marker to the cycle in progress, `proyectarCiclo` → `generar_ciclo`, then `cerrar_pendientes`, report without amounts or names — verify `npx tsc --noEmit`, and with `npm run dev` that a request without the header and one with a wrong secret both get 401
+- [ ] 2.3 Create `vercel.json` with the cron `{ "path": "/api/cron/recurrentes", "schedule": "0 5 * * *" }` (Q2) — verify `npm run build` passes and the file is the only config change
+- [ ] 2.4 👤 In Vercel Production, confirm `SUPABASE_SERVICE_ROLE_KEY` exists and create `CRON_SECRET` (random, 32+ characters); deploy — verify the cron appears under the project's Cron Jobs settings
+- [ ] 2.5 Call the deployed endpoint once by hand with the secret before 1 October (design *Migration Plan* step 3) — verify the response reports no cycle generated, no row inserted and none closed for Brian, and the Vercel log shows the same
+- [ ] 2.6 Decision point, evening of 30 September: if 1.3 and 2.5 are not both done, 👤 Brian runs `supabase/seed/octubre-2026.sql` on 1 October after local midnight (confirmed through the MCP) — verify 23 October rows and the counts from 1.4; record which path October took
+- [ ] 2.7 After the 1 October run (05:00–06:00 UTC): verify through a read-only query and `/dashboard` that October holds exactly 23 linked rows, pending, with Hacienda 2/3, DB Bank 1/4, Cetelem 1/12, the marker `2026-10-01`, and every September pending row confirmed; 👤 Brian confirms the cron fired in production (ROADMAP block 6)
+
+## 3. `estado` in the web
+
+- [ ] 3.1 `lib/data/supabase/dashboard.ts`: select `estado`; `isCharged` becomes `estado === 'confirmada' || localDate <= today` (Q4); drop the "null day → 1" fallbacks here and in the definition mapping (Q1); update the doc comments of `Expense.fixed` and `RecurringMutations.update` — verify `npx tsc --noEmit` and that `/dashboard` shows the same taken/pending split as before 0021
+- [ ] 3.2 `lib/data/supabase/expenses.ts` and `income.ts`: `update` also writes `estado: 'confirmada'` (design D4) — verify `npx tsc --noEmit`; after deploy, with Brian's confirmation, save a pending charge unchanged on `/dashboard` and check with a read-only query that it is the same row, now confirmed
+
+## 4. Projection in `/dashboard`
+
+- [ ] 4.1 `lib/data/supabase/cycle.ts`: `parseMonthParam` clamps to six cycles after the current one; `DashboardData.cycle` gains `projected` and `maxMonth` (design D6), filled for every cycle; the demo sets them for its sample — verify `npx tsc --noEmit`
+- [ ] 4.2 `resumenMensual` projection branch (design D6): no transaction query and no budget copy for a projected cycle, budget rows with `periodo <= start`, `proyectarCiclo` with `n` counted from the marker (the cycle before the one in progress when null), synthetic ids, `getFreeMargin` — verify with a read-only script against the real database that, while September is in progress, the October and November projections give a free margin of 1 734 €, December and January 1 954 €, February and March 2 220 €, and that no row is written
+
+## 5. Budgets of a future cycle
+
+- [ ] 5.1 Write `supabase/migrations/0022_presupuestos_ciclo_futuro.sql` (design D5): `copiar_presupuestos_ciclo(p_usuario_id, p_periodo default null)`, `actualizar_categoria` with `p_periodo` and `p_alcance` (5-argument version dropped in the same migration), horizon and cycle-start validation, `presupuestos.periodo` comment without "nunca se escribe un ciclo posterior" — verify by static review against `category-editing` → *Budgets belong to one cycle*
+- [ ] 5.2 Dry-run 0022 on the real database in a rolled-back `do` block — verify the *Only this month*, *From this month on* and *A materialised cycle keeps its entries* scenarios with Brian's Comida 300 / Suplementos 100, a 5-argument call still writing September, and a periodo seven cycles ahead rejected; record the results here
+- [ ] 5.3 👤 Brian confirms, then apply 0022 — verify with `list_migrations` and that editing a budget in the cycle in progress on `/dashboard` still writes only September
+- [ ] 5.4 `CategoryMutations.update(categoryId, draft, { cycle, scope })` (design D7) in `lib/data/categories.ts`, `lib/data/supabase/categories.ts` and `app/dashboard/actions.ts` — verify `npx tsc --noEmit`
+- [ ] 5.5 `lib/demo/demo-budgets.ts`: in-memory future-cycle rules (materialise, only / onward) and `lib/demo/demo-categories.ts` passing the cycle — verify `lib/demo/demo-budgets.test.mjs` gains the three scenarios from 5.2 plus *Nothing is created for a future cycle*, and `npm run test:unit` passes
+
+## 6. Dashboard UI
+
+- [ ] 6.1 `MonthSelector` and `MonthPicker` take `maxMonth` instead of inferring the limit from `inProgress`; next disabled only on `maxMonth` — verify the *Navigation into the projection* and *No way past the current cycle* scenarios in a Playwright spec on `/demo`
+- [ ] 6.2 Projected cycle in `dashboard-template.tsx` (design D8): "Proyección" label, read-only rows (no swipe, no entry sheet on tap), no add rows, no add-category card, no reorder mode, spend chart and accumulated savings hidden; "Próximos cobros" still opens a definition sheet — verify the *Label and read-only rows* and *Upcoming charges in a projection* scenarios in Playwright
+- [ ] 6.3 Budget card in a projection: budget amount only, empty bar at 0/100, no text under it — verify the *A budgeted card in a projection* scenario in Playwright
+- [ ] 6.4 Category sheet scope choice ("Solo este mes" / "Desde este mes en adelante", none preselected, save unavailable until chosen, only for a budget change in a projection) — verify the three scenarios of *A future cycle's budget asks how far it reaches* in Playwright
+- [ ] 6.5 Strings `proyeccion`, `soloEsteMes`, `desdeEsteMes` (and any other new copy) in `messages/es.json` and `messages/en.json` — verify both catalogs have the same keys and the English UI shows no Spanish copy in a projection
+- [ ] 6.6 Visual pass: screenshots of a projected cycle and of the scope choice at 390px in light and dark, and with `prefers-reduced-motion` — verify the new states follow `design-system` and motion matches the existing sheets
+
+## 7. Demo projection
+
+- [ ] 7.1 `deriveDemoData` takes the shown month and builds projected cycles through `proyectarCiclo` from the demo definitions and budget rows after in-memory edits, the sample being the last generated cycle (design D9); `app/demo/demo-dashboard.tsx` wires `nextCycle` / `selectCycle` within the sample and its six projections, `previousCycle` unchanged — verify the *Demo projection* and *A demo budget edit reaches the projection* scenarios in `tests/projection-demo.spec.js`, with no request to a Supabase host
+
+## 8. Documentation and final verification
+
+- [ ] 8.1 Update `ARCHITECTURE.md`: §3 (cron at 05:00 UTC, TS route + `generar_ciclo`), §7 (marker, "taken" = confirmed or day passed, reconciliation operation, fallback), §8 (`estado` exists, `ciclo_generado_hasta`, `dia_del_mes` not null, presupuestos future-cycle rules as implemented), §9 (day clamp to the month's last day); `CLAUDE.md` status and *Deuda técnica* (remove the cron, `estado` and `dia_del_mes` items; add the demo's fixed sample date); tick blocks 6 and 7 in `ROADMAP.md` — verify by reading the diffs against the decisions in design.md
+- [ ] 8.2 `npm run lint`, `npm run test:unit`, `npm test` and `npm run build` — verify all pass; record any pre-existing failure here with its output instead of marking done
+- [ ] 8.3 After the UI deploy, open `/dashboard?mes=2026-11` and `/dashboard?mes=2027-02` in production — verify the margins from 4.2 (as they stand after October's generation), the "Proyección" label, and that a read-only query shows no row written for those cycles

@@ -1,0 +1,21 @@
+{
+  "_descripcion": "Set de pruebas del parser (ROADMAP.md bloque 3 → ronda de prueba del bloque 5). Mensajes tal como los escribe Brian, con el resultado esperado. Categorías de supabase/seed/brian.sql. 'dias_atras' es relativo al día del mensaje. Lo consume el test del parser del bloque 5; si el schema Zod cambia de forma, se adapta acá.",
+  "categorias": ["Vivienda", "Comida", "Transporte", "Ocio", "Salud", "Suplementos", "Suscripciones", "Deudas", "Otros"],
+  "casos": [
+    { "mensaje": "cafe 3,5.", "esperado": { "accion": "cargar", "tipo": "gasto", "monto": 3.5, "categoria": "Ocio", "dias_atras": 0 } },
+    { "mensaje": "date 80", "esperado": { "accion": "cargar", "tipo": "gasto", "monto": 80, "categoria": "Ocio", "dias_atras": 0 }, "nota": "\"date\" es una cita, no una fecha." },
+    { "mensaje": "30 super", "esperado": { "accion": "cargar", "tipo": "gasto", "monto": 30, "categoria": "Comida", "dias_atras": 0 }, "nota": "Supermercado va dentro de Comida." },
+    { "mensaje": "nafta 45 ayer", "esperado": { "accion": "cargar", "tipo": "gasto", "monto": 45, "categoria": "Transporte", "dias_atras": 1 } },
+    { "mensaje": "cobré 2100", "esperado": { "accion": "cargar", "tipo": "ingreso", "monto": 2100, "dias_atras": 0 }, "nota": "Ingreso aparte: no completa el Sueldo recurrente (decisión del 27/9)." },
+    { "mensaje": "propina 500", "esperado": { "accion": "cargar", "tipo": "ingreso", "monto": 500, "descripcion": "Propina", "dias_atras": 0 }, "nota": "Ingreso aparte: no completa una propina recurrente (decisión del 27/9)." },
+    { "mensaje": "ahorré 200", "esperado": { "accion": "cargar", "tipo": "ahorro", "monto": 200, "dias_atras": 0 } },
+    { "mensaje": "saqué 100 del ahorro", "esperado": { "accion": "cargar", "tipo": "ahorro", "monto": -100, "dias_atras": 0 } },
+    { "mensaje": "gasté 50", "esperado": { "accion": "repreguntar", "falta": "categoria", "tipo": "gasto", "monto": 50 }, "nota": "Repregunta ofreciendo categorías." },
+    { "mensaje": "no, era 40", "esperado": { "accion": "corregir", "monto": 40 }, "nota": "Sobre la última carga." },
+    { "mensaje": "borrá eso", "esperado": { "accion": "borrar" }, "nota": "Borra la última carga." },
+    { "mensaje": "crea categoria Musica", "esperado": { "accion": "crear_categoria", "nombre": "Música" } },
+    { "mensaje": "libre", "esperado": { "accion": "consultar", "consulta": "margen_libre" } },
+    { "mensaje": "¿cómo vengo?", "esperado": { "accion": "consultar", "consulta": "mes" } },
+    { "mensaje": "asdasda", "esperado": { "accion": "no_entendido" }, "nota": "Responde que no entendió." }
+  ]
+}
