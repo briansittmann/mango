@@ -87,7 +87,9 @@ Then:
 
 ### D7 — Category contract: the cycle travels with `update`
 
-`CategoryMutations.update(categoryId, draft, target: { cycle: LocalDate; scope: 'only' | 'onward' | null })`, `cycle` being the displayed cycle's start. The template passes `scope` only for a projected cycle; the server action forwards `p_periodo` / `p_alcance`. The demo implements the same rules in `lib/demo/demo-budgets.ts` as pure functions (`materialize`, `setBudgetInCycle`) with tests next to the existing ones.
+`CategoryMutations.update(categoryId, draft, target: { cycle: LocalDate; scope: 'only' | 'onward' | null })`, `cycle` being the displayed cycle's start. The template passes `scope` only for a projected cycle; the server action forwards `p_periodo` / `p_alcance`. The demo implements the same rules in `lib/demo/demo-budgets.ts` as pure functions (`copyForward`, `setBudgetInCycle`) with tests next to the existing ones.
+
+A projected cycle with `scope: null` is a rename or colour change and touches no budget (decided during 6.4; 0022 would raise `invalid-scope`). The Supabase adapter reads `periodo_presupuesto(p_usuario_id, null)`. When the displayed cycle is later, it calls `actualizar_categoria` with `p_periodo` null and the current cycle's own `monto`, as it stands: a missing row or a marker writes nothing. The demo's `setBudgetInCycle` returns the rows unchanged.
 
 ### D8 — The template reads `cycle.projected`
 

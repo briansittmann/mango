@@ -14,6 +14,7 @@ Dashboard components SHALL change categories only through these operations.
 **Update:**
 - The budget SHALL be either an amount above 0 or "no budget". "No budget" SHALL remove the category's budget, and an amount SHALL set or replace it.
 - Update SHALL receive the displayed cycle and, when that cycle is a projection, the scope chosen in the sheet: "only this month" or "from this month on". The budget SHALL be written as *Budgets belong to one cycle* states for that cycle and scope; in the cycle in progress, or from a past cycle, only the current cycle's entry SHALL change, as before.
+- When the displayed cycle is a projection and no scope is given (only the name or the colour changed), update SHALL change the name and colour only, and SHALL leave every budget entry of every cycle unchanged.
 - Update SHALL NOT change any expense's amount, description, date or category, and SHALL NOT change any other category's name or colour.
 - A name already used by another of the user's categories SHALL be rejected, and that rejection SHALL be distinguishable by the caller from every other failure.
 
@@ -55,6 +56,7 @@ Every data source SHALL apply these rules:
   - "from this month on" SHALL write that cycle's entry for the category; later cycles without entries of their own inherit it.
   - "only this month" SHALL also, when the following cycle holds no entry, write every entry the following cycle would have inherited before the edit, so the change does not carry over.
   - Entries of the current cycle, of earlier cycles and of later cycles that already hold entries SHALL NOT change.
+  - A save from a projected cycle without a scope (a rename or colour change) SHALL write no budget entry and change none.
 - **Creation** with a budget SHALL write the current cycle's entry only. Creation without a budget SHALL write no entry.
 - **Deletion** of a category SHALL remove its entries in every cycle, so that no copy can bring them back.
 - A category whose entry in a cycle is "no budget", or that has no entry there after the copy or the inheritance, SHALL be a category without a budget in that cycle: no bar on its card, and its spending lowers the free margin directly.
@@ -109,6 +111,11 @@ Every data source SHALL apply these rules:
 
 - **WHEN** December holds its own entries after an edit, and the visitor then raises "comida" to 350 in the current cycle
 - **THEN** the October and November projections show "comida" 350, and December still shows its own "comida" entry
+
+#### Scenario: A rename from a projection leaves the budgets alone
+
+- **WHEN** September holds "comida" 300 and "suplementos" 100, no later cycle holds entries, and the visitor renames "comida" from the December projection without changing its budget
+- **THEN** no entry exists for any cycle after September, September still holds "comida" 300 and "suplementos" 100, and the December projection shows the new name with "comida" 300
 
 #### Scenario: The demo's budgets come from the previous cycle
 
