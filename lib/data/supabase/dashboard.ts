@@ -3,12 +3,22 @@ import { getBudgetStatus, getFreeMargin } from '@/lib/data/budget'
 import type { CategoryColor, DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
 import type { LocalDate } from '@/lib/data/expenses'
 import type { IncomeEntry } from '@/lib/data/income'
+import { proyectarCiclo } from '@/lib/data/projection'
 import type { RecurringDefinition } from '@/lib/data/recurring'
-import { cycleMonthOf, cycleRange, localDateOf, parseMonthParam, refInstantForMonth, shiftMonth, type CycleRange } from './cycle'
+import {
+  PROJECTION_HORIZON,
+  cycleMonthOf,
+  cycleRange,
+  localDateOf,
+  parseMonthParam,
+  refInstantForMonth,
+  shiftMonth,
+  type CycleRange,
+} from './cycle'
 import type { Usuario } from './user'
 
 type CategoriaRow = { id: string; nombre: string; color: CategoryColor }
-type PresupuestoRow = { categoria_id: string; monto: number | string | null }
+type PresupuestoRow = { categoria_id: string; monto: number | string | null; periodo: LocalDate }
 type MovimientoRecurrenteRow = {
   id: string
   nombre: string
@@ -39,6 +49,13 @@ function daysBetween(from: LocalDate, to: LocalDate): number {
   return Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS)
 }
 
+/** Cycles between two cycle months, one cycle per month (`from` → `to`). */
+function monthsBetween(from: string, to: string): number {
+  const [fy, fm] = from.split('-').map(Number)
+  const [ty, tm] = to.split('-').map(Number)
+  return (ty - fy) * 12 + (tm - fm)
+}
+
 function inRange(fecha: string, range: CycleRange): boolean {
   const t = new Date(fecha).getTime()
   return t >= range.inicio.getTime() && t < range.fin.getTime()
@@ -55,9 +72,9 @@ function isCharged(row: TransaccionRow, timezone: string, today: LocalDate): boo
 
 /**
  * `DashboardData` and the recurring definitions of one billing cycle, read as `usuario`
- * (ARCHITECTURE §3). `month` is the raw `?mes=` value: anything invalid or after the cycle in
- * progress shows the cycle in progress (D9). Reading the cycle in progress may write: its budget
- * rows are copied from the latest earlier cycle the first time (`copiar_presupuestos_ciclo`).
+ * (ARCHITECTURE §3). `month` is the raw `?mes=` value (`parseMonthParam`). A cycle after the one
+ * in progress is a projection and writes nothing. Reading the cycle in progress may write: its
+ * budget rows are copied from the latest earlier cycle the first time (`copiar_presupuestos_ciclo`).
  */
 export async function resumenMensual(
   client: SupabaseClient,
@@ -69,26 +86,44 @@ export async function resumenMensual(
   const cycleParams = { diaInicio: usuario.dia_inicio_ciclo, timezone }
 
   const current = await cycleRange(client, { ...cycleParams, ref: now })
-  const shownMonth = parseMonthParam(month, cycleMonthOf(current, timezone))
-  const months = [-5, -4, -3, -2, -1, 0].map((n) => shiftMonth(shownMonth, n))
-  const ranges = await Promise.all(months.map((m) => cycleRange(client, { ...cycleParams, ref: refInstantForMonth(m) })))
+  const currentMonth = cycleMonthOf(current, timezone)
+  const shownMonth = parseMonthParam(month, currentMonth)
+  const projected = shownMonth > currentMonth
+  // `history` is the six cycles ending at the shown one, or at the one in progress for a
+  // projection, which has no rows of its own (D6).
+  const months = [-5, -4, -3, -2, -1, 0].map((n) => shiftMonth(projected ? currentMonth : shownMonth, n))
+  const [ranges, shown, generatedMonth] = await Promise.all([
+    Promise.all(months.map((m) => cycleRange(client, { ...cycleParams, ref: refInstantForMonth(m) }))),
+    projected ? cycleRange(client, { ...cycleParams, ref: refInstantForMonth(shownMonth) }) : null,
+    // The projection counts cycles from the last generated one; with no marker the cycle in
+    // progress is still to generate, so it counts from the one before (D3).
+    !projected
+      ? null
+      : usuario.ciclo_generado_hasta == null
+        ? shiftMonth(currentMonth, -1)
+        : cycleRange(client, { ...cycleParams, ref: new Date(`${usuario.ciclo_generado_hasta}T12:00:00Z`) }).then(
+            (range) => cycleMonthOf(range, timezone),
+          ),
+  ])
   const oldest = ranges[0]
-  const shown = ranges[5]
+  const latest = ranges[5]
+  const shownRange = shown ?? latest
 
-  const start = localDateOf(shown.inicio, timezone)
-  const end = localDateOf(new Date(shown.fin.getTime() - 1), timezone)
+  const start = localDateOf(shownRange.inicio, timezone)
+  const end = localDateOf(new Date(shownRange.fin.getTime() - 1), timezone)
   const localToday = localDateOf(now, timezone)
   const today = localToday < start ? start : localToday > end ? end : localToday
-  const inProgress = shown.inicio.getTime() <= now.getTime() && now.getTime() < shown.fin.getTime()
+  const inProgress = shownRange.inicio.getTime() <= now.getTime() && now.getTime() < shownRange.fin.getTime()
 
   if (inProgress) {
     const { error } = await client.rpc('copiar_presupuestos_ciclo', { p_usuario_id: usuario.id })
     if (error) throw error
   }
 
+  const presupuestosQuery = client.from('presupuestos').select('categoria_id, monto, periodo').eq('usuario_id', usuario.id)
   const [categorias, presupuestos, definiciones, transacciones, ahorros] = await Promise.all([
     client.from('categorias').select('id, nombre, color').eq('usuario_id', usuario.id).order('orden').order('nombre'),
-    client.from('presupuestos').select('categoria_id, monto').eq('usuario_id', usuario.id).eq('periodo', start),
+    projected ? presupuestosQuery.lte('periodo', start) : presupuestosQuery.eq('periodo', start),
     client
       .from('movimientos_recurrentes')
       .select(
@@ -103,7 +138,7 @@ export async function resumenMensual(
       .eq('usuario_id', usuario.id)
       .is('borrado_en', null)
       .gte('fecha', oldest.inicio.toISOString())
-      .lt('fecha', shown.fin.toISOString())
+      .lt('fecha', latest.fin.toISOString())
       .order('fecha'),
     client
       .from('transacciones')
@@ -111,7 +146,7 @@ export async function resumenMensual(
       .eq('usuario_id', usuario.id)
       .eq('tipo', 'ahorro')
       .is('borrado_en', null)
-      .lt('fecha', shown.fin.toISOString()),
+      .lt('fecha', latest.fin.toISOString()),
   ])
   for (const result of [categorias, presupuestos, definiciones, transacciones, ahorros]) {
     if (result.error) throw result.error
@@ -123,10 +158,52 @@ export async function resumenMensual(
   const rows = (transacciones.data ?? []) as TransaccionRow[]
   const savingsRows = (ahorros.data ?? []) as Pick<TransaccionRow, 'monto' | 'fecha'>[]
 
+  const definitions: RecurringDefinition[] = definitionRows
+    .filter((d): d is MovimientoRecurrenteRow & { tipo: 'gasto' | 'ingreso' } => d.tipo !== 'ahorro')
+    .map((d) => ({
+      id: d.id,
+      name: d.nombre,
+      expectedAmount: Number(d.monto_actual),
+      tipo: d.tipo,
+      categoryId: d.categoria_id,
+      day: d.dia_del_mes,
+      active: d.activo,
+      reminder: { active: d.recordatorio_activo, daysBefore: d.dias_antes },
+      repetitions: d.repeticiones_totales == null ? null : { total: d.repeticiones_totales, done: d.repeticiones_insertadas },
+    }))
+
+  // A projected cycle has no rows: its charges come from `proyectarCiclo` as pending rows with
+  // synthetic ids, and its budgets are inherited without writing (D6).
+  const projection = projected
+    ? proyectarCiclo({
+        start,
+        cyclesAfterGenerated: monthsBetween(generatedMonth!, shownMonth),
+        definitions,
+        budgetRows: budgetRows.map((b) => ({
+          categoryId: b.categoria_id,
+          cycle: b.periodo,
+          amount: b.monto == null ? null : Number(b.monto),
+        })),
+        savingsTarget: usuario.meta_ahorro_mensual,
+      })
+    : null
+
   // A linked row's definition is always among these: deleting one unlinks its rows (0019).
   const dayOf = new Map(definitionRows.map((d) => [d.id, d.dia_del_mes]))
-  const budgetOf = new Map(budgetRows.map((b) => [b.categoria_id, b.monto == null ? null : Number(b.monto)]))
-  const shownRows = rows.filter((row) => inRange(row.fecha, shown))
+  const budgetOf =
+    projection?.budgets ?? new Map(budgetRows.map((b) => [b.categoria_id, b.monto == null ? null : Number(b.monto)]))
+  const shownRows: TransaccionRow[] = projection
+    ? projection.charges.map((charge) => ({
+        id: `proj:${charge.definitionId}`,
+        monto: charge.amount,
+        fecha: `${charge.date}T12:00:00Z`,
+        categoria_id: charge.categoryId,
+        descripcion: charge.name,
+        tipo: charge.tipo,
+        movimiento_recurrente_id: charge.definitionId,
+        estado: 'pendiente',
+      }))
+    : rows.filter((row) => inRange(row.fecha, shownRange))
 
   const currentDay = daysBetween(start, today) + 1
   const cycleDays = daysBetween(start, end) + 1
@@ -144,7 +221,8 @@ export async function resumenMensual(
               fixed: {
                 definitionId: row.movimiento_recurrente_id,
                 day: dayOf.get(row.movimiento_recurrente_id)!,
-                charged: isCharged(row, timezone, today),
+                // A projected charge is pending even on the cycle's first day, its clamped today.
+                charged: !projected && isCharged(row, timezone, today),
               },
             }
           : {}),
@@ -182,7 +260,7 @@ export async function resumenMensual(
   const movements = shownRows
     .filter((row) => row.tipo === 'ahorro')
     .map((row) => ({ id: row.id, name: row.descripcion ?? '', date: row.fecha, amount: Number(row.monto) }))
-  const savingsCycle = movements.reduce((sum, movement) => sum + movement.amount, 0)
+  const savingsCycle = projection?.savings ?? movements.reduce((sum, movement) => sum + movement.amount, 0)
 
   const history = ranges.map((range, index) => ({
     month: months[index],
@@ -197,20 +275,6 @@ export async function resumenMensual(
       .reduce((sum, row) => sum + Number(row.monto), 0),
   }))
 
-  const definitions: RecurringDefinition[] = definitionRows
-    .filter((d): d is MovimientoRecurrenteRow & { tipo: 'gasto' | 'ingreso' } => d.tipo !== 'ahorro')
-    .map((d) => ({
-      id: d.id,
-      name: d.nombre,
-      expectedAmount: Number(d.monto_actual),
-      tipo: d.tipo,
-      categoryId: d.categoria_id,
-      day: d.dia_del_mes,
-      active: d.activo,
-      reminder: { active: d.recordatorio_activo, daysBefore: d.dias_antes },
-      repetitions: d.repeticiones_totales == null ? null : { total: d.repeticiones_totales, done: d.repeticiones_insertadas },
-    }))
-
   return {
     data: {
       user: {
@@ -220,7 +284,15 @@ export async function resumenMensual(
         currency: usuario.moneda_default,
         timezone,
       },
-      cycle: { start, end, today, month: shownMonth, inProgress },
+      cycle: {
+        start,
+        end,
+        today,
+        month: shownMonth,
+        inProgress,
+        projected,
+        maxMonth: shiftMonth(currentMonth, PROJECTION_HORIZON),
+      },
       freeMargin: getFreeMargin({
         income: incomeTotal,
         savings: savingsCycle,

@@ -58,7 +58,17 @@ export type ExpenseGroup = {
 
 export type DashboardData = {
   user: { name: string; phone: string | null; photoUrl: string | null; currency: string; timezone: string }
-  cycle: { start: string; end: string; today: LocalDate; month: string; inProgress: boolean }
+  cycle: {
+    start: string
+    end: string
+    today: LocalDate
+    month: string
+    inProgress: boolean
+    /** A cycle after the one in progress, computed by `proyectarCiclo` (`cycle-projection`). */
+    projected: boolean
+    /** The last month the controls may reach: the sixth cycle after the one in progress. */
+    maxMonth: string
+  }
   freeMargin: number
   income: { total: number; entries: IncomeEntry[] }
   savings: {

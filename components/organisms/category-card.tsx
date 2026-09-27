@@ -24,6 +24,8 @@ type CategoryCardProps = {
   reordering?: boolean
   /** Off hides the budget bar; toggled from the category options sheet. */
   showProgress?: boolean
+  /** A projected cycle: the header shows the budget alone, the bar stays empty, no add row. */
+  projected?: boolean
 }
 
 export function CategoryCard({
@@ -38,6 +40,7 @@ export function CategoryCard({
   onOpenOptions,
   reordering = false,
   showProgress = true,
+  projected = false,
 }: CategoryCardProps) {
   const t = useTranslations('dashboard')
   const tCategoria = useTranslations('categoria')
@@ -76,7 +79,15 @@ export function CategoryCard({
           <span id={nameId} className="flex-1 truncate text-left text-body-lg font-medium text-foreground">
             {name}
           </span>
-          {reordering ? null : group.budget ? (
+          {reordering ? null : group.budget && projected ? (
+            <span id={amountId}>
+              <AnimatedAmount
+                amount={group.budget.amount}
+                currency={currency}
+                className="text-tabular-numeric-md font-semibold text-foreground"
+              />
+            </span>
+          ) : group.budget ? (
             <span id={amountId} className="text-tabular-numeric-md font-semibold text-foreground">
               {tCategoria.rich('gastadoDePresupuesto', {
                 gastado: format.number(group.budget.spent, { ...currencyFormatOptions, currency }),
@@ -117,7 +128,7 @@ export function CategoryCard({
       {group.budget && !reordering ? (
         <Collapsible open={showProgress} id={progressId}>
           <div className="px-inset pb-3">
-            <BudgetProgress budget={group.budget} currency={currency} />
+            <BudgetProgress budget={group.budget} currency={currency} projected={projected} />
           </div>
         </Collapsible>
       ) : null}
@@ -144,7 +155,7 @@ export function CategoryCard({
               <div key={expense.id}>{row}</div>
             )
           })}
-          <AddRow label={t('anadirGasto')} onClick={onAddExpense} />
+          {projected ? null : <AddRow label={t('anadirGasto')} onClick={onAddExpense} />}
         </div>
       </Collapsible>
     </div>

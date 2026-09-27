@@ -10,12 +10,27 @@ type MonthSelectorProps = {
   start: string
   end: string
   inProgress: boolean
+  /** A cycle after the one in progress: labelled "Proyección" instead of "en curso". */
+  projected: boolean
+  /** The last month the controls may reach; "next" is disabled on it. */
+  maxMonth: string
   onPrevious?: () => void
   onNext?: () => void
   onSelect?: (month: string) => void
 }
 
-export function MonthSelector({ variant, month, start, end, inProgress, onPrevious, onNext, onSelect }: MonthSelectorProps) {
+export function MonthSelector({
+  variant,
+  month,
+  start,
+  end,
+  inProgress,
+  projected,
+  maxMonth,
+  onPrevious,
+  onNext,
+  onSelect,
+}: MonthSelectorProps) {
   const t = useTranslations('dashboard')
   const format = useFormatter()
   const [open, setOpen] = useState(false)
@@ -52,7 +67,7 @@ export function MonthSelector({ variant, month, start, end, inProgress, onPrevio
         <button
           type="button"
           onClick={onNext}
-          disabled={!onNext || inProgress}
+          disabled={!onNext || month >= maxMonth}
           aria-label={t('cicloSiguiente')}
           className="pressable grid size-target place-items-center rounded-full text-muted-foreground [--press-scale:0.9] disabled:pointer-events-none disabled:opacity-30"
         >
@@ -60,7 +75,7 @@ export function MonthSelector({ variant, month, start, end, inProgress, onPrevio
         </button>
         <MonthPicker
           month={month}
-          inProgress={inProgress}
+          maxMonth={maxMonth}
           open={open}
           onSelect={handleSelect}
           onClose={() => setOpen(false)}
@@ -111,7 +126,7 @@ export function MonthSelector({ variant, month, start, end, inProgress, onPrevio
           <button
             type="button"
             onClick={onNext}
-            disabled={!onNext || inProgress}
+            disabled={!onNext || month >= maxMonth}
             aria-label={t('cicloSiguiente')}
             className="pressable grid size-target place-items-center rounded-full text-muted-foreground [--press-scale:0.9] disabled:pointer-events-none disabled:opacity-30"
           >
@@ -126,7 +141,13 @@ export function MonthSelector({ variant, month, start, end, inProgress, onPrevio
             {t('enCurso')}
           </span>
         ) : null}
-        {inProgress ? (
+        {projected ? (
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span aria-hidden className="size-1.5 rounded-full border border-current" />
+            {t('proyeccion')}
+          </span>
+        ) : null}
+        {inProgress || projected ? (
           <span aria-hidden className="text-muted-foreground">
             ·
           </span>
@@ -135,7 +156,7 @@ export function MonthSelector({ variant, month, start, end, inProgress, onPrevio
       </p>
       <MonthPicker
         month={month}
-        inProgress={inProgress}
+        maxMonth={maxMonth}
         open={open}
         onSelect={handleSelect}
         onClose={() => setOpen(false)}

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { DUPLICATE_CATEGORY_NAME, type CategoryDraft } from "@/lib/data/categories";
+import { DUPLICATE_CATEGORY_NAME, type CategoryDraft, type CategoryUpdateTarget } from "@/lib/data/categories";
 import type { ExpenseDraft } from "@/lib/data/expenses";
 import type { IncomeDraft } from "@/lib/data/income";
 import type { RecurringDraft, RecurringTarget } from "@/lib/data/recurring";
@@ -78,8 +78,8 @@ export async function addSavingsMovement(draft: SavingsMovementDraft) {
 export async function createCategory(draft: CategoryDraft) {
   return catchDuplicateName(() => run((ctx) => createSupabaseCategoryMutations(ctx).create(draft)));
 }
-export async function updateCategory(categoryId: string, draft: CategoryDraft) {
-  return catchDuplicateName(() => run((ctx) => createSupabaseCategoryMutations(ctx).update(categoryId, draft)));
+export async function updateCategory(categoryId: string, draft: CategoryDraft, target: CategoryUpdateTarget) {
+  return catchDuplicateName(() => run((ctx) => createSupabaseCategoryMutations(ctx).update(categoryId, draft, target)));
 }
 export async function deleteCategory(categoryId: string, reassignTo: string | null) {
   await run((ctx) => createSupabaseCategoryMutations(ctx).delete(categoryId, reassignTo));

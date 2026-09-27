@@ -2,12 +2,17 @@ import { useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { ArrowUpDown, Eye, EyeOff, Loader2, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { CategoryDot } from '@/components/atoms/category-dot'
+import { Collapsible } from '@/components/atoms/collapsible'
 import { AmountField, parseAmount } from '@/components/molecules/amount-field'
 import { CATEGORY_COLORS, ColorSwatchPicker } from '@/components/molecules/color-swatch-picker'
 import { FieldRow } from '@/components/molecules/field-row'
 import { SheetShell } from '@/components/organisms/sheet-shell'
 import { cn } from '@/lib/utils'
-import type { CategoryDraft, DUPLICATE_CATEGORY_NAME as DuplicateCategoryNameMessage } from '@/lib/data/categories'
+import type {
+  CategoryDraft,
+  CategoryUpdateTarget,
+  DUPLICATE_CATEGORY_NAME as DuplicateCategoryNameMessage,
+} from '@/lib/data/categories'
 import type { CategoryColor, ExpenseGroup } from '@/lib/data/dashboard'
 
 /** Mirrors `DUPLICATE_CATEGORY_NAME` (`lib/data/categories.ts`) without a runtime import across the data-layer boundary. */
@@ -21,7 +26,8 @@ type CategorySheetProps = {
   target: ExpenseGroup | null
   currency: string
   receivingCategories: { id: string; name: string }[]
-  onSave: (categoryId: string, draft: CategoryDraft) => Promise<void>
+  /** `scope` is the choice made for a budget change in a projected cycle, null otherwise. */
+  onSave: (categoryId: string, draft: CategoryDraft, scope: CategoryUpdateTarget['scope']) => Promise<void>
   onDelete: (categoryId: string, reassignTo: string | null) => Promise<void>
   onCreate?: (draft: CategoryDraft) => Promise<string>
   /** Preselected swatch in create mode (D3); ignored in edit mode. */
@@ -31,6 +37,8 @@ type CategorySheetProps = {
   /** Whether this category's card shows its budget bar. */
   progressVisible: boolean
   onToggleProgress: () => void
+  /** Opened from a projected cycle: a budget change asks how far it reaches before saving. */
+  projected?: boolean
 }
 
 type Step = 'form' | 'confirmDelete'
@@ -72,6 +80,7 @@ export function CategorySheet({
   onReorder,
   progressVisible,
   onToggleProgress,
+  projected = false,
 }: CategorySheetProps) {
   const t = useTranslations('hojaCategoria')
   const tReorder = useTranslations('modoReordenar')
@@ -91,6 +100,7 @@ export function CategorySheet({
   const [error, setError] = useState<'save' | 'delete' | null>(null)
   const [nameError, setNameError] = useState(false)
   const [reassignTo, setReassignTo] = useState<string | null>(null)
+  const [scope, setScope] = useState<CategoryUpdateTarget['scope']>(null)
 
   if (open !== wasOpen) {
     setWasOpen(open)
@@ -105,6 +115,7 @@ export function CategorySheet({
       setNameError(false)
       setStep('form')
       setReassignTo(null)
+      setScope(null)
     }
   }
 
@@ -121,7 +132,8 @@ export function CategorySheet({
     fieldState.color !== initialSnapshot.color ||
     fieldState.budget !== initialSnapshot.budget
   const busy = status !== 'idle'
-  const primaryDisabled = busy || !nameValid || !budgetValid
+  const asksScope = projected && mode === 'edit' && fieldState.budget !== initialSnapshot.budget
+  const primaryDisabled = busy || !nameValid || !budgetValid || (asksScope && scope == null)
   const deleteDisabled = busy || (expenseCount > 0 && !reassignTo)
   // `receivingCategories` is every category but this one, so an empty list means this is the only one.
   const reorderDisabled = busy || !onReorder || receivingCategories.length === 0
@@ -147,7 +159,7 @@ export function CategorySheet({
     try {
       // `mode` decides the call; `target` is only null in create mode, where onSave is never reached.
       if (mode === 'create') await onCreate?.(draft)
-      else await onSave(target!.id, draft)
+      else await onSave(target!.id, draft, asksScope ? scope : null)
     } catch (err) {
       setStatus('idle')
       if (err instanceof Error && err.message === DUPLICATE_CATEGORY_NAME) setNameError(true)
@@ -293,6 +305,46 @@ export function CategorySheet({
             invalidMessage={t('presupuestoInvalido')}
           />
 
+          <Collapsible open={asksScope}>
+            <fieldset className="pb-2">
+              <legend className="float-left w-full px-inset pb-1 pt-2 text-body-sm text-muted-foreground">{t('alcance')}</legend>
+              {(['only', 'onward'] as const).map((value) => {
+                const checked = scope === value
+                return (
+                  <label
+                    key={value}
+                    className="clear-left flex min-h-row cursor-pointer items-center gap-3 px-inset text-body-lg text-foreground hover:bg-muted has-[:focus-visible]:bg-muted"
+                  >
+                    <span className="flex-1">{t(value === 'only' ? 'soloEsteMes' : 'desdeEsteMes')}</span>
+                    <input
+                      type="radio"
+                      name={`${formId}-scope`}
+                      value={value}
+                      checked={checked}
+                      disabled={busy}
+                      onChange={() => setScope(value)}
+                      className="sr-only"
+                    />
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'grid size-5 shrink-0 place-items-center rounded-full border-2 transition-colors duration-150 ease-out motion-reduce:transition-none',
+                        checked ? 'border-primary' : 'border-muted-foreground/50',
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'size-2.5 rounded-full bg-primary transition-transform duration-200 ease-spring motion-reduce:transition-none',
+                          checked ? 'scale-100' : 'scale-0',
+                        )}
+                      />
+                    </span>
+                  </label>
+                )
+              })}
+            </fieldset>
+          </Collapsible>
+
           <div className="flex min-h-row items-center px-inset">
             <span id={colorsLabelId} className="text-body-lg text-foreground">
               {t('color')}
@@ -326,20 +378,24 @@ export function CategorySheet({
                 </>
               ) : null}
 
-              <div className="border-t border-border" />
-              <button
-                type="button"
-                aria-label={tReorder('titulo')}
-                onClick={() => {
-                  onOpenChange(false)
-                  onReorder?.()
-                }}
-                disabled={reorderDisabled}
-                className="flex min-h-row items-center gap-3 px-inset text-body-lg font-medium text-foreground hover:bg-muted active:bg-muted disabled:pointer-events-none disabled:opacity-50"
-              >
-                <ArrowUpDown aria-hidden className="size-5" />
-                {t('reordenar')}
-              </button>
+              {onReorder ? (
+                <>
+                  <div className="border-t border-border" />
+                  <button
+                    type="button"
+                    aria-label={tReorder('titulo')}
+                    onClick={() => {
+                      onOpenChange(false)
+                      onReorder?.()
+                    }}
+                    disabled={reorderDisabled}
+                    className="flex min-h-row items-center gap-3 px-inset text-body-lg font-medium text-foreground hover:bg-muted active:bg-muted disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    <ArrowUpDown aria-hidden className="size-5" />
+                    {t('reordenar')}
+                  </button>
+                </>
+              ) : null}
 
               <div className="border-t border-border" />
               <button

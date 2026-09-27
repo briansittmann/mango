@@ -10,10 +10,12 @@ import type { LocalDate } from './expenses'
  * - when a cycle becomes current and holds no row at all, markers included, every row of the
  *   most recent earlier cycle that holds any is copied into it, markers included, before any
  *   figure is computed. A cycle that already holds a row never receives a copy.
- * - no row is ever written for a cycle after the current one, by the copy or by any edit
- * - setting or changing a budget, and creating a category with one, write the current cycle's
- *   row only. Clearing writes a marker for the current cycle instead of deleting the row.
- *   Earlier cycles never change.
+ * - reading a cycle after the current one writes nothing: it inherits the latest earlier rows
+ * - setting or changing a budget from the current cycle, and creating a category with one,
+ *   write the current cycle's row only. Clearing writes a marker for the current cycle instead
+ *   of deleting the row. Earlier cycles never change.
+ * - an edit from a projected cycle first materialises that cycle, and with "only this month"
+ *   also the following one (`CategoryMutations.update`)
  * - deleting a category removes its rows in every cycle
  * - a marker, or no row after the copy, means the category has no budget in that cycle
  */

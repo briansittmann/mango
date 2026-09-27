@@ -7,11 +7,17 @@ import type { BudgetStatus } from '@/lib/data/dashboard'
 type BudgetProgressProps = {
   budget: BudgetStatus
   currency: string
+  /** A projected cycle: an empty bar with no text under it (`dashboard-ui`). */
+  projected?: boolean
 }
 
-export function BudgetProgress({ budget, currency }: BudgetProgressProps) {
+export function BudgetProgress({ budget, currency, projected = false }: BudgetProgressProps) {
   const t = useTranslations('categoria')
   const format = useFormatter()
+
+  if (projected) {
+    return <ProgressBar usage={0} level="ok" valueText={format.number(budget.amount, { ...currencyFormatOptions, currency })} />
+  }
 
   const remainingText =
     budget.weeklyAllowance !== null

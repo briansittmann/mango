@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { DemoNotice } from '@/components/molecules/demo-notice'
 import { DemoToast } from '@/components/molecules/demo-toast'
 import { DashboardTemplate } from '@/components/templates/dashboard-template'
-import { createDemoExpenseMutations, deriveDemoData, noDemoEdits } from '@/lib/demo/demo-expenses'
+import { createDemoExpenseMutations, deriveDemoData, noDemoEdits, shiftDemoMonth } from '@/lib/demo/demo-expenses'
 import { createDemoCategoryMutations, noDemoCategoryEdits } from '@/lib/demo/demo-categories'
 import { createDemoIncomeMutations, noDemoIncomeEdits } from '@/lib/demo/demo-income'
 import { createDemoRecurringMutations, noDemoRecurringEdits } from '@/lib/demo/demo-recurring'
@@ -29,10 +29,12 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows, changeLa
   const [incomeEdits, setIncomeEdits] = useState(noDemoIncomeEdits)
   const [savingsEdits, setSavingsEdits] = useState(noDemoSavingsEdits)
   const [messageOpen, setMessageOpen] = useState(false)
+  // The sample's month or one of its six projections (D9).
+  const [month, setMonth] = useState(data.cycle.month)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { data: view, definitions } = useMemo(
-    () => deriveDemoData(data, recurringDefinitions, budgetRows, edits, categoryEdits, recurringEdits, incomeEdits, savingsEdits),
-    [data, recurringDefinitions, budgetRows, edits, categoryEdits, recurringEdits, incomeEdits, savingsEdits],
+    () => deriveDemoData(data, recurringDefinitions, budgetRows, edits, categoryEdits, recurringEdits, incomeEdits, savingsEdits, month),
+    [data, recurringDefinitions, budgetRows, edits, categoryEdits, recurringEdits, incomeEdits, savingsEdits, month],
   )
   const charges = useMemo(() => selectUpcomingCharges(view.expenses.groups, definitions), [view, definitions])
   const expenses = useMemo(() => createDemoExpenseMutations(setEdits), [])
@@ -83,10 +85,14 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows, changeLa
           recurring,
           income,
           savings,
-          previousCycle: showUnavailable,
-          nextCycle: showUnavailable,
-          selectCycle: (month) => {
-            if (month !== view.cycle.month) showUnavailable()
+          // Before the sample there is nothing to show; after it, the projections.
+          previousCycle: () => (month > data.cycle.month ? setMonth(shiftDemoMonth(month, -1)) : showUnavailable()),
+          nextCycle: () => {
+            if (month < data.cycle.maxMonth) setMonth(shiftDemoMonth(month, 1))
+          },
+          selectCycle: (selected) => {
+            if (selected >= data.cycle.month && selected <= data.cycle.maxMonth) setMonth(selected)
+            else showUnavailable()
           },
           openSavingsHistory: showUnavailable,
         }}

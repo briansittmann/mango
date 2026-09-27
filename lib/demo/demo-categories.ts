@@ -1,16 +1,19 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { DUPLICATE_CATEGORY_NAME } from '@/lib/data/categories'
-import type { CategoryDraft, CategoryMutations } from '@/lib/data/categories'
+import type { CategoryDraft, CategoryMutations, CategoryUpdateTarget } from '@/lib/data/categories'
 import type { ExpenseGroup } from '@/lib/data/dashboard'
 
 export type DemoCategoryEdits = {
   created: { id: string; draft: CategoryDraft }[]
+  /** Name and colour: the last saved draft wins. */
   updated: Record<string, CategoryDraft>
+  /** Every budget save in order, with the cycle it was made from: each one builds on the last. */
+  budgets: ({ categoryId: string; amount: number | null } & CategoryUpdateTarget)[]
   deleted: { id: string; reassignTo: string | null }[]
   order: string[] | null
 }
 
-export const noDemoCategoryEdits: DemoCategoryEdits = { created: [], updated: {}, deleted: [], order: null }
+export const noDemoCategoryEdits: DemoCategoryEdits = { created: [], updated: {}, budgets: [], deleted: [], order: null }
 
 let counter = 0
 
@@ -33,14 +36,18 @@ export function createDemoCategoryMutations(
       setEdits((edits) => ({ ...edits, created: [...edits.created, { id, draft }] }))
       return Promise.resolve(id)
     },
-    update(categoryId, draft) {
+    update(categoryId, draft, target) {
       const name = foldName(draft.name)
       const duplicate = currentGroups.some(
         (group) => group.kind === 'category' && group.id !== categoryId && foldName(group.name) === name,
       )
       if (duplicate) return Promise.reject(new Error(DUPLICATE_CATEGORY_NAME))
 
-      setEdits((edits) => ({ ...edits, updated: { ...edits.updated, [categoryId]: draft } }))
+      setEdits((edits) => ({
+        ...edits,
+        updated: { ...edits.updated, [categoryId]: draft },
+        budgets: [...edits.budgets, { categoryId, amount: draft.budget, ...target }],
+      }))
       return Promise.resolve()
     },
     delete(categoryId, reassignTo) {

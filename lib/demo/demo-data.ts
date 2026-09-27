@@ -1,7 +1,7 @@
 import type { BudgetRow } from '@/lib/data/budget'
 import type { CategoryColor, DashboardData, ExpenseGroup } from '@/lib/data/dashboard'
 import type { RecurringDefinition } from '@/lib/data/recurring'
-import { deriveDemoData, noDemoEdits } from '@/lib/demo/demo-expenses'
+import { deriveDemoData, noDemoEdits, shiftDemoMonth } from '@/lib/demo/demo-expenses'
 import { noDemoCategoryEdits } from '@/lib/demo/demo-categories'
 import { noDemoIncomeEdits } from '@/lib/demo/demo-income'
 import { noDemoRecurringEdits } from '@/lib/demo/demo-recurring'
@@ -202,7 +202,16 @@ export function buildDemoData(locale: Locale): DashboardData {
       currency: 'EUR',
       timezone: TIMEZONE,
     },
-    cycle: { start: CYCLE_START, end: CYCLE_END, today, month: '2026-09', inProgress: realToday >= CYCLE_START && realToday <= CYCLE_END },
+    // The sample is the demo's last generated cycle; the controls reach six projections past it.
+    cycle: {
+      start: CYCLE_START,
+      end: CYCLE_END,
+      today,
+      month: '2026-09',
+      inProgress: realToday >= CYCLE_START && realToday <= CYCLE_END,
+      projected: false,
+      maxMonth: shiftDemoMonth('2026-09', 6),
+    },
     freeMargin: 0,
     income: {
       total: incomeTotal,

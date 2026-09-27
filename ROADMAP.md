@@ -61,10 +61,10 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 
 > **Orden (27/9):** los bloques 6 y 7 van antes del bloque 5 y se hacen en un solo change de OpenSpec, `add-cycle-projection-and-recurring-cron`: el cron usa la misma `proyectarCiclo` que calcula los meses futuros. Fecha límite: el ciclo de octubre arranca el 1/10; si el cron no está en producción, se insertan los cargos de octubre a mano con `supabase/seed/octubre-2026.sql`.
 
-- [ ] 🤖 Migración `transacciones.estado` (`pendiente` | `confirmada`) y reemplazo de las reglas provisorias (`isCharged`, `actualizar_movimiento_recurrente`)
-- [ ] 🤖 Reconciliación: carga manual completa la fila pendiente del mismo fijo en vez de duplicar
-- [ ] 🤖 Cron diario (`vercel.json`): inserta pendientes al inicio del ciclo, cuenta `repeticiones_insertadas`, desactiva al llegar al total, cierra pendientes al fin de ciclo
-- [ ] 🤖 Constraint único por `gasto_fijo_id` + ciclo → ya existe desde la `0008` (`movimiento_recurrente_id` + `ciclo_mes`); el change lo usa y lo verifica
+- [x] 🤖 Migración `transacciones.estado` (`pendiente` | `confirmada`) y reemplazo de las reglas provisorias (`isCharged`, `actualizar_movimiento_recurrente`) → `0021`, aplicada el 27/9
+- [x] 🤖 Reconciliación: carga manual completa la fila pendiente del mismo fijo en vez de duplicar → en la web, guardar la fila la confirma; para el bot, `completar_cargo_recurrente`
+- [x] 🤖 Cron diario (`vercel.json`): inserta pendientes al inicio del ciclo, cuenta `repeticiones_insertadas`, desactiva al llegar al total, cierra pendientes al fin de ciclo → `/api/cron/recurrentes`, en producción desde el 27/9
+- [x] 🤖 Constraint único por `gasto_fijo_id` + ciclo → ya existe desde la `0008` (`movimiento_recurrente_id` + `ciclo_mes`); el change lo usa y lo verifica
 - [x] 👤 Decidir si `dia_del_mes` pasa a `NOT NULL` → sí, en la `0021`
 - [x] 👤 Decidir a qué hora corre el cron → 05:00 UTC, todos los días; el ciclo de cada usuario se calcula en su timezone
 - [x] 👤 Decidir cuándo un fijo se muestra cobrado → confirmado o con su día ya pasado; `estado` concilia
@@ -74,14 +74,14 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 
 > Un ciclo futuro **se calcula, no se guarda**. Lo valioso sale solo: ver que el margen sube cuando termina una cuota o baja cuando arranca otra.
 
-- [ ] 🤖 Función pura `proyectarCiclo` en la capa de datos compartida: ingresos recurrentes, fijos activos a `monto_actual` respetando `repeticiones_totales` (una cuota que termina deja de aparecer), presupuestos heredados, meta de ahorro
-- [ ] 🤖 El cron del bloque 6 usa esa misma función para decidir qué insertar: lo proyectado y lo insertado nunca se contradicen
-- [ ] 🤖 Margen libre proyectado con la misma `getFreeMargin`
-- [ ] 🤖 Selector de mes: habilitar hasta **6 ciclos adelante** (hoy `?mes=` se recorta al ciclo en curso)
-- [ ] 🤖 Vista de ciclo futuro: marca visible de "Proyección", barras en cero, sin ritmo ni "gastado"
+- [x] 🤖 Función pura `proyectarCiclo` en la capa de datos compartida: ingresos recurrentes, fijos activos a `monto_actual` respetando `repeticiones_totales` (una cuota que termina deja de aparecer), presupuestos heredados, meta de ahorro
+- [x] 🤖 El cron del bloque 6 usa esa misma función para decidir qué insertar: lo proyectado y lo insertado nunca se contradicen
+- [x] 🤖 Margen libre proyectado con la misma `getFreeMargin`
+- [x] 🤖 Selector de mes: habilitar hasta **6 ciclos adelante** (hoy `?mes=` se recorta al ciclo en curso)
+- [x] 🤖 Vista de ciclo futuro: marca visible de "Proyección", barras en cero, sin ritmo ni "gastado"
 - [x] 👤 Decidir cómo se muestra un fijo cuyo día no existe en ese mes del ciclo (el 31 en septiembre) → último día de ese mes
-- [ ] 🤖 `/demo` con proyección también
-- [ ] 🤖 Editar presupuestos de un ciclo futuro:
+- [x] 🤖 `/demo` con proyección también
+- [x] 🤖 Editar presupuestos de un ciclo futuro (`0022`, aplicada el 27/9):
   - la hoja pregunta **"solo este mes"** o **"desde este mes en adelante"**; "solo este mes" deja escrito el ciclo siguiente con el valor anterior para que el cambio no se arrastre
   - al editar, materializar **todas** las categorías de ese ciclo, no solo la tocada (si no, la copia ve el ciclo "con filas" y las demás quedan sin presupuesto)
   - levantar la regla "nunca crear filas para un ciclo futuro" de la `0018`

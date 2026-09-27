@@ -41,7 +41,7 @@ import { UpcomingChargesCard } from '@/components/organisms/upcoming-charges-car
 import { AnimatedAmount } from '@/components/ui/counter/animated-amount'
 import { AnimatedContent } from '@/components/ui/animated-content'
 import type { DashboardActions, DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
-import type { CategoryDraft } from '@/lib/data/categories'
+import type { CategoryDraft, CategoryUpdateTarget } from '@/lib/data/categories'
 
 gsap.registerPlugin(ScrollTrigger, Flip)
 import type { ExpenseDraft } from '@/lib/data/expenses'
@@ -187,6 +187,9 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   const savingsInitialFocusRef = useRef<HTMLInputElement>(null)
   const toasts = useMemo(() => Toast.createToastManager(), [])
   const currency = data.user.currency
+  // A projected cycle is read-only except for its budgets (`cycle-projection` → *What a projected
+  // cycle shows and allows*): no add rows, no row edits or swipes, no reorder, no spend chart.
+  const projected = data.cycle.projected
 
   function openCreateSheet(group: ExpenseGroup) {
     flushSync(() => setSheet({ open: true, target: { kind: 'expense', mode: 'create', group } }))
@@ -511,9 +514,9 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
       ?.focus({ preventScroll: true })
   }, [])
 
-  async function handleSaveCategory(categoryId: string, draft: CategoryDraft) {
+  async function handleSaveCategory(categoryId: string, draft: CategoryDraft, scope: CategoryUpdateTarget['scope']) {
     if (!actions.categories) return
-    await actions.categories.update(categoryId, draft)
+    await actions.categories.update(categoryId, draft, { cycle: data.cycle.start, scope })
     setCategorySheet((prev) => ({ ...prev, open: false }))
     setStatusMessage(tHojaCategoria('cambiosGuardados'))
   }
@@ -1035,6 +1038,8 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                   start={data.cycle.start}
                   end={data.cycle.end}
                   inProgress={data.cycle.inProgress}
+                  projected={projected}
+                  maxMonth={data.cycle.maxMonth}
                   onPrevious={actions.previousCycle}
                   onNext={actions.nextCycle}
                   onSelect={actions.selectCycle}
@@ -1069,6 +1074,8 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
               start={data.cycle.start}
               end={data.cycle.end}
               inProgress={data.cycle.inProgress}
+              projected={projected}
+              maxMonth={data.cycle.maxMonth}
               onPrevious={actions.previousCycle}
               onNext={actions.nextCycle}
               onSelect={actions.selectCycle}
@@ -1105,6 +1112,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                 <>
                   <div className="flex flex-col">
                     {sortedIncomeEntries.map((entry, index) => {
+                      const editable = actions.income && !projected
                       const row = (
                         <ExpenseRow
                           name={entry.name || tHojaGasto('ingreso')}
@@ -1112,11 +1120,11 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                           amount={entry.amount}
                           currency={currency}
                           timeZone={data.user.timezone}
-                          onActivate={actions.income ? () => openIncomeEditSheet(entry) : undefined}
+                          onActivate={editable ? () => openIncomeEditSheet(entry) : undefined}
                           first={index === 0}
                         />
                       )
-                      return actions.income ? (
+                      return editable ? (
                         <SwipeToDelete key={entry.id} onDelete={() => handleDeleteIncome(entry)}>
                           {row}
                         </SwipeToDelete>
@@ -1124,7 +1132,9 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                         <div key={entry.id}>{row}</div>
                       )
                     })}
-                    <AddRow label={t('anadirIngreso')} onClick={actions.income ? openIncomeCreateSheet : undefined} />
+                    {projected ? null : (
+                      <AddRow label={t('anadirIngreso')} onClick={actions.income ? openIncomeCreateSheet : undefined} />
+                    )}
                   </div>
                 </>
               ),
@@ -1165,16 +1175,18 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
               panel: (
                 <>
                   <div className="flex flex-col">
-                    <button
-                      type="button"
-                      onClick={actions.openSavingsHistory}
-                      disabled={!actions.openSavingsHistory}
-                      className="pressable flex w-full items-center gap-3 px-inset py-4 text-left [--press-tint:8%] hover:bg-foreground/[0.04] disabled:pointer-events-none"
-                    >
-                      <span className="min-w-0 flex-1 truncate text-headline-sm text-muted-foreground">{tResumen('acumulado')}</span>
-                      <AnimatedAmount amount={data.savings.accumulated} currency={currency} className="shrink-0 text-headline-sm text-foreground" />
-                      {actions.openSavingsHistory ? <ChevronRight aria-hidden className="-mr-1 size-4 shrink-0 text-muted-foreground" /> : null}
-                    </button>
+                    {projected ? null : (
+                      <button
+                        type="button"
+                        onClick={actions.openSavingsHistory}
+                        disabled={!actions.openSavingsHistory}
+                        className="pressable flex w-full items-center gap-3 px-inset py-4 text-left [--press-tint:8%] hover:bg-foreground/[0.04] disabled:pointer-events-none"
+                      >
+                        <span className="min-w-0 flex-1 truncate text-headline-sm text-muted-foreground">{tResumen('acumulado')}</span>
+                        <AnimatedAmount amount={data.savings.accumulated} currency={currency} className="shrink-0 text-headline-sm text-foreground" />
+                        {actions.openSavingsHistory ? <ChevronRight aria-hidden className="-mr-1 size-4 shrink-0 text-muted-foreground" /> : null}
+                      </button>
+                    )}
                     {data.savings.movements.map((movement, index) => (
                       <SavingsMovementRow
                         key={movement.id}
@@ -1188,7 +1200,9 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                         index={index}
                       />
                     ))}
-                    <AddRow label={t('anadirMovimientoAhorro')} onClick={actions.savings ? openSavingsCreateSheet : undefined} />
+                    {projected ? null : (
+                      <AddRow label={t('anadirMovimientoAhorro')} onClick={actions.savings ? openSavingsCreateSheet : undefined} />
+                    )}
                   </div>
                 </>
               ),
@@ -1272,12 +1286,13 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                   timeZone={data.user.timezone}
                   open={openIds.has(group.id)}
                   onToggle={() => toggleCard(group.id)}
-                  onAddExpense={actions.expenses ? () => openCreateSheet(group) : undefined}
-                  onEditExpense={actions.expenses ? (expense) => openEditSheet(group, expense) : undefined}
-                  onDeleteExpense={actions.expenses ? (expense) => handleDeleteExpense(expense) : undefined}
+                  onAddExpense={actions.expenses && !projected ? () => openCreateSheet(group) : undefined}
+                  onEditExpense={actions.expenses && !projected ? (expense) => openEditSheet(group, expense) : undefined}
+                  onDeleteExpense={actions.expenses && !projected ? (expense) => handleDeleteExpense(expense) : undefined}
                   onOpenOptions={actions.categories ? () => openCategorySheet(group) : undefined}
                   reordering={reordering}
                   showProgress={!hiddenProgressIds.has(group.id)}
+                  projected={projected}
                 />
                 {reordering ? (
                   <div
@@ -1355,7 +1370,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
               </AnimatedContent>
             )
           })}
-          {reordering ? null : (
+          {reordering || projected ? null : (
             <div ref={setTileEntranceRef} style={{ visibility: 'hidden' }}>
               <AddCategoryTile label={t('anadirCategoria')} onClick={actions.categories ? openCreateCategorySheet : undefined} />
             </div>
@@ -1363,9 +1378,11 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
         </div>
       </div>
       <div className="mt-section flex flex-col gap-stack" aria-hidden={reordering} inert={reordering}>
-        <AnimatedContent threshold={0.2} distance={24} duration={0.3}>
-          <MonthlyBarsChart history={data.history} currentMonth={data.cycle.month} currency={currency} />
-        </AnimatedContent>
+        {projected ? null : (
+          <AnimatedContent threshold={0.2} distance={24} duration={0.3}>
+            <MonthlyBarsChart history={data.history} currentMonth={data.cycle.month} currency={currency} />
+          </AnimatedContent>
+        )}
         <AnimatedContent threshold={0.2} distance={24} duration={0.3} delay={0.05}>
           <CategoryPieChart groups={data.expenses.groups} total={data.expenses.total} currency={currency} />
         </AnimatedContent>
@@ -1412,11 +1429,12 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
         onDelete={handleDeleteCategory}
         onCreate={actions.categories ? handleCreateCategory : undefined}
         initialColor={categorySheetMode === 'create' ? createCategoryColor : undefined}
-        onReorder={actions.categories ? handleEnterReorder : undefined}
+        onReorder={actions.categories && !projected ? handleEnterReorder : undefined}
         progressVisible={!hiddenProgressIds.has(categorySheetTargetGroup?.id ?? '')}
         onToggleProgress={() => {
           if (categorySheetTargetGroup) toggleProgress(categorySheetTargetGroup.id)
         }}
+        projected={projected}
       />
       {recurringSheetTarget ? (
         <RecurringSheet

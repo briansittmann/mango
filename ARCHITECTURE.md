@@ -135,6 +135,7 @@ Los **nombres** viven acá; los **valores** nunca — van a `.env.local` (ignora
 | `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto de Supabase | Cliente y servidor |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave pública; toda consulta pasa por RLS | Cliente y servidor |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Saltea RLS.** Solo para el cron de fijos y escrituras del webhook | **Solo servidor** |
+| `CRON_SECRET` | Secreto aleatorio (32+ caracteres) que Vercel manda como `Authorization: Bearer` al cron de fijos (sección 3); sin él la ruta responde 500 | **Solo servidor** (Production) |
 | `GEMINI_API_KEY` | Parser de mensajes | **Solo servidor** |
 | `WHATSAPP_TOKEN` | Token permanente (System User `mango-bot`, sin expiración) para llamar a la Cloud API | **Solo servidor** |
 | `WHATSAPP_PHONE_NUMBER_ID` | Identificador del número emisor; va en la URL de envío | **Solo servidor** |
@@ -200,6 +201,13 @@ margen libre = ingresos − ahorro − Σ max(presupuesto, gastado) por categor�
 No hay un término aparte para los fijos: "gastado" en una categoría es su total del ciclo, fijos incluidos, y cada gasto cuenta una sola vez. Un fijo que vence en el ciclo cuenta desde el día 1 a su monto esperado, aunque todavía no se haya cobrado, para que el margen no sea optimista los primeros días; cuando se cobra, el monto real reemplaza al esperado (sección 9, *Presupuestado vs real*).
 
 **El cron de fijos y la proyección de meses futuros usan la misma función pura**, `proyectarCiclo`, en la capa de datos compartida. La proyección calcula qué va a pasar en un ciclo (sección 9, *Meses futuros: proyección*) y el cron lo escribe cuando llega el día (sección 7). Por qué una sola función: si fueran dos cálculos, tarde o temprano el mes proyectado y el que el cron inserta dirían cosas distintas. Así nunca se contradicen.
+
+**Cómo corre el cron** *(implementado, `add-cycle-projection-and-recurring-cron`, sept 2026)*: `vercel.json` llama a `GET /api/cron/recurrentes` todos los días a las **05:00 UTC** (en Hobby, en algún minuto de esa hora). La ruta es TypeScript en Next, no pg_cron: exige `Authorization: Bearer ${CRON_SECRET}` y usa el cliente de service role. Sin alguna de las dos variables devuelve 500 y no escribe nada. Para cada usuario, en su propio `try`:
+1. Calcula los ciclos pendientes, desde el siguiente a `usuarios.ciclo_generado_hasta` hasta el ciclo en curso (como mucho 24 por corrida).
+2. Para cada uno llama a `proyectarCiclo` y le pasa los cargos a `generar_ciclo`, una función SQL atómica.
+3. Al final llama a `cerrar_pendientes`.
+
+La respuesta y el log solo dicen ciclos generados, filas insertadas y filas cerradas, sin montos ni nombres. Correrlo dos veces, tarde o después de días sin correr da el mismo resultado: la marca y el unique `(movimiento_recurrente_id, ciclo_mes)` hacen que la segunda corrida no inserte ni cuente nada (sección 7).
  
 ### Flujo de carga
  
@@ -503,6 +511,14 @@ Un fijo de monto variable (luz, gas) se carga por chat como cualquier gasto — 
 2. Una carga manual busca si hay una fila `pendiente` de ese `gasto_fijo_id` en el ciclo. Si existe, la **completa con el monto cargado y la marca `confirmada`**. No inserta una segunda.
 3. Si el ciclo termina y nadie la tocó, la pendiente se **cierra sola con el monto esperado**. Es el caso del alquiler, que no varía nunca y que por eso jamás se escribe a mano.
 **Esquema:** campo `estado` (`pendiente` | `confirmada`) en `transacciones`, ver sección 8.
+
+> **Implementado (`add-cycle-projection-and-recurring-cron`, sept 2026):**
+> - **Quién genera un ciclo:** lo decide la marca `usuarios.ciclo_generado_hasta` (primer día del último ciclo generado), no el día del mes. Una corrida perdida se recupera en la siguiente, y un fijo creado a mitad de ciclo no hace que el ciclo parezca generado. `generar_ciclo` no escribe si la marca ya llegó a ese ciclo. Inserta con `on conflict do nothing` y cuenta `repeticiones_insertadas` solo por las filas que realmente insertó, en la misma sentencia que desactiva un plan que llega al total.
+> - **Conciliación desde la web:** guardar una fila pendiente desde su hoja la confirma con el monto cargado. `update` de gastos e ingresos siempre escribe `estado = 'confirmada'`; no hay un botón aparte de "confirmar".
+> - **Conciliación desde el bot:** `completar_cargo_recurrente` completa la pendiente del fijo en el ciclo. Si no hay ninguna, inserta una confirmada y la cuenta. Si el hueco ya lo ocupa una fila confirmada o borrada, falla con `already-confirmed`. La usa el bot (bloque 5); la web no.
+> - **Cierre:** `cerrar_pendientes` confirma, a su monto esperado, las pendientes de los ciclos anteriores al que está en curso.
+> - **Qué se muestra cobrado:** una fila confirmada, o una cuyo día local ya pasó (decisión Q4). `estado` sigue abierto hasta el cierre para conciliar. Así la pantalla se ve igual que antes de `estado`, y el alquiler del día 1 no queda como "próximo cobro" todo el mes. Editar una definición reescribe el cargo del ciclo solo si sigue pendiente y su día no pasó.
+> - **Plan B de octubre 2026:** `supabase/seed/octubre-2026.sql` inserta a mano los cargos de un ciclo con las mismas reglas y mueve la marca. Existe por si el cron no estaba en producción el 1/10.
  
 **Los fijos se descuentan del margen libre desde el día 1 del ciclo**, estén pendientes o confirmados. Esa es la pregunta que la app contesta: cuánto queda realmente, no cuánto hay en la cuenta antes de pagar lo que ya se debe. Si el alquiler apareciera recién el día que se cobra, el margen libre sería optimista justo los primeros días, que es cuando se decide.
  
@@ -522,7 +538,7 @@ Deliberadamente no modela principal, interés ni una tabla de amortización — 
 
 #### Gastos puntuales planificados
 
-> **Pendiente de decidir:** si se suman gastos puntuales planificados en meses futuros (*"viaje en febrero, 600"*). Necesitan `transacciones.estado` (sección 8), que todavía no existe.
+> **Pendiente de decidir:** si se suman gastos puntuales planificados en meses futuros (*"viaje en febrero, 600"*). Se apoyarían en `transacciones.estado` (sección 8), que ya existe desde la `0021`.
  
 ---
  
@@ -545,6 +561,7 @@ Deliberadamente no modela principal, interés ni una tabla de amortización — 
 - `modo_confirmacion` (`auto` | `texto` | `reaccion`, default `auto` — ver sección 3)
 - `meta_ahorro_mensual` (numeric, nullable — meta de ahorro por ciclo; `null` es "sin meta fijada", ver sección 9)
 - `vip` (bool, default `false` — se marca a mano; activa el historial de conversación, ver sección 3)
+- `ciclo_generado_hasta` (`date`, nullable — primer día del último ciclo cuyos fijos insertó el cron; `null` es "nunca generó". La `0021` la llenó con el `max(ciclo_mes)` de cada usuario. Ver secciones 3 y 7)
 
 > **Decisión (sept 2026):** `telefono` deja de ser el identificador principal y pasa a nullable. El usuario es una identidad sin teléfono; el teléfono es un canal más (`canales`, abajo). Por qué ahora, antes de escribir el bot: si el bot escribe pegado al teléfono, migrarlo después cuesta más que dejar el hueco hoy.
 
@@ -593,7 +610,8 @@ Un código está disponible si `usada_en IS NULL AND vence_en > now()`. No hace 
 - `tipo` (`ingreso` | `gasto` | `ahorro`)
 - `es_fijo` (bool)
 - `gasto_fijo_id` (nullable — si vino de un fijo recurrente)
-- `estado` (`pendiente` | `confirmada`, default `confirmada` — solo las filas que inserta el cron nacen `pendiente`, ver sección 7)
+- `estado` (`pendiente` | `confirmada`, default `confirmada` — solo las filas que inserta el cron nacen `pendiente`, ver sección 7). Existe desde la `0021`, que llenó las filas viejas con la regla de fecha anterior; índice parcial `(usuario_id, ciclo_mes) where estado = 'pendiente'`
+- `ciclo_mes` (`date`, nullable — primer día del ciclo de un cargo vinculado a un fijo; `unique (movimiento_recurrente_id, ciclo_mes)` es lo que hace idempotente al cron)
 - `canal` (`whatsapp` | `telegram`, nullable) + `mensaje_id_externo` (idempotencia — único por `usuario_id` + `canal` + `mensaje_id_externo`; generaliza al `wa_message_id` original, único solo por usuario y pensado solo para WhatsApp. El `usuario_id` se mantiene en la clave porque el `message_id` de Telegram es único solo dentro de un chat, no global como el `wamid` de WhatsApp: sin `usuario_id`, dos cuentas distintas podrían coincidir en el mismo id)
 - `borrado_en` (timestamp nullable — borrado suave, ver sección 4)
 **`gastos_fijos`**
@@ -602,7 +620,7 @@ Un código está disponible si `usada_en IS NULL AND vence_en > now()`. No hace 
 - `nombre`
 - `monto_actual`
 - `categoria_id`
-- `dia_del_mes`
+- `dia_del_mes` (`NOT NULL` desde la `0021`; un día que el mes no tiene cae en el último día de ese mes, sección 9)
 - `activo` (bool)
 - `orden` (int — posición manual, ver sección 9)
 - `recordatorio_activo` (bool) y `dias_antes` (int, default 1) — ver sección 14.1
@@ -613,7 +631,7 @@ Un código está disponible si `usada_en IS NULL AND vence_en > now()`. No hace 
 - `categoria_id`
 - `monto` (nullable — `null` es la marca explícita de "sin presupuesto en este ciclo", ver abajo)
 - `periodo` (`date` — el primer día del ciclo, calculado con `rango_ciclo_usuario` desde `dia_inicio_ciclo`; para día 26, el ciclo de septiembre es `2026-08-26`)
-Una fila por categoría por ciclo (`unique (usuario_id, categoria_id, periodo)`). Cuando un ciclo pasa a ser el actual y no tiene filas, marcas incluidas, se copian todas las filas del ciclo anterior más reciente que tenga alguna. Nunca se crea una fila para un ciclo futuro. Editar o crear un presupuesto escribe solo la fila del ciclo actual, así los ciclos cerrados no cambian y los siguientes heredan el monto por la copia; borrarlo escribe una marca (`monto` null) en vez de borrar la fila, para que la copia no lo traiga de vuelta. Migración `0018_presupuestos_periodo_ciclo.sql`.
+Una fila por categoría por ciclo (`unique (usuario_id, categoria_id, periodo)`). Cuando un ciclo pasa a ser el actual y no tiene filas, marcas incluidas, se copian todas las filas del ciclo anterior más reciente que tenga alguna. Leer un ciclo futuro no escribe nada: hereda las filas del último ciclo con alguna. Editar o crear un presupuesto desde el ciclo actual escribe solo la fila del ciclo actual, así los ciclos cerrados no cambian y los siguientes heredan el monto por la copia; borrarlo escribe una marca (`monto` null) en vez de borrar la fila, para que la copia no lo traiga de vuelta. Migración `0018_presupuestos_periodo_ciclo.sql`.
 
 > **Decisión (sept 2026):** se levanta la regla "nunca se crea una fila para un ciclo futuro", porque la proyección (sección 9) permite editar presupuestos de un ciclo futuro. Tres reglas nuevas:
 > - La hoja pregunta **"solo este mes"** o **"desde este mes en adelante"**.
@@ -621,6 +639,13 @@ Una fila por categoría por ciclo (`unique (usuario_id, categoria_id, periodo)`)
 > - Editar un ciclo futuro **materializa todas las categorías de ese ciclo**, no solo la editada. Si no, la copia ve el ciclo "con filas" y las demás categorías quedan sin presupuesto.
 >
 > Para el ciclo actual y los cerrados, lo de arriba sigue igual.
+>
+> **Implementado (`0022_presupuestos_ciclo_futuro.sql`):**
+> - `periodo_presupuesto` resuelve el ciclo de una escritura. Un periodo null, actual o pasado es el ciclo en curso. Uno posterior tiene que ser el primer día de uno de los seis ciclos siguientes; si no, falla con `invalid-period`.
+> - `actualizar_categoria` suma `p_periodo` y `p_alcance` (`'solo'` | `'desde'`). En un ciclo futuro el alcance es obligatorio (`invalid-scope`).
+> - `copiar_presupuestos_ciclo(p_usuario_id, p_periodo)` materializa cualquier ciclo, del actual en adelante.
+> - Con "solo este mes", si la categoría no tenía nada que heredar, el ciclo siguiente recibe una marca para ella.
+> - Renombrar o cambiar el color desde un ciclo futuro no toca ningún presupuesto: la web reescribe la fila del ciclo actual tal como está. El demo aplica las mismas reglas en memoria (`lib/demo/demo-budgets.ts`).
 **`ingresos_esperados`**
 - `id`
 - `usuario_id`
@@ -1043,9 +1068,13 @@ Lo que **sí** se gana con 2–3 meses de historial es **ajustar** los presupues
 
 **Por qué:** lo valioso sale solo. Se ve que el margen **sube cuando termina una cuota o baja cuando arranca otra**, sin que nadie tenga que hacer la cuenta. Y como el cron escribe con la misma función (sección 7), lo proyectado y lo que después se inserta nunca se contradicen.
 
-`/demo` también la muestra.
+**Fecha de cada cargo:** cae en el día del ciclo que coincide con `dia_del_mes`. Un día igual o posterior al de inicio del ciclo va en el mes de inicio, uno anterior en el mes siguiente. Si ese mes no tiene el día, el cargo va al último día de ese mes: el 31 cae el 30 de septiembre, y el 30, en el ciclo del 26/2 al 25/3/2027, cae el 28 de febrero. `fechaEnCiclo` en `lib/data/projection.ts`; el cron usa la misma regla.
 
-Los presupuestos de un ciclo futuro se pueden editar; las reglas de escritura están en la sección 8 (*presupuestos*).
+**Qué permite:** las filas proyectadas se ven como pendientes y no se editan, deslizan ni borran. No hay filas de alta, tarjeta "Añadir categoría" ni modo reordenar, y se ocultan el gráfico de gasto mensual y el acumulado de ahorro. "Próximos cobros" lista los cargos proyectados y sigue abriendo la hoja de cada definición. Las cuotas se cuentan desde la marca del cron (sección 7), así que una cuota sale de la proyección justo después de su último pago.
+
+`/demo` también la muestra: su ciclo de ejemplo (septiembre 2026) hace de último ciclo generado, y proyecta seis más.
+
+Los presupuestos de un ciclo futuro se pueden editar; las reglas de escritura están en la sección 8 (*presupuestos*). La hoja de la categoría pregunta "solo este mes" o "desde este mes en adelante" solo cuando cambia el presupuesto, sin opción preseleccionada, y no deja guardar hasta que se elija una.
  
 ---
  
@@ -1088,7 +1117,7 @@ Todo este cálculo es del número de prueba. Con número propio el cupo desapare
 | Ventana de 24 h de WhatsApp | No afecta: el bot siempre **responde** a un mensaje del usuario. Solo aplicaría a los avisos proactivos de gastos fijos, que necesitarían una *template* aprobada |
 | Usuario sin onboarding manda un gasto | Interceptar y disparar el wizard antes de parsear |
 | Gasto de fin de mes a las 23:00 cae en el mes equivocado | Agrupar por timezone del usuario, no por UTC |
-| Fijos duplicados si el job corre dos veces | Constraint único por `gasto_fijo_id` + mes |
+| Fijos duplicados si el job corre dos veces | Constraint único por `movimiento_recurrente_id` + `ciclo_mes`, más la marca `ciclo_generado_hasta`: la segunda corrida no inserta ni cuenta nada |
 | Cold starts | Aceptables en Vercel (~100–300 ms) |
 | Un usuario web espera usar WhatsApp y no puede | La sección "WhatsApp" de ajustes lo explica desde el principio: que hoy es por invitación y por qué (sección 4). El onboarding web lo presenta como opcional |
 | Registros basura con el sign-up abierto | Rate limiting sobre el registro (sección 10) |

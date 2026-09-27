@@ -3,8 +3,9 @@ import { getBudgetStatus, getFreeMargin, type BudgetRow } from '@/lib/data/budge
 import type { DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
 import type { ExpenseDraft, ExpenseMutations } from '@/lib/data/expenses'
 import type { IncomeDraft, IncomeEntry } from '@/lib/data/income'
+import { proyectarCiclo } from '@/lib/data/projection'
 import type { RecurringDefinition, RecurringDraft, RecurringTarget } from '@/lib/data/recurring'
-import { budgetFor, copyForward, dropCategory, setBudget } from '@/lib/demo/demo-budgets'
+import { budgetFor, copyForward, dropCategory, setBudget, setBudgetInCycle } from '@/lib/demo/demo-budgets'
 import type { DemoCategoryEdits } from '@/lib/demo/demo-categories'
 import type { DemoIncomeEdits } from '@/lib/demo/demo-income'
 import type { DemoRecurringEdits } from '@/lib/demo/demo-recurring'
@@ -206,6 +207,93 @@ function finalizeGroup(
   }
 }
 
+// The demo's cycles start on the 1st, so the next cycle starts on the same day a month later.
+function followingCycle(start: string): string {
+  const [year, month, day] = start.split('-').map(Number)
+  return new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10)
+}
+
+/** `YYYY-MM` shifted by `n` months; the demo's cycles are calendar months. */
+export function shiftDemoMonth(month: string, n: number): string {
+  const [year, m] = month.split('-').map(Number)
+  return new Date(Date.UTC(year, m - 1 + n, 1)).toISOString().slice(0, 7)
+}
+
+function monthsBetween(from: string, to: string): number {
+  const [fy, fm] = from.split('-').map(Number)
+  const [ty, tm] = to.split('-').map(Number)
+  return (ty - fy) * 12 + (tm - fm)
+}
+
+// A cycle after the sample, computed through `proyectarCiclo` with the sample as the last
+// generated cycle (D9): the sample's categories, in their order, holding only projected charges.
+function projectDemoCycle(
+  sample: DashboardData,
+  definitions: RecurringDefinition[],
+  budgetRows: BudgetRow[],
+  month: string,
+): DashboardData {
+  const start = `${month}-01`
+  const [year, m] = month.split('-').map(Number)
+  const cycleDays = new Date(Date.UTC(year, m, 0)).getUTCDate()
+  const end = `${month}-${String(cycleDays).padStart(2, '0')}`
+  const projection = proyectarCiclo({
+    start,
+    cyclesAfterGenerated: monthsBetween(sample.cycle.month, month),
+    definitions,
+    budgetRows,
+    savingsTarget: sample.savings.target,
+  })
+  const dayOf = new Map(definitions.map((definition) => [definition.id, definition.day]))
+
+  const groups = sample.expenses.groups.map((group): ExpenseGroup => {
+    const expenses: Expense[] = projection.charges
+      .filter((charge) => charge.tipo === 'gasto' && charge.categoryId === group.id)
+      .map((charge) => ({
+        id: `proj:${charge.definitionId}`,
+        name: charge.name,
+        amount: charge.amount,
+        date: `${charge.date}T12:00:00Z`,
+        fixed: { definitionId: charge.definitionId, day: dayOf.get(charge.definitionId)!, charged: false },
+      }))
+    const total = expenses.reduce((sum, expense) => sum + expense.amount, 0)
+    const budgetAmount = projection.budgets.get(group.id) ?? null
+    return {
+      ...group,
+      total,
+      budget: budgetAmount != null ? getBudgetStatus({ amount: budgetAmount, spent: total, currentDay: 1, cycleDays }) : null,
+      expenses,
+    }
+  })
+  const entries: IncomeEntry[] = projection.charges
+    .filter((charge) => charge.tipo === 'ingreso')
+    .map((charge) => ({
+      id: `proj:${charge.definitionId}`,
+      name: charge.name,
+      amount: charge.amount,
+      date: `${charge.date}T12:00:00Z`,
+      recurring: { definitionId: charge.definitionId, day: dayOf.get(charge.definitionId)! },
+    }))
+  const incomeTotal = entries.reduce((sum, entry) => sum + entry.amount, 0)
+
+  return {
+    ...sample,
+    cycle: { ...sample.cycle, start, end, today: start, month, inProgress: false, projected: true },
+    freeMargin: getFreeMargin({
+      income: incomeTotal,
+      savings: projection.savings,
+      categories: groups.map((group) => ({ budget: group.budget?.amount ?? null, spent: group.total })),
+    }),
+    income: { total: incomeTotal, entries },
+    savings: { ...sample.savings, cycle: projection.savings, movements: [] },
+    expenses: { total: groups.reduce((sum, group) => sum + group.total, 0), groups },
+  }
+}
+
+/**
+ * The sample cycle after the in-memory edits, or, for a `shownMonth` after it, that cycle's
+ * projection from the edited definitions and budget rows (`cycle-projection` → *The demo projects too*).
+ */
 export function deriveDemoData(
   base: DashboardData,
   baseDefinitions: RecurringDefinition[],
@@ -215,6 +303,7 @@ export function deriveDemoData(
   recurringEdits: DemoRecurringEdits,
   incomeEdits: DemoIncomeEdits,
   savingsEdits: DemoSavingsEdits,
+  shownMonth: string = base.cycle.month,
 ): { data: DashboardData; definitions: RecurringDefinition[] } {
   const today = Number(base.cycle.today.slice(8, 10))
   const start = Number(base.cycle.start.slice(8, 10))
@@ -236,11 +325,19 @@ export function deriveDemoData(
   const resolved = attachCreatedDefinitions(expenseResolved, recurringEdits.created, currentDay, base.cycle.start)
 
   // 4. Budgets come from the per-cycle rows (D4): the copy into the sample cycle first, then
-  //    updates and creations write that cycle only, then deletions drop every cycle's rows.
-  //    Category updates override name and colour.
+  //    budget saves in order (the sample cycle, or a projected one with its scope), creations
+  //    write the sample cycle only, then deletions drop every cycle's rows. Category updates
+  //    override name and colour.
   const cycle = base.cycle.start
   let budgetRows = copyForward(baseBudgetRows, cycle)
-  for (const [id, draft] of Object.entries(categoryEdits.updated)) budgetRows = setBudget(budgetRows, id, draft.budget, cycle)
+  for (const edit of categoryEdits.budgets) {
+    budgetRows = setBudgetInCycle(budgetRows, edit.categoryId, edit.amount, {
+      current: cycle,
+      cycle: edit.cycle,
+      following: followingCycle(edit.cycle),
+      scope: edit.scope,
+    })
+  }
   for (const { id, draft } of categoryEdits.created) {
     if (draft.budget != null) budgetRows = setBudget(budgetRows, id, draft.budget, cycle)
   }
@@ -332,15 +429,17 @@ export function deriveDemoData(
     categories: groups.map((group) => ({ budget: group.budget?.amount ?? null, spent: group.total })),
   })
 
+  const sample: DashboardData = {
+    ...base,
+    expenses: { total, groups },
+    income: { total: incomeTotal, entries: incomeEntries },
+    savings: { ...base.savings, cycle: savingsCycle, accumulated: savingsAccumulated, history: savingsHistory, movements },
+    freeMargin,
+    history,
+  }
+
   return {
-    data: {
-      ...base,
-      expenses: { total, groups },
-      income: { total: incomeTotal, entries: incomeEntries },
-      savings: { ...base.savings, cycle: savingsCycle, accumulated: savingsAccumulated, history: savingsHistory, movements },
-      freeMargin,
-      history,
-    },
+    data: shownMonth > base.cycle.month ? projectDemoCycle(sample, relocatedDefinitions, budgetRows, shownMonth) : sample,
     definitions: relocatedDefinitions,
   }
 }

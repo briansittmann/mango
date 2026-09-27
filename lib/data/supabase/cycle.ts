@@ -30,13 +30,17 @@ export function shiftMonth(month: string, n: number): string {
   return date.toISOString().slice(0, 7)
 }
 
+/** How many cycles after the one in progress the dashboard projects (`cycle-projection`). */
+export const PROJECTION_HORIZON = 6
+
 /**
- * `?mes=` → the month to show. Anything that is not `YYYY-MM`, or a month after the cycle in
- * progress, becomes the cycle in progress: no URL shows a future cycle or asks for its budgets.
+ * `?mes=` → the month to show. Anything that is not `YYYY-MM` becomes the cycle in progress; a
+ * month past the horizon becomes the last projected cycle (design D6).
  */
 export function parseMonthParam(value: string | string[] | undefined, current: string): string {
   if (typeof value !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) return current
-  return value > current ? current : value
+  const max = shiftMonth(current, PROJECTION_HORIZON)
+  return value > max ? max : value
 }
 
 /** The same formatter `DashboardTemplate` uses to place rows on a calendar day. */

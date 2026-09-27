@@ -6,7 +6,7 @@ function fail(error: PostgrestError): never {
   throw new Error(error.message === 'duplicate-category-name' ? DUPLICATE_CATEGORY_NAME : error.message)
 }
 
-/** `CategoryMutations` over the 0017 functions; each call is one transaction (D12). */
+/** `CategoryMutations` over the 0017 functions (`actualizar_categoria` from 0022); each call is one transaction (D12). */
 export function createSupabaseCategoryMutations({ client, usuarioId }: DataContext): CategoryMutations {
   return {
     async create(draft) {
@@ -19,13 +19,35 @@ export function createSupabaseCategoryMutations({ client, usuarioId }: DataConte
       if (error) fail(error)
       return data as string
     },
-    async update(categoryId, draft) {
+    async update(categoryId, draft, { cycle, scope }) {
+      let budget = draft.budget
+      let periodo: string | null = cycle
+      if (scope == null) {
+        const current = await client.rpc('periodo_presupuesto', { p_usuario_id: usuarioId, p_periodo: null })
+        if (current.error) fail(current.error)
+        // A projected cycle without a scope is a rename: the current cycle's own entry is written
+        // back as it stands (no row and a marker both stay as they are), so no budget changes.
+        if (cycle > (current.data as string)) {
+          const row = await client
+            .from('presupuestos')
+            .select('monto')
+            .eq('usuario_id', usuarioId)
+            .eq('categoria_id', categoryId)
+            .eq('periodo', current.data)
+            .maybeSingle()
+          if (row.error) fail(row.error)
+          budget = row.data?.monto == null ? null : Number(row.data.monto)
+          periodo = null
+        }
+      }
       const { error } = await client.rpc('actualizar_categoria', {
         p_usuario_id: usuarioId,
         p_id: categoryId,
         p_nombre: draft.name,
         p_color: draft.color,
-        p_presupuesto: draft.budget,
+        p_presupuesto: budget,
+        p_periodo: periodo,
+        p_alcance: scope === 'only' ? 'solo' : scope === 'onward' ? 'desde' : null,
       })
       if (error) fail(error)
     },

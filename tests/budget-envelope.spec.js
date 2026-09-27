@@ -77,12 +77,13 @@ test.describe('a budget reserves its amount in the free margin', () => {
 })
 
 test.describe('cycle header', () => {
-  test('the current cycle cannot move forward, only back', async ({ page }) => {
+  // The sample cycle leads into its projections (`dashboard-ui` → *Navigation into the projection*).
+  test('the current cycle moves forward into the projection and back', async ({ page }) => {
     await page.goto('/demo')
     const next = page.getByRole('button', { name: 'Ciclo siguiente', includeHidden: true })
     const previous = page.getByRole('button', { name: 'Ciclo anterior', includeHidden: true })
     await expect(next).toHaveCount(2)
-    for (const button of await next.all()) await expect(button).toBeDisabled()
+    for (const button of await next.all()) await expect(button).toBeEnabled()
     for (const button of await previous.all()) await expect(button).toBeEnabled()
   })
 })

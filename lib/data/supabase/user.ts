@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { LocalDate } from '@/lib/data/expenses'
 
 export type Usuario = {
   id: string
@@ -9,6 +10,8 @@ export type Usuario = {
   timezone: string
   dia_inicio_ciclo: number
   meta_ahorro_mensual: number | null
+  /** First day of the last cycle whose charges were generated (0021); null before the first. */
+  ciclo_generado_hasta: LocalDate | null
 }
 
 /**
@@ -18,7 +21,7 @@ export type Usuario = {
 export async function findCurrentUsuario(client: SupabaseClient): Promise<Usuario | null> {
   const { data, error } = await client
     .from('usuarios')
-    .select('id, nombre, telefono, foto_url, moneda_default, timezone, dia_inicio_ciclo, meta_ahorro_mensual')
+    .select('id, nombre, telefono, foto_url, moneda_default, timezone, dia_inicio_ciclo, meta_ahorro_mensual, ciclo_generado_hasta')
     .maybeSingle<Usuario>()
 
   if (error) throw error

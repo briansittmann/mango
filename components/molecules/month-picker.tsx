@@ -5,14 +5,15 @@ import { cn } from '@/lib/utils'
 
 type MonthPickerProps = {
   month: string
-  inProgress: boolean
+  /** The last selectable month; later ones are disabled. */
+  maxMonth: string
   open: boolean
   onSelect?: (month: string) => void
   onClose: () => void
   align?: 'start' | 'center'
 }
 
-export function MonthPicker({ month, inProgress, open, onSelect, onClose, align = 'center' }: MonthPickerProps) {
+export function MonthPicker({ month, maxMonth, open, onSelect, onClose, align = 'center' }: MonthPickerProps) {
   const t = useTranslations('dashboard')
   const format = useFormatter()
   const currentYear = Number(month.slice(0, 4))
@@ -71,7 +72,7 @@ export function MonthPicker({ month, inProgress, open, onSelect, onClose, align 
         <button
           type="button"
           onClick={() => setYear((y) => y + 1)}
-          disabled={inProgress && year >= currentYear}
+          disabled={year >= Number(maxMonth.slice(0, 4))}
           aria-label={t('anioSiguiente')}
           className="pressable grid size-target place-items-center rounded-full text-muted-foreground [--press-scale:0.9] hover:bg-foreground/[0.06] hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
         >
@@ -83,7 +84,7 @@ export function MonthPicker({ month, inProgress, open, onSelect, onClose, align 
         {Array.from({ length: 12 }, (_, index) => {
           const value = `${year}-${String(index + 1).padStart(2, '0')}`
           const selected = value === month
-          const future = inProgress && value > month
+          const future = value > maxMonth
           return (
             <button
               key={value}
