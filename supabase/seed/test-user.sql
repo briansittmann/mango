@@ -17,13 +17,13 @@
 -- Correrlo en un ciclo posterior mueve las filas sembradas a ese ciclo.
 -- Los ids fijos son globales: el script siembra un solo usuario de prueba por base.
 --
--- telefono es not null y único en usuarios; un usuario que nace en la web no tiene, así que
--- se usa un placeholder con la forma válida (proposal, gap 4).
+-- El usuario de prueba no tiene teléfono ni canal (separate-identity-from-channel, D7): nace
+-- por la web, como cualquier registro abierto, así que telefono queda null y no se crea fila
+-- en canales. El upsert identifica la fila por auth_user_id, no por teléfono.
 
 do $$
 declare
   v_email text := 'test@example.com'; -- ← reemplazar por el e-mail del usuario de prueba
-  v_telefono text := '+10000000001';
   v_tz text := 'Europe/Dublin';
   v_dia_inicio integer := 26;
   v_auth_id uuid;
@@ -37,12 +37,11 @@ begin
   end if;
 
   insert into usuarios (
-    telefono, auth_user_id, email, nombre, pais, timezone, moneda_default, idioma,
+    auth_user_id, email, nombre, pais, timezone, moneda_default, idioma,
     dia_inicio_ciclo, onboarding_completo, meta_ahorro_mensual
   )
-  values (v_telefono, v_auth_id, v_email, 'Usuario de prueba', 'IE', v_tz, 'EUR', 'es', v_dia_inicio, true, 300)
-  on conflict (telefono) do update set
-    auth_user_id = excluded.auth_user_id,
+  values (v_auth_id, v_email, 'Usuario de prueba', 'IE', v_tz, 'EUR', 'es', v_dia_inicio, true, 300)
+  on conflict (auth_user_id) do update set
     email = excluded.email,
     nombre = excluded.nombre,
     pais = excluded.pais,

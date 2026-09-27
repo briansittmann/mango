@@ -5,13 +5,14 @@ import {
 } from '@/lib/bot/logic'
 import { messageAlreadyProcessed } from '@/lib/data/transactions'
 import { findUserIdByPhone } from '@/lib/data/users'
+import { isInviteRequired } from './invite'
 
 import type { WhatsAppMessage } from './payload'
 
 /**
- * Adapter: resolves the number against the users, discards retries and
- * calls the bot logic with the internal format `{ userId, text,
- * messageId }` (ARCHITECTURE.md §3).
+ * Adapter: resolves the number against the linked `whatsapp` channels, discards retries and
+ * calls the bot logic with the internal format `{ userId, text, messageId, channel }`
+ * (ARCHITECTURE.md §3).
  */
 export async function handleMessages(messages: WhatsAppMessage[]): Promise<void> {
   for (const message of messages) {
@@ -28,12 +29,17 @@ async function handleMessage(message: WhatsAppMessage): Promise<void> {
   const userId = await findUserIdByPhone(message.phone)
 
   if (!userId) {
-    const reply = await processUnknownNumber(message.phone, message.text)
+    const reply = await processUnknownNumber({
+      channel: 'whatsapp',
+      externalId: message.phone,
+      text: message.text,
+      inviteRequired: isInviteRequired(process.env.WHATSAPP_REQUIRE_INVITE),
+    })
     await sendReply(message.phone, reply)
     return
   }
 
-  if (await messageAlreadyProcessed(userId, message.messageId)) {
+  if (await messageAlreadyProcessed(userId, 'whatsapp', message.messageId)) {
     console.info(`[whatsapp] retry discarded: ${message.messageId}`)
     return
   }
@@ -42,6 +48,7 @@ async function handleMessage(message: WhatsAppMessage): Promise<void> {
     userId,
     text: message.text,
     messageId: message.messageId,
+    channel: 'whatsapp',
   })
 
   await sendReply(message.phone, reply)

@@ -76,13 +76,14 @@
 
 **Bot de WhatsApp**
 - Hecho: webhook (`app/api/whatsapp/route.ts`), validacion HMAC (`lib/whatsapp/signature.ts`), adaptador y extraccion de payload.
+- Hecho (`separate-identity-from-channel`): el adaptador resuelve al remitente por `canales` (`findUserIdByPhone`), no por `usuarios.telefono`; idempotencia por `canal` + `mensaje_id_externo` (`messageAlreadyProcessed`); `processUnknownNumber` recibe `{ channel, externalId, text, inviteRequired }`. El interruptor `WHATSAPP_REQUIRE_INVITE` (`lib/whatsapp/invite.ts`, `isInviteRequired`) lo lee el adaptador dentro de la rama de numero desconocido; solo `'false'` lo apaga.
 - A medias: `lib/bot/logic.ts` es stub — `processMessage` y `processUnknownNumber` devuelven `{ kind: 'none' }`. Faltan parser Gemini + Zod, onboarding, invitaciones y rate limiting (TODOs en el archivo).
 - Pendiente: Zod y el SDK de Gemini no estan en `package.json`.
 
 **Base de datos**
-- Hecho: 19 migraciones en `supabase/migrations/`, todas aplicadas a la base real. `0017_funciones_dashboard.sql`: funciones `security invoker` con `p_usuario_id` explicito para categorias (crear/actualizar/eliminar/reordenar), presupuestos por ciclo (`copiar_presupuestos_ciclo`) y recurrentes (crear/actualizar/eliminar), atomicas. `0019_referencias_mismo_usuario.sql`: FKs compuestas con `usuario_id`, asi la base rechaza una transaccion, definicion o presupuesto que apunte a una categoria o definicion de otro usuario (lo encontro 8.3: RLS solo miraba `usuario_id`).
-- Hecho: `lib/data/supabase/` (contexto, ciclo, usuario, `resumenMensual`, y las implementaciones de los cinco contratos). Toman un cliente y un `usuarios.id`, asi el bot las puede reusar con el cliente admin. El bot sigue usando solo `users.ts` (`findUserIdByPhone`) y `transactions.ts` (`messageAlreadyProcessed`).
-- Hecho: usuario de prueba sembrado con `supabase/seed/test-user.sql` (e-mail placeholder en el repo; al correrlo se cambia solo `v_email`): 45 transacciones, 7 categorias, 7 definiciones, 18 presupuestos. Hoy los datos de la base son descartables hasta que se carguen los reales.
+- Hecho: 20 migraciones en `supabase/migrations/`, todas aplicadas a la base real. `0017_funciones_dashboard.sql`: funciones `security invoker` con `p_usuario_id` explicito para categorias (crear/actualizar/eliminar/reordenar), presupuestos por ciclo (`copiar_presupuestos_ciclo`) y recurrentes (crear/actualizar/eliminar), atomicas. `0019_referencias_mismo_usuario.sql`: FKs compuestas con `usuario_id`, asi la base rechaza una transaccion, definicion o presupuesto que apunte a una categoria o definicion de otro usuario (lo encontro 8.3: RLS solo miraba `usuario_id`). `0020_canales.sql` (`separate-identity-from-channel`): tabla `canales` (RLS sin politicas, solo cliente admin), `usuarios.telefono` pasa a nullable, `transacciones.wa_message_id` se renombra a `mensaje_id_externo` y suma `canal`, unique `(usuario_id, canal, mensaje_id_externo)`.
+- Hecho: `lib/data/supabase/` (contexto, ciclo, usuario, `resumenMensual`, y las implementaciones de los cinco contratos). Toman un cliente y un `usuarios.id`, asi el bot las puede reusar con el cliente admin. El bot sigue usando solo `users.ts` (`findUserIdByPhone`, ahora sobre `canales`) y `transactions.ts` (`messageAlreadyProcessed`, ahora por canal).
+- Hecho: usuario de prueba sembrado con `supabase/seed/test-user.sql` (e-mail placeholder en el repo; al correrlo se cambia solo `v_email`): 45 transacciones, 7 categorias, 7 definiciones, 18 presupuestos, sin telefono ni canal (`separate-identity-from-channel`, D7) — el upsert identifica la fila por `auth_user_id`. Hoy los datos de la base son descartables hasta que se carguen los reales.
 - Pendiente: el cron que inserta los gastos fijos y decrementa/desactiva por repeticiones.
 
 **i18n/tema**
@@ -96,7 +97,7 @@
 **Deploy/entorno**
 - Hecho: `.env.local` con `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` del proyecto real (`noemlszbjqzqbzagahyd`).
 - Hecho: MCP de Supabase conectado (`.mcp.json`, con escritura) — usar `list_tables`, `execute_sql`, `apply_migration` para consultar y migrar la base real en vez de pedirle SQL al usuario. Pedir confirmacion antes de cualquier escritura.
-- Hecho: la base real tiene aplicadas `0001`–`0019` (2026-09-24). Antes de la `0018` hubo que pasar los dos `presupuestos` de Brian de `periodo = 'mensual'` a `2026-08-26` (venian del `0012` viejo). La `0017` paso los smoke tests de la 3.3; la `0019` se agrego y aplico durante la 8.3.
+- Hecho: la base real tiene aplicadas `0001`–`0020` (`0020` el 2026-09-27). Antes de la `0018` hubo que pasar los dos `presupuestos` de Brian de `periodo = 'mensual'` a `2026-08-26` (venian del `0012` viejo). La `0017` paso los smoke tests de la 3.3; la `0019` se agrego y aplico durante la 8.3. Con la `0020`, ademas, se corrio a mano el ajuste de datos del usuario de prueba (D7 de `separate-identity-from-channel`): se borro su canal `whatsapp` y su `telefono` quedo en null.
 - Hecho: deploy en Vercel, en https://www.usemango.dev (el dominio sin `www` redirige a `www`). `/demo` es publico y funciona.
 - Hecho: Auth por e-mail con sign-ups apagados.
 - Hecho (Brian, en el panel): Supabase Auth con Site URL `https://www.usemango.dev` y redirect `https://www.usemango.dev/auth/confirm`; `/dashboard` funciona en produccion con magic link (bloque 0 de `ROADMAP.md`).

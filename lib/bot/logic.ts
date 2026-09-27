@@ -7,10 +7,13 @@
  * If Telegram or Signal gets added tomorrow, this file doesn't change.
  */
 
+import type { Channel } from '@/lib/data/users'
+
 export type IncomingMessage = {
   userId: string
   text: string
   messageId: string
+  channel: Channel
 }
 
 export type BotReply =
@@ -46,25 +49,35 @@ export async function processMessage(message: IncomingMessage): Promise<BotReply
 }
 
 /**
- * First contact from a number that isn't registered. **Not silently
- * ignored** (§4): the invitation code is requested, and the three possible
- * errors — doesn't exist, already used, expired — are distinguished in the
- * message, in case the person doesn't know if the problem is the code or
- * their number.
+ * First contact from an identifier that isn't linked to any account. **Not silently
+ * ignored** (§4): the invitation code is requested when `inviteRequired` is true (the
+ * `WHATSAPP_REQUIRE_INVITE` switch, `separate-identity-from-channel`), and the three possible
+ * errors — doesn't exist, already used, expired — are distinguished in the message, in case
+ * the person doesn't know if the problem is the code or their number.
  */
-export async function processUnknownNumber(
-  phone: string,
+export async function processUnknownNumber({
+  channel,
+  externalId,
+  text,
+  inviteRequired,
+}: {
+  channel: Channel
+  externalId: string
   text: string
-): Promise<BotReply> {
+  inviteRequired: boolean
+}): Promise<BotReply> {
   // TODO: validate the code against `invitaciones`, burn it (`usada_por` +
   // `usada_en`) and start onboarding: name → country → cycle day → test
-  // expense (§4).
+  // expense (§4). Only when inviteRequired is true; skipping it entirely once the switch is
+  // off is also part of this TODO.
   // TODO: rate limit attempts per number before touching the database, or
   // codes can be brute-forced (§10).
   //
   // Doesn't return the code request yet because the bot's texts live in
   // translation files, not embedded here (§2), and that piece isn't built.
-  void phone
+  void channel
+  void externalId
   void text
+  void inviteRequired
   return { kind: 'none' }
 }

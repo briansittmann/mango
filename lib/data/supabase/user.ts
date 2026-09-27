@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 export type Usuario = {
   id: string
   nombre: string
-  telefono: string
+  telefono: string | null
   foto_url: string | null
   moneda_default: string
   timezone: string

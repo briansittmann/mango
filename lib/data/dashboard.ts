@@ -53,7 +53,7 @@ export type ExpenseGroup = {
 }
 
 export type DashboardData = {
-  user: { name: string; phone: string; photoUrl: string | null; currency: string; timezone: string }
+  user: { name: string; phone: string | null; photoUrl: string | null; currency: string; timezone: string }
   cycle: { start: string; end: string; today: LocalDate; month: string; inProgress: boolean }
   freeMargin: number
   income: { total: number; entries: IncomeEntry[] }

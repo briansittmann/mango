@@ -8,7 +8,7 @@ import { Avatar } from '@/components/atoms/avatar'
 import type { DashboardActions } from '@/lib/data/dashboard'
 
 type AccountMenuProps = {
-  user: { name: string; phone: string; photoUrl: string | null }
+  user: { name: string; phone: string | null; photoUrl: string | null }
   actions: DashboardActions
   open: boolean
   onClose: () => void
@@ -201,7 +201,7 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
           />
           <div className="min-w-0 flex-1">
             <p className="truncate font-display text-headline-sm text-foreground">{user.name}</p>
-            <p className="truncate text-body-sm text-muted-foreground">{user.phone}</p>
+            {user.phone && <p className="truncate text-body-sm text-muted-foreground">{user.phone}</p>}
           </div>
           <button
             type="button"

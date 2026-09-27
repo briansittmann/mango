@@ -33,9 +33,9 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 
 ## 2 · WhatsApp de punta a punta (sin lógica todavía)
 
-- [ ] 👤 Registrar webhook en Meta: `https://www.usemango.dev/api/whatsapp` (con `www`), verify token, suscribir `messages`
-- [ ] 👤 Mandar un mensaje de prueba y ver en los logs de Vercel que llega y que la firma HMAC valida
-- [ ] 👤 Quitar el `setWebhook` del bot de Telegram si no se va a usar
+- [x] 👤 Registrar webhook en Meta: `https://www.usemango.dev/api/whatsapp` (con `www`), verify token, suscribir `messages`; suscribir la app a la WABA con `subscribed_apps` (ARCHITECTURE.md §2)
+- [x] 👤 Mandar un mensaje de prueba y ver en los logs de Vercel que llega y que la firma HMAC valida
+- [x] 👤 ~~Quitar el `setWebhook` del bot de Telegram~~ — no hace falta: nadie conoce el bot. Se revisa con `getWebhookInfo` en el bloque 11
 
 ## 3 · Insumos del parser (decisiones tuyas — bloquean el bloque 5)
 
@@ -48,14 +48,14 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 
 > Va antes del bloque 5 a propósito: si el bot escribe pegado al teléfono, migrarlo después cuesta más que dejar el hueco ahora.
 
-- [ ] 🤖 Tabla `canales` (`usuario_id`, `tipo` = `whatsapp` | `telegram`, `identificador_externo`, único por tipo + identificador). El usuario pasa a ser una identidad sin teléfono; el teléfono es un canal más
-- [ ] 🤖 `usuarios.telefono` deja de ser obligatorio: una cuenta creada por la web no tiene
-- [ ] 🤖 Migrar el usuario de prueba a una fila de `canales`; `findUserIdByPhone` pasa a buscar en `canales`
-- [ ] 🤖 Idempotencia por canal: `wa_message_id` se generaliza a `mensaje_id_externo` + tipo de canal
-- [ ] 🤖 Nada asume el número de prueba: sin tope de 5 ni cupo de 1000 en el código; el número emisor sale de `WHATSAPP_PHONE_NUMBER_ID`
-- [ ] 🤖 Interruptor de invitación obligatoria: hoy encendido; con número propio se apaga sin tocar código (ARCHITECTURE.md §4)
-- [ ] 👤 Decidir si una cuenta puede tener WhatsApp y Telegram a la vez, o uno solo
-- [ ] 👤 Decidir dónde vive el interruptor: variable de entorno o valor en la base
+- [x] 🤖 Tabla `canales` (`usuario_id`, `tipo` = `whatsapp` | `telegram`, `identificador_externo`, único por tipo + identificador). El usuario pasa a ser una identidad sin teléfono; el teléfono es un canal más
+- [x] 🤖 `usuarios.telefono` deja de ser obligatorio: una cuenta creada por la web no tiene
+- [x] 🤖 Migrar el usuario de prueba a una fila de `canales`; `findUserIdByPhone` pasa a buscar en `canales`
+- [x] 🤖 Idempotencia por canal: `wa_message_id` se generaliza a `mensaje_id_externo` + tipo de canal
+- [x] 🤖 Nada asume el número de prueba: sin tope de 5 ni cupo de 1000 en el código; el número emisor sale de `WHATSAPP_PHONE_NUMBER_ID`
+- [x] 🤖 Interruptor de invitación obligatoria: hoy encendido; con número propio se apaga sin tocar código (ARCHITECTURE.md §4)
+- [x] 👤 Decidir si una cuenta puede tener WhatsApp y Telegram a la vez, o uno solo → las dos, una de cada tipo
+- [x] 👤 Decidir dónde vive el interruptor: variable de entorno o valor en la base → `WHATSAPP_REQUIRE_INVITE`
 
 ## 5 · Bot funcional
 
@@ -67,6 +67,7 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [ ] 🤖 Confirmación progresiva: `cargas_confirmadas`, `modo_confirmacion`, texto + Deshacer las primeras 15, reacción después
 - [ ] 🤖 Correcciones por texto sobre la última carga: "borrá eso", "no, era 40"
 - [ ] 🤖 Consultas cortas: "¿cómo vengo?", total del mes + top 5, link a la web
+- [ ] 🤖 Crear categoría por chat, solo a pedido explícito ("creá la categoría Mascotas"); avisa si hay una parecida (ARCHITECTURE.md §3)
 - [ ] 🤖 Historial solo para VIP: `usuarios.vip` + tabla `mensajes`; guardar entrantes y salientes; el parser recibe los últimos 10 de 24 h (ARCHITECTURE.md §3)
 - [ ] 👤 Marcarte VIP por SQL y decidir cuánto tiempo se guardan los mensajes
 - [ ] 👤 Ronda de prueba con los mensajes del bloque 3 y lista de fallos
@@ -145,7 +146,9 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [ ] 🤖 Aviso de suscripción por vencer (template de Meta, §14.1)
 - [ ] 👤 Pedir en Meta la plantilla del mensaje de vinculación que se manda desde el onboarding web (lo inicia Mango: fuera de la ventana de 24 h)
 - [ ] 👤 Decidir cuándo se compra el número propio y cuánto gasto se acepta (rompe el "coste cero")
-- [ ] 👤 Número propio para la Cloud API (virtual o fijo, que no esté en WhatsApp) — adelantado desde el bloque 14
+- [ ] 👤 Número propio para la Cloud API (virtual o fijo, que no esté en WhatsApp) — adelantado desde el bloque 14. Plan: número virtual de EE. UU. en Twilio (~1,15 USD/mes, Voice + SMS), verificado en Meta por llamada de voz; si Meta lo rechaza por VoIP, SIM prepago
+- [ ] 👤 Con el número propio: nombre visible (lo revisa Meta) y foto de perfil; en el número de prueba el nombre no se puede cambiar
+- [ ] 👤 Suscribir la app a la WABA con `subscribed_apps` si el número propio queda en otra WABA (ARCHITECTURE.md §2)
 - [ ] 👤 Cambiar credenciales en Vercel y redeploy
 - [ ] 🤖 Apagar la invitación obligatoria y probar una vinculación sin código
 

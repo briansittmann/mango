@@ -140,11 +140,14 @@ Los **nombres** viven acá; los **valores** nunca — van a `.env.local` (ignora
 | `WHATSAPP_PHONE_NUMBER_ID` | Identificador del número emisor; va en la URL de envío | **Solo servidor** |
 | `WHATSAPP_VERIFY_TOKEN` | String arbitrario; se compara contra `hub.verify_token` en el GET de alta del webhook | **Solo servidor** |
 | `WHATSAPP_APP_SECRET` | App Secret de Meta; valida el HMAC SHA-256 de `X-Hub-Signature-256` en cada POST | **Solo servidor** |
+| `WHATSAPP_REQUIRE_INVITE` | Interruptor de invitación obligatoria (sección 4); solo `false` lo apaga | **Solo servidor** |
  
 **El prefijo `NEXT_PUBLIC_` no es cosmético:** sin él la variable no llega al navegador, y con él **se embebe en el bundle público**. Por eso la `anon key` lo lleva (es pública por diseño, la protege RLS) y la `service_role` no puede llevarlo bajo ninguna circunstancia: expuesta al cliente, cualquiera lee y escribe los gastos de todos.
  
 Las cuatro de WhatsApp se cargan en **Production, Preview y Development**. Después de tocar cualquiera hace falta **redeploy**: el deploy que ya corre conserva los valores con los que se construyó.
  
+**El webhook necesita dos suscripciones, no una.** Verificar la URL y suscribir el campo `messages` en el panel no alcanza: la app también tiene que estar suscrita a la cuenta de WhatsApp Business (`POST /{WABA_ID}/subscribed_apps` con un token de la app), y el panel no siempre lo hace. Sin esa suscripción, el botón *Test* del panel llega, pero los mensajes reales y los estados no. Pasó en el bloque 2 (sept 2026) y va a hacer falta de nuevo con el número propio, si cambia la WABA.
+
 `TELEGRAM_BOT_TOKEN` y `TELEGRAM_WEBHOOK_SECRET` **quedan cargadas y sin uso**. No las lee ningún código; se dejan por si se retoma Telegram como segundo adaptador (ver §3).
  
 ### Multi-idioma: la estructura ahora, la traducción después
@@ -213,6 +216,8 @@ No hay un término aparte para los fijos: "gastado" en una categoría es su tota
 El motivo es el volumen: con 200+ cargas al mes, una repregunta cada tanto es fricción que se acumula y termina desalentando la carga. Y la carga es lo único que la app necesita que pase todos los días.
  
 El control es **a posteriori**: si `otros` empieza a pesar en la torta, eso mismo es la señal de que falta una categoría. Se crea desde el dashboard y se reasignan las transacciones. Mejor una revisión mensual de 2 minutos que 200 interrupciones.
+
+**Decisión (sept 2026): crear categoría por chat, solo a pedido.** El bot crea una categoría únicamente cuando el usuario lo pide explícitamente (*"creá la categoría Mascotas"*, *"nueva categoría Viajes, presupuesto 200"*). El parser nunca crea una a partir de un gasto: la regla de arriba sigue igual. Si ya existe una con nombre parecido, avisa en vez de duplicarla. El color es el siguiente libre de la paleta. Lo que ya cayó en `otros` no se mueve solo; se reasigna desde la web.
  
 > **Nota sobre botones:** WhatsApp permite **máximo 3 reply buttons** por mensaje. Al eliminar la repregunta, el único botón que se usa en la confirmación es **Deshacer** (sección 4), así que no hay conflicto.
  
@@ -280,7 +285,7 @@ El umbral (15) es una constante del código, no un campo: si hay que moverlo, se
 
 **Exigir el código es un interruptor, no una regla fija.** Mientras se use el número de prueba está **encendido**: sin código no hay WhatsApp, porque el tope de 5 es de Meta. Con número propio se **apaga**, sin tocar código: cualquier cuenta vincula su número desde la web, y un número desconocido que le escribe al bot arranca el onboarding por chat sin que se le pida código. Los códigos siguen existiendo; dejan de ser obligatorios.
 
-> **Pendiente de decidir:** dónde vive el interruptor (variable de entorno o valor en la base).
+> **Decisión (sept 2026):** el interruptor es la variable de entorno `WHATSAPP_REQUIRE_INVITE` (sección 2). Solo el valor `false` lo apaga; si la variable falta o tiene otro valor, el código es obligatorio. Por qué variable y no base: cambia una sola vez, al pasar al número propio, y ahí un redeploy no molesta. Los códigos sí viven en la base (`invitaciones`, sección 8).
  
 > No confundir con el **código de acceso a la web** (más abajo): ese es para entrar al dashboard de una cuenta que ya existe. Este es para crear la cuenta.
  
@@ -548,9 +553,9 @@ Deliberadamente no modela principal, interés ni una tabla de amortización — 
 - `usuario_id`
 - `tipo` (`whatsapp` | `telegram`)
 - `identificador_externo` (en WhatsApp, el teléfono en E.164)
-Único por `tipo` + `identificador_externo`: un mismo número no puede quedar vinculado a dos cuentas. Es lo que lee el adaptador para saber quién escribe (sección 3).
+Único por `tipo` + `identificador_externo`: un mismo número no puede quedar vinculado a dos cuentas. Es lo que lee el adaptador para saber quién escribe (sección 3). RLS encendido y sin políticas: solo lo toca el bot con el cliente admin; la web no lo lee todavía, hasta que exista la pantalla de ajustes (sección 4).
 
-> **Pendiente de decidir:** si una cuenta puede tener WhatsApp y Telegram a la vez, o uno solo.
+> **Decisión (sept 2026):** una cuenta puede tener WhatsApp y Telegram a la vez, con un canal de cada tipo como máximo (`unique (usuario_id, tipo)`). Las cargas de los dos canales caen en la misma cuenta.
 
 **`mensajes`** *(solo usuarios VIP, ver sección 3)*
 - `id`
@@ -589,7 +594,7 @@ Un código está disponible si `usada_en IS NULL AND vence_en > now()`. No hace 
 - `es_fijo` (bool)
 - `gasto_fijo_id` (nullable — si vino de un fijo recurrente)
 - `estado` (`pendiente` | `confirmada`, default `confirmada` — solo las filas que inserta el cron nacen `pendiente`, ver sección 7)
-- `mensaje_id_externo` + tipo de canal (idempotencia — único por canal; generaliza al `wa_message_id` original, que era único por usuario y solo servía para WhatsApp)
+- `canal` (`whatsapp` | `telegram`, nullable) + `mensaje_id_externo` (idempotencia — único por `usuario_id` + `canal` + `mensaje_id_externo`; generaliza al `wa_message_id` original, único solo por usuario y pensado solo para WhatsApp. El `usuario_id` se mantiene en la clave porque el `message_id` de Telegram es único solo dentro de un chat, no global como el `wamid` de WhatsApp: sin `usuario_id`, dos cuentas distintas podrían coincidir en el mismo id)
 - `borrado_en` (timestamp nullable — borrado suave, ver sección 4)
 **`gastos_fijos`**
 - `id`
@@ -1126,6 +1131,8 @@ Esto hay que escribirlo así **desde el primer componente**. Hacerlo después si
 > **Decisión (sept 2026):** el número propio se adelanta de fase 4 a fase 2, y el sistema se diseña desde ahora como si ya estuviera (sección 1). La señal de arriba queda para los pagos y la estructura legal (fase 4).
 
 > **Pendiente de decidir:** cuándo se compra el número dentro de fase 2 y cómo convive con la restricción de **coste cero** (sección 1): el número y los mensajes de plantilla se pagan.
+
+> **Plan para el número (sept 2026):** número virtual de EE. UU. en Twilio (unos 1,15 USD por mes, con *Voice* y *SMS*), verificado en Meta por llamada de voz. Meta a veces rechaza números VoIP; si pasa, el plan B es una SIM prepago. Ese número no puede estar a la vez en la app de WhatsApp. Registrarlo en Meta es gratis, y las respuestas dentro de la ventana de 24 h también; lo que se paga son las plantillas que inicia Mango (sección 14). El nombre visible y la foto se configuran recién con este número, porque en el de prueba el nombre no se puede cambiar.
  
 **Fase 3 — Refinamiento**
 Alertas al acercarse al techo de una categoría, ajuste de presupuestos sugerido a partir del historial, modo asesor con más contexto, recordatorios opcionales (ver sección 14), **reordenar categorías y gastos arrastrando** (ver sección 9) y **traducción al inglés** (la estructura ya viene de fase 1, ver sección 2).
