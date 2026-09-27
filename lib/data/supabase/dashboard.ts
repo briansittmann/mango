@@ -15,7 +15,7 @@ type MovimientoRecurrenteRow = {
   monto_actual: number | string
   tipo: 'gasto' | 'ingreso' | 'ahorro'
   categoria_id: string | null
-  dia_del_mes: number | null
+  dia_del_mes: number
   activo: boolean
   recordatorio_activo: boolean
   dias_antes: number
@@ -30,6 +30,7 @@ type TransaccionRow = {
   descripcion: string | null
   tipo: 'gasto' | 'ingreso' | 'ahorro'
   movimiento_recurrente_id: string | null
+  estado: 'pendiente' | 'confirmada'
 }
 
 const DAY_MS = 86_400_000
@@ -44,12 +45,12 @@ function inRange(fecha: string, range: CycleRange): boolean {
 }
 
 /**
- * Provisional charged/pending rule while `transacciones.estado` does not exist (D11): a charge
- * is taken once its local date is not after the cycle's today. `actualizar_movimiento_recurrente`
- * (0017) applies the same rule in SQL.
+ * A charge shows as taken when it is confirmed or its local day is not after the cycle's today
+ * (Q4): a pending charge whose day passed was, most likely, paid at that amount.
+ * `actualizar_movimiento_recurrente` (0021) rewrites only the charges this returns false for.
  */
-function isCharged(fecha: string, timezone: string, today: LocalDate): boolean {
-  return localDateOf(fecha, timezone) <= today
+function isCharged(row: TransaccionRow, timezone: string, today: LocalDate): boolean {
+  return row.estado === 'confirmada' || localDateOf(row.fecha, timezone) <= today
 }
 
 /**
@@ -98,7 +99,7 @@ export async function resumenMensual(
       .order('nombre'),
     client
       .from('transacciones')
-      .select('id, monto, fecha, categoria_id, descripcion, tipo, movimiento_recurrente_id')
+      .select('id, monto, fecha, categoria_id, descripcion, tipo, movimiento_recurrente_id, estado')
       .eq('usuario_id', usuario.id)
       .is('borrado_en', null)
       .gte('fecha', oldest.inicio.toISOString())
@@ -122,8 +123,8 @@ export async function resumenMensual(
   const rows = (transacciones.data ?? []) as TransaccionRow[]
   const savingsRows = (ahorros.data ?? []) as Pick<TransaccionRow, 'monto' | 'fecha'>[]
 
-  // Null day → day 1 (D11), both on definitions and on the charges they produced.
-  const dayOf = new Map(definitionRows.map((d) => [d.id, d.dia_del_mes ?? 1]))
+  // A linked row's definition is always among these: deleting one unlinks its rows (0019).
+  const dayOf = new Map(definitionRows.map((d) => [d.id, d.dia_del_mes]))
   const budgetOf = new Map(budgetRows.map((b) => [b.categoria_id, b.monto == null ? null : Number(b.monto)]))
   const shownRows = rows.filter((row) => inRange(row.fecha, shown))
 
@@ -142,8 +143,8 @@ export async function resumenMensual(
           ? {
               fixed: {
                 definitionId: row.movimiento_recurrente_id,
-                day: dayOf.get(row.movimiento_recurrente_id) ?? 1,
-                charged: isCharged(row.fecha, timezone, today),
+                day: dayOf.get(row.movimiento_recurrente_id)!,
+                charged: isCharged(row, timezone, today),
               },
             }
           : {}),
@@ -173,7 +174,7 @@ export async function resumenMensual(
       amount: Number(row.monto),
       date: row.fecha,
       ...(row.movimiento_recurrente_id
-        ? { recurring: { definitionId: row.movimiento_recurrente_id, day: dayOf.get(row.movimiento_recurrente_id) ?? 1 } }
+        ? { recurring: { definitionId: row.movimiento_recurrente_id, day: dayOf.get(row.movimiento_recurrente_id)! } }
         : {}),
     }))
   const incomeTotal = incomeEntries.reduce((sum, entry) => sum + entry.amount, 0)
@@ -204,7 +205,7 @@ export async function resumenMensual(
       expectedAmount: Number(d.monto_actual),
       tipo: d.tipo,
       categoryId: d.categoria_id,
-      day: d.dia_del_mes ?? 1,
+      day: d.dia_del_mes,
       active: d.activo,
       reminder: { active: d.recordatorio_activo, daysBefore: d.dias_antes },
       repetitions: d.repeticiones_totales == null ? null : { total: d.repeticiones_totales, done: d.repeticiones_insertadas },

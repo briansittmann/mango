@@ -20,15 +20,19 @@
   - Brian's `next dev` was already running on :3000 without `CRON_SECRET` and answered 500 (the missing-secret path), so the 401 check ran on `next start -p 3107` after 2.3's build, with a throwaway `CRON_SECRET`: no header, `Bearer wrong` and the secret without `Bearer` all got 401. `tsc --noEmit` and eslint pass. The route checks the header with `safeCompare` (constant time) and caps a catch-up at 24 cycles per run.
 - [x] 2.3 Create `vercel.json` with the cron `{ "path": "/api/cron/recurrentes", "schedule": "0 5 * * *" }` (Q2) — verify `npm run build` passes and the file is the only config change
   - `npm run build` passes and lists `ƒ /api/cron/recurrentes`; `vercel.json` is the only config file added.
-- [ ] 2.4 👤 In Vercel Production, confirm `SUPABASE_SERVICE_ROLE_KEY` exists and create `CRON_SECRET` (random, 32+ characters); deploy — verify the cron appears under the project's Cron Jobs settings
-- [ ] 2.5 Call the deployed endpoint once by hand with the secret before 1 October (design *Migration Plan* step 3) — verify the response reports no cycle generated, no row inserted and none closed for Brian, and the Vercel log shows the same
+- [x] 2.4 👤 In Vercel Production, confirm `SUPABASE_SERVICE_ROLE_KEY` exists and create `CRON_SECRET` (random, 32+ characters); deploy — verify the cron appears under the project's Cron Jobs settings
+  - 2026-09-27: Brian confirmed `SUPABASE_SERVICE_ROLE_KEY` exists, created `CRON_SECRET`, deployed, and `/api/cron/recurrentes` appears under Cron Jobs.
+- [x] 2.5 Call the deployed endpoint once by hand with the secret before 1 October (design *Migration Plan* step 3) — verify the response reports no cycle generated, no row inserted and none closed for Brian, and the Vercel log shows the same
+  - 2026-09-27: `GET https://www.usemango.dev/api/cron/recurrentes` with the secret → 200 `{"users":[{"id":"b41090cc-…","generated":[],"inserted":0,"closed":0}]}`. Read-only check afterwards: marker `2026-09-01`, count 21, 1 pending (Sueldo). The only row besides the 21 September charges is a manual expense from 27 September, created `confirmada` (the default works). The Vercel log shows the same report: `2026-09-27 18:47:21.042 [info] [cron] recurrentes {"users":[{"id":"b41090cc-…","generated":[],"inserted":0,"closed":0}]}`.
 - [ ] 2.6 Decision point, evening of 30 September: if 1.3 and 2.5 are not both done, 👤 Brian runs `supabase/seed/octubre-2026.sql` on 1 October after local midnight (confirmed through the MCP) — verify 23 October rows and the counts from 1.4; record which path October took
 - [ ] 2.7 After the 1 October run (05:00–06:00 UTC): verify through a read-only query and `/dashboard` that October holds exactly 23 linked rows, pending, with Hacienda 2/3, DB Bank 1/4, Cetelem 1/12, the marker `2026-10-01`, and every September pending row confirmed; 👤 Brian confirms the cron fired in production (ROADMAP block 6)
 
 ## 3. `estado` in the web
 
 - [ ] 3.1 `lib/data/supabase/dashboard.ts`: select `estado`; `isCharged` becomes `estado === 'confirmada' || localDate <= today` (Q4); drop the "null day → 1" fallbacks here and in the definition mapping (Q1); update the doc comments of `Expense.fixed` and `RecurringMutations.update` — verify `npx tsc --noEmit` and that `/dashboard` shows the same taken/pending split as before 0021
+  - 2026-09-27: code done; `tsc --noEmit` and eslint pass. Read-only SQL over the 21 linked September rows: the old date rule and the new rule agree on all 21, with only Sueldo pending. Still to do: after the deploy, check on `/dashboard` in production that Sueldo is the only pending charge in "Próximos cobros".
 - [ ] 3.2 `lib/data/supabase/expenses.ts` and `income.ts`: `update` also writes `estado: 'confirmada'` (design D4) — verify `npx tsc --noEmit`; after deploy, with Brian's confirmation, save a pending charge unchanged on `/dashboard` and check with a read-only query that it is the same row, now confirmed
+  - 2026-09-27: code done (`estado: 'confirmada'` on `update`, in both files); `tsc --noEmit` passes. Still to do: after the deploy, with Brian's confirmation, save Sueldo unchanged and check it with a read-only query.
 
 ## 4. Projection in `/dashboard`
 

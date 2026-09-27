@@ -35,8 +35,9 @@ export type RecurringDraft = {
  *   an `'ingreso'` definition never can — the type carries the same rule the database's check
  *   constraint does (§7, migration 0015)
  * - `update` writes the definition's fields. While this cycle's charge produced by this
- *   definition is still pending, it reconciles too — a new expected amount rewrites the
- *   pending charge; a charge already confirmed is what was really paid and is left alone.
+ *   definition is shown as pending — `estado` pending and its day not yet reached — a new
+ *   expected amount rewrites it too; a charge confirmed, or whose day has passed, is what was
+ *   really paid and is left alone.
  * - `stop` only sets `active` to false. It never touches an amount, this cycle's charge, or
  *   any other field, and asks no confirmation because it is reversible in effect (a stopped
  *   definition simply produces no more charges).

@@ -37,7 +37,11 @@ export type Expense = {
   name: string
   amount: number
   date: string
-  /** Present only on a charge generated from a recurring definition (§7): `gastos_fijos.id`, `gastos_fijos.dia_del_mes` and `transacciones.estado`. */
+  /**
+   * Present only on a charge linked to a recurring definition (§7): `movimientos_recurrentes.id`
+   * and its `dia_del_mes`. `charged` is true when `transacciones.estado` is `confirmada` or the
+   * charge's local day is not after today (Q4): a pending charge whose day passed shows as taken.
+   */
   fixed?: { definitionId: string; day: number; charged: boolean }
 }
 

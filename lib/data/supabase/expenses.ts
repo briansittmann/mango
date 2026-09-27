@@ -25,7 +25,13 @@ export function createSupabaseExpenseMutations({ client, usuarioId, currency }: 
       expectRows(
         await client
           .from('transacciones')
-          .update({ monto: draft.amount, descripcion: draft.description || null, fecha: `${draft.date}T12:00:00Z` })
+          // Saving a pending recurring charge confirms it (design D4); on any other row it is a no-op.
+          .update({
+            monto: draft.amount,
+            descripcion: draft.description || null,
+            fecha: `${draft.date}T12:00:00Z`,
+            estado: 'confirmada',
+          })
           .eq('id', expenseId)
           .eq('usuario_id', usuarioId)
           .is('borrado_en', null)
