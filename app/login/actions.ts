@@ -1,28 +1,41 @@
 "use server";
 
-import { headers } from "next/headers";
+import { sendStatus, verifyStatus } from "@/lib/auth/otp-status";
 import { supabaseServer } from "@/lib/supabase/server";
 
-export type SendMagicLinkState = { status: "idle" | "sent" | "error" };
+export type RequestCodeState = { status: "idle" | "sent" | "error" | "rate_limited"; email?: string };
+export type VerifyCodeResult = { status: "ok" | "rejected" | "rate_limited" | "error" };
 
 /**
- * Sends the magic link without creating users (D5). An unknown address gets the same `sent`
- * answer as a known one, so the form never tells which e-mails have an account.
+ * Sends a 6-digit code without creating users (D2). An unknown address gets the same `sent`
+ * answer as a known one, so the page never tells which e-mails have an account.
  */
-export async function sendMagicLink(_prev: SendMagicLinkState, formData: FormData): Promise<SendMagicLinkState> {
-  const email = formData.get("email");
-  if (typeof email !== "string" || !email.includes("@")) return { status: "error" };
+export async function requestCode(_prev: RequestCodeState, formData: FormData): Promise<RequestCodeState> {
+  const raw = formData.get("email");
+  if (typeof raw !== "string" || !raw.includes("@")) return { status: "error" };
+  const email = raw.trim();
 
-  // Supabase's default template (no custom SMTP) links to its own verify endpoint, which
-  // redirects here with `?code=`; `/auth/confirm` exchanges it with the verifier cookie this
-  // call sets, so the link works in the browser that requested it.
-  const origin = (await headers()).get("origin");
-  const supabase = await supabaseServer();
-  const { error } = await supabase.auth.signInWithOtp({
-    email: email.trim(),
-    options: { shouldCreateUser: false, emailRedirectTo: origin ? `${origin}/auth/confirm` : undefined },
-  });
+  try {
+    const supabase = await supabaseServer();
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    const status = sendStatus(error);
+    return status === "sent" ? { status, email } : { status };
+  } catch {
+    return { status: "error" };
+  }
+}
 
-  if (!error || error.code === "otp_disabled" || /signups not allowed/i.test(error.message)) return { status: "sent" };
-  return { status: "error" };
+/**
+ * Checks the code (D2). On `ok` the session cookies are already written by `supabaseServer()`;
+ * the page shows its success sequence before navigating. Never throws to the client.
+ */
+export async function verifyCode({ email, token }: { email: string; token: string }): Promise<VerifyCodeResult> {
+  if (!email.includes("@") || !/^\d{6}$/.test(token)) return { status: "rejected" };
+  try {
+    const supabase = await supabaseServer();
+    const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token, type: "email" });
+    return { status: verifyStatus(error) };
+  } catch {
+    return { status: "error" };
+  }
 }

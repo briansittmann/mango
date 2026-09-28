@@ -1,0 +1,79 @@
+## Context
+
+See proposal.md → Why. What shapes the approach:
+
+- `app/login/actions.ts` already calls `signInWithOtp({ email, options: { shouldCreateUser: false, emailRedirectTo } })` from a server action and treats `otp_disabled` / "signups not allowed" as `sent`, so an unknown address gets the same answer. `app/login/login-form.tsx` is a `useActionState` form; `app/login/page.tsx` redirects a signed-in visitor to `/dashboard`. `lib/supabase/server.ts` writes session cookies from a server action (its `setAll` only swallows the Server Component case).
+- `/auth/confirm` (`?token_hash=` and `?code=`) and the `enlaceInvalido` message are not touched.
+- Supabase e-mail OTP: the same `/auth/v1/otp` request sends the *Magic Link* template; the code only reaches the mail if the template shows `{{ .Token }}`. Verification is `verifyOtp({ email, token, type: 'email' })`. Supabase reports a wrong code and an expired one with the same code, `otp_expired` ("Token has expired or is invalid"); a rate-limited verification comes back as HTTP 429 (`over_request_rate_limit`); a refused send as `over_email_send_rate_limit`. A wrong attempt does not consume the code; requesting a new code replaces the previous one.
+- Supabase rate limits that apply here (Auth → Rate Limits): `/auth/v1/verify` 360 requests per hour per IP with bursts of 30, **not customizable**; `/auth/v1/otp` 360 per hour project-wide and a per-address minimum interval (default 60 s), both customizable; the built-in mailer sends few mails per hour and only to the project team's addresses without custom SMTP. *Email OTP Expiration* defaults to 3600 s. Because the server action calls Supabase from Vercel, the IP the verify limit sees is the function's egress IP, not the person's: every Mango user shares one bucket. Forwarding the real IP (`Sb-Forwarded-For`) needs a secret key, which the anon-key server client does not use.
+- Motion in the app is `gsap` (already installed) plus CSS transitions on the project's easing tokens; reduced motion is honoured with `prefers-reduced-motion` in CSS and `matchMedia` in JS. Colours are `light-dark()` tokens in `app/globals.css` exposed to Tailwind as `--color-*`; the `field-focus` utility draws the focused amount field with inline `color-mix` values (fill, halo) and `var(--ring)` (border, caret).
+- Playwright specs run against the dev server with the real `.env.local`; `login-access` never submits a valid e-mail so it makes no Supabase request.
+
+## Goals / Non-Goals
+
+**Goals:**
+- Session opened in the browser where the code is typed, with no new tab.
+- The prototype's interaction reproduced in React with tokens only, correct in both themes, reduced motion honoured.
+- Provider errors mapped to a small set of messages; the app never distinguishes a registered address from an unregistered one.
+- What Supabase covers on rate limiting written down, and the gap named, without building a limiter now.
+
+**Non-Goals:**
+- An app-level attempt counter or IP forwarding (named as the gap; belongs with the rate-limiting item of `ARCHITECTURE.md` §10).
+- Distinguishing "wrong" from "expired" in the UI (the provider does not).
+- Changing `/auth/confirm`, the bot's one-time link, or the Home.
+
+## Decisions
+
+**D1. The step lives in the URL: `/login` is the e-mail step, `/login?email=<address>` is the code step.** After a successful request the client replaces the URL with the address (`history.replaceState`, no navigation), "Cambiar mail" goes back to `/login`. Why: a reload keeps the step, the address is not a secret, and the Playwright specs can open the code step without a database or a mail. Alternative considered: step in React state only — simpler, but a reload drops the person back to the e-mail step, and the code step could not be tested without the provider. The query parameter never triggers a send.
+
+**D2. Two server actions in `app/login/actions.ts`.** `requestCode(prev, formData)` keeps the shape of today's `sendMagicLink` (form action, `useActionState`, `{ status: 'idle' | 'sent' | 'error' | 'rate_limited' }`) minus `emailRedirectTo`, and keeps the "unknown address is `sent`" rule. `verifyCode({ email, token })` is called directly from the client component (a server action invoked as a function, not through a form), returns `{ status: 'ok' | 'rejected' | 'rate_limited' | 'error' }` and never throws to the client; on `ok` the session cookies are already set by `supabaseServer()`. Why direct call: the submit is triggered by the sixth digit, not by a form, and the component needs the promise to run the orbit alongside it. Mapping: `otp_expired` and any other 4xx from verify → `rejected`; HTTP 429 or `over_request_rate_limit` → `rate_limited`; thrown/network → `error`. `requestCode`: `over_email_send_rate_limit` → `rate_limited`, anything else → `error`.
+
+**D3. One component, `components/organisms/code-entry.tsx`, owns the cells, the invisible input and every timeline.** It takes `email`, `onVerify(code) → Promise<VerifyResult>`, `onResend() → Promise<...>` and `onDone()`, and holds a small state machine: `typing → verifying → success | error → typing`. Layout math (cell size from the stage width, hexagon radius, row geometry) and the orbit state `{ t, a, rot, r }` come straight from the prototype; positions are applied with `gsap.set` per frame as there, because the hexagon needs per-cell trigonometry that CSS transitions cannot express. Reduced motion is read once with `matchMedia('(prefers-reduced-motion: reduce)')` (plus `gsap.matchMedia` for the timelines) and switches the plain branches of the prototype. Particles, ghosts and remains are created into a `ref` container and removed on their `onComplete`; every timeline is killed in the effect cleanup. Why one organism rather than atoms: the pieces only make sense together and share the stage geometry.
+
+**D4. The page is a client component with the two steps; the server page only redirects signed-in visitors and reads `?email=`.** `login-form.tsx` becomes the e-mail step; a new client `login-steps.tsx` (name indicative) picks the step from the address and renders `CodeEntry` with the actions bound. Success: the component shows "Listo, entraste" and "Ir a mi mes"; the button is a plain `Link`/`router.push` to `/dashboard`; `proxy.ts` sees the cookie set by the action. No redirect from inside the verify action, so the success sequence can play first.
+
+**D5. Tokens.** Add to `:root` in `app/globals.css`: `--field-active-fill` (today's `color-mix(in oklab, var(--brand) 12%, var(--muted))`), `--field-halo` (today's `0 2px 16px color-mix(in oklab, var(--ring) 26%, transparent)`) and `--neon-glow` (a `color-mix` of `var(--ring)` with transparent, stronger in dark, softer in light), exposed as `--color-*`/utilities the way the others are. Rewrite `field-focus` to reference the first two, so the amount field is unchanged pixel for pixel and the *The amount field and the active cell match* scenario holds by construction. The cell's active state uses the same three properties; the frame light is an SVG `rect` stroked `var(--ring)` with `filter: drop-shadow(0 0 3px var(--neon-glow)) drop-shadow(0 0 8px var(--neon-glow))`; the ring, hub, ghosts and sparks use `var(--border)`, `var(--foreground)` and `var(--brand)`. The success glow is `--neon-glow` at a larger radius. No literal colour in the component; the error colour follows the open decision in the proposal (default: `text-destructive-ink` on the message, no red on the cells).
+
+**D6. Typography.** Digits in `text-tabular-numeric-lg`, headings in `text-headline-lg`, the address in `text-body-md` with `font-semibold`, the message and countdown in `text-body-sm`, the button is the existing `Button` (size `lg`). No arbitrary sizes, per `design-system`.
+
+**D7. Resend countdown of 60 s, the per-address interval of the panel.** With custom SMTP (Resend, task 0.0) Supabase refuses a second code for the same address within 60 s, so "Reenviar" stays disabled for exactly that long instead of being tappable and failing. The constant lives next to the component (task 3.8). `requestCode` is reused for the resend; a `rate_limited` answer (the interval or the hourly cap) shows the "too many codes" message and leaves the countdown running.
+
+**D8. Rate limiting: what Supabase covers, what is missing.** Covered: verify at 360/h per IP (shared by all users because of the server action), send at 360/h project-wide and one per address per interval, code expiry (panel; recommended 600 s), the mailer's own cap. Missing: a per-address cap on failed attempts (Supabase has none for e-mail OTP: a wrong attempt does not burn the code and there is no lockout), and per-person verify limits (the IP bucket is Vercel's). Brute-force math for the risk table: 10⁶ codes; at the shared 360/h, one code valid 600 s admits ≈60 guesses → 0.006 % per code; at the 3600 s default, 360 guesses → 0.036 %. The flip side: anyone burning the shared 360/h locks every user out of verification for that hour (denial of service on login). Both go to `ARCHITECTURE.md` §11 with the mitigation "shorter expiry now; per-address attempt counter (base or Upstash) and IP forwarding with a secret key later, with the §10 rate-limiting item".
+
+**D9. Tests.** `tests/login-code.spec.js` opens `/login?email=tu%40mail.com`: typing (cells and active cell, no POST until the sixth), paste (six cells), Backspace, "Cambiar mail" → `/login`, reduced motion (`page.emulateMedia({ reducedMotion: 'reduce' })`: no cell leaves the row, no ring visible, message after rejection), the orbit and error return with the in-page frame sampler of `recurring-motion-a11y.spec.js`, the countdown text, and the token-parity scenario against `/demo`'s amount field in both themes (`localStorage.theme` as the existing specs do). The rejection path submits a made-up code for a made-up address, which is one real call to the provider's verify endpoint (no mail, no row; counts 1 against the shared 360/h): accepted, and the spec says so in a comment. The success sequence is verified by hand with a real code (task), not by Playwright, because it needs a mail.
+
+**D10. Error colour: the message in `destructive-ink`, the cells never red.** The prototype paints the cells and the message red. `design-system` reserves the warning and danger colours to budget state *on bars*; a form's validation text is not a bar, and the app already writes it in `destructive-ink` (the amount, integer and name fields of the sheets). So the rejected-code message uses `text-destructive-ink`, the same treatment as every other field error, and it is always words, so the error does not rely on colour alone. The cells stay neutral: they shake and come back empty within about a second, a red border would flash for that second and add nothing the shake and the message do not already say, and a red fill on a row of boxes is the closest thing on this screen to a red bar. The e-mail step's errors move to the same `text-destructive-ink` (they used `text-destructive`). Why not only a muted message: the person has to notice that the code did not work and act on it; muted text next to the resend line reads as a hint, not an outcome.
+
+## Implementation notes
+
+Technical choices made while building, none of which changes the specs:
+
+- **Paste has its own handler.** `maxLength={6}` makes the browser cut a pasted "48 29-13" to "48 29-" before the `input` event, so the digit filter would only see four digits. `onPaste` reads the clipboard text whole, filters it and fills the row; typing and autofill still go through `onChange`.
+- **Error mapping in a pure module.** `lib/auth/otp-status.ts` (`sendStatus`, `verifyStatus`) holds the D2 mapping, so it is unit-tested against stubbed provider errors (`lib/auth/otp-status.test.mjs`) without calling Supabase. Both the 60 s interval and the hourly cap come back as HTTP 429 / `over_email_send_rate_limit` and map to `rate_limited`.
+- **Cells at rest carry no transform.** The row position is `left`/`top`; the orbit is a `gsap` transform on top. At rest and with reduced motion every cell computes an identity transform, which is what the *Reduced motion* scenario checks.
+- **Animatable glows through custom properties.** `gsap` cannot tween a `box-shadow` whose colour is `var(--neon-glow)`, so the check square's glow radius is `--glow` and the frames' border strength is `--frame-a` (a `color-mix` percentage); the timelines tween those numbers and the colours stay tokens.
+- **Every animation belongs to one `gsap.context`**, created on mount and reverted on unmount; animations started later (callbacks, particles) are added to it with `ctx.add`, and every `await` checks that the component is still mounted.
+- **The e-mail step moved to the same card as the code step** (`rounded-card`, `text-headline-lg`, `field-focus` input, 44 px targets), because the old form used arbitrary Tailwind sizes (`text-2xl`, `text-sm`, `h-9`) outside the `design-system` scale.
+- **Specs that submit a code run in Chromium only** (`tests/login-code.spec.js`): two real verify calls per run (normal and reduced motion) instead of D9's one, because the reduced-motion rejection needs its own page; Firefox and WebKit run the rest. The countdown test pauses Playwright's clock and steps it with `fastForward(1000)`: `runFor` would also run every animation frame of the minute.
+
+## Risks / Trade-offs
+
+- [The *Magic Link* template cannot be edited without custom SMTP, as `CLAUDE.md` records] → Brian checks the panel first (task 0.1); if it refuses, custom SMTP becomes a prerequisite and the change waits for it. Nothing else in the change depends on the outcome, so the code can still be built and tested against the panel once it is settled.
+- [Wrong and expired codes are indistinguishable from the provider] → one message covers both ("Ese código no es el que mandamos. Revisá el último mail o pedí uno nuevo."); the copy already tells the person what to do in either case.
+- [Shared IP bucket on verify: brute force and lock-out] → D8; shorter expiry now, limiter later. Recorded in §10/§11.
+- [The countdown and the panel interval drift apart (someone changes the panel)] → D7 ties the constant to the panel's 60 s; the `rate_limited` message covers any mismatch.
+- [Autofill from iOS Mail depends on the mail's wording] → the code has to appear as a standalone number near words like "código"/"code"; the template task says so. The single real input with `autocomplete="one-time-code"` is what iOS keys on.
+- [The success sequence is long (≈2.5 s to the impact, remains for 3–4 s more)] → "Ir a mi mes" is usable as soon as it enters, before the remains fade; reduced motion skips all of it.
+- [Endless pulse on "Ir a mi mes"] → stops on first `pointerdown`, off with reduced motion; flagged in the proposal against the dashboard's no-endless-animation rule.
+- [The address in the URL] → not a secret, never triggers a send, and `/login` is `noindex`.
+- [The real verify call in the error spec depends on the network and the shared bucket] → one call per run; if it ever rate-limits, the spec reads the "too many attempts" message and still fails loudly rather than silently.
+
+## Migration Plan
+
+1. Brian: template with `{{ .Token }}`, OTP expiration, per-address interval (tasks 0.x). Until the template shows the code, the deployed magic link keeps working: nothing in the app changes before the code ships.
+2. Ship the app change. From then on the e-mail brings the code (and, if the template also keeps a link, the old `?code=` link still opens `/auth/confirm` in the same browser — harmless).
+3. Rollback: revert the app change; the template edit is compatible with both.
+
+## Open Questions
+
+- None. The error colour is D10 and the countdown length D7.

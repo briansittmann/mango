@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test'
 test('/login renders the e-mail field and the submit button', async ({ page }) => {
   await page.goto('/login')
   await expect(page.getByLabel('Correo electrónico')).toHaveAttribute('type', 'email')
-  await expect(page.getByRole('button', { name: 'Enviar enlace' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Enviar código' })).toBeVisible()
 })
 
 test('a malformed e-mail is refused without a request', async ({ page }) => {
@@ -16,7 +16,7 @@ test('a malformed e-mail is refused without a request', async ({ page }) => {
 
   const email = page.getByLabel('Correo electrónico')
   await email.fill('brian')
-  await page.getByRole('button', { name: 'Enviar enlace' }).click()
+  await page.getByRole('button', { name: 'Enviar código' }).click()
 
   expect(await email.evaluate((input) => /** @type {HTMLInputElement} */ (input).validity.valid)).toBe(false)
   await expect(page.getByRole('status')).toHaveCount(0)

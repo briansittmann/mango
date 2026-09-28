@@ -8,10 +8,12 @@
     "start": "next start",
     "lint": "eslint",
     "test": "playwright test",
-    "test:unit": "node --test \"lib/**/*.test.mjs\""
+    "test:unit": "node --test \"lib/**/*.test.mjs\"",
+    "test:parser": "node --env-file=.env.local lib/bot/parser.eval.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
+    "@google/genai": "^2.24.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.116.0",
     "class-variance-authority": "^0.7.1",
@@ -26,7 +28,8 @@
     "react-is": "^19.3.0",
     "recharts": "^3.10.1",
     "server-only": "^0.0.1",
-    "tailwind-merge": "^3.7.0"
+    "tailwind-merge": "^3.7.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

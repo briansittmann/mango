@@ -3,16 +3,21 @@ import {
   processUnknownNumber,
   type BotReply,
 } from '@/lib/bot/logic'
+import { clearPendingQuestion, readPendingQuestion, writePendingQuestion } from '@/lib/data/channels'
 import { messageAlreadyProcessed } from '@/lib/data/transactions'
 import { findUserIdByPhone } from '@/lib/data/users'
 import { isInviteRequired } from './invite'
+import { maskPhone, sendText } from './send'
 
 import type { WhatsAppMessage } from './payload'
 
+export { maskPhone }
+
 /**
  * Adapter: resolves the number against the linked `whatsapp` channels, discards retries and
- * calls the bot logic with the internal format `{ userId, text, messageId, channel }`
- * (ARCHITECTURE.md §3).
+ * calls the bot logic with the internal format `{ userId, text, messageId, channel, pending }`
+ * (ARCHITECTURE.md §3). It owns the channel's pending question (design D7, D12): reads it before
+ * the logic, writes it on an `ask` and clears it on any other reply.
  */
 export async function handleMessages(messages: WhatsAppMessage[]): Promise<void> {
   for (const message of messages) {
@@ -44,12 +49,21 @@ async function handleMessage(message: WhatsAppMessage): Promise<void> {
     return
   }
 
+  const pending = await readPendingQuestion('whatsapp', message.phone)
+
   const reply = await processMessage({
     userId,
     text: message.text,
     messageId: message.messageId,
     channel: 'whatsapp',
+    pending: pending ?? undefined,
   })
+
+  if (reply.kind === 'ask') {
+    await writePendingQuestion('whatsapp', message.phone, reply.pending)
+  } else {
+    await clearPendingQuestion('whatsapp', message.phone)
+  }
 
   await sendReply(message.phone, reply)
 }
@@ -86,17 +100,12 @@ async function sendReply(phone: string, reply: BotReply): Promise<void> {
     // `actions.recurring`'s eventual Supabase-backed equivalent; silence or a negative answer
     // both clear the pending decision without touching the definition — this cycle's charge
     // simply stands as the exception, exactly as the message logic already left it.
-    console.info(`[whatsapp] recurring discrepancy pending reply to ${maskPhone(phone)}`)
-    return
+    console.info(
+      `[whatsapp] recurring discrepancy for ${maskPhone(phone)}: ${reply.definitionName} expected ${reply.expectedAmount}, loaded ${reply.loadedAmount}`,
+    )
   }
 
-  // TODO: POST to the Cloud API with WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID,
-  // choosing message or reaction based on the user's `cargas_confirmadas` and
-  // `modo_confirmacion` (§3).
-  console.info(`[whatsapp] reply pending send to ${maskPhone(phone)}`)
-}
-
-/** Only the last 4 digits: the full number doesn't go into the logs. */
-export function maskPhone(phone: string): string {
-  return `…${phone.slice(-4)}`
+  // TODO: choose message or reaction based on the user's `cargas_confirmadas` and
+  // `modo_confirmacion` (§3, `add-bot-conversation`).
+  await sendText(phone, reply.text)
 }

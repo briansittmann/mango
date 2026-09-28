@@ -1,8 +1,8 @@
 import type { SavingsMutations } from '@/lib/data/savings'
-import { expectRows, type DataContext } from './context'
+import { expectRows, originColumns, type DataContext } from './context'
 
 /** `SavingsMutations` over `transacciones` rows with `tipo = 'ahorro'`; a withdrawal is stored negative (D13). */
-export function createSupabaseSavingsMutations({ client, usuarioId, currency }: DataContext): SavingsMutations {
+export function createSupabaseSavingsMutations({ client, usuarioId, currency, origin }: DataContext): SavingsMutations {
   return {
     async addSavingsMovement(draft) {
       expectRows(
@@ -16,6 +16,7 @@ export function createSupabaseSavingsMutations({ client, usuarioId, currency }: 
             moneda: currency,
             fecha: `${draft.date}T12:00:00Z`,
             descripcion: draft.name,
+            ...originColumns(origin),
           })
           .select('id'),
       )

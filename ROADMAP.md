@@ -91,7 +91,13 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 
 > Va después de los bloques 6 y 7 (decisión del 27/9).
 
-- [ ] 🤖 Sumar Zod y el SDK de Gemini a `package.json`
+> **Estado (28/9), change `add-bot-parser-and-logging`, 18/25:** código del parser, la lógica, el adaptador y el envío escrito; `0023` aplicada en la base real (ensayo y verificación en `tasks.md` 2.6–2.7). Gemini pasa a pago: la capa gratis da 20 requests por día y usa los datos (ARCHITECTURE.md §1); modelo fijado en `gemini-3.8-flash`. Sigue:
+> 1. 👤 Activar billing en el proyecto de la key (29/9): AI Studio → *Set up billing*, comprobar Tier 1 en `aistudio.google.com/rate-limit`, presupuesto de 5 USD con alertas en Cloud Billing.
+> 2. 🤖 `npm run test:parser` hasta 15/15 dos veces seguidas, más los 3 casos extra (4.3–4.4).
+> 3. 🤖 Prueba local con la base real (5.1, con tu OK para las filas de prueba); 5.2 después de que el cron genere octubre el 1/10.
+> 4. 👤 `GEMINI_API_KEY` en Vercel y ronda de prueba por WhatsApp (6.x); documentación (7.1).
+
+- [x] 🤖 Sumar Zod y el SDK de Gemini a `package.json`
 - [ ] 🤖 Parser: prompt con categorías del usuario, schema Zod, reintento ante JSON inválido
 - [ ] 🤖 Carga de transacciones reusando `lib/data/supabase/*` con cliente admin; idempotencia; lo que no matchea va a `otros`
 - [ ] 🤖 Tipos `gasto` / `ingreso` / `ahorro` (incluido retiro en negativo)
@@ -116,12 +122,12 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 
 - [ ] 👤 Activar sign-ups en Supabase Auth
 - [ ] 👤 Crear credenciales OAuth en Google Cloud y activar el proveedor Google en Supabase
-- [ ] 🤖 Login con Google + magic link como alternativa
+- [ ] 🤖 Login con Google + código por mail como alternativa (el código ya reemplazó al magic link: `replace-magic-link-with-email-otp`)
 - [ ] 🤖 Al primer login, crear la fila en `usuarios` (hoy sale "cuenta sin vincular") y mandar al onboarding web
 - [ ] 🤖 `/login`: dejar de fallar en silencio con un mail no registrado; con registro abierto, el mismo formulario sirve para entrar y para crear la cuenta
 - [ ] 🤖 Home: "Demo" y "Entrar" con una línea que explique qué es Mango y que el bot de WhatsApp es por invitación
-- [ ] 👤 SMTP propio (p. ej. Resend) con remitente del dominio
-- [ ] 🤖 Template de magic link con la marca, es/en, link `?token_hash=` (arregla el link que solo abre en el mismo navegador)
+- [x] 👤 SMTP propio (p. ej. Resend) con remitente del dominio — adelantado al change `replace-magic-link-with-email-otp` (28/9): Resend, remitente `no-reply@usemango.dev`
+- [ ] 🤖 Template del código con la marca, es/en (hoy sale solo en español; el idioma por usuario va con esto)
 
 ## 9 · Dos onboardings, una cuenta
 

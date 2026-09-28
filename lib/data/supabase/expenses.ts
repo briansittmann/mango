@@ -1,8 +1,8 @@
 import type { ExpenseMutations } from '@/lib/data/expenses'
-import { expectRows, type DataContext } from './context'
+import { expectRows, originColumns, type DataContext } from './context'
 
 /** `ExpenseMutations` over `transacciones` rows with `tipo = 'gasto'` (D13). */
-export function createSupabaseExpenseMutations({ client, usuarioId, currency }: DataContext): ExpenseMutations {
+export function createSupabaseExpenseMutations({ client, usuarioId, currency, origin }: DataContext): ExpenseMutations {
   return {
     async create(categoryId, draft) {
       expectRows(
@@ -17,6 +17,7 @@ export function createSupabaseExpenseMutations({ client, usuarioId, currency }: 
             fecha: `${draft.date}T12:00:00Z`,
             descripcion: draft.description || null,
             es_fijo: false,
+            ...originColumns(origin),
           })
           .select('id'),
       )

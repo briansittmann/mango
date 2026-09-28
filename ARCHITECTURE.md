@@ -103,6 +103,8 @@ Dos modos de uso:
 > **Decisión (sept 2026):** se cambió de Telegram a WhatsApp. Motivo: Brian y sus dos amigos usan WhatsApp y ninguno usa Telegram. Telegram era técnicamente más cómodo (API más simple, botones sin límite, sin ventana de 24 h), pero la fricción de instalar otra app mataba la adopción.
  
 Restricción transversal: **coste cero**. Todo se elige dentro de capas gratuitas.
+
+> **Excepción (2026-09-28): Gemini se paga.** La capa gratuita de `gemini-3.8-flash` da 20 requests por día por proyecto (medido el 28/9), que no alcanza para tres usuarios ni para correr el eval del parser, y en esa capa Google usa el contenido para mejorar sus productos: son movimientos financieros. Con billing (Tier 1) y un presupuesto con alerta de 5 USD, el costo estimado es de 0,20 USD por mes con ~200 mensajes (0,40 USD desde 2027, cuando Google duplica el precio), más los tokens de razonamiento si el modelo los usa. El modelo va fijado por nombre en `GEMINI_MODEL` (`lib/bot/gemini.ts`), no por alias, para que un cambio de Google no altere el eval en silencio.
  
 ---
  
@@ -114,17 +116,21 @@ Restricción transversal: **coste cero**. Todo se elige dentro de capas gratuita
 | Backend | Next.js route handlers (TypeScript) | Mismo repo que el front, serverless en Vercel |
 | Deploy | Vercel | Gratis, cold starts de ~100–300 ms |
 | Mensajería | WhatsApp Business Cloud API | Es la app que ya usan los usuarios |
-| Parsing de mensajes | Gemini (API online) | Capa gratuita |
+| Parsing de mensajes | Gemini (API online), `gemini-3.8-flash` | Pago por uso, centavos por mes (ver la excepción de §1) |
 | Validación | Zod | Garantiza la forma del JSON que devuelve el modelo |
 | Front | React / Next.js + Tailwind | Preferencia propia |
 | Gráficos | Recharts | Se integra directo con React |
 | Componentes UI | shadcn/ui | Look profesional de entrada, theming incluido |
-| Auth | Supabase Auth: Google, con magic link como alternativa | Sin contraseñas que mantener. Google trae el mail verificado y evita los dos problemas del magic link |
+| Auth | Supabase Auth: Google, con código por mail como alternativa | Sin contraseñas que mantener. Google trae el mail verificado; el código abre la sesión en la misma pestaña donde se pidió |
 | Idiomas | next-intl (o equivalente) | Estructura desde el día uno, ver más abajo |
  
 **Un repo, un deploy, coste cero.**
 
 > **Decisión (sept 2026):** Auth pasa de solo magic link a **login con Google, con magic link como alternativa**. Con registro abierto (sección 4), el login es la primera pantalla que ve cualquiera, y el magic link solo tiene dos problemas: el mail sale sin marca (sin SMTP propio, Supabase no deja editar la plantilla) y el link `?code=` solo abre sesión en el mismo navegador donde se pidió. Google trae el mail ya verificado y no depende de ninguno de los dos. El magic link se queda para quien no usa Google.
+
+> **Decisión (2026-09-28):** el **código por mail reemplaza al magic link** como alternativa a Google (`replace-magic-link-with-email-otp`). `/login` pide el mail, Supabase manda un código de 6 dígitos y la persona lo escribe en la misma página: la sesión queda en el navegador donde lo escribió. Por qué: el link abría otra pestaña, y con `?code=` solo abría sesión en el navegador que lo pidió, así que abrirlo desde la app de Mail del teléfono terminaba en "enlace inválido". El código no depende de dónde se abre el mail y no necesita el arreglo de `?token_hash=`. `/auth/confirm` se queda para el callback de Google y el link de un solo uso del bot.
+
+> **Actualización (2026-09-28):** Auth ya manda sus mails por SMTP propio, **Resend**, y salen con remitente del dominio (`no-reply@usemango.dev`). Con eso la plantilla se puede editar. El tope pasa a 30 mails por hora y 60 s entre dos mails a la misma dirección.
  
 ### Variables de entorno
  
@@ -307,7 +313,7 @@ Mango tiene **dos entradas**: el **registro web, abierto a cualquiera**, y **Wha
 
 #### Onboarding web (registro abierto)
 
-1. **Registro** con Google o magic link (sección 2).
+1. **Registro** con Google o código por mail (sección 2).
 2. **Bienvenida sin gasto cargado.** No reusa la pantalla 1 de WhatsApp ("Ya cargaste tu primer gasto"): acá todavía no se cargó nada, y felicitar por algo que no pasó confunde.
 3. **Datos básicos:** nombre, país → moneda y timezone, día de inicio de ciclo. Es lo que en WhatsApp pregunta el chat; sin eso no hay ciclo (sección 6) ni moneda contra la que sumar.
 4. **Categorías.**
@@ -377,13 +383,13 @@ El wizard **no se repite**. La web expone después una pantalla de ajustes para 
  
 ### Acceso a la web
  
-Se entra con **Google o magic link** (sección 2). Depende de por dónde llegó la persona:
+Se entra con **Google o código por mail** (sección 2). Depende de por dónde llegó la persona:
 
 - **Registro web:** el mail está desde el primer paso, porque es con lo que se registra.
 - **WhatsApp:** la primera vez entra con el link de **código de un solo uso** que manda el bot al final del chat, que abre sesión y vincula el teléfono. Ahí deja su mail o conecta Google, y de ahí en adelante entra como cualquiera.
 El teléfono queda vinculado a la cuenta web. Un solo usuario, dos puertas.
 
-> **Decisión (sept 2026):** antes el mail aparecía recién cuando la persona quería entrar al dashboard: le pedía el acceso al bot, el bot le mandaba el link con código de un solo uso, entraba, dejaba su mail y de ahí en adelante usaba magic link. Con registro abierto la web ya no depende del bot para entrar, y el login suma Google.
+> **Decisión (sept 2026):** antes el mail aparecía recién cuando la persona quería entrar al dashboard: le pedía el acceso al bot, el bot le mandaba el link con código de un solo uso, entraba, dejaba su mail y de ahí en adelante usaba magic link. Con registro abierto la web ya no depende del bot para entrar, y el login suma Google. El 2026-09-28 el magic link pasó a código por mail (sección 2).
  
 ### Cómo presentarlo a alguien nuevo
  
@@ -1094,6 +1100,7 @@ Medidas:
 - **Registro web abierto**, sin invitación (sección 4).
 - **WhatsApp por código de invitación** (sección 4), mientras el interruptor esté encendido — un número desconocido no puede darse de alta solo. Reemplaza a la whitelist de teléfonos, que obligaba a cargar cada número a mano. Además, el número de prueba de Meta ya limita a 5 destinatarios.
 - **Rate limiting** — en base o con Upstash Redis. Cubre tres cosas: **mensajes** al bot, **intentos de código de invitación** por número (para cortar la fuerza bruta) y **registro** web (para que el sign-up abierto no se llene de cuentas basura).
+  - **Código de acceso por mail**: Supabase ya cubre parte. La verificación (`/auth/v1/verify`) tiene 360 intentos por hora por IP, no configurable; el envío, uno cada 60 s por dirección y 30 mails por hora con el SMTP propio; y el código vence a los 600 s. Lo que falta: un **contador de intentos fallidos por dirección** (Supabase no lo tiene: un intento errado no quema el código y no hay bloqueo) y **reenviar la IP real** a Supabase. Como la server action llama desde Vercel, la IP que ve Supabase es la de la función, no la de la persona, y todos los usuarios comparten el mismo balde de 360 por hora. Reenviar la IP (`Sb-Forwarded-For`) pide una clave secreta que el cliente del servidor, con la anon key, no usa. Las dos cosas van con este mismo ítem.
 - **Validación de firma del webhook** — HMAC SHA-256 con el App Secret; sin eso, cualquiera puede pegarle al endpoint.
 - **Verify token** — solo para el handshake inicial de suscripción del webhook (Meta manda un GET con `hub.challenge`).
 ### Volumen esperado
@@ -1126,6 +1133,7 @@ Todo este cálculo es del número de prueba. Con número propio el cupo desapare
 | Cold starts | Aceptables en Vercel (~100–300 ms) |
 | Un usuario web espera usar WhatsApp y no puede | La sección "WhatsApp" de ajustes lo explica desde el principio: que hoy es por invitación y por qué (sección 4). El onboarding web lo presenta como opcional |
 | Registros basura con el sign-up abierto | Rate limiting sobre el registro (sección 10) |
+| Fuerza bruta sobre el código de acceso | Hay 10⁶ códigos. Con el balde compartido de 360 verificaciones por hora, un código que vive 600 s admite unos 60 intentos: 0,006 % de acertar por código (con los 3600 s por defecto serían 360 intentos, 0,036 %). Hoy: vencimiento corto (600 s). Después: contador de intentos por dirección (en base o con Upstash) y reenvío de la IP real con clave secreta (sección 10). **La otra cara:** quien gaste las 360 verificaciones de la hora deja a todos sin poder entrar hasta que se renueve el balde; el contador por dirección y la IP real también cortan eso |
  
 ---
  
@@ -1158,7 +1166,7 @@ Esto hay que escribirlo así **desde el primer componente**. Hacerlo después si
 **Bot** funcional (carga, confirmación progresiva, correcciones y consultas cortas), con la identidad ya separada del canal (`canales`, sección 8) antes de escribirlo; **cron de gastos fijos**; y **proyección a 6 ciclos** (sección 9). Bloques 0–7 de `ROADMAP.md`.
  
 **Fase 2 — Abrir a otras personas**
-**Registro abierto con Google** (y magic link), **dos onboardings** que terminan en la misma cuenta (sección 4), **invitaciones de WhatsApp** con rate limiting y RLS verificado con usuarios reales, **número propio** para la Cloud API (con la invitación obligatoria apagada, sección 4), y **Telegram** como segundo canal (sección 3). Bloques 8–11.
+**Registro abierto con Google** (y código por mail), **dos onboardings** que terminan en la misma cuenta (sección 4), **invitaciones de WhatsApp** con rate limiting y RLS verificado con usuarios reales, **número propio** para la Cloud API (con la invitación obligatoria apagada, sección 4), y **Telegram** como segundo canal (sección 3). Bloques 8–11.
  
 > **La señal que se busca en fase 2:** si a los tres meses los cinco siguen cargando gastos, recién ahí tiene sentido gastar en número propio o en una estructura legal. Antes de eso, cualquier inversión es adelantarse a un dato que todavía no se tiene.
 

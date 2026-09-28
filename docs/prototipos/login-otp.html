@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mango · Código por mail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    color-scheme: dark;
+    --bg: #0D100D; --surface: #171A17; --border: #262A26; --text: #F2F5F2; --muted: #8A918A;
+    --slot: #1D211D; --ring: #3A403A;
+    --lime: #94CA42; --ok-ink: #94CA42; --ok-fill: #273121;
+    --bad: #E5484D; --bad-fill: rgba(229,72,77,.12);
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { width: 100%; max-width: 400px; padding: 20px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 24px;
+    padding: 28px 20px 22px; text-align: center; position: relative; overflow: visible;
+  }
+  .brand { font-weight: 700; font-size: 15px; color: var(--muted); margin: 0 0 18px; }
+  h1 { font-size: 24px; line-height: 1.2; font-weight: 700; margin: 0 0 8px; letter-spacing: -.01em; }
+  .sub { font-size: 14px; line-height: 1.45; color: var(--muted); margin: 0 auto; max-width: 30ch; }
+  .sub strong { color: var(--text); font-weight: 600; }
+
+  .stage { position: relative; height: 240px; margin: 8px 0 4px; }
+  .ring { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; opacity: 0; }
+  .ring circle { fill: none; stroke: var(--ring); stroke-width: 1.5; stroke-dasharray: 2 8; stroke-linecap: round; }
+  .hub { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--text); opacity: 0; margin: -3px 0 0 -3px; }
+
+  .slot {
+    position: absolute; left: 0; top: 0; border-radius: 12px;
+    background: var(--slot); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums;
+    transition: border-color .25s, background-color .25s, color .25s, box-shadow .35s;
+    will-change: transform;
+  }
+  .slot .d { display: inline-block; }
+  .slot svg { position: absolute; inset: -1px; overflow: visible; pointer-events: none; }
+  .slot svg { filter: drop-shadow(0 0 3px rgba(148,202,66,.9)) drop-shadow(0 0 8px rgba(148,202,66,.45)); }
+  .slot rect { fill: none; stroke: var(--lime); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 0 100; opacity: 0; }
+  .slot rect.tail { stroke-width: 1.5; }
+  .slot.active {
+    border-color: var(--lime); background: var(--ok-fill);
+    box-shadow: 0 0 0 .5px rgba(148,202,66,.5), 0 0 6px rgba(148,202,66,.55), 0 0 16px rgba(148,202,66,.25);
+  }
+  .slot.active::after {
+    content: ""; width: 2px; height: 24px; border-radius: 1px; background: var(--lime);
+    animation: caret 1s steps(1) infinite;
+  }
+  @keyframes caret { 50% { opacity: 0; } }
+  .slot.ok { border-color: var(--lime); background: var(--ok-fill); color: var(--ok-ink); box-shadow: 0 0 22px rgba(148,202,66,.28); }
+  .slot.bad { border-color: var(--bad); background: var(--bad-fill); }
+
+  .code-input {
+    position: absolute; opacity: 0.001; border: 0; background: transparent; color: transparent;
+    font-size: 16px; caret-color: transparent; outline: none; z-index: 2;
+  }
+
+  .msg { min-height: 40px; font-size: 13.5px; line-height: 1.45; color: var(--muted); margin: 0 auto; max-width: 32ch; }
+  .msg.error { color: var(--bad); }
+  .msg button { font: inherit; color: var(--text); background: none; border: 0; padding: 4px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+  .msg button:disabled { color: var(--muted); text-decoration: none; cursor: default; }
+
+  .success { position: absolute; inset: 0; pointer-events: none; }
+  .badge { position: absolute; }
+  .frame { position: absolute; border-radius: 22px; border: 1px solid var(--border); }
+  .frame.f1 { width: 150px; height: 150px; border-radius: 36px; border-color: rgba(148,202,66,.18); }
+  .frame.f2 { width: 108px; height: 108px; border-radius: 28px; border-color: rgba(148,202,66,.32); }
+  .frame.core { width: 60px; height: 60px; border-radius: 16px; border: 1.5px solid var(--lime); background: var(--ok-fill); box-shadow: 0 0 30px rgba(148,202,66,.35); display: flex; align-items: center; justify-content: center; }
+  .core svg { width: 30px; height: 30px; }
+  .core path { fill: none; stroke: var(--ok-ink); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 30; stroke-dashoffset: 30; }
+  .ghost { position: absolute; border: 1.5px solid var(--lime); border-radius: 22px; pointer-events: none; }
+  .spark { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: var(--lime); margin: -2.5px 0 0 -2.5px; opacity: 0; }
+
+  .done { display: none; }
+  .done h1 { color: var(--ok-ink); }
+  .cta {
+    display: block; width: 100%; margin-top: 18px; padding: 15px; border: 0; border-radius: 14px;
+    background: var(--lime); color: #121512; font: inherit; font-weight: 700; font-size: 16px; cursor: pointer;
+  }
+  .cta:focus-visible, .msg button:focus-visible, .reset:focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
+  .cta.nudge { animation: nudge 6s ease-in-out .3s infinite; }
+  @keyframes nudge {
+    0%, 13.2%, 100% { transform: scale(1); }
+    2.6% { transform: scale(.95); }
+    5.9% { transform: scale(1.05); }
+    8.8% { transform: scale(.99); }
+    11% { transform: scale(1.01); }
+  }
+  @media (prefers-reduced-motion: reduce) { .cta.nudge { animation: none; } }
+  .note { font-size: 13px; line-height: 1.5; color: var(--muted); text-align: center; margin: 16px auto 0; max-width: 34ch; }
+  .note code { font-family: inherit; font-weight: 700; color: var(--text); letter-spacing: .08em; }
+  .reset { font: inherit; font-size: 13px; color: var(--muted); background: none; border: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 6px; display: block; margin: 4px auto 0; }
+</style>
+</head>
+<body>
+<main>
+  <section class="card" aria-live="polite">
+    <p class="brand">Mango</p>
+
+    <div class="ask">
+      <h1>Revisá tu mail</h1>
+      <p class="sub">Escribí el código de 6 dígitos que mandamos a <strong>tu@mail.com</strong>.</p>
+    </div>
+    <div class="done">
+      <h1>Listo, entraste</h1>
+      <p class="sub">Tu sesión queda abierta en este navegador.</p>
+    </div>
+
+    <div class="stage" id="stage">
+      <svg class="ring" id="ring" aria-hidden="true"><circle id="ringCircle" vector-effect="non-scaling-stroke"/></svg>
+      <span class="hub" id="hub" aria-hidden="true"></span>
+      <input class="code-input" id="code" type="text" inputmode="numeric" autocomplete="one-time-code"
+             pattern="[0-9]*" maxlength="6" aria-label="Código de 6 dígitos" autofocus>
+      <div class="success" id="success" aria-hidden="true">
+        <div class="badge" id="badge">
+          <span class="frame f1"></span>
+          <span class="frame f2"></span>
+          <span class="frame core"><svg viewBox="0 0 30 30"><path d="M8 15.5l5 5 9-10"/></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <p class="msg" id="msg">¿No te llegó? <button id="resend" disabled>Reenviar en 30 s</button></p>
+    <button class="cta done" id="cta">Ir a mi mes</button>
+  </section>
+
+  <p class="note">Para probar: el código correcto es <code>482913</code>. Cualquier otro muestra el error.</p>
+  <button class="reset" id="reset">Reiniciar</button>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+(() => {
+  const DEMO_CODE = '482913';
+  const N = 6, GAP = 8;
+  const stage = document.getElementById('stage');
+  const input = document.getElementById('code');
+  const ring = document.getElementById('ring');
+  const ringCircle = document.getElementById('ringCircle');
+  const hub = document.getElementById('hub');
+  const msg = document.getElementById('msg');
+  const success = document.getElementById('success');
+  const badge = document.getElementById('badge');
+  const card = document.querySelector('.card');
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  // Casillas
+  const slots = [];
+  for (let i = 0; i < N; i++) {
+    const el = document.createElement('div');
+    el.className = 'slot';
+    el.setAttribute('aria-hidden', 'true');
+    el.innerHTML = '<span class="d"></span><svg><rect class="tail" pathLength="100"/><rect class="head" pathLength="100"/></svg>';
+    stage.insertBefore(el, input);
+    slots.push(el);
+  }
+
+  // Estado de la órbita: t = 0 fila, 1 órbita; a = ángulo; rot = giro propio; r = radio
+  const S = { t: 0, a: 0, rot: 0, r: 80 };
+  let s = 46, cx = 0, cy = 0, R = 80, busy = false, prev = '';
+
+  function layout() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    s = Math.min(48, Math.floor((w - GAP * (N - 1)) / N));
+    cx = w / 2; cy = h / 2;
+    R = Math.min(86, h / 2 - s / 2 - 8);
+    if (S.t === 0) S.r = R;
+    slots.forEach(el => {
+      el.style.width = el.style.height = s + 'px';
+      el.querySelectorAll('rect').forEach(r => {
+        r.setAttribute('x', .75); r.setAttribute('y', .75);
+        r.setAttribute('width', s + .5); r.setAttribute('height', s + .5);
+        r.setAttribute('rx', 12); r.setAttribute('ry', 12);
+      });
+    });
+    ring.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    ringCircle.setAttribute('cx', cx); ringCircle.setAttribute('cy', cy); ringCircle.setAttribute('r', R);
+    gsap.set(ring, { transformOrigin: `${cx}px ${cy}px` });
+    hub.style.left = cx + 'px'; hub.style.top = cy + 'px';
+    badge.style.left = cx + 'px'; badge.style.top = cy + 'px';
+    const rowW = N * s + (N - 1) * GAP;
+    Object.assign(input.style, { left: (cx - rowW / 2) + 'px', top: (cy - s / 2) + 'px', width: rowW + 'px', height: s + 'px' });
+    render();
+  }
+
+  function render() {
+    slots.forEach((el, i) => {
+      const hx = cx + (i - (N - 1) / 2) * (s + GAP) - s / 2;
+      const hy = cy - s / 2;
+      const ang = (180 + i * 60 + S.a) * Math.PI / 180;   // arranca a la izquierda, sentido horario
+      const ox = cx + S.r * Math.cos(ang) - s / 2;
+      const oy = cy + S.r * Math.sin(ang) - s / 2;
+      gsap.set(el, { x: hx + (ox - hx) * S.t, y: hy + (oy - hy) * S.t, rotation: S.rot });
+    });
+  }
+
+  function paint(value) {
+    slots.forEach((el, i) => {
+      el.querySelector('.d').textContent = value[i] || '';
+      el.classList.toggle('active', !busy && document.activeElement === input && i === Math.min(value.length, N - 1) && value.length < N);
+    });
+  }
+
+  function typed(i) {
+    if (reduced.matches) return;
+    const el = slots[i];
+    gsap.fromTo(el.querySelector('.d'), { scale: .5, opacity: 0 }, { scale: 1, opacity: 1, duration: .28, ease: 'back.out(2.2)' });
+    // una luz neón que da la vuelta al marco: cabeza brillante y cola que se apaga
+    const head = el.querySelector('rect.head'), tail = el.querySelector('rect.tail');
+    gsap.timeline()
+      .set(head, { attr: { 'stroke-dasharray': '9 100' }, strokeDashoffset: 0, opacity: 1 })
+      .set(tail, { attr: { 'stroke-dasharray': '26 100' }, strokeDashoffset: 8, opacity: .45 })
+      .to([head, tail], { strokeDashoffset: '-=104', duration: .75, ease: 'power2.inOut' }, 0)
+      .to([head, tail], { opacity: 0, duration: .2 }, .58);
+  }
+
+  // Simula verifyOtp: en Mango esto es la server action que llama a Supabase
+  const verify = code => new Promise(res => setTimeout(() => res(code === DEMO_CODE), 700));
+
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+
+  async function submit(code) {
+    busy = true;
+    input.disabled = true;
+    input.blur();
+    paint(code);
+    const check = verify(code);
+
+    if (reduced.matches) {
+      const ok = await check;
+      return ok ? finishOk(true) : finishBad(true);
+    }
+
+    await wait(260);
+    const tl = gsap.timeline();
+    tl.to(ring, { opacity: 1, scale: 1, duration: .45, ease: 'power2.out' }, 0)
+      .fromTo(ring, { scale: .7 }, { scale: 1, duration: .45, ease: 'power2.out' }, 0)
+      .to(hub, { opacity: 1, duration: .3 }, .15)
+      .to(S, { t: 1, duration: .5, ease: 'power3.inOut', onUpdate: render }, 0)
+      .to(S, { a: 420, rot: 360, duration: 1.3, ease: 'power4.inOut', onUpdate: render }, .45)
+      .to(slots, { scale: 1.08, duration: .12, ease: 'power2.out', yoyo: true, repeat: 1 }, 1.75);
+    const [ok] = await Promise.all([check, tl.then()]);
+    return ok ? finishOk(false) : finishBad(false);
+  }
+
+  async function finishOk(plain) {
+    slots.forEach(el => el.classList.add('ok'));
+    const ask = card.querySelector('.ask'), done = card.querySelectorAll('.done');
+    if (plain) {
+      await wait(300);
+      gsap.to([...slots, msg, ask], { opacity: 0, duration: .25 });
+      await wait(260);
+      ask.style.display = 'none';
+      done.forEach(d => d.style.display = 'block');
+      gsap.set('.frame.core', { scale: 1.65 });
+      gsap.set('.core path', { strokeDashoffset: 0 });
+      gsap.fromTo([...done, badge], { opacity: 0 }, { opacity: 1, duration: .3 });
+      return;
+    }
+    await wait(700);
+    const tl = gsap.timeline();
+    tl.to(S, { r: 0, a: '+=140', rot: '+=140', duration: .55, ease: 'power2.in', onUpdate: render }, 0)
+      .to(slots, { scale: .25, opacity: 0, duration: .5, ease: 'power2.in' }, .05)
+      .to(ring, { scale: .3, opacity: 0, duration: .45, ease: 'power2.in' }, 0)
+      .to([ask, msg], { opacity: 0, duration: .3 }, 0)
+      .to(hub, { scale: 2.5, duration: .2, ease: 'power2.out' }, .45)
+      .to(hub, { opacity: 0, duration: .15 }, .6)
+      .add(() => { ask.style.display = 'none'; done.forEach(d => { d.style.display = 'block'; }); }, .6)
+      .fromTo(card.querySelectorAll('.done'), { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: .45, stagger: .08, ease: 'power2.out' }, .75)
+      .to('.frame.core', { scale: 1, duration: .5, ease: 'back.out(2)' }, .6)
+      .to('.core path', { strokeDashoffset: 0, duration: .35, ease: 'power2.out' }, .85)
+      .add(() => burst(8, 55, 35), .62)
+      // los marcos hijos se expanden más allá de su lugar...
+      .to('.frame.f2', { scale: 1.2, duration: .5, ease: 'power2.out' }, .66)
+      .to('.frame.f1', { scale: 1.26, duration: .55, ease: 'power2.out' }, .7)
+      // ...se retraen y chocan con el padre
+      .to('.frame.f2', { scale: 60 / 108, borderColor: 'rgba(148,202,66,.7)', duration: .28, ease: 'power3.in' }, 1.22)
+      .to('.frame.f1', { scale: 60 / 150, borderColor: 'rgba(148,202,66,.7)', duration: .3, ease: 'power3.in' }, 1.22)
+      .set(['.frame.f1', '.frame.f2'], { opacity: 0 }, 1.52)
+      // impacto: el padre absorbe a los hijos y toma su forma final
+      .to('.frame.core', { scaleX: 1.91, scaleY: 1.67, boxShadow: '0 0 70px rgba(148,202,66,.7)', duration: .11, ease: 'power2.out' }, 1.5)
+      .add(impact, 1.52)
+      .to('.frame.core', { scaleX: 1.65, scaleY: 1.65, boxShadow: '0 0 42px rgba(148,202,66,.42)', duration: .9, ease: 'elastic.out(1, .38)' }, 1.61);
+    await tl.then();
+    nudge();
+  }
+
+  // El botón invita a tocarlo: se achica y se agranda cada tanto
+  function nudge() {
+    const cta = document.getElementById('cta');
+    gsap.set(cta, { clearProps: 'transform' });
+    cta.classList.add('nudge');
+    cta.addEventListener('pointerdown', () => cta.classList.remove('nudge'), { once: true });
+  }
+
+  function spark(size) {
+    const p = document.createElement('span');
+    p.className = 'spark';
+    p.style.left = cx + 'px'; p.style.top = cy + 'px';
+    p.style.width = p.style.height = size + 'px';
+    p.style.margin = (-size / 2) + 'px 0 0 ' + (-size / 2) + 'px';
+    success.appendChild(p);
+    return p;
+  }
+
+  // Estallido radial: n partículas a distancia base + azar
+  function burst(n, base, spread) {
+    for (let i = 0; i < n; i++) {
+      const p = spark(2 + Math.random() * 4);
+      const ang = (i / n) * Math.PI * 2 + Math.random() * .4;
+      const dist = base + Math.random() * spread;
+      gsap.timeline({ onComplete: () => p.remove() })
+        .set(p, { opacity: 1 })
+        .to(p, { x: Math.cos(ang) * dist, y: Math.sin(ang) * dist, duration: .8 + Math.random() * .5, ease: 'expo.out' }, 0)
+        .to(p, { opacity: 0, scale: .3, duration: .6 }, .4 + Math.random() * .3);
+    }
+  }
+
+  // El choque final: siluetas que se expanden, estallido y restos flotando
+  function impact() {
+    const core = 99; // tamaño final del cuadrado (60 × 1.65)
+    for (let k = 0; k < 3; k++) {
+      const g = document.createElement('span');
+      g.className = 'ghost';
+      g.style.left = cx + 'px'; g.style.top = cy + 'px';
+      g.style.width = g.style.height = core + 'px';
+      success.appendChild(g);
+      gsap.fromTo(g,
+        { xPercent: -50, yPercent: -50, scale: 1, opacity: .75 - k * .15, rotation: (k - 1) * 6 },
+        { scale: 2.2 + k * .7, opacity: 0, rotation: (k - 1) * 14, duration: 1.1 + k * .35, delay: k * .09, ease: 'power2.out', onComplete: () => g.remove() });
+    }
+    burst(30, 80, 70);
+    // restos: tardan en irse, derivan despacio y titilan
+    for (let i = 0; i < 12; i++) {
+      const p = spark(2 + Math.random() * 3);
+      const ang = Math.random() * Math.PI * 2;
+      const d1 = 50 + Math.random() * 50, d2 = d1 + 40 + Math.random() * 60;
+      const life = 2.6 + Math.random() * 1.8;
+      gsap.timeline({ onComplete: () => p.remove() })
+        .set(p, { opacity: .9 })
+        .to(p, { x: Math.cos(ang) * d1, y: Math.sin(ang) * d1, duration: .7, ease: 'expo.out' }, 0)
+        .to(p, { x: Math.cos(ang) * d2, y: Math.sin(ang) * d2 - 20, duration: life, ease: 'sine.out' }, .7)
+        .to(p, { opacity: .25, duration: .35, yoyo: true, repeat: 3, ease: 'sine.inOut' }, .8)
+        .to(p, { opacity: 0, duration: 1 }, .7 + life - 1);
+    }
+  }
+
+  async function finishBad(plain) {
+    slots.forEach(el => el.classList.add('bad'));
+    if (!plain) {
+      gsap.fromTo(stage, { x: -10 }, { x: 0, duration: .6, ease: 'elastic.out(1, .3)' });
+      await wait(450);
+      const tl = gsap.timeline();
+      tl.to(S, { t: 0, a: 360, rot: 360, duration: .6, ease: 'power3.inOut', onUpdate: render }, 0)
+        .to(ring, { opacity: 0, scale: .8, duration: .4 }, 0)
+        .to(hub, { opacity: 0, duration: .2 }, 0);
+      await tl.then();
+      S.a = 0; S.rot = 0; render();
+    } else {
+      await wait(500);
+    }
+    msg.className = 'msg error';
+    msg.textContent = 'Ese código no es el que mandamos. Revisá el último mail o pedí uno nuevo.';
+    slots.forEach(el => el.classList.remove('bad'));
+    input.value = ''; prev = '';
+    busy = false; input.disabled = false;
+    input.focus(); paint('');
+  }
+
+  input.addEventListener('input', () => {
+    if (busy) return;
+    const v = input.value.replace(/\D/g, '').slice(0, N);
+    input.value = v;
+    if (msg.classList.contains('error') && v.length) resetMsg();
+    for (let i = prev.length; i < v.length; i++) typed(i);
+    prev = v;
+    paint(v);
+    if (v.length === N) submit(v);
+  });
+  const toEnd = () => { const l = input.value.length; input.setSelectionRange(l, l); };
+  input.addEventListener('focus', () => { toEnd(); paint(input.value); });
+  input.addEventListener('click', toEnd);
+  input.addEventListener('keyup', toEnd);
+  input.addEventListener('blur', () => paint(input.value));
+
+  // Reenviar con cuenta regresiva
+  let left = 30, timer;
+  function resetMsg() {
+    msg.className = 'msg';
+    msg.innerHTML = '¿No te llegó? <button id="resend"></button>';
+    msg.querySelector('#resend').addEventListener('click', () => { left = 30; tick(); input.focus(); });
+    tick();
+  }
+  function tick() {
+    const b = msg.querySelector('#resend');
+    clearInterval(timer);
+    const upd = () => {
+      const btn = msg.querySelector('#resend');
+      if (!btn) return clearInterval(timer);
+      btn.disabled = left > 0;
+      btn.textContent = left > 0 ? `Reenviar en ${left} s` : 'Reenviar código';
+      if (left <= 0) clearInterval(timer);
+      left--;
+    };
+    upd(); timer = setInterval(upd, 1000);
+  }
+
+  document.getElementById('reset').addEventListener('click', () => location.reload());
+  document.getElementById('cta').addEventListener('click', () => location.reload());
+
+  gsap.set('.frame', { xPercent: -50, yPercent: -50, scale: 0 });
+  window.addEventListener('resize', layout);
+  layout();
+  resetMsg();
+  paint('');
+  if (!window.matchMedia('(pointer: coarse)').matches) input.focus();
+})();
+</script>
+</body>
+</html>

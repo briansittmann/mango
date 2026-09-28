@@ -11,6 +11,9 @@ import { describeEvents, extractTextMessages } from '@/lib/whatsapp/payload'
  * the internal format and delegates. No business rule lives in this file.
  */
 
+/** Two model calls, the writes and the send run inside `after()` (design D12). */
+export const maxDuration = 60
+
 /**
  * Webhook registration handshake: Meta hits a GET with `hub.challenge` and it
  * has to be echoed back as-is, but only if `hub.verify_token` matches (§10).

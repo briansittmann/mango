@@ -1,8 +1,8 @@
 import type { IncomeMutations } from '@/lib/data/income'
-import { expectRows, type DataContext } from './context'
+import { expectRows, originColumns, type DataContext } from './context'
 
 /** `IncomeMutations` over `transacciones` rows with `tipo = 'ingreso'` and no category (D13). */
-export function createSupabaseIncomeMutations({ client, usuarioId, currency }: DataContext): IncomeMutations {
+export function createSupabaseIncomeMutations({ client, usuarioId, currency, origin }: DataContext): IncomeMutations {
   return {
     async create(draft) {
       expectRows(
@@ -16,6 +16,7 @@ export function createSupabaseIncomeMutations({ client, usuarioId, currency }: D
             moneda: currency,
             fecha: `${draft.date}T12:00:00Z`,
             descripcion: draft.description || null,
+            ...originColumns(origin),
           })
           .select('id'),
       )

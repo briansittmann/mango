@@ -43,6 +43,11 @@
   --destructive-fill: light-dark(#B91C1C, #DC2626);
   --destructive-fill-foreground: #FFFFFF;
   --ring: light-dark(#149052, #84CC16);
+  /* Active field (focused input, active code cell): brand tint over the field surface, a soft
+     ring-coloured halo, and the glow of lights drawn in the ring colour (frame light, success). */
+  --field-active-fill: color-mix(in oklab, var(--brand) 12%, var(--muted));
+  --field-halo: 0 2px 16px color-mix(in oklab, var(--ring) 26%, transparent);
+  --neon-glow: light-dark(color-mix(in oklab, var(--ring) 45%, transparent), color-mix(in oklab, var(--ring) 85%, transparent));
   --hero-glow: light-dark(transparent, color-mix(in oklab, #84CC16 30%, transparent));
   --radius: 0.625rem;
 
@@ -120,6 +125,9 @@
   --color-destructive-fill: var(--destructive-fill);
   --color-destructive-fill-foreground: var(--destructive-fill-foreground);
   --color-ring: var(--ring);
+  --color-field-active-fill: var(--field-active-fill);
+  --color-neon-glow: var(--neon-glow);
+  --shadow-field-halo: var(--field-halo);
   --color-hero-glow: var(--hero-glow);
   --color-scrim: var(--scrim);
   --color-positive: var(--positive);
@@ -215,6 +223,10 @@
      the pressable press-scale keeps working on the logo and the avatar. */
   --animate-header-pop: header-pop 700ms var(--ease-bounce) backwards;
   --animate-header-in: header-in 600ms var(--ease-out) backwards;
+  /* Code entry (/login): the active cell's caret and the "Ir a mi mes" nudge, which pulses once
+     and then every 6 s until it is touched. */
+  --animate-caret-blink: caret-blink 1s steps(1) infinite;
+  --animate-nudge: nudge 6s ease-in-out 0.3s infinite;
 
   --spacing-gutter: 1rem;
   --spacing-section: 2rem;
@@ -247,6 +259,32 @@
     }
     to {
       filter: blur(0);
+    }
+  }
+
+  @keyframes caret-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes nudge {
+    0%,
+    13.2%,
+    100% {
+      scale: 1;
+    }
+    2.6% {
+      scale: 0.95;
+    }
+    5.9% {
+      scale: 1.05;
+    }
+    8.8% {
+      scale: 0.99;
+    }
+    11% {
+      scale: 1.01;
     }
   }
 
@@ -310,8 +348,8 @@
   &:focus,
   &:focus-within {
     border-color: var(--ring);
-    background-color: color-mix(in oklab, var(--brand) 12%, var(--muted));
-    box-shadow: 0 2px 16px color-mix(in oklab, var(--ring) 26%, transparent);
+    background-color: var(--field-active-fill);
+    box-shadow: var(--field-halo);
   }
   /* The currency symbol sits beside the input, inside the same box. */
   &:focus-within span {

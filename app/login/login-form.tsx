@@ -1,17 +1,23 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { sendMagicLink, type SendMagicLinkState } from "./actions";
+import { requestCode, type RequestCodeState } from "./actions";
 
-export function LoginForm({ linkError }: { linkError: boolean }) {
+/** The e-mail step: requests the code and hands the address to `LoginSteps` once it is `sent`. */
+export function LoginForm({ linkError, defaultEmail, onSent }: { linkError: boolean; defaultEmail?: string; onSent: (email: string) => void }) {
   const t = useTranslations("acceso");
-  const [state, formAction, pending] = useActionState<SendMagicLinkState, FormData>(sendMagicLink, { status: "idle" });
+  const [state, formAction, pending] = useActionState<RequestCodeState, FormData>(requestCode, { status: "idle" });
+
+  useEffect(() => {
+    if (state.status === "sent" && state.email) onSent(state.email);
+  }, [state, onSent]);
 
   return (
-    <form action={formAction} className="flex w-full max-w-sm flex-col gap-3">
-      <label htmlFor="email" className="text-sm font-medium">
+    <form action={formAction} className="flex w-full max-w-sm flex-col gap-stack rounded-card border border-border bg-card px-5 pt-7 pb-5">
+      <h1 className="mb-2 text-center text-headline-lg">{t("titulo")}</h1>
+      <label htmlFor="email" className="text-label-ui text-muted-foreground">
         {t("email")}
       </label>
       <input
@@ -20,14 +26,15 @@ export function LoginForm({ linkError }: { linkError: boolean }) {
         type="email"
         required
         autoComplete="email"
-        className="h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        defaultValue={defaultEmail}
+        className="field-focus h-target rounded-lg bg-muted px-3 text-body-lg text-foreground outline-none"
       />
-      <Button type="submit" size="lg" disabled={pending}>
-        {t("enviarEnlace")}
+      <Button type="submit" size="lg" disabled={pending} className="h-target w-full text-body-lg font-semibold">
+        {t("enviarCodigo")}
       </Button>
-      {state.status === "sent" && <p role="status" className="text-sm">{t("enlaceEnviado")}</p>}
-      {state.status === "error" && <p role="alert" className="text-sm text-destructive">{t("errorEnvio")}</p>}
-      {state.status === "idle" && linkError && <p role="alert" className="text-sm text-destructive">{t("enlaceInvalido")}</p>}
+      {state.status === "error" && <p role="alert" className="text-body-sm text-destructive-ink">{t("errorEnvio")}</p>}
+      {state.status === "rate_limited" && <p role="alert" className="text-body-sm text-destructive-ink">{t("demasiadosPedidos")}</p>}
+      {state.status === "idle" && linkError && <p role="alert" className="text-body-sm text-destructive-ink">{t("enlaceInvalido")}</p>}
     </form>
   );
 }
