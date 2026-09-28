@@ -3,6 +3,7 @@
 import { useLayoutEffect, useEffect, useRef, useState, type ChangeEvent, type ClipboardEvent } from 'react'
 import { flushSync } from 'react-dom'
 import { gsap } from 'gsap'
+import { Loader2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -47,6 +48,7 @@ export function CodeEntry({ email, onVerify, onResend, onChangeEmail, onDone }: 
   const [message, setMessage] = useState<Message | null>(null)
   const [done, setDone] = useState(false)
   const [nudging, setNudging] = useState(false)
+  const [leaving, setLeaving] = useState(false)
   const [left, setLeft] = useState(RESEND_SECONDS)
 
   const cardRef = useRef<HTMLElement>(null)
@@ -536,14 +538,31 @@ export function CodeEntry({ email, onVerify, onResend, onChangeEmail, onDone }: 
       </div>
 
       {done ? (
-        <div ref={ctaRef}>
+        <div ref={ctaRef} className="mt-4 flex justify-center">
+          {/* On tap the button presses in, then folds into a round spinner that stays until
+              /dashboard replaces the page. With reduced motion the fold is instant. */}
           <Button
             size="lg"
-            onClick={onDone}
+            aria-disabled={leaving || undefined}
+            aria-busy={leaving || undefined}
+            onClick={() => {
+              if (leaving) return
+              setNudging(false)
+              setLeaving(true)
+              onDone()
+            }}
             onPointerDown={() => setNudging(false)}
-            className={cn('mt-4 h-target w-full text-body-lg font-semibold', nudging && 'animate-nudge motion-reduce:animate-none')}
+            className={cn(
+              'relative h-target overflow-hidden text-body-lg font-semibold transition-[width,border-radius,scale] duration-300 ease-out active:scale-95 motion-reduce:transition-none',
+              leaving ? 'w-target rounded-full' : 'w-full',
+              nudging && 'animate-nudge motion-reduce:animate-none',
+            )}
           >
-            {t('irAMiMes')}
+            <span className={cn('transition-opacity duration-150 motion-reduce:transition-none', leaving && 'opacity-0')}>{t('irAMiMes')}</span>
+            <Loader2
+              aria-hidden
+              className={cn('absolute inset-0 m-auto size-5 animate-spin transition-opacity duration-200 motion-reduce:transition-none', leaving ? 'opacity-100 delay-150' : 'opacity-0')}
+            />
           </Button>
         </div>
       ) : (
