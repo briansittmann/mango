@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { DemoNotice } from '@/components/molecules/demo-notice'
 import { DemoToast } from '@/components/molecules/demo-toast'
 import { DashboardTemplate } from '@/components/templates/dashboard-template'
@@ -28,6 +28,7 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows, changeLa
   const [recurringEdits, setRecurringEdits] = useState(noDemoRecurringEdits)
   const [incomeEdits, setIncomeEdits] = useState(noDemoIncomeEdits)
   const [savingsEdits, setSavingsEdits] = useState(noDemoSavingsEdits)
+  const router = useRouter()
   const [messageOpen, setMessageOpen] = useState(false)
   // The sample's month or one of its six projections (D9).
   const [month, setMonth] = useState(data.cycle.month)
@@ -95,6 +96,8 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows, changeLa
             else showUnavailable()
           },
           openSavingsHistory: showUnavailable,
+          // There is no session to end: it only leads to the real login.
+          signOut: () => router.push('/login'),
         }}
         notice={<DemoNotice />}
       />

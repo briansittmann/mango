@@ -138,7 +138,8 @@ All totals in the sample SHALL be derived from its own rows, and the free margin
 - No savings change SHALL move an income or expense figure.
 - Changes SHALL stay in the page's memory. They SHALL NOT be sent over the network, and reloading SHALL discard them.
 - Changes SHALL survive a language switch. Sample movements SHALL then be shown in the new language, and typed names SHALL stay as typed.
-- Month navigation and log out SHALL stay disabled.
+- Month navigation SHALL stay disabled.
+- "Cerrar sesión" SHALL lead to `/login`; there is no session to end.
 
 #### Scenario: Visitor opens the demo
 - **WHEN** an unauthenticated visitor opens `/demo`
