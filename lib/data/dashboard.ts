@@ -71,6 +71,8 @@ export type DashboardData = {
     inProgress: boolean
     /** A cycle after the one in progress, computed by `proyectarCiclo` (`cycle-projection`). */
     projected: boolean
+    /** The month of the cycle in progress, marked in the month picker. */
+    currentMonth: string
     /** The last month the controls may reach: the sixth cycle after the one in progress. */
     maxMonth: string
   }

@@ -313,6 +313,7 @@ export async function resumenMensual(
         month: shownMonth,
         inProgress,
         projected,
+        currentMonth,
         maxMonth: shiftMonth(currentMonth, PROJECTION_HORIZON),
       },
       freeMargin: getFreeMargin({

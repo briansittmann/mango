@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils'
 
 type MonthPickerProps = {
   month: string
+  /** The month of the cycle in progress; tinted grey while another month is selected. */
+  currentMonth: string
   /** The last selectable month; later ones are disabled. */
   maxMonth: string
   open: boolean
@@ -13,7 +15,7 @@ type MonthPickerProps = {
   align?: 'start' | 'center'
 }
 
-export function MonthPicker({ month, maxMonth, open, onSelect, onClose, align = 'center' }: MonthPickerProps) {
+export function MonthPicker({ month, currentMonth, maxMonth, open, onSelect, onClose, align = 'center' }: MonthPickerProps) {
   const t = useTranslations('dashboard')
   const format = useFormatter()
   const currentYear = Number(month.slice(0, 4))
@@ -84,6 +86,7 @@ export function MonthPicker({ month, maxMonth, open, onSelect, onClose, align = 
         {Array.from({ length: 12 }, (_, index) => {
           const value = `${year}-${String(index + 1).padStart(2, '0')}`
           const selected = value === month
+          const current = value === currentMonth
           const future = value > maxMonth
           return (
             <button
@@ -96,11 +99,14 @@ export function MonthPicker({ month, maxMonth, open, onSelect, onClose, align = 
                 'h-11 rounded-2xl text-label-ui capitalize transition-all duration-200 disabled:pointer-events-none',
                 selected
                   ? 'bg-primary font-semibold text-primary-foreground shadow-[0_6px_18px_-4px_color-mix(in_oklab,var(--primary)_55%,transparent)]'
-                  : 'text-foreground hover:bg-foreground/[0.06] active:scale-95',
+                  : current
+                    ? 'bg-foreground/[0.08] font-semibold text-foreground hover:bg-foreground/[0.12] active:scale-95'
+                    : 'text-foreground hover:bg-foreground/[0.06] active:scale-95',
                 future && 'opacity-30',
               )}
             >
               {format.dateTime(new Date(Date.UTC(year, index, 1)), { month: 'short', timeZone: 'UTC' })}
+              {current ? <span className="sr-only"> {t('enCurso')}</span> : null}
             </button>
           )
         })}

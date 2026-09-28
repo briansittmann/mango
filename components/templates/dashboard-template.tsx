@@ -1040,6 +1040,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                   end={data.cycle.end}
                   inProgress={data.cycle.inProgress}
                   projected={projected}
+                  currentMonth={data.cycle.currentMonth}
                   maxMonth={data.cycle.maxMonth}
                   onPrevious={actions.previousCycle}
                   onNext={actions.nextCycle}
@@ -1076,6 +1077,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
               end={data.cycle.end}
               inProgress={data.cycle.inProgress}
               projected={projected}
+              currentMonth={data.cycle.currentMonth}
               maxMonth={data.cycle.maxMonth}
               onPrevious={actions.previousCycle}
               onNext={actions.nextCycle}

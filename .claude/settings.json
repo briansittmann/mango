@@ -146,7 +146,12 @@
       "mcp__supabase__search_docs",
       "Bash(sed -E 's/\"focused\":\"[^\"]{0,60}[^}]*/\"focused\":…/' /Users/brianrebagliati/.claude/projects/-Users-brianrebagliati-Documents-Work-mango-finanzas-mango/8de49570-e3ca-49a2-837b-6877c5bb1e53/tool-results/b692494pu.txt | grep -E \"^\\(dark|light\\)|PAGEERROR\" | cut -c1-300)",
       "Skill(openspec-archive-change)",
-      "Skill(openspec-archive-change:*)"
+      "Skill(openspec-archive-change:*)",
+      "Skill(openspec-propose)",
+      "Skill(openspec-propose:*)",
+      "mcp__supabase__list_tables",
+      "Skill(openspec-update-change)",
+      "Skill(openspec-update-change:*)"
     ],
     "additionalDirectories": [
       "/Users/brianrebagliati/Documents/Work/mango-finanzas/mango/baseline-shots",

@@ -12,6 +12,8 @@ type MonthSelectorProps = {
   inProgress: boolean
   /** A cycle after the one in progress: labelled "Proyección" instead of "en curso". */
   projected: boolean
+  /** The month of the cycle in progress, marked in the picker while another one is shown. */
+  currentMonth: string
   /** The last month the controls may reach; "next" is disabled on it. */
   maxMonth: string
   onPrevious?: () => void
@@ -26,6 +28,7 @@ export function MonthSelector({
   end,
   inProgress,
   projected,
+  currentMonth,
   maxMonth,
   onPrevious,
   onNext,
@@ -75,6 +78,7 @@ export function MonthSelector({
         </button>
         <MonthPicker
           month={month}
+          currentMonth={currentMonth}
           maxMonth={maxMonth}
           open={open}
           onSelect={handleSelect}
@@ -156,6 +160,7 @@ export function MonthSelector({
       </p>
       <MonthPicker
         month={month}
+        currentMonth={currentMonth}
         maxMonth={maxMonth}
         open={open}
         onSelect={handleSelect}

@@ -210,6 +210,7 @@ export function buildDemoData(locale: Locale): DashboardData {
       month: '2026-09',
       inProgress: realToday >= CYCLE_START && realToday <= CYCLE_END,
       projected: false,
+      currentMonth: '2026-09',
       maxMonth: shiftDemoMonth('2026-09', 6),
     },
     freeMargin: 0,
