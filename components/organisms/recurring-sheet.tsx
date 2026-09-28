@@ -230,8 +230,10 @@ export function RecurringSheet({
       }
       title={title}
       trailing={
+        // Distinct keys: see the same header in entry-sheet.tsx.
         step === 'form' ? (
           <button
+            key="submit"
             type="submit"
             form={formId}
             disabled={primaryDisabled}
@@ -252,6 +254,7 @@ export function RecurringSheet({
           </button>
         ) : (
           <button
+            key="confirm-cancel"
             type="button"
             disabled={busy}
             onClick={cancelConfirmDelete}

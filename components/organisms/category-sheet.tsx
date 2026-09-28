@@ -233,8 +233,10 @@ export function CategorySheet({
         </span>
       }
       trailing={
+        // Distinct keys: see the same header in entry-sheet.tsx.
         step === 'form' ? (
           <button
+            key="submit"
             type="submit"
             form={formId}
             disabled={primaryDisabled}
@@ -255,6 +257,7 @@ export function CategorySheet({
           </button>
         ) : (
           <button
+            key="confirm-cancel"
             type="button"
             disabled={busy}
             onClick={cancelConfirmDelete}

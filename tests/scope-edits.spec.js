@@ -124,7 +124,8 @@ test('deleting a fixed charge asks the scope in a confirmation step', async ({ p
   const sheet = await openRow(page, 'salud', 'Gimnasio')
   await sheet.getByRole('button', { name: 'Eliminar gasto' }).click()
 
-  const cancel = sheet.getByRole('button', { name: 'Cancelar' })
+  // The header keeps the sheet's own "Cancelar" (close) on the left; the step's is on the right.
+  const cancel = sheet.getByRole('button', { name: 'Cancelar' }).last()
   await expect(cancel).toBeFocused()
   const remove = sheet.getByRole('button', { name: 'Eliminar', exact: true })
   await expect(remove).toBeDisabled()

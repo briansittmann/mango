@@ -35,7 +35,8 @@
 
 - [x] 5.1 `tests/home.spec.js`: the line is visible and mentions the invitation; in English with the `locale=en` cookie; the no-Supabase-request test unchanged — verify `npx tsc --noEmit` (👤 Brian runs the spec)
 - [x] 5.2 `tests/login-signup.spec.js` (D10): hint visible; with `/auth/request-code` stubbed as `sent`, a new address reaches the code step and `/login?email=`; the stubbed request body carries the address, `en` and `Europe/Madrid`; stubbed `rate_limited` and `error` show their messages; no request to a Supabase host — verify `npx tsc --noEmit` (👤 Brian runs the spec)
-- [ ] 5.3 👤 Brian runs `npx playwright test tests/home.spec.js tests/login-signup.spec.js tests/login-code.spec.js tests/login-access.spec.js` — record the result here
+- [x] 5.3 👤 Brian runs `npx playwright test tests/home.spec.js tests/login-signup.spec.js tests/login-code.spec.js tests/login-access.spec.js` — record the result here
+  - Run by Claude at Brian's request, 2026-09-29, `--workers=3`: all tests of the four specs pass in Chromium, Firefox and WebKit.
 
 ## 6. Documentation
 

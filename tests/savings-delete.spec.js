@@ -14,13 +14,16 @@ function body(page) {
   })
 }
 
+// A savings row is not a button, so the locator is its name: the swipe spans the panel's width at
+// that height, since the name alone is too short to reach the delete threshold.
 async function longSwipe(page, row) {
   const box = await row.boundingBox()
-  if (!box) throw new Error('row not visible')
+  const panelBox = await page.locator('#summary-group-panel').boundingBox()
+  if (!box || !panelBox) throw new Error('row not visible')
   const y = box.y + box.height / 2
-  await page.mouse.move(box.x + box.width - 10, y)
+  await page.mouse.move(panelBox.x + panelBox.width - 10, y)
   await page.mouse.down()
-  await page.mouse.move(box.x + 10, y, { steps: 12 })
+  await page.mouse.move(panelBox.x + 10, y, { steps: 12 })
   await page.mouse.up()
 }
 

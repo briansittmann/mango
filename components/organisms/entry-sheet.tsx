@@ -606,8 +606,11 @@ export function EntrySheet<V>({
       }
       title={title}
       trailing={
+        // Distinct keys: reusing one <button> would turn it into the submit while its click is
+        // still being dispatched, and the browser would then submit the form and close the sheet.
         step === 'confirmDelete' ? (
           <button
+            key="confirm-cancel"
             ref={confirmCancelRef}
             type="button"
             disabled={disabled}
@@ -621,6 +624,7 @@ export function EntrySheet<V>({
           </button>
         ) : (
         <button
+          key="submit"
           type="submit"
           form={formId}
           disabled={primaryDisabled}
