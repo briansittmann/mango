@@ -2,7 +2,7 @@ import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react'
 import { flushSync } from 'react-dom'
-import { LogOut, Moon, Sun, SunMoon, X } from 'lucide-react'
+import { Loader2, LogOut, Moon, Sun, SunMoon, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/atoms/avatar'
 import type { DashboardActions } from '@/lib/data/dashboard'
@@ -52,6 +52,7 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
   const dialogRef = useRef<HTMLDivElement>(null)
   const [mounted, setMounted] = useState(open)
   const [pendingLocale, setPendingLocale] = useState<string | null>(null)
+  const [signingOut, setSigningOut] = useState(false)
   const [theme, setTheme] = useState<ThemeChoice>(() => {
     try {
       const stored = localStorage.getItem('theme')
@@ -322,14 +323,35 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
         </div>
 
         <div className={`mt-6 ${enterClassName}`} style={{ transitionDelay: '150ms' }}>
+          {/* On tap the button folds into a round spinner that stays until the redirect replaces the page. */}
           <button
             type="button"
-            onClick={actions.signOut}
+            onClick={() => {
+              if (signingOut || !actions.signOut) return
+              setSigningOut(true)
+              actions.signOut()
+            }}
             disabled={!actions.signOut}
-            className="group flex h-12 w-full items-center justify-center gap-2 rounded-[18px] bg-destructive/[0.08] text-body-md font-semibold text-destructive transition-[background-color,box-shadow,scale] duration-200 hover:bg-destructive/[0.16] hover:shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--destructive)_40%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-destructive active:scale-[0.98]"
+            aria-disabled={signingOut || undefined}
+            aria-busy={signingOut || undefined}
+            className={cn(
+              'group relative mx-auto flex h-12 items-center justify-center overflow-hidden whitespace-nowrap bg-destructive/[0.08] text-body-md font-semibold text-destructive transition-[width,border-radius,background-color,box-shadow,scale] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-destructive active:scale-[0.98] motion-reduce:transition-none',
+              signingOut
+                ? 'w-12 rounded-[24px]'
+                : 'w-full rounded-[18px] hover:bg-destructive/[0.16] hover:shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--destructive)_40%,transparent)]',
+            )}
           >
-            <LogOut aria-hidden className="size-4 transition-[translate] duration-500 ease-bounce group-hover:translate-x-1" />
-            {t('cerrarSesion')}
+            <span className={cn('flex items-center gap-2 transition-opacity duration-150 motion-reduce:transition-none', signingOut && 'opacity-0')}>
+              <LogOut aria-hidden className="size-4 transition-[translate] duration-500 ease-bounce group-hover:translate-x-1" />
+              {t('cerrarSesion')}
+            </span>
+            <Loader2
+              aria-hidden
+              className={cn(
+                'absolute inset-0 m-auto size-5 animate-spin transition-opacity duration-200 motion-reduce:transition-none',
+                signingOut ? 'opacity-100 delay-150' : 'opacity-0',
+              )}
+            />
           </button>
         </div>
       </div>

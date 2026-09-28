@@ -91,7 +91,7 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 
 > Va después de los bloques 6 y 7 (decisión del 27/9).
 
-> **Estado (28/9), change `add-bot-parser-and-logging`, 28/28:** parser, lógica, adaptador y envío escritos; `0023` aplicada en la base real. Gemini es pago (Tier 1, `gemini-3.8-flash`). `npm run test:parser` dio 18/18 dos veces seguidas. La prueba local contra la base real (5.1) pasó: carga, pregunta pendiente en `canales` y reintento descartado. Sigue:
+> **Estado (28/9), change `add-bot-parser-and-logging`, 28/28, archivado:** parser, lógica, adaptador y envío escritos; `0023` aplicada en la base real. Gemini es pago (Tier 1, `gemini-3.8-flash`). `npm run test:parser` dio 18/18 dos veces seguidas. La prueba local contra la base real (5.1) pasó: carga, pregunta pendiente en `canales` y reintento descartado. Sigue:
 > Ronda por WhatsApp en producción (6.1–6.2) hecha el 28/9: los 15 casos y los dos fijos respondieron bien. Fallos para `add-bot-conversation`:
 > - "osea lo que gaste esos 50 eran comida", después de cargar 50 en Otros: el bot no contestó nada. Causa, según el log de Vercel: la llamada a Gemini se colgó y la función murió a los 60 s sin reintentar ni responder. Arreglado con un timeout de 20 s por llamada (3.7 del change) y la respuesta "no pude procesarlo" (3.6); el parser da `corregir` → Comida, así que en ese caso el bot contesta "todavía no".
 > - No fue un fallo, pero conviene saberlo: "gate 50" (por "gasté 50") se entendió bien y disparó la pregunta de categoría.
