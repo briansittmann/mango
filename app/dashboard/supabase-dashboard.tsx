@@ -23,7 +23,7 @@ async function unwrapDuplicateName<T>(result: Promise<{ ok: true; value: T } | {
 }
 
 const categories: CategoryMutations = {
-  create: (draft) => unwrapDuplicateName(actions.createCategory(draft)),
+  create: (draft, cycle) => unwrapDuplicateName(actions.createCategory(draft, cycle)),
   update: (categoryId, draft, target) => unwrapDuplicateName(actions.updateCategory(categoryId, draft, target)),
   delete: actions.deleteCategory,
   reorder: actions.reorderCategories,
@@ -42,13 +42,20 @@ const mutations = {
     softDelete: actions.softDeleteIncome,
     restore: actions.restoreIncome,
   },
-  savings: { addSavingsMovement: actions.addSavingsMovement },
+  savings: {
+    addSavingsMovement: actions.addSavingsMovement,
+    softDelete: actions.softDeleteSavingsMovement,
+    restore: actions.restoreSavingsMovement,
+  },
   categories,
   recurring: {
     create: actions.createRecurring,
     update: actions.updateRecurring,
     stop: actions.stopRecurring,
     delete: actions.deleteRecurring,
+    editInCycle: actions.editRecurringInCycle,
+    deleteInCycle: actions.deleteRecurringInCycle,
+    restoreInCycle: actions.restoreRecurringInCycle,
   },
 }
 

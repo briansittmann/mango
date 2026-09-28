@@ -17,7 +17,7 @@
 
 **Non-Goals:**
 - Editing a savings movement (only delete/restore).
-- "Solo este mes" for a category delete (hide one month and come back). Not asked for; see Open Questions.
+- Deleting a category's history: no scope reaches earlier cycles. A category is removed entirely only when deleted "from this month on" in its first cycle.
 - The widgets missing from projected cycles, and the language-switch bug that shows zeros until reload: separate work.
 - Changing the definition sheet from "Próximos cobros": it keeps meaning "from the cycle in progress on".
 
@@ -39,7 +39,9 @@ When X = P, step 1 is empty, and step 3 covers this cycle's pending charge, whic
 Freeze the cycles between P and X as in D2. Soft-delete every linked row of cycle ≥ X: pending ones, plus X's own row even if confirmed, since the user asked to delete it. Then set `activo = false`. A frozen row keeps its cycle, so the projection and the cron treat it as any held slot. When X = P, nothing is frozen, and this cycle's charge is soft-deleted before stopping.
 
 ### D4 — Plan counts are recounted
-`generar_ciclo`, after inserting a cycle C, sets `repeticiones_insertadas = count(linked rows with ciclo_mes <= C, deleted included)` for every plan of the user. It turns inactive at `>= repeticiones_totales`. Frozen and "only" rows written ahead are counted when their cycle is generated, exactly once, and a second run changes nothing. `crear_movimiento_recurrente` keeps claiming and counting the current charge, and the recount agrees with it because the claimed row is ≤ C. `proyectarCiclo` keeps `done + n <= total`: ahead slots sit inside that window and are replaced through `mezclarProyeccion`.
+`generar_ciclo`, after inserting cycle C, adds one to every definition that holds a slot in C (inserted now or written before, deleted included), and turns a plan inactive when it reaches its total, never reactivating a stopped one. A slot written in an already generated cycle adds one when written (`sumar_repeticion`, used by the slot functions, `crear_movimiento_recurrente`'s claim and `completar_cargo_recurrente`'s insert). A slot of a cycle not yet generated adds nothing until the cycle is generated. Each cycle is generated once (the marker), so every slot counts exactly once.
+*Alternative:* recount from the rows (`count(linked rows <= C)`). Rejected, because it would erase counts set before any row existed (the seed's instalments paid before the app). Checked on 2026-09-28: today the counts equal the rows (Hacienda 2, DB Bank 1, Cetelem 1), so the two rules agree on current data.
+`proyectarCiclo` keeps `done + n <= total`: ahead slots sit inside that window and are replaced through `mezclarProyeccion`.
 Consequence (in the spec): a skipped instalment counts, so the plan's end does not move.
 
 ### D5 — Three slot operations on `RecurringMutations`
@@ -55,14 +57,19 @@ The template routes a row through these whenever it has a definition (`recurring
 The radio group in `category-sheet.tsx` (~l.300–330) moves to `components/molecules/scope-choice.tsx` with the same labels and styling. The category sheet (budget), the entry sheet (save) and the entry sheet's delete step use it. For a delete, the two options are the destructive actions themselves (two rows in destructive colour), with Cancel first. The entry sheet's header caption for a linked row changes from "Solo el cargo de este mes" (`hojaGasto.soloEsteMes`, which disappears) to "Se repite cada mes".
 
 ### D7 — Category lifetime as two nullable cycle dates
-`categorias.desde_ciclo date null` and `hasta_ciclo date null`, both cycle-start dates like `presupuestos.periodo`. Existing rows stay `null/null`. A category is alive in cycle S iff `(desde is null or desde <= S) and (hasta is null or S <= hasta)`.
+`categorias.desde_ciclo date null` and `hasta_ciclo date null`, both cycle-start dates like `presupuestos.periodo`, plus a table `categorias_ocultas (usuario_id, categoria_id, periodo)` (PK on the three, composite FK to `categorias (id, usuario_id)` with `on delete cascade`, RLS by `usuario_id` like `presupuestos`). Existing rows stay `null/null`. A category is alive in cycle S iff `(desde is null or desde <= S) and (hasta is null or S <= hasta)` and there is no `categorias_ocultas` row for S.
+*Alternative for "only this month":* a flag on `presupuestos`. Rejected, because the copy into a new cycle and the "onward" budget rule copy entries between cycles, so a hide flag would leak into the next cycle.
 - `crear_categoria` takes `p_periodo` and writes `desde_ciclo`; with a budget it writes that cycle's entry with the "onward" rule of `0022` (materialising inherited rows first).
-- `eliminar_categoria` takes `p_periodo` and `p_alcance` (`'desde'` | `'todos'`). With `'desde'` and `desde_ciclo` not equal to `p_periodo`, it moves the rows with local `fecha >= p_periodo` and every definition to `p_reasignar_a`, deletes the `presupuestos` with `periodo >= p_periodo`, and sets `hasta_ciclo` to the cycle before. Otherwise it keeps today's behaviour.
+- `eliminar_categoria` takes `p_periodo` and `p_alcance` (`'solo'` | `'desde'`).
+  - `'solo'`: it moves the rows of that cycle (local `fecha` inside `rango_ciclo`) to `p_reasignar_a`. For each active definition in the category with no slot there and that cycle projected, it writes the slot in the receiver, the same as `editar_cargo_en_ciclo` 'only' with a new category. It then inserts the `categorias_ocultas` row. Budgets are untouched: the hidden cycle ignores its entry, and the next one inherits normally.
+  - `'desde'` with `desde_ciclo` equal to `p_periodo`: today's full delete.
+  - `'desde'` otherwise: it moves the rows with local `fecha >= p_periodo` and every definition to `p_reasignar_a`, deletes the `presupuestos` with `periodo >= p_periodo` and the `categorias_ocultas` rows with `periodo >= p_periodo`, and sets `hasta_ciclo` to the cycle before.
+  - In the cycle in progress, "that cycle's slot" is the real linked row (already moved with the rest).
 - The unique `(usuario_id, nombre)` becomes a partial unique index `where hasta_ciclo is null`. A category ended in the future (its `hasta_ciclo` is set but still ahead) reserves its name only through that index. The spec only frees names of categories that ended before the cycle in progress, and the partial index is at least that permissive.
 - `resumenMensual`, the demo, the pickers, `reordenar_categorias` input and the bot's `loadBotContext` (`lib/data/supabase/bot.ts`) filter by lifetime (the bot filters by the cycle in progress).
 
 ### D8 — Moving an expense: header chip + glass picker
-`ExpenseDraft` gains `categoryId` for update (create keeps taking it from the card). The header's category becomes a button with the dot. It opens a popover with the same `liquid-glass` surface, radius and spring motion as `month-picker.tsx` (open/close with scale + opacity, `motion-reduce:transition-none`), listing the cycle's live categories as rows with a check on the current one. On a linked row, the new category goes in `SlotEntry.categoryId` and the scope decides whether the definition moves (D2). The Supabase update (`lib/data/supabase/expenses.ts`, a direct `update` today) writes `categoria_id` after checking that the category is alive in the row's cycle; the composite FK of `0019` already guarantees ownership.
+`ExpenseDraft` gains `categoryId` for update (create keeps taking it from the card). The header's category becomes a button with the dot and a chevron. It unfolds an in-sheet panel right under the header (a `Collapsible` plus the month picker's scale and spring, `motion-reduce:transition-none`): a two-column grid of the cycle's live categories styled like `month-picker.tsx`'s month buttons, the current one filled with the primary colour and a check. It is not a floating popover, because the sheet's popup clips overflow (`overflow-hidden`), so a list of ten categories would be cut off. On a linked row, the new category goes in `SlotEntry.categoryId` and the scope decides whether the definition moves (D2). The Supabase update (`lib/data/supabase/expenses.ts`, a direct `update` today) writes `categoria_id` after checking that the category is alive in the row's cycle; the composite FK of `0019` already guarantees ownership.
 
 ### D9 — Savings delete like income
 `SavingsMutations` gains `softDelete(id)` and `restore(id)`, the same shape as `IncomeMutations`. The panel wraps each movement row in `SwipeToDelete` with the same toast and undo. No sheet changes: there is no edit, and the add sheet has no delete action because it is create-only.
@@ -87,5 +94,5 @@ The toast keeps `(definitionId, cycle)` instead of a row id, since a projected r
 
 ## Open Questions
 
-- **"Solo este mes" for a category delete.** Brian's answer was "de este mes o todos". This design reads it as "from this month on" vs "all months", since a category hidden for one month and back the next has no clear use. Confirm before implementing the delete step.
-- **"No te deja" when deleting.** Brian reports that a category with fixed charges or recorded expenses cannot be deleted. `eliminar_categoria` does move both, so either the UI blocks it or a path fails. Reproduce on `/dashboard` first (task 1.1). If it is a bug, fix it as part of this change.
+- ~~Scope of a category delete~~: resolved 2026-09-28, "Solo este mes" / "Desde este mes en adelante", the same pair as everything else.
+- ~~"No te deja" when deleting~~: found 2026-09-28 (task 1.1). `category-sheet.tsx` counts only the displayed cycle's rows (`target.expenses.length`). A category with no expense this cycle but with fixed charges or rows in other cycles gets no receiving-category picker, so it sends `reassignTo: null`, and `eliminar_categoria` rejects with `category-not-empty`. The sheet shows a generic error. Fixed by the new delete (5.5): the data exposes each category's definition count and whether it holds rows in later cycles, so the picker is required whenever the chosen scope reaches something.

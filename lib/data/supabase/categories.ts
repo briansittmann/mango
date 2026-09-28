@@ -1,20 +1,27 @@
 import type { PostgrestError } from '@supabase/supabase-js'
 import { DUPLICATE_CATEGORY_NAME, type CategoryMutations } from '@/lib/data/categories'
+import { proyectarCiclo } from '@/lib/data/projection'
 import type { DataContext } from './context'
+import { DEFINITION_COLUMNS, futureCycles, toDefinition } from './future-cycles'
 
 function fail(error: PostgrestError): never {
   throw new Error(error.message === 'duplicate-category-name' ? DUPLICATE_CATEGORY_NAME : error.message)
 }
 
-/** `CategoryMutations` over the 0017 functions (`actualizar_categoria` from 0022); each call is one transaction (D12). */
-export function createSupabaseCategoryMutations({ client, usuarioId }: DataContext): CategoryMutations {
+/**
+ * `CategoryMutations` over the 0017 functions (`actualizar_categoria` from 0022, `crear_categoria`
+ * and `eliminar_categoria` from 0024); each call is one transaction (D12).
+ */
+export function createSupabaseCategoryMutations(ctx: DataContext): CategoryMutations {
+  const { client, usuarioId } = ctx
   return {
-    async create(draft) {
+    async create(draft, cycle) {
       const { data, error } = await client.rpc('crear_categoria', {
         p_usuario_id: usuarioId,
         p_nombre: draft.name,
         p_color: draft.color,
         p_presupuesto: draft.budget,
+        p_periodo: cycle,
       })
       if (error) fail(error)
       return data as string
@@ -51,11 +58,36 @@ export function createSupabaseCategoryMutations({ client, usuarioId }: DataConte
       })
       if (error) fail(error)
     },
-    async delete(categoryId, reassignTo) {
+    async delete(categoryId, reassignTo, { cycle, scope }) {
+      // Hiding it in a projected cycle moves its definitions' charges of that cycle too: they are
+      // not rows yet, so they go as what the projection shows (`add-forward-scoped-edits` D7).
+      let cargos: { movimiento_recurrente_id: string; monto: number; fecha: string }[] = []
+      if (scope === 'only') {
+        const target = (await futureCycles(ctx, cycle)).cycles.find((c) => c.start === cycle)
+        if (target) {
+          const definiciones = await client
+            .from('movimientos_recurrentes')
+            .select(DEFINITION_COLUMNS)
+            .eq('usuario_id', usuarioId)
+            .eq('categoria_id', categoryId)
+            .eq('tipo', 'gasto')
+          if (definiciones.error) fail(definiciones.error)
+          cargos = proyectarCiclo({
+            start: cycle,
+            cyclesAfterGenerated: target.cyclesAfterGenerated,
+            definitions: (definiciones.data ?? []).map(toDefinition),
+            budgetRows: [],
+            savingsTarget: null,
+          }).charges.map((charge) => ({ movimiento_recurrente_id: charge.definitionId, monto: charge.amount, fecha: charge.date }))
+        }
+      }
       const { error } = await client.rpc('eliminar_categoria', {
         p_usuario_id: usuarioId,
         p_id: categoryId,
         p_reasignar_a: reassignTo,
+        p_periodo: cycle,
+        p_alcance: scope === 'only' ? 'solo' : 'desde',
+        p_cargos: cargos,
       })
       if (error) fail(error)
     },

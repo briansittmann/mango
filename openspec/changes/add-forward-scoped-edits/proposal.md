@@ -8,10 +8,10 @@ Recurring things in Mango (fixed expenses, fixed income, categories with budgets
 - **Projected charges become editable.** A projected recurring charge or income entry opens the entry sheet and can be swiped. "Solo este mes" holds that cycle's slot with a real row (or a deleted one), "Desde este mes en adelante" changes the definition from that cycle on.
 - **Recurring income is editable** through the income panel with the same question. This closes the gap left by `add-income-management` ("Definiciones recurrentes de ingreso sin edición").
 - **Swipe stays "this month only".** A swipe on a recurring row deletes only that cycle's slot, with undo. The sheet's delete asks the question.
-- **Savings movements can be deleted**: swipe and the savings sheet's delete action, soft delete with undo, like income.
+- **Savings movements can be deleted** by swipe, soft delete with undo, like income.
 - **Moving an expense between categories.** In edit mode, the entry sheet's header category becomes a control that opens a category picker. On a recurring charge, the scope question decides whether the definition moves too.
 - **Categories live from their first cycle.** A category created in a cycle, projection included, exists from that cycle on, with its budget from that cycle on. "Añadir categoría" is offered in projections.
-- **Deleting a category asks "Desde este mes en adelante" / "Todos los meses".** From this month on archives it: earlier cycles keep it with their expenses, and this cycle's and later expenses and its fixed charges go to the receiving category. All months is today's delete. **BREAKING** for the `CategoryMutations.delete` contract.
+- **Deleting a category asks "Solo este mes" / "Desde este mes en adelante"**, the same pair as everything else, and never touches earlier months. Only this month hides it in that cycle (its expenses and fixed charges of that cycle go to the receiving category, no budget that cycle) and it is back the next month. From this month on archives it: earlier cycles keep it with their expenses, and this cycle's and later expenses and its fixed charges go to the receiving category; from its first cycle it is removed entirely. Today's delete of every month's history goes away. **BREAKING** for the `CategoryMutations.delete` contract.
 - **Plan counts are recounted, not incremented.** The cron sets a plan's count from the rows it holds, so slots written ahead of time are counted once.
 
 Out of scope: widgets missing from projected cycles (to be discussed separately), the bug where switching language shows every figure as 0 until reload, and editing a savings movement.
@@ -26,7 +26,7 @@ Out of scope: widgets missing from projected cycles (to be discussed separately)
 - `expense-editing`: update may change the category; entry points for recurring and projected charges ask the scope; the edit-mode header category picker.
 - `income-editing`: a recurring income entry asks the scope instead of editing this month only; its definition becomes editable.
 - `savings-editing`: soft delete and restore of a movement, with swipe, undo and the sheet's delete action.
-- `category-editing`: delete takes a scope ("from this month on" archives, "all months" deletes); a category's lifetime (first and last cycle).
+- `category-editing`: delete takes a scope ("only this month" hides it for one cycle, "from this month on" archives it); a category's lifetime (first and last cycle, hidden cycles).
 - `category-creation`: create takes the displayed cycle; the category and its budget start there.
 - `cycle-projection`: projected charges are editable and swipeable; a deleted linked row holds its slot; the add-category tile is offered; categories outside their lifetime are hidden.
 - `recurring-charge-generation`: a plan's count is recounted from its rows after each generated cycle.
@@ -35,7 +35,7 @@ Out of scope: widgets missing from projected cycles (to be discussed separately)
 
 ## Impact
 
-- **Database**: new migration `0024`: `categorias.desde_ciclo` and `hasta_ciclo`; the category name unique only among live categories; `crear_categoria` and `eliminar_categoria` with cycle and scope; new `security invoker` functions to edit, delete and restore a definition's slot in a cycle, only or onward; `generar_ciclo` recounts plans.
+- **Database**: new migration `0024`: `categorias.desde_ciclo` and `hasta_ciclo`, table `categorias_ocultas`; the category name unique only among live categories; `crear_categoria` and `eliminar_categoria` with cycle and scope; new `security invoker` functions to edit, delete and restore a definition's slot in a cycle, only or onward; `generar_ciclo` recounts plans.
 - **Contracts** (`lib/data/`): `ExpenseDraft` gains `categoryId` on update; `RecurringMutations` gains `editInCycle`, `deleteInCycle` and `restoreInCycle`; `SavingsMutations` gains `softDelete` and `restore`; `CategoryMutations.create` takes the cycle and `delete` takes a scope.
 - **Implementations**: `lib/demo/*` and `lib/data/supabase/*`, plus the server actions in `app/dashboard/actions.ts`; `lib/data/projection.ts` (`mezclarProyeccion` receives deleted slots) and `lib/data/supabase/dashboard.ts` (`resumenMensual` filters categories by lifetime).
 - **UI**: `entry-sheet` (scope question, header category picker), `category-sheet` (delete scope, create in a projection), `dashboard-template.tsx` (projected rows editable, savings swipe, add-category tile in projections); a shared scope-choice control extracted from the category sheet.

@@ -2,10 +2,11 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { CodeEntry } from "@/components/organisms/code-entry";
 import type { VerifyCodeResult } from "@/app/auth/verify-code/route";
-import { requestCode } from "./actions";
 import { LoginForm } from "./login-form";
+import { sendCode } from "./request-code";
 
 /**
  * `/login` is the e-mail step and `/login?email=` the code step (D1). The URL is replaced, not
@@ -13,6 +14,7 @@ import { LoginForm } from "./login-form";
  */
 export function LoginSteps({ initialEmail, linkError }: { initialEmail: string | null; linkError: boolean }) {
   const router = useRouter();
+  const locale = useLocale();
   const [email, setEmail] = useState(initialEmail);
   const [previous, setPrevious] = useState<string | undefined>(undefined);
 
@@ -33,12 +35,7 @@ export function LoginSteps({ initialEmail, linkError }: { initialEmail: string |
         if (!response.ok) return "error";
         return ((await response.json()) as VerifyCodeResult).status;
       }}
-      onResend={async () => {
-        const data = new FormData();
-        data.set("email", email);
-        const { status } = await requestCode({ status: "idle" }, data);
-        return status === "sent" ? "sent" : status === "rate_limited" ? "rate_limited" : "error";
-      }}
+      onResend={async () => (await sendCode(email, locale)).status}
       onChangeEmail={() => {
         window.history.replaceState(null, "", "/login");
         setPrevious(email);

@@ -1,23 +1,27 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { getBudgetStatus, getFreeMargin, type BudgetRow } from '@/lib/data/budget'
-import type { DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
-import type { ExpenseDraft, ExpenseMutations } from '@/lib/data/expenses'
+import type { CategoryColor, DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
+import type { ExpenseDraft, ExpenseMutations, LocalDate } from '@/lib/data/expenses'
 import type { IncomeDraft, IncomeEntry } from '@/lib/data/income'
 import { mezclarProyeccion, proyectarCiclo } from '@/lib/data/projection'
 import type { RecurringDefinition, RecurringDraft, RecurringTarget } from '@/lib/data/recurring'
-import { budgetFor, copyForward, dropCategory, setBudget, setBudgetInCycle } from '@/lib/demo/demo-budgets'
+import { budgetFor, copyForward, dropCategory, dropCategoryFrom, setBudgetInCycle } from '@/lib/demo/demo-budgets'
 import type { DemoCategoryEdits } from '@/lib/demo/demo-categories'
 import type { DemoIncomeEdits } from '@/lib/demo/demo-income'
-import type { DemoRecurringEdits } from '@/lib/demo/demo-recurring'
+import { slotKey, type DemoRecurringEdits, type DemoSlot } from '@/lib/demo/demo-recurring'
 import type { DemoSavingsEdits } from '@/lib/demo/demo-savings'
 
 export type DemoExpenseEdits = {
   created: { id: string; categoryId: string; draft: ExpenseDraft }[]
-  updated: Record<string, ExpenseDraft>
+  /** The last saved draft wins, with the category it was saved in. */
+  updated: Record<string, ExpenseDraft & { categoryId: string }>
   deletedIds: string[] // the demo's borrado_en: rows stay, flagged
 }
 
 export const noDemoEdits: DemoExpenseEdits = { created: [], updated: {}, deletedIds: [] }
+
+/** A row with the category it belongs to before any category delete moves it. */
+type Placed = { categoryId: string; expense: Expense }
 
 function toExpense(id: string, draft: ExpenseDraft, fixed?: Expense['fixed']): Expense {
   return { id, name: draft.description, amount: draft.amount, date: `${draft.date}T12:00:00Z`, ...(fixed ? { fixed } : {}) }
@@ -29,14 +33,9 @@ function inMonth(id: string, draft: { date: string }, updated: Record<string, { 
   return (updated[id]?.date ?? draft.date).slice(0, 7) === month
 }
 
-function resolveExpenses(
-  group: ExpenseGroup,
-  edits: DemoExpenseEdits,
-  month: string,
-  categoryOf: (categoryId: string) => string = (id) => id,
-): Expense[] {
+function resolveExpenses(group: ExpenseGroup, edits: DemoExpenseEdits, month: string): Expense[] {
   const created = edits.created
-    .filter((c) => categoryOf(c.categoryId) === group.id && inMonth(c.id, c.draft, edits.updated, month))
+    .filter((c) => c.categoryId === group.id && inMonth(c.id, c.draft, edits.updated, month))
     .map((c) => toExpense(c.id, c.draft))
 
   return [...group.expenses, ...created]
@@ -45,6 +44,16 @@ function resolveExpenses(
       const update = edits.updated[expense.id]
       return update ? toExpense(expense.id, update, expense.fixed) : expense
     })
+}
+
+/** The rows the visitor entered in `month`, with the category their last save put them in. */
+function createdIn(edits: DemoExpenseEdits, month: string): Placed[] {
+  return edits.created
+    .filter((c) => !edits.deletedIds.includes(c.id) && inMonth(c.id, c.draft, edits.updated, month))
+    .map((c) => ({
+      categoryId: edits.updated[c.id]?.categoryId ?? c.categoryId,
+      expense: toExpense(c.id, edits.updated[c.id] ?? c.draft),
+    }))
 }
 
 function toDefinition(id: string, target: RecurringTarget, draft: RecurringDraft): RecurringDefinition {
@@ -61,21 +70,59 @@ function toDefinition(id: string, target: RecurringTarget, draft: RecurringDraft
   }
 }
 
+// Created, deleted and stopped definitions; the field changes come in `definitionsAt`.
 function resolveDefinitions(base: RecurringDefinition[], edits: DemoRecurringEdits): RecurringDefinition[] {
   const created = edits.created.map(({ id, target, draft }) => toDefinition(id, target, draft))
 
   return [...base, ...created]
     .filter((definition) => !edits.deletedIds.includes(definition.id))
-    .map((definition) => {
-      const update = edits.updated[definition.id]
-      const stopped = edits.stoppedIds.includes(definition.id)
-      if (!update && !stopped) return definition
+    .map((definition) => (edits.stoppedIds.includes(definition.id) ? { ...definition, active: false } : definition))
+}
+
+/**
+ * The definitions as a cycle starting on `cycle` sees them (`add-forward-scoped-edits` D2, D3): the
+ * definition-sheet updates, which reach every cycle from the one in progress, and the changes "from
+ * this month on" made from `cycle` or earlier, applied in the order they were saved. `null` applies
+ * every change: the definitions as stored, what the sheets and "Próximos cobros" read. The cycles
+ * an onward change skips keep what they showed, as the frozen rows do in Supabase.
+ */
+function definitionsAt(definitions: RecurringDefinition[], edits: DemoRecurringEdits, cycle: LocalDate | null): RecurringDefinition[] {
+  return definitions.map((definition) => {
+    const sheet = edits.updated[definition.id]
+    const changes = [
+      ...(sheet ? [{ seq: edits.updatedSeq[definition.id] ?? 0, sheet, onward: undefined }] : []),
+      ...edits.onward
+        .filter((o) => o.definitionId === definition.id && (cycle == null || o.cycle <= cycle))
+        .map((onward) => ({ seq: onward.seq, sheet: undefined, onward })),
+    ].sort((a, b) => a.seq - b.seq)
+
+    return changes.reduce<RecurringDefinition>((current, { sheet, onward }) => {
+      if (sheet) return { ...current, name: sheet.name, expectedAmount: sheet.expectedAmount, day: sheet.day, reminder: sheet.reminder }
+      if (!onward!.entry) return { ...current, active: false }
+      const { amount, description, date, categoryId } = onward!.entry
       return {
-        ...definition,
-        ...(stopped ? { active: false } : {}),
-        ...(update ? { name: update.name, expectedAmount: update.expectedAmount, day: update.day, reminder: update.reminder } : {}),
+        ...current,
+        name: description || current.name,
+        expectedAmount: amount,
+        day: Number(date.slice(8, 10)),
+        categoryId: current.tipo === 'gasto' ? categoryId : null,
       }
-    })
+    }, definition)
+  })
+}
+
+/**
+ * A definition's slot in the cycle starting on `cycle`, unless a later change rewrote it: an onward
+ * change from an earlier cycle, or a definition-sheet update for a slot after `sampleStart`
+ * (0024 rewrites pending slots there). A deleted slot stays deleted.
+ */
+function effectiveSlot(edits: DemoRecurringEdits, definitionId: string, cycle: LocalDate, sampleStart: LocalDate): DemoSlot | null {
+  const slot = edits.slots[slotKey(definitionId, cycle)]
+  if (!slot || slot.deleted) return slot ?? null
+  const rewritten =
+    edits.onward.some((o) => o.definitionId === definitionId && o.cycle < cycle && o.seq > slot.seq) ||
+    (sampleStart < cycle && (edits.updatedSeq[definitionId] ?? 0) > slot.seq)
+  return rewritten ? null : slot
 }
 
 // What an update or a deletion does to the charge a definition already produced, resolved
@@ -202,24 +249,6 @@ function attachCreatedIncomeDefinition(entries: IncomeEntry[], created: DemoRecu
   return [...tagged, ...additions]
 }
 
-function finalizeGroup(
-  group: ExpenseGroup,
-  expenses: Expense[],
-  budgetAmount: number | null,
-  currentDay: number,
-  cycleDays: number,
-): ExpenseGroup {
-  // Recurring charges count inside their category's budget, pending ones at their expected amount.
-  const total = expenses.reduce((sum, expense) => sum + expense.amount, 0)
-
-  return {
-    ...group,
-    total,
-    budget: budgetAmount != null ? getBudgetStatus({ amount: budgetAmount, spent: total, currentDay, cycleDays }) : null,
-    expenses,
-  }
-}
-
 // The demo's cycles start on the 1st, so the next cycle starts on the same day a month later.
 function followingCycle(start: string): string {
   const [year, month, day] = start.split('-').map(Number)
@@ -242,94 +271,38 @@ function toMovement({ id, draft }: DemoSavingsEdits['created'][number]): Dashboa
   return { id, name: draft.name, date: `${draft.date}T12:00:00Z`, amount: draft.kind === 'withdrawal' ? -draft.amount : draft.amount }
 }
 
-// A cycle after the sample, computed through `proyectarCiclo` with the sample as the last
-// generated cycle (D9): the sample's categories, in their order, holding the projected charges
-// plus the rows the visitor entered in that month, merged as `resumenMensual` merges real rows.
-function projectDemoCycle(
-  sample: DashboardData,
-  definitions: RecurringDefinition[],
-  budgetRows: BudgetRow[],
-  month: string,
-  edits: { expenses: DemoExpenseEdits; income: DemoIncomeEdits; savings: DemoSavingsEdits },
-  categoryOf: (categoryId: string) => string,
-): DashboardData {
-  const start = `${month}-01`
-  const [year, m] = month.split('-').map(Number)
-  const cycleDays = new Date(Date.UTC(year, m, 0)).getUTCDate()
-  const end = `${month}-${String(cycleDays).padStart(2, '0')}`
-  const projection = proyectarCiclo({
-    start,
-    cyclesAfterGenerated: monthsBetween(sample.cycle.month, month),
-    definitions,
-    budgetRows,
-    savingsTarget: sample.savings.target,
-  })
-  const dayOf = new Map(definitions.map((definition) => [definition.id, definition.day]))
-  const realExpenses = new Map(
-    sample.expenses.groups.map((group) => [group.id, resolveExpenses({ ...group, expenses: [] }, edits.expenses, month, categoryOf)]),
-  )
-  const realIncome = resolveIncome([], edits.income, month)
-  // Demo rows entered in a projection are never linked (no recurrence switch there), so this
-  // keeps every charge; it is here so both data sources merge by the same rule.
-  const charges = mezclarProyeccion({
-    charges: projection.charges,
-    rows: [...[...realExpenses.values()].flat(), ...realIncome].map(() => ({ definitionId: null, cycle: null })),
-    start,
-  })
+const byDate = <T extends { date: string }>(a: T, b: T) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)
 
-  const groups = sample.expenses.groups.map((group): ExpenseGroup => {
-    const projectedExpenses: Expense[] = charges
-      .filter((charge) => charge.tipo === 'gasto' && charge.categoryId === group.id)
-      .map((charge) => ({
-        id: `proj:${charge.definitionId}`,
-        name: charge.name,
-        amount: charge.amount,
-        date: `${charge.date}T12:00:00Z`,
-        fixed: { definitionId: charge.definitionId, day: dayOf.get(charge.definitionId)!, charged: false },
-        projected: true,
-      }))
-    const expenses = [...projectedExpenses, ...realExpenses.get(group.id)!].sort((a, b) => a.date.localeCompare(b.date))
-    const total = expenses.reduce((sum, expense) => sum + expense.amount, 0)
-    const budgetAmount = projection.budgets.get(group.id) ?? null
-    return {
-      ...group,
-      total,
-      budget: budgetAmount != null ? getBudgetStatus({ amount: budgetAmount, spent: total, currentDay: 1, cycleDays }) : null,
-      expenses,
-    }
-  })
-  const entries: IncomeEntry[] = [
-    ...charges
-      .filter((charge) => charge.tipo === 'ingreso')
-      .map((charge) => ({
-        id: `proj:${charge.definitionId}`,
-        name: charge.name,
-        amount: charge.amount,
-        date: `${charge.date}T12:00:00Z`,
-        recurring: { definitionId: charge.definitionId, day: dayOf.get(charge.definitionId)! },
-        projected: true as const,
-      })),
-    ...realIncome,
-  ].sort((a, b) => a.date.localeCompare(b.date))
-  const incomeTotal = entries.reduce((sum, entry) => sum + entry.amount, 0)
-  // The savings target is an envelope in a projection (D4).
-  const movements = edits.savings.created
-    .filter((c) => c.draft.date.slice(0, 7) === month)
-    .map(toMovement)
-    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
-  const savings = Math.max(projection.savings, movements.reduce((sum, movement) => sum + movement.amount, 0))
+/**
+ * Where category deletes leave things (`category-editing` → *A category lives from its first cycle
+ * to its last*, `add-forward-scoped-edits` D7): a category lives from the cycle it was created in,
+ * a delete "only this month" hides it in that cycle, one "from this month on" ends it at the cycle
+ * before — or removes it entirely from its first cycle (`gone`). `placeAt` follows a row of a
+ * category to where it is in a cycle: itself, or the receiving category of the delete that
+ * reaches that cycle.
+ */
+function categoryLifetimes(edits: DemoCategoryEdits) {
+  const firstCycle = (id: string) => edits.created.find((c) => c.id === id)?.cycle ?? null
+  const removes = (d: DemoCategoryEdits['deleted'][number]) =>
+    d.scope === 'onward' && firstCycle(d.id) != null && firstCycle(d.id)! >= d.cycle
+  const deleteAt = (id: string, cycle: LocalDate) =>
+    edits.deleted.find((d) => d.id === id && (d.scope === 'only' ? d.cycle === cycle : removes(d) || d.cycle <= cycle))
 
   return {
-    ...sample,
-    cycle: { ...sample.cycle, start, end, today: start, month, inProgress: false, projected: true },
-    freeMargin: getFreeMargin({
-      income: incomeTotal,
-      savings,
-      categories: groups.map((group) => ({ budget: group.budget?.amount ?? null, spent: group.total })),
-    }),
-    income: { total: incomeTotal, entries },
-    savings: { ...sample.savings, cycle: savings, movements },
-    expenses: { total: groups.reduce((sum, group) => sum + group.total, 0), groups },
+    gone: (id: string) => edits.deleted.some((d) => d.id === id && removes(d)),
+    alive: (id: string, cycle: LocalDate) => {
+      const from = firstCycle(id)
+      return (from == null || from <= cycle) && deleteAt(id, cycle) == null
+    },
+    placeAt: (id: string, cycle: LocalDate): string | null => {
+      let current: string | null = id
+      for (let hop = 0; hop < 5 && current != null; hop++) {
+        const d = deleteAt(current, cycle)
+        if (!d) return current
+        current = d.reassignTo
+      }
+      return current
+    },
   }
 }
 
@@ -353,145 +326,295 @@ export function deriveDemoData(
   const end = Number(base.cycle.end.slice(8, 10))
   const currentDay = today - start + 1
   const cycleDays = end - start + 1
+  const sampleStart = base.cycle.start
+  const lifetimes = categoryLifetimes(categoryEdits)
+
+  // A delete "from this month on" moves every definition of the category, in every cycle, as
+  // `eliminar_categoria` does; one "only this month" moves only that cycle's charges (`placeAt`).
+  const relocation = new Map(
+    categoryEdits.deleted
+      .filter((d): d is typeof d & { reassignTo: string } => d.scope === 'onward' && d.reassignTo != null)
+      .map((d) => [d.id, d.reassignTo]),
+  )
+  const relocate = (definitions: RecurringDefinition[]) =>
+    definitions.map((definition) => {
+      const reassignTo = definition.categoryId != null ? relocation.get(definition.categoryId) : undefined
+      return reassignTo ? { ...definition, categoryId: reassignTo } : definition
+    })
+  const definitions = resolveDefinitions(baseDefinitions, recurringEdits)
+  const storedDefinitions = relocate(definitionsAt(definitions, recurringEdits, null))
 
   // 1. Definition edits resolve first (D6): what an update or a deletion does to the charges
   //    they produced, ahead of any edit made directly on one of those charges — so an expense
   //    edit applied after a definition update wins on that charge.
-  const definitions = resolveDefinitions(baseDefinitions, recurringEdits)
   const gastoDefinitionIds = new Set(baseDefinitions.filter((d) => d.tipo === 'gasto').map((d) => d.id))
   const groupsAfterRecurring = reconcileRecurringUpdatesAndDeletes(base.expenses.groups, recurringEdits, gastoDefinitionIds)
 
-  // 2. Expense edits resolve each group's rows.
-  const expenseResolved = groupsAfterRecurring.map((group) => ({
-    group,
-    expenses: resolveExpenses(group, expenseEdits, base.cycle.month),
-  }))
+  // 2. Expense edits resolve each group's rows; 3. a definition created in this submit claims the
+  //    plain expense the same submit created.
+  const resolved = attachCreatedDefinitions(
+    groupsAfterRecurring.map((group) => ({ group, expenses: resolveExpenses(group, expenseEdits, base.cycle.month) })),
+    recurringEdits.created,
+    currentDay,
+    sampleStart,
+  )
 
-  // 3. A definition created in this submit claims the plain expense the same submit created.
-  const resolved = attachCreatedDefinitions(expenseResolved, recurringEdits.created, currentDay, base.cycle.start)
+  // 4. Each row goes to the category its last save chose — rows entered in a category created
+  //    here included — then a fixed charge's slot in the sample cycle, a "solo este mes" edit or a
+  //    swipe from its row, overrides it (D1).
+  const baseIds = new Set(base.expenses.groups.map((group) => group.id))
+  const sampleRows: Placed[] = [
+    ...resolved.flatMap(({ group, expenses }) =>
+      expenses.map((expense) => ({ categoryId: expenseEdits.updated[expense.id]?.categoryId ?? group.id, expense })),
+    ),
+    ...createdIn({ ...expenseEdits, created: expenseEdits.created.filter((c) => !baseIds.has(c.categoryId)) }, base.cycle.month),
+  ]
+    .flatMap((placed): Placed[] => {
+      const slot = placed.expense.fixed ? effectiveSlot(recurringEdits, placed.expense.fixed.definitionId, sampleStart, sampleStart) : null
+      if (!slot) return [placed]
+      if (slot.deleted) return []
+      if (!slot.entry) return [placed]
+      const { amount, description, date, categoryId } = slot.entry
+      return [
+        {
+          categoryId: categoryId ?? placed.categoryId,
+          // Saved from its row in the cycle in progress, a charge is confirmed (0024).
+          expense: { ...placed.expense, amount, name: description, date: `${date}T12:00:00Z`, fixed: { ...placed.expense.fixed!, charged: true } },
+        },
+      ]
+    })
 
-  // 4. Budgets come from the per-cycle rows (D4): the copy into the sample cycle first, then
-  //    budget saves in order (the sample cycle, or a projected one with its scope), creations
-  //    write the sample cycle only, then deletions drop every cycle's rows. Category updates
-  //    override name and colour.
-  const cycle = base.cycle.start
-  let budgetRows = copyForward(baseBudgetRows, cycle)
+  // 5. Budgets come from the per-cycle rows (D4): the copy into the sample cycle, then creations
+  //    (a budget from the category's first cycle on), then budget saves in order (the sample
+  //    cycle, or a projected one with its scope), then deletions: every row of a category gone
+  //    entirely, the rows from its last cycle on for one ended, none for one hidden in a cycle.
+  let budgetRows = copyForward(baseBudgetRows, sampleStart)
+  for (const { id, draft, cycle } of categoryEdits.created) {
+    if (draft.budget != null) {
+      budgetRows = setBudgetInCycle(budgetRows, id, draft.budget, {
+        current: sampleStart,
+        cycle,
+        following: followingCycle(cycle),
+        scope: 'onward',
+      })
+    }
+  }
   for (const edit of categoryEdits.budgets) {
     budgetRows = setBudgetInCycle(budgetRows, edit.categoryId, edit.amount, {
-      current: cycle,
+      current: sampleStart,
       cycle: edit.cycle,
       following: followingCycle(edit.cycle),
       scope: edit.scope,
     })
   }
-  for (const { id, draft } of categoryEdits.created) {
-    if (draft.budget != null) budgetRows = setBudget(budgetRows, id, draft.budget, cycle)
+  for (const deletion of categoryEdits.deleted) {
+    if (lifetimes.gone(deletion.id)) budgetRows = dropCategory(budgetRows, deletion.id)
+    else if (deletion.scope === 'onward') budgetRows = dropCategoryFrom(budgetRows, deletion.id, deletion.cycle)
   }
-  for (const { id } of categoryEdits.deleted) budgetRows = dropCategory(budgetRows, id)
 
-  const updated = resolved.map(({ group, expenses }) => {
-    const draft = categoryEdits.updated[group.id]
-    const budgetAmount = budgetFor(budgetRows, group.id, cycle)
-    if (!draft) return { group, expenses, budgetAmount }
-    return { group: { ...group, name: draft.name, color: draft.color }, expenses, budgetAmount }
-  })
-
-  // 5. Category deletions append the deleted group's resolved rows onto the receiving group and remove the group.
-  const deletedIds = new Set(categoryEdits.deleted.map((d) => d.id))
-  const reassignedExpenses = new Map<string, Expense[]>()
-  for (const { group, expenses } of updated) {
-    const target = categoryEdits.deleted.find((d) => d.id === group.id)?.reassignTo
-    if (deletedIds.has(group.id) && target) {
-      reassignedExpenses.set(target, [...(reassignedExpenses.get(target) ?? []), ...expenses])
-    }
-  }
-  const survivors = updated.filter(({ group }) => !deletedIds.has(group.id))
-
-  // 5b. Category creations append after the deletion pass and before the stored-order sort
-  //     (D4): appending before deletions would let a create be swept up by a delete's
-  //     reassignment, and appending after the sort would ignore a stored order that already
-  //     names the new id.
-  const created = categoryEdits.created.map(({ id, draft }) => ({
-    group: { id, kind: 'category' as const, name: draft.name, color: draft.color, total: 0, budget: null, expenses: [] },
-    expenses: [] as Expense[],
-    budgetAmount: budgetFor(budgetRows, id, cycle),
-  }))
-  const withCreated = [...survivors, ...created]
-
-  // A definition's own `categoryId` is stored separately from the expense rows it produced, so
-  // deleting its category has to relocate it too — otherwise its sheet points at a category that
-  // no longer exists (`dashboard-ui` → *A deleted category carries its charges*).
-  const categoryReassignment = new Map(
-    categoryEdits.deleted.filter((d): d is { id: string; reassignTo: string } => d.reassignTo != null).map((d) => [d.id, d.reassignTo]),
-  )
-  const relocatedDefinitions = definitions.map((definition) => {
-    const reassignTo = definition.categoryId != null ? categoryReassignment.get(definition.categoryId) : undefined
-    return reassignTo ? { ...definition, categoryId: reassignTo } : definition
-  })
-
-  // 6. Stored order. Ids it does not name keep their relative position after the ones it does,
-  //    and an id it names that no longer exists simply has no effect.
+  // 6. Every category, updated and in the stored order, whichever cycle it lives in. Ids the
+  //    order does not name keep their relative position after the ones it does, and an id it
+  //    names that no longer exists simply has no effect.
+  const categories: { id: string; name: string; color: CategoryColor }[] = [
+    ...base.expenses.groups.map(({ id, name, color }) => ({ id, name, color })),
+    ...categoryEdits.created.map(({ id, draft }) => ({ id, name: draft.name, color: draft.color })),
+  ]
+    .filter(({ id }) => !lifetimes.gone(id))
+    .map((category) => {
+      const draft = categoryEdits.updated[category.id]
+      return draft ? { ...category, name: draft.name, color: draft.color } : category
+    })
   const order = categoryEdits.order
   const rank = (id: string) => {
     const index = order?.indexOf(id) ?? -1
     return index === -1 ? (order?.length ?? 0) : index
   }
-  const ordered = order ? [...withCreated].sort((a, b) => rank(a.group.id) - rank(b.group.id)) : withCreated
+  const ordered = order ? [...categories].sort((a, b) => rank(a.id) - rank(b.id)) : categories
 
-  // 7. Recompute each group's total and budget status.
-  const groups = ordered.map(({ group, expenses, budgetAmount }) =>
-    finalizeGroup(group, [...expenses, ...(reassignedExpenses.get(group.id) ?? [])], budgetAmount, currentDay, cycleDays),
-  )
+  // The groups of one cycle: the categories alive in it, each with the rows placed in it.
+  function groupsIn(cycle: LocalDate, rows: Placed[], budgetOf: (id: string) => number | null, day: number): ExpenseGroup[] {
+    const month = cycle.slice(0, 7)
+    const bucket = new Map<string, Expense[]>()
+    for (const { categoryId, expense } of rows) {
+      const at = lifetimes.placeAt(categoryId, cycle)
+      if (at != null) bucket.set(at, [...(bucket.get(at) ?? []), expense])
+    }
+    const later = new Map<string, number>()
+    for (const { id, categoryId, draft } of expenseEdits.created) {
+      const date = (expenseEdits.updated[id] ?? draft).date
+      if (expenseEdits.deletedIds.includes(id) || date.slice(0, 7) <= month) continue
+      const at = lifetimes.placeAt(expenseEdits.updated[id]?.categoryId ?? categoryId, `${date.slice(0, 7)}-01`)
+      if (at != null) later.set(at, (later.get(at) ?? 0) + 1)
+    }
+    return ordered
+      .filter(({ id }) => lifetimes.alive(id, cycle))
+      .map(({ id, name, color }) => {
+        // Recurring charges count inside their category's budget, pending ones at their expected amount.
+        const expenses = (bucket.get(id) ?? []).sort(byDate)
+        const total = expenses.reduce((sum, expense) => sum + expense.amount, 0)
+        const budgetAmount = budgetOf(id)
+        return {
+          id,
+          kind: 'category' as const,
+          name,
+          color,
+          total,
+          budget: budgetAmount != null ? getBudgetStatus({ amount: budgetAmount, spent: total, currentDay: day, cycleDays }) : null,
+          expenses,
+          rowsLater: later.get(id) ?? 0,
+        }
+      })
+  }
 
-  // 8. Recompute the expenses total and the current history entry.
+  const withSlot = (entries: IncomeEntry[], cycle: LocalDate) =>
+    entries.flatMap((entry): IncomeEntry[] => {
+      const slot = entry.recurring ? effectiveSlot(recurringEdits, entry.recurring.definitionId, cycle, sampleStart) : null
+      if (!slot) return [entry]
+      if (slot.deleted) return []
+      if (!slot.entry) return [entry]
+      return [{ ...entry, amount: slot.entry.amount, name: slot.entry.description, date: `${slot.entry.date}T12:00:00Z` }]
+    })
+
+  // 7. The sample cycle.
+  const groups = groupsIn(sampleStart, sampleRows, (id) => budgetFor(budgetRows, id, sampleStart), currentDay)
   const total = groups.reduce((sum, group) => sum + group.total, 0)
   const history = base.history.map((entry) => (entry.month === base.cycle.month ? { ...entry, total } : entry))
 
-  // 9. Income resolves last (D6): income edits resolve into plain rows first — the same order as
-  //    expenses (step 2 before step 3) — so a recurring income create submitted alongside an
-  //    income entry create has that entry to find and tag, rather than being resolved onto the
-  //    untouched base list and then having `resolveIncome` add the same entry a second time.
+  // 8. Income resolves after expenses (D6): income edits resolve into plain rows first — the same
+  //    order as expenses — so a recurring income create submitted alongside an income entry create
+  //    has that entry to find and tag, rather than being resolved onto the untouched base list and
+  //    then having `resolveIncome` add the same entry a second time.
   const incomeResolved = resolveIncome(base.income.entries, incomeEdits, base.cycle.month)
-  const incomeEntries = attachCreatedIncomeDefinition(incomeResolved, recurringEdits.created, base.cycle.start)
+  const incomeEntries = withSlot(attachCreatedIncomeDefinition(incomeResolved, recurringEdits.created, sampleStart), sampleStart)
   const incomeTotal = incomeEntries.reduce((sum, entry) => sum + entry.amount, 0)
 
-  // 10. Savings resolves after income: created movements append to the base ones and are
-  //     stable-sorted by date, so a same-day addition lands after the existing movement(s).
+  // 9. Savings: created movements append to the base ones and are stable-sorted by date, so a
+  //    same-day addition lands after the existing movement(s); deleted ones count nowhere.
+  const notDeleted = (movement: { id: string }) => !savingsEdits.deletedIds.includes(movement.id)
   const createdMovements = savingsEdits.created.filter((c) => c.draft.date.slice(0, 7) === base.cycle.month).map(toMovement)
-  const movements = [...base.savings.movements, ...createdMovements].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+  const movements = [...base.savings.movements, ...createdMovements].filter(notDeleted).sort(byDate)
   const savingsCycle = movements.reduce((sum, movement) => sum + movement.amount, 0)
   const savingsAccumulated = base.savings.accumulated - base.savings.cycle + savingsCycle
   const savingsHistory = base.savings.history.map((entry) =>
     entry.month === base.cycle.month ? { ...entry, accumulated: savingsAccumulated } : entry,
   )
-  const freeMargin = getFreeMargin({
-    income: incomeTotal,
-    savings: savingsCycle,
-    categories: groups.map((group) => ({ budget: group.budget?.amount ?? null, spent: group.total })),
-  })
 
   const sample: DashboardData = {
     ...base,
     expenses: { total, groups },
     income: { total: incomeTotal, entries: incomeEntries },
     savings: { ...base.savings, cycle: savingsCycle, accumulated: savingsAccumulated, history: savingsHistory, movements },
-    freeMargin,
+    freeMargin: getFreeMargin({
+      income: incomeTotal,
+      savings: savingsCycle,
+      categories: groups.map((group) => ({ budget: group.budget?.amount ?? null, spent: group.total })),
+    }),
     history,
   }
 
+  if (shownMonth <= base.cycle.month) return { data: sample, definitions: storedDefinitions }
+
+  // 10. A cycle after the sample, computed through `proyectarCiclo` with the sample as the last
+  //     generated cycle (D9), from the definitions as that cycle sees them. A slot the visitor
+  //     wrote there (an edit, or a swipe) holds it: an edited slot is listed as a row, a deleted
+  //     one as nothing. The rows entered in that month are merged as `resumenMensual` merges real rows.
+  const cycle = `${shownMonth}-01`
+  const [year, m] = shownMonth.split('-').map(Number)
+  const projectedDays = new Date(Date.UTC(year, m, 0)).getUTCDate()
+  const projectedEnd = `${shownMonth}-${String(projectedDays).padStart(2, '0')}`
+  const definitionsHere = relocate(definitionsAt(definitions, recurringEdits, cycle))
+  const projection = proyectarCiclo({
+    start: cycle,
+    cyclesAfterGenerated: monthsBetween(base.cycle.month, shownMonth),
+    definitions: definitionsHere,
+    budgetRows,
+    savingsTarget: base.savings.target,
+  })
+
+  const held: string[] = []
+  const slotExpenses: Placed[] = []
+  const slotIncome: IncomeEntry[] = []
+  for (const definition of definitionsHere) {
+    const slot = effectiveSlot(recurringEdits, definition.id, cycle, sampleStart)
+    // A restored slot with nothing of its own shows the projected charge again.
+    if (!slot || (!slot.deleted && !slot.entry)) continue
+    held.push(definition.id)
+    if (slot.deleted || !slot.entry) continue
+    const { amount, description, date, categoryId } = slot.entry
+    const day = Number(date.slice(8, 10))
+    const id = `slot:${slotKey(definition.id, cycle)}`
+    if (definition.tipo === 'gasto') {
+      slotExpenses.push({
+        categoryId: categoryId ?? definition.categoryId!,
+        expense: { id, name: description, amount, date: `${date}T12:00:00Z`, fixed: { definitionId: definition.id, day, charged: false } },
+      })
+    } else {
+      slotIncome.push({ id, name: description, amount, date: `${date}T12:00:00Z`, recurring: { definitionId: definition.id, day } })
+    }
+  }
+  const charges = mezclarProyeccion({
+    charges: projection.charges,
+    rows: held.map((definitionId) => ({ definitionId, cycle })),
+    start: cycle,
+  })
+  const dayOf = new Map(definitionsHere.map((definition) => [definition.id, definition.day]))
+
+  const projectedRows: Placed[] = [
+    ...charges
+      .filter((charge) => charge.tipo === 'gasto')
+      .map((charge) => ({
+        categoryId: charge.categoryId!,
+        expense: {
+          id: `proj:${charge.definitionId}`,
+          name: charge.name,
+          amount: charge.amount,
+          date: `${charge.date}T12:00:00Z`,
+          fixed: { definitionId: charge.definitionId, day: dayOf.get(charge.definitionId)!, charged: false },
+          projected: true as const,
+        },
+      })),
+    ...slotExpenses,
+    ...createdIn(expenseEdits, shownMonth),
+  ]
+  const projectedGroups = groupsIn(cycle, projectedRows, (id) => projection.budgets.get(id) ?? null, 1)
+
+  const entries: IncomeEntry[] = [
+    ...charges
+      .filter((charge) => charge.tipo === 'ingreso')
+      .map((charge) => ({
+        id: `proj:${charge.definitionId}`,
+        name: charge.name,
+        amount: charge.amount,
+        date: `${charge.date}T12:00:00Z`,
+        recurring: { definitionId: charge.definitionId, day: dayOf.get(charge.definitionId)! },
+        projected: true as const,
+      })),
+    ...slotIncome,
+    ...resolveIncome([], incomeEdits, shownMonth),
+  ].sort(byDate)
+  const projectedIncome = entries.reduce((sum, entry) => sum + entry.amount, 0)
+  // The savings target is an envelope in a projection (D4).
+  const projectedMovements = savingsEdits.created
+    .filter((c) => c.draft.date.slice(0, 7) === shownMonth)
+    .map(toMovement)
+    .filter(notDeleted)
+    .sort(byDate)
+  const projectedSavings = Math.max(projection.savings, projectedMovements.reduce((sum, movement) => sum + movement.amount, 0))
+
   return {
-    data:
-      shownMonth > base.cycle.month
-        ? projectDemoCycle(
-            sample,
-            relocatedDefinitions,
-            budgetRows,
-            shownMonth,
-            { expenses: expenseEdits, income: incomeEdits, savings: savingsEdits },
-            (categoryId) => categoryReassignment.get(categoryId) ?? categoryId,
-          )
-        : sample,
-    definitions: relocatedDefinitions,
+    data: {
+      ...sample,
+      cycle: { ...sample.cycle, start: cycle, end: projectedEnd, today: cycle, month: shownMonth, inProgress: false, projected: true },
+      freeMargin: getFreeMargin({
+        income: projectedIncome,
+        savings: projectedSavings,
+        categories: projectedGroups.map((group) => ({ budget: group.budget?.amount ?? null, spent: group.total })),
+      }),
+      income: { total: projectedIncome, entries },
+      savings: { ...sample.savings, cycle: projectedSavings, movements: projectedMovements },
+      expenses: { total: projectedGroups.reduce((sum, group) => sum + group.total, 0), groups: projectedGroups },
+    },
+    definitions: storedDefinitions,
   }
 }
 
@@ -505,8 +628,8 @@ export function createDemoExpenseMutations(setEdits: Dispatch<SetStateAction<Dem
       setEdits((edits) => ({ ...edits, created: [...edits.created, { id, categoryId, draft }] }))
       return Promise.resolve()
     },
-    update(expenseId, draft) {
-      setEdits((edits) => ({ ...edits, updated: { ...edits.updated, [expenseId]: draft } }))
+    update(expenseId, draft, categoryId) {
+      setEdits((edits) => ({ ...edits, updated: { ...edits.updated, [expenseId]: { ...draft, categoryId } } }))
       return Promise.resolve()
     },
     softDelete(expenseId) {

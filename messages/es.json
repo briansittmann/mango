@@ -76,9 +76,7 @@
     "opcional": "Opcional",
     "fecha": "Fecha",
     "importeInvalido": "Introduce un importe mayor que 0 con hasta 2 decimales",
-    "soloEsteMes": "{categoria} · Solo el cargo de este mes",
     "eliminarGasto": "Eliminar gasto",
-    "eliminarCargoDelMes": "Eliminar el cargo de este mes",
     "eliminar": "Eliminar",
     "gastoEliminado": "Gasto eliminado",
     "deshacer": "Deshacer",
@@ -94,13 +92,22 @@
     "ingresoEliminado": "Ingreso eliminado",
     "errorEliminarIngreso": "No se pudo eliminar el ingreso",
     "ingreso": "Ingreso",
-    "soloEsteIngreso": "Solo el ingreso de este mes",
     "nuevoMovimientoAhorro": "Nuevo movimiento",
     "ahorro": "Ahorro",
     "tipo": "Tipo",
     "nombre": "Nombre",
     "nombreObligatorio": "El nombre es obligatorio",
-    "movimientoAhorroAnadido": "Movimiento de ahorro añadido"
+    "movimientoAhorroAnadido": "Movimiento de ahorro añadido",
+    "seRepite": "{categoria} · Se repite cada mes",
+    "ingresoSeRepite": "Se repite cada mes",
+    "cambiarCategoria": "Categoría: {categoria}. Cambiar",
+    "confirmarEliminarFijo": "¿Eliminar {nombre}?",
+    "eliminarAlcance": "Hasta dónde",
+    "eliminadoSoloEsteMes": "Solo se borró el de este mes",
+    "cambiosDesde": "Cambios guardados desde {mes}",
+    "eliminadoDesde": "Eliminado desde {mes}",
+    "movimientoEliminado": "Movimiento eliminado",
+    "errorEliminarMovimiento": "No se pudo eliminar el movimiento"
   },
   "hojaCategoria": {
     "cancelar": "Cancelar",
@@ -110,9 +117,6 @@
     "nombre": "Nombre",
     "color": "Color",
     "presupuesto": "Presupuesto",
-    "alcance": "Aplicar el cambio",
-    "soloEsteMes": "Solo este mes",
-    "desdeEsteMes": "Desde este mes en adelante",
     "nombreDuplicado": "Ya existe una categoría con este nombre",
     "presupuestoInvalido": "Introduce un importe mayor que 0 con hasta 2 decimales",
     "errorGuardar": "No se pudo guardar. Inténtalo de nuevo.",
@@ -121,7 +125,7 @@
     "mostrarProgreso": "Mostrar barra de progreso",
     "reordenar": "Reordenar",
     "eliminarCategoria": "Eliminar categoría",
-    "confirmarEliminar": "¿Eliminar {categoria}? Tiene {count, plural, =0 {ningún gasto} one {un gasto} other {# gastos}} este ciclo.",
+    "confirmarEliminar": "¿Eliminar {categoria}? Tiene {count, plural, =0 {ningún gasto} one {un gasto} other {# gastos}} este ciclo{fijos, plural, =0 {} one { y un gasto fijo} other { y # gastos fijos}}.",
     "eliminar": "Eliminar",
     "cambiosGuardados": "Cambios guardados",
     "categoriaEliminada": "Categoría eliminada",
@@ -144,7 +148,15 @@
       "celeste": "Celeste",
       "turquesa": "Turquesa",
       "verde_menta": "Verde menta"
-    }
+    },
+    "alcanceEliminar": "Hasta dónde",
+    "vuelveElMesQueViene": "Vuelve el mes que viene.",
+    "mesesAnterioresLaConservan": "Los meses anteriores la conservan, con sus gastos."
+  },
+  "alcance": {
+    "aplicar": "Aplicar el cambio",
+    "soloEsteMes": "Solo este mes",
+    "desdeEsteMes": "Desde este mes en adelante"
   },
   "modoReordenar": {
     "titulo": "Reordenar categorías",
@@ -207,12 +219,14 @@
   "inicio": {
     "titulo": "Mango",
     "demo": "Demo",
-    "entrar": "Entrar"
+    "entrar": "Entrar",
+    "descripcion": "Mango ordena tu mes: gastos, ingresos, ahorro y lo que te queda libre. El bot de WhatsApp es por invitación."
   },
   "acceso": {
     "titulo": "Entrar a Mango",
     "email": "Correo electrónico",
     "enviarCodigo": "Enviar código",
+    "primeraVez": "Si es tu primera vez, creamos tu cuenta con este mail.",
     "errorEnvio": "No se pudo enviar el código. Inténtalo de nuevo en unos minutos.",
     "demasiadosPedidos": "Pediste demasiados códigos. Espera un minuto; si vuelve a pasar, prueba más tarde.",
     "revisaTuMail": "Revisa tu mail",

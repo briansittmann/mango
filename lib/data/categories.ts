@@ -16,13 +16,21 @@ export type CategoryDraft = {
 export type CategoryUpdateTarget = { cycle: LocalDate; scope: 'only' | 'onward' | null }
 
 /**
+ * Where `delete` reaches: `cycle` is the displayed cycle's first day. `'only'` hides the category
+ * in that cycle alone; `'onward'` ends it at the cycle before, or removes it entirely when `cycle`
+ * is its first cycle. No scope reaches an earlier cycle (`category-editing` → *Deleting a category*).
+ */
+export type CategoryDeleteTarget = { cycle: LocalDate; scope: 'only' | 'onward' }
+
+/**
  * Four operations, injected by the page, that every data source implements with the same
  * inputs and outcomes:
  * - each operation resolves once the change is durable, and rejects with nothing changed
  * - `create` adds a category with no expenses, a total of 0, and a stored order placing it
- *   after every existing category. It resolves with the new category's id, so the caller can
- *   tell the new card apart from the others. A budget writes the current cycle's `BudgetRow`
- *   only; no budget writes no row.
+ *   after every existing category, alive from `cycle` on (the displayed cycle; a past one means
+ *   the cycle in progress). It resolves with the new category's id, so the caller can tell the
+ *   new card apart from the others. A budget writes `cycle`'s `BudgetRow` as an "onward" edit
+ *   does; no budget writes no row.
  * - `update` writes the category's name, colour and budget. In the current cycle (or from a
  *   past one) the budget goes to the current cycle's `BudgetRow` only. In a projected cycle it
  *   first writes every row that cycle inherits when it holds none, then that cycle's row; with
@@ -30,17 +38,20 @@ export type CategoryUpdateTarget = { cycle: LocalDate; scope: 'only' | 'onward' 
  *   (`category-editing` → *Budgets belong to one cycle*). `budget: null` writes a "no budget"
  *   marker instead of deleting; earlier cycles never change. It never touches expenses or
  *   another category.
- * - `delete` moves every expense in every cycle to `reassignTo` and removes the category's
- *   `BudgetRow`s in every cycle. `reassignTo` is `null` only when the category has no expenses.
+ * - `delete` with `'only'` moves the category's rows of `cycle` to `reassignTo` (its definitions'
+ *   charges of that cycle as that cycle's slot) and hides it there; with `'onward'` it moves the
+ *   rows of `cycle` and later, and every definition, to `reassignTo`, removes its `BudgetRow`s of
+ *   those cycles and ends it at the cycle before. `reassignTo` is `null` only when the scope
+ *   reaches no row (and, for `'onward'`, no definition).
  * - `reorder` writes the stored order of every category at once. See below.
  *
  * `create` and `update` reject with `DUPLICATE_CATEGORY_NAME` on a name already used by
  * another of the user's categories, comparing trimmed and case-insensitively.
  */
 export type CategoryMutations = {
-  create(draft: CategoryDraft): Promise<string>
+  create(draft: CategoryDraft, cycle: LocalDate): Promise<string>
   update(categoryId: string, draft: CategoryDraft, target: CategoryUpdateTarget): Promise<void>
-  delete(categoryId: string, reassignTo: string | null): Promise<void>
+  delete(categoryId: string, reassignTo: string | null, target: CategoryDeleteTarget): Promise<void>
   /**
    * The complete list of the user's category ids in their new order — never a single moved
    * id and never a pair of positions. Sending the same list twice has the same result as
@@ -49,6 +60,19 @@ export type CategoryMutations = {
    * not own, applying no part of it.
    */
   reorder(categoryIds: string[]): Promise<void>
+}
+
+/**
+ * A category's lifetime (`category-editing` → *A category lives from its first cycle to its
+ * last*): first and last cycle start, `null` for "since always" and "not ended", and the cycles
+ * a delete "only this month" hid it in. `categorias.desde_ciclo`, `hasta_ciclo` and
+ * `categorias_ocultas` in Supabase (0024).
+ */
+export type CategoryLifetime = { from: LocalDate | null; until: LocalDate | null; hidden: LocalDate[] }
+
+/** Whether a category is shown, and can hold rows, in the cycle starting on `cycle`. */
+export function categoriaViva({ from, until, hidden }: CategoryLifetime, cycle: LocalDate): boolean {
+  return (from == null || from <= cycle) && (until == null || cycle <= until) && !hidden.includes(cycle)
 }
 
 /** `update` rejects with an Error carrying this message when the name is taken. */

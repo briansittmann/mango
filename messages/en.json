@@ -76,9 +76,7 @@
     "opcional": "Optional",
     "fecha": "Date",
     "importeInvalido": "Enter an amount above 0 with up to 2 decimals",
-    "soloEsteMes": "{categoria} · This month's charge only",
     "eliminarGasto": "Delete expense",
-    "eliminarCargoDelMes": "Delete this month's charge",
     "eliminar": "Delete",
     "gastoEliminado": "Expense deleted",
     "deshacer": "Undo",
@@ -94,13 +92,22 @@
     "ingresoEliminado": "Income deleted",
     "errorEliminarIngreso": "Couldn't delete the income entry",
     "ingreso": "Income",
-    "soloEsteIngreso": "This month's income only",
     "nuevoMovimientoAhorro": "New movement",
     "ahorro": "Savings",
     "tipo": "Type",
     "nombre": "Name",
     "nombreObligatorio": "A name is required",
-    "movimientoAhorroAnadido": "Savings movement added"
+    "movimientoAhorroAnadido": "Savings movement added",
+    "seRepite": "{categoria} · Repeats every month",
+    "ingresoSeRepite": "Repeats every month",
+    "cambiarCategoria": "Category: {categoria}. Change",
+    "confirmarEliminarFijo": "Delete {nombre}?",
+    "eliminarAlcance": "How far",
+    "eliminadoSoloEsteMes": "Only this month's was deleted",
+    "cambiosDesde": "Changes saved from {mes} on",
+    "eliminadoDesde": "Deleted from {mes} on",
+    "movimientoEliminado": "Movement deleted",
+    "errorEliminarMovimiento": "Couldn't delete the movement"
   },
   "hojaCategoria": {
     "cancelar": "Cancel",
@@ -110,9 +117,6 @@
     "nombre": "Name",
     "color": "Color",
     "presupuesto": "Budget",
-    "alcance": "Apply the change",
-    "soloEsteMes": "Only this month",
-    "desdeEsteMes": "From this month on",
     "nombreDuplicado": "A category with this name already exists",
     "presupuestoInvalido": "Enter an amount above 0 with up to 2 decimals",
     "errorGuardar": "Couldn't save. Try again.",
@@ -121,7 +125,7 @@
     "mostrarProgreso": "Show progress bar",
     "reordenar": "Reorder",
     "eliminarCategoria": "Delete category",
-    "confirmarEliminar": "Delete {categoria}? It has {count, plural, =0 {no expenses} one {one expense} other {# expenses}} this cycle.",
+    "confirmarEliminar": "Delete {categoria}? It has {count, plural, =0 {no expenses} one {one expense} other {# expenses}} this cycle{fijos, plural, =0 {} one { and one fixed expense} other { and # fixed expenses}}.",
     "eliminar": "Delete",
     "cambiosGuardados": "Changes saved",
     "categoriaEliminada": "Category deleted",
@@ -144,7 +148,15 @@
       "celeste": "Sky blue",
       "turquesa": "Turquoise",
       "verde_menta": "Mint green"
-    }
+    },
+    "alcanceEliminar": "How far",
+    "vuelveElMesQueViene": "It comes back next month.",
+    "mesesAnterioresLaConservan": "Earlier months keep it, with their expenses."
+  },
+  "alcance": {
+    "aplicar": "Apply the change",
+    "soloEsteMes": "Only this month",
+    "desdeEsteMes": "From this month on"
   },
   "modoReordenar": {
     "titulo": "Reorder categories",
@@ -207,12 +219,14 @@
   "inicio": {
     "titulo": "Mango",
     "demo": "Demo",
-    "entrar": "Log in"
+    "entrar": "Log in",
+    "descripcion": "Mango sorts out your month: spending, income, savings and what you have left. The WhatsApp bot is by invitation."
   },
   "acceso": {
     "titulo": "Log in to Mango",
     "email": "Email",
     "enviarCodigo": "Send code",
+    "primeraVez": "First time here? We'll create your account with this e-mail.",
     "errorEnvio": "Couldn't send the code. Try again in a few minutes.",
     "demasiadosPedidos": "Too many codes requested. Wait a minute; if it happens again, try later.",
     "revisaTuMail": "Check your email",

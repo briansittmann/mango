@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getBudgetStatus, getFreeMargin } from '@/lib/data/budget'
+import { categoriaViva } from '@/lib/data/categories'
 import type { CategoryColor, DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
 import type { LocalDate } from '@/lib/data/expenses'
 import type { IncomeEntry } from '@/lib/data/income'
@@ -17,7 +18,7 @@ import {
 } from './cycle'
 import type { Usuario } from './user'
 
-type CategoriaRow = { id: string; nombre: string; color: CategoryColor }
+type CategoriaRow = { id: string; nombre: string; color: CategoryColor; desde_ciclo: LocalDate | null; hasta_ciclo: LocalDate | null }
 type PresupuestoRow = { categoria_id: string; monto: number | string | null; periodo: LocalDate }
 type MovimientoRecurrenteRow = {
   id: string
@@ -124,8 +125,14 @@ export async function resumenMensual(
   }
 
   const presupuestosQuery = client.from('presupuestos').select('categoria_id, monto, periodo').eq('usuario_id', usuario.id)
-  const [categorias, presupuestos, definiciones, transacciones, ahorros] = await Promise.all([
-    client.from('categorias').select('id, nombre, color').eq('usuario_id', usuario.id).order('orden').order('nombre'),
+  const [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores] = await Promise.all([
+    client
+      .from('categorias')
+      .select('id, nombre, color, desde_ciclo, hasta_ciclo')
+      .eq('usuario_id', usuario.id)
+      .order('orden')
+      .order('nombre'),
+    client.from('categorias_ocultas').select('categoria_id').eq('usuario_id', usuario.id).eq('periodo', start),
     projected ? presupuestosQuery.lte('periodo', start) : presupuestosQuery.eq('periodo', start),
     client
       .from('movimientos_recurrentes')
@@ -151,12 +158,42 @@ export async function resumenMensual(
       .eq('tipo', 'ahorro')
       .is('borrado_en', null)
       .lt('fecha', latest.fin.toISOString()),
+    // A soft-deleted linked row still holds its definition's slot in this cycle (D1).
+    projected
+      ? client
+          .from('transacciones')
+          .select('movimiento_recurrente_id, ciclo_mes')
+          .eq('usuario_id', usuario.id)
+          .eq('ciclo_mes', start)
+          .not('movimiento_recurrente_id', 'is', null)
+          .not('borrado_en', 'is', null)
+      : null,
+    client
+      .from('transacciones')
+      .select('categoria_id')
+      .eq('usuario_id', usuario.id)
+      .eq('tipo', 'gasto')
+      .is('borrado_en', null)
+      .gte('fecha', shownRange.fin.toISOString()),
   ])
-  for (const result of [categorias, presupuestos, definiciones, transacciones, ahorros]) {
-    if (result.error) throw result.error
+  for (const result of [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores]) {
+    if (result?.error) throw result.error
   }
 
-  const categoryRows = (categorias.data ?? []) as CategoriaRow[]
+  // Only the categories alive in the shown cycle (`category-editing` → *A category lives from its
+  // first cycle to its last*): an ended one, one that starts later and one hidden here are left out.
+  const hidden = new Set(((ocultas.data ?? []) as { categoria_id: string }[]).map((o) => o.categoria_id))
+  const categoryRows = ((categorias.data ?? []) as CategoriaRow[]).filter((c) =>
+    categoriaViva({ from: c.desde_ciclo, until: c.hasta_ciclo, hidden: hidden.has(c.id) ? [start] : [] }, start),
+  )
+  const deletedSlots = ((borrados?.data ?? []) as { movimiento_recurrente_id: string; ciclo_mes: LocalDate }[]).map((row) => ({
+    definitionId: row.movimiento_recurrente_id,
+    cycle: row.ciclo_mes,
+  }))
+  const laterByCategory = new Map<string, number>()
+  for (const row of (posteriores.data ?? []) as { categoria_id: string | null }[]) {
+    if (row.categoria_id) laterByCategory.set(row.categoria_id, (laterByCategory.get(row.categoria_id) ?? 0) + 1)
+  }
   const budgetRows = (presupuestos.data ?? []) as PresupuestoRow[]
   const definitionRows = (definiciones.data ?? []) as MovimientoRecurrenteRow[]
   const rows = (transacciones.data ?? []) as TransaccionRow[]
@@ -203,7 +240,7 @@ export async function resumenMensual(
         ...realRows,
         ...mezclarProyeccion({
           charges: projection.charges,
-          rows: realRows.map((row) => ({ definitionId: row.movimiento_recurrente_id, cycle: row.ciclo_mes })),
+          rows: [...realRows.map((row) => ({ definitionId: row.movimiento_recurrente_id, cycle: row.ciclo_mes })), ...deletedSlots],
           start,
         }).map(
           (charge): TransaccionRow => ({
@@ -259,6 +296,7 @@ export async function resumenMensual(
       total,
       budget: budgetAmount != null ? getBudgetStatus({ amount: budgetAmount, spent: total, currentDay, cycleDays }) : null,
       expenses,
+      rowsLater: laterByCategory.get(categoria.id) ?? 0,
     }
   })
   const expensesTotal = groups.reduce((sum, group) => sum + group.total, 0)

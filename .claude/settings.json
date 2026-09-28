@@ -151,7 +151,8 @@
       "Skill(openspec-propose:*)",
       "mcp__supabase__list_tables",
       "Skill(openspec-update-change)",
-      "Skill(openspec-update-change:*)"
+      "Skill(openspec-update-change:*)",
+      "mcp__supabase__get_advisors"
     ],
     "additionalDirectories": [
       "/Users/brianrebagliati/Documents/Work/mango-finanzas/mango/baseline-shots",

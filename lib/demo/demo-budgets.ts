@@ -55,6 +55,12 @@ export function dropCategory(rows: BudgetRow[], categoryId: string): BudgetRow[]
   return rows.filter((row) => row.categoryId !== categoryId)
 }
 
+// A delete "from this month on" (0024): the category's rows of `cycle` and later go, earlier
+// cycles keep theirs.
+export function dropCategoryFrom(rows: BudgetRow[], categoryId: string, cycle: LocalDate): BudgetRow[] {
+  return rows.filter((row) => !(row.categoryId === categoryId && row.cycle >= cycle))
+}
+
 // `null` for a marker and for a missing row alike.
 export function budgetFor(rows: BudgetRow[], categoryId: string, cycle: LocalDate): number | null {
   return rows.find((row) => row.categoryId === categoryId && row.cycle === cycle)?.amount ?? null

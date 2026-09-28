@@ -10,13 +10,16 @@ export type SavingsMovementDraft = {
 }
 
 /**
- * One operation, injected by the page, that every data source implements with the same
+ * Three operations, injected by the page, that every data source implements with the same
  * inputs and outcomes:
- * - it resolves once the movement is durable, and rejects with nothing changed
+ * - each resolves once the change is durable, and rejects with nothing changed
  * - the amount is always positive; the sign is applied by the implementation from `kind`
+ * - `softDelete` and `restore` only set or clear the deletion mark; neither ever removes a row
  */
 export type SavingsMutations = {
   addSavingsMovement(draft: SavingsMovementDraft): Promise<void>
+  softDelete(movementId: string): Promise<void>
+  restore(movementId: string): Promise<void>
 }
 
 export type SavingsProgress = {

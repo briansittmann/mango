@@ -112,11 +112,15 @@ test('edit and delete in a projected cycle', async ({ page }) => {
   await expect.poll(() => body(page)).toMatch(margin('425'))
 })
 
-test('a projected charge stays read-only beside the add row', async ({ page }) => {
+test('a projected charge opens the entry sheet beside the add row', async ({ page }) => {
   await openOctober(page)
   const panel = await openCard(page, 'vivienda')
-  await panel.getByText('Alquiler').click()
-  await expect(dialog(page)).toHaveCount(0)
+  await panel.getByRole('button', { name: /Alquiler/ }).click()
+  const sheet = dialog(page)
+  await expect(sheet.getByText('Editar gasto')).toBeVisible()
+  await expect(sheet.getByLabel('Importe')).toHaveValue('820')
+  await sheet.getByRole('button', { name: 'Cancelar' }).click()
+  await expect(sheet).toBeHidden()
   await panel.getByRole('button', { name: 'Añadir gasto' }).click()
   await expect(dialog(page).getByText('Nuevo gasto')).toBeVisible()
 })
@@ -125,7 +129,7 @@ test('income in a projected cycle', async ({ page }) => {
   await openOctober(page)
   const panel = await openSummary(page, 'Ingresos')
   await expect(panel.getByText('Salario')).toBeVisible()
-  await expect(panel.getByRole('button', { name: /^Salario/ })).toHaveCount(0)
+  await expect(panel.getByRole('button', { name: /^Salario/ })).toHaveCount(1)
 
   await panel.getByRole('button', { name: 'Añadir ingreso' }).click()
   let sheet = dialog(page)
@@ -150,7 +154,7 @@ test('income in a projected cycle', async ({ page }) => {
   await expect.poll(() => body(page)).toMatch(/Ingresos\s*2\.400\s?€/)
   await expect.poll(() => body(page)).toMatch(margin('475'))
   await expect(panel).toContainText('Salario')
-  await expect(panel.getByRole('button', { name: /^Salario/ })).toHaveCount(0)
+  await expect(panel.getByRole('button', { name: /^Salario/ })).toHaveCount(1)
 
   await move(page, 'previous')
   await expect.poll(() => body(page)).toMatch(/Ingresos\s*2\.820\s?€/)

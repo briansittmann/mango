@@ -59,6 +59,11 @@ export type ExpenseGroup = {
   total: number
   budget: BudgetStatus | null
   expenses: Expense[]
+  /**
+   * Rows the category holds in cycles after the displayed one (real, not deleted): what a delete
+   * "from this month on" reaches beyond this cycle (`category-editing` → *Deleting a category*).
+   */
+  rowsLater: number
 }
 
 export type DashboardData = {

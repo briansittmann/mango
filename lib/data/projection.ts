@@ -90,9 +90,11 @@ export function proyectarCiclo({
 
 /**
  * The projected charges still to list beside a projected cycle's real rows (`cycle-projection` →
- * *A future cycle is computed, not stored*, D1): a real row linked to a definition for the cycle
+ * *A future cycle is computed, not stored*, D1): a row linked to a definition for the cycle
  * starting on `start` holds that definition's slot — the `(movimiento_recurrente_id, ciclo_mes)`
- * key `generar_ciclo` respects — and replaces its charge. A row with no definition replaces nothing.
+ * key `generar_ciclo` respects — and replaces its charge. Callers pass soft-deleted linked rows
+ * too: a deleted slot is still held, so its charge is not listed (`add-forward-scoped-edits` D1).
+ * A row with no definition replaces nothing.
  */
 export function mezclarProyeccion({
   charges,
@@ -105,4 +107,24 @@ export function mezclarProyeccion({
 }): ProjectedCharge[] {
   const held = new Set(rows.filter((row) => row.definitionId != null && row.cycle === start).map((row) => row.definitionId))
   return charges.filter((charge) => !held.has(charge.definitionId))
+}
+
+/**
+ * What a definition shows in each of `cycles` before a change "from this month on" rewrites it
+ * (`add-forward-scoped-edits` D2, D3): the cycles strictly between the one in progress and the
+ * one the change is made from, each with its count after the last generated cycle. A cycle where
+ * the projection does not list the definition (inactive, or its plan already over) freezes
+ * nothing. Both data sources write these as that cycle's slot, only where no slot exists yet.
+ */
+export function congelarCiclos({
+  definition,
+  cycles,
+}: {
+  definition: RecurringDefinition
+  cycles: { start: LocalDate; cyclesAfterGenerated: number }[]
+}): { cycle: LocalDate; charge: ProjectedCharge }[] {
+  return cycles.flatMap(({ start, cyclesAfterGenerated }) => {
+    const [charge] = proyectarCiclo({ start, cyclesAfterGenerated, definitions: [definition], budgetRows: [], savingsTarget: null }).charges
+    return charge ? [{ cycle: start, charge }] : []
+  })
 }

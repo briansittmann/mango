@@ -1,14 +1,21 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { requestCode, type RequestCodeState } from "./actions";
+import type { RequestCodeResult } from "@/app/auth/request-code/route";
+import { sendCode } from "./request-code";
+
+type RequestCodeState = RequestCodeResult | { status: "idle"; email?: undefined };
 
 /** The e-mail step: requests the code and hands the address to `LoginSteps` once it is `sent`. */
 export function LoginForm({ linkError, defaultEmail, onSent }: { linkError: boolean; defaultEmail?: string; onSent: (email: string) => void }) {
   const t = useTranslations("acceso");
-  const [state, formAction, pending] = useActionState<RequestCodeState, FormData>(requestCode, { status: "idle" });
+  const locale = useLocale();
+  const [state, formAction, pending] = useActionState<RequestCodeState, FormData>(
+    (_prev, formData) => sendCode(String(formData.get("email") ?? ""), locale),
+    { status: "idle" },
+  );
 
   useEffect(() => {
     if (state.status === "sent" && state.email) onSent(state.email);
@@ -29,6 +36,7 @@ export function LoginForm({ linkError, defaultEmail, onSent }: { linkError: bool
         defaultValue={defaultEmail}
         className="field-focus h-target rounded-lg bg-muted px-3 text-body-lg text-foreground outline-none"
       />
+      <p className="text-body-sm text-muted-foreground">{t("primeraVez")}</p>
       <Button type="submit" size="lg" disabled={pending} className="h-target w-full text-body-lg font-semibold">
         {t("enviarCodigo")}
       </Button>

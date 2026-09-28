@@ -28,6 +28,7 @@ import { SavingsMovementRow } from '@/components/molecules/savings-movement-row'
 import { SummaryRow } from '@/components/molecules/summary-row'
 import { SwipeToDelete } from '@/components/molecules/swipe-to-delete'
 import { UndoToast } from '@/components/molecules/undo-toast'
+import type { Scope } from '@/components/molecules/scope-choice'
 import { AccountMenu } from '@/components/organisms/account-menu'
 import { CategoryCard } from '@/components/organisms/category-card'
 import { CategoryPieChart } from '@/components/organisms/category-pie-chart'
@@ -187,9 +188,9 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   const savingsInitialFocusRef = useRef<HTMLInputElement>(null)
   const toasts = useMemo(() => Toast.createToastManager(), [])
   const currency = data.user.currency
-  // In a projected cycle (`cycle-projection` → *What a projected cycle shows and allows*) the
-  // computed charges stay read-only (`projected` on the row) and there is no category creation,
-  // reorder, spend chart, "Acumulado" or recurrence switch; real rows and add rows work as usual.
+  // In a projected cycle (`cycle-projection` → *What a projected cycle shows and allows*) there is
+  // no reorder, spend chart, "Acumulado" or recurrence switch; computed charges open and swipe as
+  // their definition's slot, and real rows, add rows and category creation work as usual.
   const projected = data.cycle.projected
 
   function openCreateSheet(group: ExpenseGroup) {
@@ -522,9 +523,9 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     setStatusMessage(tHojaCategoria('cambiosGuardados'))
   }
 
-  async function handleDeleteCategory(categoryId: string, reassignTo: string | null) {
+  async function handleDeleteCategory(categoryId: string, reassignTo: string | null, scope: Scope) {
     if (!actions.categories) return
-    await actions.categories.delete(categoryId, reassignTo)
+    await actions.categories.delete(categoryId, reassignTo, { cycle: data.cycle.start, scope })
     setCategorySheet((prev) => ({ ...prev, open: false }))
     setStatusMessage(tHojaCategoria('categoriaEliminada'))
   }
@@ -571,7 +572,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
 
     let createPromise!: Promise<string>
     flushSync(() => {
-      createPromise = actions.categories!.create(draft)
+      createPromise = actions.categories!.create(draft, data.cycle.start)
     })
     const id = await createPromise
 
@@ -640,7 +641,75 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     }
   }
 
+  // A row that belongs to a definition — a charge or a fixed income entry, real or projected — is
+  // that definition's slot in the displayed cycle, changed through the slot operations
+  // (`recurring-expenses` → *A definition's slot in a cycle can be changed on its own*).
+  const cycleStart = data.cycle.start
+  const monthName = format.dateTime(new Date(`${data.cycle.month}-01T00:00:00Z`), { month: 'long', timeZone: 'UTC' })
+
+  function showSlotUndo(definitionId: string) {
+    toasts.close()
+    const id = toasts.add({
+      title: tHojaGasto('eliminadoSoloEsteMes'),
+      priority: 'low',
+      actionProps: { children: tHojaGasto('deshacer'), onClick: () => void undoSlotDelete(id, definitionId) },
+    })
+  }
+
+  async function undoSlotDelete(id: string, definitionId: string) {
+    if (!actions.recurring) return
+    try {
+      await actions.recurring.restoreInCycle(definitionId, cycleStart)
+      toasts.close(id)
+    } catch {
+      toasts.update(id, { title: tHojaGasto('errorDeshacer'), priority: 'high', actionProps: undefined })
+    }
+  }
+
+  async function deleteSlot(definitionId: string, scope: Scope, errorTitle: string) {
+    if (!actions.recurring) return
+    try {
+      await actions.recurring.deleteInCycle(definitionId, cycleStart, scope)
+    } catch (error) {
+      toasts.add({ title: errorTitle, priority: 'high' })
+      throw error
+    }
+    if (scope === 'only') showSlotUndo(definitionId)
+    else setStatusMessage(tHojaGasto('eliminadoDesde', { mes: monthName }))
+  }
+
+  function showSavingsUndo(movementId: string) {
+    toasts.close()
+    const id = toasts.add({
+      title: tHojaGasto('movimientoEliminado'),
+      priority: 'low',
+      actionProps: { children: tHojaGasto('deshacer'), onClick: () => void undoSavingsDelete(id, movementId) },
+    })
+  }
+
+  async function undoSavingsDelete(id: string, movementId: string) {
+    if (!actions.savings) return
+    try {
+      await actions.savings.restore(movementId)
+      toasts.close(id)
+    } catch {
+      toasts.update(id, { title: tHojaGasto('errorDeshacer'), priority: 'high', actionProps: undefined })
+    }
+  }
+
+  async function handleDeleteSavings(movementId: string) {
+    if (!actions.savings) return
+    try {
+      await actions.savings.softDelete(movementId)
+      showSavingsUndo(movementId)
+    } catch (error) {
+      toasts.add({ title: tHojaGasto('errorEliminarMovimiento'), priority: 'high' })
+      throw error
+    }
+  }
+
   async function handleDeleteExpense(expense: Expense) {
+    if (expense.fixed && actions.recurring) return deleteSlot(expense.fixed.definitionId, 'only', tHojaGasto('errorEliminar'))
     if (!actions.expenses) return
     try {
       await actions.expenses.softDelete(expense.id)
@@ -671,6 +740,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   }
 
   async function handleDeleteIncome(entry: IncomeEntry) {
+    if (entry.recurring && actions.recurring) return deleteSlot(entry.recurring.definitionId, 'only', tHojaGasto('errorEliminarIngreso'))
     if (!actions.income) return
     try {
       await actions.income.softDelete(entry.id)
@@ -681,8 +751,17 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     }
   }
 
-  async function handleSheetDelete() {
+  async function handleSheetDelete(scope: Scope | null) {
     if (sheet.target?.mode !== 'edit') return
+    const definitionId =
+      sheet.target.kind === 'income' ? sheet.target.entry.recurring?.definitionId : sheet.target.kind === 'expense' ? sheet.target.expense.fixed?.definitionId : undefined
+    if (definitionId && actions.recurring) {
+      await actions.recurring.deleteInCycle(definitionId, cycleStart, scope ?? 'only')
+      setSheet((prev) => ({ ...prev, open: false }))
+      if ((scope ?? 'only') === 'only') showSlotUndo(definitionId)
+      else setStatusMessage(tHojaGasto('eliminadoDesde', { mes: monthName }))
+      return
+    }
     if (sheet.target.kind === 'income') {
       if (!actions.income) return
       const entry = sheet.target.entry
@@ -698,8 +777,21 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     showUndo(expense)
   }
 
-  async function handleSaveEntry(values: ExpenseDraft) {
+  async function handleSaveEntry(values: ExpenseDraft, { scope, categoryId }: { scope: Scope | null; categoryId: string | null }) {
     if (!sheet.target || sheet.target.kind === 'savings') return
+    const definitionId =
+      sheet.target.mode !== 'edit'
+        ? undefined
+        : sheet.target.kind === 'income'
+          ? sheet.target.entry.recurring?.definitionId
+          : sheet.target.expense.fixed?.definitionId
+    if (definitionId && actions.recurring) {
+      const expenseCategory = sheet.target.kind === 'expense' ? (categoryId ?? sheet.target.group.id) : null
+      await actions.recurring.editInCycle(definitionId, cycleStart, { ...values, categoryId: expenseCategory }, scope ?? 'only')
+      setSheet((prev) => ({ ...prev, open: false }))
+      setStatusMessage(scope === 'onward' ? tHojaGasto('cambiosDesde', { mes: monthName }) : tHojaGasto('cambiosGuardados'))
+      return
+    }
     if (sheet.target.kind === 'income') {
       if (!actions.income) return
       if (sheet.target.mode === 'create') {
@@ -715,7 +807,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     if (sheet.target.mode === 'create') {
       await actions.expenses.create(sheet.target.group.id, values)
     } else {
-      await actions.expenses.update(sheet.target.expense.id, values)
+      await actions.expenses.update(sheet.target.expense.id, values, categoryId ?? sheet.target.group.id)
     }
     setSheet((prev) => ({ ...prev, open: false }))
     setStatusMessage(sheet.target.mode === 'create' ? tHojaGasto('gastoAnadido') : tHojaGasto('cambiosGuardados'))
@@ -765,6 +857,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
       ? { kind: 'income' as const, recurring: sheet.target.mode === 'edit' && sheet.target.entry.recurring != null }
       : {
           kind: 'category' as const,
+          id: sheetGroup.id,
           name: sheetGroup.name,
           color: sheetGroup.color,
           recurring: sheet.target?.kind === 'expense' && sheet.target.mode === 'edit' && sheet.target.expense.fixed != null,
@@ -1115,7 +1208,8 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                 <>
                   <div className="flex flex-col">
                     {sortedIncomeEntries.map((entry, index) => {
-                      const editable = actions.income && !entry.projected
+                      // A projected fixed income entry is that definition's slot here: it needs the slot operations.
+                      const editable = actions.income && (!entry.projected || actions.recurring)
                       const row = (
                         <ExpenseRow
                           name={entry.name || tHojaGasto('ingreso')}
@@ -1188,19 +1282,27 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                         {actions.openSavingsHistory ? <ChevronRight aria-hidden className="-mr-1 size-4 shrink-0 text-muted-foreground" /> : null}
                       </button>
                     )}
-                    {data.savings.movements.map((movement, index) => (
-                      <SavingsMovementRow
-                        key={movement.id}
-                        name={movement.name}
-                        date={movement.date}
-                        amount={movement.amount}
-                        currency={currency}
-                        timeZone={data.user.timezone}
-                        depositLabel={tResumen('deposito')}
-                        withdrawalLabel={tResumen('retiro')}
-                        index={index}
-                      />
-                    ))}
+                    {data.savings.movements.map((movement, index) => {
+                      const row = (
+                        <SavingsMovementRow
+                          name={movement.name}
+                          date={movement.date}
+                          amount={movement.amount}
+                          currency={currency}
+                          timeZone={data.user.timezone}
+                          depositLabel={tResumen('deposito')}
+                          withdrawalLabel={tResumen('retiro')}
+                          index={index}
+                        />
+                      )
+                      return actions.savings ? (
+                        <SwipeToDelete key={movement.id} onDelete={() => handleDeleteSavings(movement.id)}>
+                          {row}
+                        </SwipeToDelete>
+                      ) : (
+                        <div key={movement.id}>{row}</div>
+                      )
+                    })}
                     <AddRow label={t('anadirMovimientoAhorro')} onClick={actions.savings ? openSavingsCreateSheet : undefined} />
                   </div>
                 </>
@@ -1370,7 +1472,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
               </AnimatedContent>
             )
           })}
-          {reordering || projected ? null : (
+          {reordering ? null : (
             <div ref={setTileEntranceRef} style={{ visibility: 'hidden' }}>
               <AddCategoryTile label={t('anadirCategoria')} onClick={actions.categories ? openCreateCategorySheet : undefined} />
             </div>
@@ -1407,6 +1509,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
         onDelete={sheet.target?.mode === 'edit' ? handleSheetDelete : undefined}
         onSaveRecurrence={actions.recurring ? handleSaveRecurrence : undefined}
         projected={projected}
+        categories={data.expenses.groups.map(({ id, name, color }) => ({ id, name, color }))}
       />
       <EntrySheet
         config={savingsEntry({ deposit: tResumen('deposito'), withdrawal: tResumen('retiro') })}
@@ -1428,6 +1531,11 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
         receivingCategories={receivingCategories}
         onSave={handleSaveCategory}
         onDelete={handleDeleteCategory}
+        fixedCount={
+          categorySheetTargetGroup
+            ? definitions.filter((definition) => definition.active && definition.categoryId === categorySheetTargetGroup.id).length
+            : 0
+        }
         onCreate={actions.categories ? handleCreateCategory : undefined}
         initialColor={categorySheetMode === 'create' ? createCategoryColor : undefined}
         onReorder={actions.categories && !projected ? handleEnterReorder : undefined}

@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useId, useRef, useState, type FormEvent, type RefObject } from 'react'
+import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { Drawer } from '@base-ui/react/drawer'
-import { Loader2, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, Loader2, Trash2 } from 'lucide-react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { currencyFormatOptions } from '@/i18n/formats'
 import { CategoryDot } from '@/components/atoms/category-dot'
@@ -9,6 +9,7 @@ import { Switch } from '@/components/atoms/switch'
 import { AmountField, parseAmount } from '@/components/molecules/amount-field'
 import { FieldRow } from '@/components/molecules/field-row'
 import { IntegerField, parseInteger } from '@/components/molecules/integer-field'
+import { ScopeChoice, type Scope } from '@/components/molecules/scope-choice'
 import { SheetShell } from '@/components/organisms/sheet-shell'
 import { cn } from '@/lib/utils'
 import type { CategoryColor } from '@/lib/data/dashboard'
@@ -110,7 +111,7 @@ export function savingsEntry(typeOptions: { deposit: string; withdrawal: string 
 }
 
 type EntrySheetContext =
-  | { kind: 'category'; name: string; color: CategoryColor; recurring: boolean }
+  | { kind: 'category'; id: string; name: string; color: CategoryColor; recurring: boolean }
   | { kind: 'income'; recurring: boolean }
   | { kind: 'savings' }
 
@@ -124,8 +125,20 @@ type EntrySheetProps<V> = {
   fieldOptions: { amount?: { currency: string }; date?: { min: LocalDate; max: LocalDate } }
   initialFocusRef: RefObject<HTMLInputElement | null>
   finalFocusRef?: RefObject<HTMLElement | null>
-  onSave: (values: V) => Promise<void>
-  onDelete?: () => Promise<void>
+  /**
+   * `scope` is the answer to "Solo este mes" / "Desde este mes en adelante" on a row that belongs to
+   * a definition (`recurring-expenses` → *Every change to a recurring row asks how far it reaches*),
+   * `'only'` when nothing changed, null on any other row. `categoryId` is the header's category.
+   */
+  onSave: (values: V, extra: { scope: Scope | null; categoryId: string | null }) => Promise<void>
+  /** A recurring row asks the scope first, in a confirmation step; any other row passes null. */
+  onDelete?: (scope: Scope | null) => Promise<void>
+  /**
+   * The categories alive in the displayed cycle. In edit mode, with a category context, the
+   * header's category becomes the control that moves the row (`expense-editing` → *Moving an
+   * expense to another category*).
+   */
+  categories?: { id: string; name: string; color: CategoryColor }[]
   /**
    * Present only when the page supplies `actions.recurring` — its presence, together with
    * `mode === 'create'`, is what makes the recurrence field render at all. Called after `onSave`
@@ -193,6 +206,7 @@ export function EntrySheet<V>({
   onDelete,
   onSaveRecurrence: onSaveRecurrenceProp,
   projected = false,
+  categories,
 }: EntrySheetProps<V>) {
   const onSaveRecurrence = projected ? undefined : onSaveRecurrenceProp
   const t = useTranslations('hojaGasto')
@@ -208,6 +222,16 @@ export function EntrySheet<V>({
   const [touched, setTouched] = useState<Partial<Record<string, boolean>>>({})
   const [status, setStatus] = useState<'idle' | 'saving' | 'deleting'>('idle')
   const [error, setError] = useState<'save' | 'delete' | null>(null)
+  const [step, setStep] = useState<'form' | 'confirmDelete'>('form')
+  const [scope, setScope] = useState<Scope | null>(null)
+  const [deleteScope, setDeleteScope] = useState<Scope | null>(null)
+  const initialCategoryId = context.kind === 'category' ? context.id : null
+  const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const chipRef = useRef<HTMLButtonElement>(null)
+  const pickerRef = useRef<HTMLDivElement>(null)
+  const confirmCancelRef = useRef<HTMLButtonElement>(null)
+  const deleteRowRef = useRef<HTMLButtonElement>(null)
 
   const [recurrenceOn, setRecurrenceOn] = useState(false)
   const [recurrenceDay, setRecurrenceDay] = useState('')
@@ -238,15 +262,55 @@ export function EntrySheet<V>({
       setRecurrenceEnding('none')
       setRecurrenceCount('')
       setRecurrenceTouched({})
+      setStep('form')
+      setScope(null)
+      setDeleteScope(null)
+      setCategoryId(initialCategoryId)
+      setPickerOpen(false)
     }
   }
+
+  useLayoutEffect(() => {
+    if (step === 'confirmDelete') confirmCancelRef.current?.focus()
+  }, [step])
+
+  // The picker closes on a pointer down outside it (the chip toggles it itself), and on Escape —
+  // caught in the capture phase, ahead of the drawer's own listener, so Escape closes the picker
+  // and not the sheet.
+  useEffect(() => {
+    if (!pickerOpen) return
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as Node | null
+      if (pickerRef.current?.contains(target) || chipRef.current?.contains(target)) return
+      setPickerOpen(false)
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return
+      event.stopPropagation()
+      setPickerOpen(false)
+      chipRef.current?.focus()
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown, true)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown, true)
+    }
+  }, [pickerOpen])
 
   const amountFieldDescriptor = config.fields.find(
     (field): field is TextFieldDescriptor<V> & { kind: 'amount' } => field.kind === 'amount',
   )
   const amountValue = amountFieldDescriptor ? parseAmount(fieldState[amountFieldDescriptor.name] ?? '') : 0
-  const isDirty = config.fields.filter(isTextField).some((field) => fieldState[field.name] !== initialSnapshot[field.name])
+  const isDirty =
+    config.fields.filter(isTextField).some((field) => fieldState[field.name] !== initialSnapshot[field.name]) ||
+    categoryId !== initialCategoryId
   const disabled = status !== 'idle'
+  const asksScope = mode === 'edit' && context.kind !== 'savings' && context.recurring
+  const showScope = asksScope && isDirty
+  const movable = mode === 'edit' && context.kind === 'category' && categories != null && categories.length > 1
+  const shownCategory =
+    context.kind === 'category' ? (categories?.find((category) => category.id === categoryId) ?? context) : null
 
   const requiredTextFields = config.fields.filter(
     (field): field is TextFieldDescriptor<V> & { kind: 'text' } => field.kind === 'text' && !field.optional,
@@ -258,7 +322,11 @@ export function EntrySheet<V>({
   const recurrenceValid = !recurrenceOn || (recurrenceDayValid && recurrenceCountValid)
 
   const primaryDisabled =
-    disabled || (amountFieldDescriptor ? amountValue === null : false) || emptyRequiredTextFields.length > 0 || !recurrenceValid
+    disabled ||
+    (amountFieldDescriptor ? amountValue === null : false) ||
+    emptyRequiredTextFields.length > 0 ||
+    !recurrenceValid ||
+    (showScope && scope == null)
 
   function updateField(name: string, value: string) {
     setFieldState((prev) => ({ ...prev, [name]: value }))
@@ -293,7 +361,7 @@ export function EntrySheet<V>({
     setStatus('saving')
     setError(null)
     try {
-      await onSave(values)
+      await onSave(values, { scope: asksScope ? (scope ?? 'only') : null, categoryId })
       if (onSaveRecurrence && recurrenceOn) {
         // The definition's name and expected amount are the same values just typed into the
         // expense's own description and amount fields — see attachCreatedDefinitions in
@@ -314,12 +382,12 @@ export function EntrySheet<V>({
     }
   }
 
-  async function handleDelete() {
+  async function handleDelete(chosen: Scope | null) {
     if (!onDelete) return
     setStatus('deleting')
     setError(null)
     try {
-      await onDelete()
+      await onDelete(chosen)
     } catch {
       setStatus('idle')
       setError('delete')
@@ -538,6 +606,20 @@ export function EntrySheet<V>({
       }
       title={title}
       trailing={
+        step === 'confirmDelete' ? (
+          <button
+            ref={confirmCancelRef}
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              setStep('form')
+              deleteRowRef.current?.focus()
+            }}
+            className="pressable text-body-md text-muted-foreground disabled:pointer-events-none disabled:opacity-50"
+          >
+            {t('cancelar')}
+          </button>
+        ) : (
         <button
           type="submit"
           form={formId}
@@ -557,15 +639,40 @@ export function EntrySheet<V>({
             submitLabel
           )}
         </button>
+        )
       }
       caption={
-        context.kind === 'category' ? (
-          <>
-            <CategoryDot color={context.color} className="size-2 shrink-0" />
-            <span className="truncate">{context.recurring ? t('soloEsteMes', { categoria: context.name }) : context.name}</span>
-          </>
+        shownCategory ? (
+          movable ? (
+            <button
+              ref={chipRef}
+              type="button"
+              aria-expanded={pickerOpen}
+              aria-controls={`${formId}-categories`}
+              aria-label={t('cambiarCategoria', { categoria: shownCategory.name })}
+              disabled={disabled || step !== 'form'}
+              onClick={() => setPickerOpen((prev) => !prev)}
+              className="pressable -my-2 flex min-h-target min-w-target items-center justify-center gap-1.5 rounded-full px-3 text-foreground [--press-scale:0.96] hover:bg-foreground/[0.06] disabled:pointer-events-none"
+            >
+              <CategoryDot color={shownCategory.color} className="size-2 shrink-0" />
+              <span className="truncate">
+                {context.kind === 'category' && context.recurring ? t('seRepite', { categoria: shownCategory.name }) : shownCategory.name}
+              </span>
+              <ChevronDown
+                aria-hidden
+                className={cn('size-3.5 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none', pickerOpen && 'rotate-180')}
+              />
+            </button>
+          ) : (
+            <>
+              <CategoryDot color={shownCategory.color} className="size-2 shrink-0" />
+              <span className="truncate">
+                {context.kind === 'category' && context.recurring ? t('seRepite', { categoria: shownCategory.name }) : shownCategory.name}
+              </span>
+            </>
+          )
         ) : context.kind === 'income' ? (
-          <span className="truncate">{context.recurring ? t('soloEsteIngreso') : t('ingreso')}</span>
+          <span className="truncate">{context.recurring ? t('ingresoSeRepite') : t('ingreso')}</span>
         ) : (
           <span className="truncate">{t('ahorro')}</span>
         )
@@ -581,15 +688,85 @@ export function EntrySheet<V>({
               {t(error === 'save' ? 'errorGuardar' : 'errorEliminar')}
             </div>
           ) : null}
+          {step === 'confirmDelete' ? (
+            <>
+              <h3 className="px-inset pb-2 pt-3 text-body-lg text-foreground">
+                {t('confirmarEliminarFijo', { nombre: fieldState.description || (shownCategory?.name ?? t('ingreso')) })}
+              </h3>
+              <ScopeChoice value={deleteScope} onChange={setDeleteScope} disabled={disabled} legend={t('eliminarAlcance')} destructive />
+              <div className="px-inset pb-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => void handleDelete(deleteScope)}
+                  disabled={disabled || deleteScope == null}
+                  className="flex min-h-row w-full items-center justify-center gap-2 rounded-full bg-destructive/[0.08] text-body-lg font-semibold text-destructive-ink disabled:pointer-events-none disabled:opacity-50"
+                >
+                  {status === 'deleting' ? <Loader2 aria-hidden className="size-5 animate-spin" /> : <Trash2 aria-hidden className="size-5" />}
+                  {t('eliminar')}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+          {movable ? (
+            <Collapsible open={pickerOpen}>
+              <div
+                ref={pickerRef}
+                id={`${formId}-categories`}
+                role="radiogroup"
+                aria-label={t('cambiarCategoria', { categoria: shownCategory?.name ?? '' })}
+                className={cn(
+                  'mx-inset mb-2 grid origin-top grid-cols-2 gap-1.5 rounded-[22px] bg-foreground/[0.04] p-1.5 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none',
+                  pickerOpen ? 'scale-100' : 'scale-95',
+                )}
+              >
+                {categories!.map((category) => {
+                  const selected = category.id === categoryId
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => {
+                        setCategoryId(category.id)
+                        setPickerOpen(false)
+                        chipRef.current?.focus()
+                      }}
+                      className={cn(
+                        'flex min-h-11 min-w-0 items-center gap-2 rounded-2xl px-3 text-label-ui transition-all duration-200 motion-reduce:transition-none',
+                        selected
+                          ? 'bg-primary font-semibold text-primary-foreground shadow-[0_6px_18px_-4px_color-mix(in_oklab,var(--primary)_55%,transparent)]'
+                          : 'text-foreground hover:bg-foreground/[0.06] active:scale-95',
+                      )}
+                    >
+                      <CategoryDot color={category.color} className="size-2 shrink-0" />
+                      <span className="min-w-0 flex-1 truncate text-left">{category.name}</span>
+                      {selected ? <Check aria-hidden className="size-3.5 shrink-0" /> : null}
+                    </button>
+                  )
+                })}
+              </div>
+            </Collapsible>
+          ) : null}
           {config.fields.map((field) => (
             <Fragment key={field.kind === 'recurrence' ? 'recurrence' : field.name}>{renderField(field)}</Fragment>
           ))}
+          {asksScope ? (
+            <Collapsible open={showScope}>
+              <ScopeChoice value={scope} onChange={setScope} disabled={disabled} />
+            </Collapsible>
+          ) : null}
           {onDelete ? (
             <>
               <div className="border-t border-border" />
               <button
+                ref={deleteRowRef}
                 type="button"
-                onClick={() => void handleDelete()}
+                onClick={() => {
+                  if (asksScope) setStep('confirmDelete')
+                  else void handleDelete(null)
+                }}
                 disabled={disabled}
                 className="flex min-h-row items-center gap-3 px-inset text-body-lg font-medium text-destructive-ink hover:bg-destructive/[0.08] active:bg-destructive/[0.12] disabled:pointer-events-none disabled:opacity-50"
               >
@@ -598,10 +775,12 @@ export function EntrySheet<V>({
                 ) : (
                   <Trash2 aria-hidden className="size-5" />
                 )}
-                {t(context.kind === 'category' && context.recurring ? 'eliminarCargoDelMes' : config.deleteKey)}
+                {t(config.deleteKey)}
               </button>
             </>
           ) : null}
+            </>
+          )}
         </Drawer.Content>
       </form>
     </SheetShell>

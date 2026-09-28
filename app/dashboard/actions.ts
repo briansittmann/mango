@@ -2,10 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { DUPLICATE_CATEGORY_NAME, type CategoryDraft, type CategoryUpdateTarget } from "@/lib/data/categories";
-import type { ExpenseDraft } from "@/lib/data/expenses";
+import {
+  DUPLICATE_CATEGORY_NAME,
+  type CategoryDeleteTarget,
+  type CategoryDraft,
+  type CategoryUpdateTarget,
+} from "@/lib/data/categories";
+import type { ExpenseDraft, LocalDate } from "@/lib/data/expenses";
 import type { IncomeDraft } from "@/lib/data/income";
-import type { RecurringDraft, RecurringTarget } from "@/lib/data/recurring";
+import type { RecurringDraft, RecurringTarget, SlotEntry } from "@/lib/data/recurring";
 import type { SavingsMovementDraft } from "@/lib/data/savings";
 import { createSupabaseCategoryMutations } from "@/lib/data/supabase/categories";
 import type { DataContext } from "@/lib/data/supabase/context";
@@ -48,8 +53,8 @@ async function catchDuplicateName<T>(operation: () => Promise<T>): Promise<{ ok:
 export async function createExpense(categoryId: string, draft: ExpenseDraft) {
   await run((ctx) => createSupabaseExpenseMutations(ctx).create(categoryId, draft));
 }
-export async function updateExpense(expenseId: string, draft: ExpenseDraft) {
-  await run((ctx) => createSupabaseExpenseMutations(ctx).update(expenseId, draft));
+export async function updateExpense(expenseId: string, draft: ExpenseDraft, categoryId: string) {
+  await run((ctx) => createSupabaseExpenseMutations(ctx).update(expenseId, draft, categoryId));
 }
 export async function softDeleteExpense(expenseId: string) {
   await run((ctx) => createSupabaseExpenseMutations(ctx).softDelete(expenseId));
@@ -74,15 +79,21 @@ export async function restoreIncome(entryId: string) {
 export async function addSavingsMovement(draft: SavingsMovementDraft) {
   await run((ctx) => createSupabaseSavingsMutations(ctx).addSavingsMovement(draft));
 }
+export async function softDeleteSavingsMovement(movementId: string) {
+  await run((ctx) => createSupabaseSavingsMutations(ctx).softDelete(movementId));
+}
+export async function restoreSavingsMovement(movementId: string) {
+  await run((ctx) => createSupabaseSavingsMutations(ctx).restore(movementId));
+}
 
-export async function createCategory(draft: CategoryDraft) {
-  return catchDuplicateName(() => run((ctx) => createSupabaseCategoryMutations(ctx).create(draft)));
+export async function createCategory(draft: CategoryDraft, cycle: LocalDate) {
+  return catchDuplicateName(() => run((ctx) => createSupabaseCategoryMutations(ctx).create(draft, cycle)));
 }
 export async function updateCategory(categoryId: string, draft: CategoryDraft, target: CategoryUpdateTarget) {
   return catchDuplicateName(() => run((ctx) => createSupabaseCategoryMutations(ctx).update(categoryId, draft, target)));
 }
-export async function deleteCategory(categoryId: string, reassignTo: string | null) {
-  await run((ctx) => createSupabaseCategoryMutations(ctx).delete(categoryId, reassignTo));
+export async function deleteCategory(categoryId: string, reassignTo: string | null, target: CategoryDeleteTarget) {
+  await run((ctx) => createSupabaseCategoryMutations(ctx).delete(categoryId, reassignTo, target));
 }
 export async function reorderCategories(categoryIds: string[]) {
   await run((ctx) => createSupabaseCategoryMutations(ctx).reorder(categoryIds));
@@ -99,6 +110,15 @@ export async function stopRecurring(definitionId: string) {
 }
 export async function deleteRecurring(definitionId: string) {
   await run((ctx) => createSupabaseRecurringMutations(ctx).delete(definitionId));
+}
+export async function editRecurringInCycle(definitionId: string, cycle: LocalDate, entry: SlotEntry, scope: "only" | "onward") {
+  await run((ctx) => createSupabaseRecurringMutations(ctx).editInCycle(definitionId, cycle, entry, scope));
+}
+export async function deleteRecurringInCycle(definitionId: string, cycle: LocalDate, scope: "only" | "onward") {
+  await run((ctx) => createSupabaseRecurringMutations(ctx).deleteInCycle(definitionId, cycle, scope));
+}
+export async function restoreRecurringInCycle(definitionId: string, cycle: LocalDate) {
+  await run((ctx) => createSupabaseRecurringMutations(ctx).restoreInCycle(definitionId, cycle));
 }
 
 export async function signOut() {

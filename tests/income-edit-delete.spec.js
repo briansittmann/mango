@@ -29,6 +29,8 @@ test('editing "Salario" moves the income total and the free margin', async ({ pa
   const sheet = dialog(page)
   await expect(sheet.getByText('Editar ingreso')).toBeVisible()
   await sheet.getByLabel('Importe').fill('2500')
+  // "Salario" comes from a definition: the sheet asks how far the change reaches.
+  await sheet.getByText('Solo este mes').click()
   await sheet.getByRole('button', { name: 'Guardar', exact: true }).click()
   await expect(sheet).toBeHidden()
 

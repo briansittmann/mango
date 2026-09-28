@@ -136,8 +136,8 @@ export function CategoryCard({
       <Collapsible open={expanded} id={panelId}>
         <div className="flex flex-col">
           {group.expenses.map((expense, index) => {
-            // A projected charge is computed, not stored: nothing to edit or delete.
-            const editable = !expense.projected
+            // A projected charge opens and swipes like any row: the page writes its cycle's slot
+            // (`cycle-projection` → *What a projected cycle shows and allows*).
             const row = (
               <ExpenseRow
                 name={expense.name || name}
@@ -145,11 +145,11 @@ export function CategoryCard({
                 amount={expense.amount}
                 currency={currency}
                 timeZone={timeZone}
-                onActivate={onEditExpense && editable ? () => onEditExpense(expense) : undefined}
+                onActivate={onEditExpense ? () => onEditExpense(expense) : undefined}
                 first={index === 0}
               />
             )
-            return onDeleteExpense && editable ? (
+            return onDeleteExpense ? (
               <SwipeToDelete key={expense.id} onDelete={() => onDeleteExpense(expense)}>
                 {row}
               </SwipeToDelete>

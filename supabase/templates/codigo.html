@@ -1,0 +1,83 @@
+<!--
+  Mail del código de acceso (open-web-signup D6, D8). Documentación para el panel: la app no
+  lee este archivo.
+
+  Se pega igual en Supabase → Auth → Emails → *Confirm signup* (primer código de una dirección
+  nueva) y en *Magic Link* (todos los códigos siguientes).
+
+  Asunto (una sola línea, igual en las dos plantillas):
+  {{ if .Data }}{{ if .Data.idioma }}{{ if eq (printf "%v" .Data.idioma) "en" }}Your Mango code{{ else }}Tu código de Mango{{ end }}{{ else }}Tu código de Mango{{ end }}{{ else }}Tu código de Mango{{ end }}
+
+  Idioma: user_metadata.idioma ("en" → inglés; cualquier otra cosa o nada → español). Un render
+  fallido es un mail que no sale, así que nunca se compara un valor que puede faltar: cada paso
+  está detrás de un if, y printf "%v" evita que un valor que no sea texto rompa el eq.
+  Colores: los valores claros de los tokens de app/globals.css; el bloque @media pone los oscuros
+  en los clientes que lo respetan (Apple Mail, iOS).
+-->
+{{ $en := false }}{{ if .Data }}{{ if .Data.idioma }}{{ if eq (printf "%v" .Data.idioma) "en" }}{{ $en = true }}{{ end }}{{ end }}{{ end }}
+<!DOCTYPE html>
+<html lang="{{ if $en }}en{{ else }}es{{ end }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <title>{{ if $en }}Your Mango code{{ else }}Tu código de Mango{{ end }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    @media (prefers-color-scheme: dark) {
+      .m-page { background-color: #0D110E !important; }
+      .m-card { background-color: #131814 !important; border-color: #232B24 !important; }
+      .m-fg { color: #F3F4F6 !important; }
+      .m-muted-fg { color: #9CA3AF !important; }
+      .m-code-box { background-color: #19201A !important; }
+      .m-brand { color: #84CC16 !important; }
+    }
+  </style>
+</head>
+<body class="m-page" style="margin: 0; padding: 0; background-color: #F4F7F4;">
+  <table role="presentation" class="m-page" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F4F7F4;">
+    <tr>
+      <td align="center" style="padding: 32px 16px;">
+        <table role="presentation" class="m-card" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; background-color: #FFFFFF; border: 1px solid #E6E9E6; border-radius: 16px;">
+          <tr>
+            <td style="padding: 32px 28px 28px; font-family: Manrope, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="vertical-align: middle;">
+                    <img src="https://www.usemango.dev/email/mango-logo.png" width="48" height="48" alt="Mango" style="display: block; border: 0;">
+                  </td>
+                  <td class="m-fg" style="vertical-align: middle; padding-left: 4px; font-size: 20px; line-height: 26px; font-weight: 700; color: #171A17;">Mango</td>
+                </tr>
+              </table>
+
+              <h1 class="m-fg" style="margin: 24px 0 12px; font-size: 28px; line-height: 34px; letter-spacing: -0.56px; font-weight: 700; color: #171A17;">
+                {{ if $en }}Your code to sign in to Mango{{ else }}Tu código para entrar a Mango{{ end }}
+              </h1>
+
+              <p class="m-muted-fg" style="margin: 0 0 24px; font-size: 16px; line-height: 24px; color: #5F665F;">
+                {{ if $en }}Type it on the page where you asked for it. It expires in 10 minutes.{{ else }}Escríbelo en la página donde lo pediste. Vence en 10 minutos.{{ end }}
+              </p>
+
+              <table role="presentation" class="m-code-box" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #E8EFE8; border-radius: 12px;">
+                <tr>
+                  <td align="center" style="padding: 20px 16px;">
+                    <p class="m-brand" style="margin: 0 0 6px; font-size: 13px; line-height: 18px; font-weight: 600; color: #149052;">
+                      {{ if $en }}Your code{{ else }}Tu código{{ end }}
+                    </p>
+                    <p class="m-fg" style="margin: 0; font-size: 32px; line-height: 40px; font-weight: 700; letter-spacing: 6px; font-variant-numeric: tabular-nums; color: #171A17;">{{ .Token }}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <p class="m-muted-fg" style="margin: 24px 0 0; font-size: 13px; line-height: 18px; color: #5F665F;">
+                {{ if $en }}If you didn't ask for it, ignore this e-mail.{{ else }}Si no lo pediste, ignora este mail.{{ end }}
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

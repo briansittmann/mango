@@ -1,15 +1,17 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { DUPLICATE_CATEGORY_NAME } from '@/lib/data/categories'
-import type { CategoryDraft, CategoryMutations, CategoryUpdateTarget } from '@/lib/data/categories'
+import type { CategoryDeleteTarget, CategoryDraft, CategoryMutations, CategoryUpdateTarget } from '@/lib/data/categories'
 import type { ExpenseGroup } from '@/lib/data/dashboard'
+import type { LocalDate } from '@/lib/data/expenses'
 
 export type DemoCategoryEdits = {
-  created: { id: string; draft: CategoryDraft }[]
+  /** `cycle`: the first cycle the category lives in (`categorias.desde_ciclo`). */
+  created: { id: string; draft: CategoryDraft; cycle: LocalDate }[]
   /** Name and colour: the last saved draft wins. */
   updated: Record<string, CategoryDraft>
   /** Every budget save in order, with the cycle it was made from: each one builds on the last. */
   budgets: ({ categoryId: string; amount: number | null } & CategoryUpdateTarget)[]
-  deleted: { id: string; reassignTo: string | null }[]
+  deleted: ({ id: string; reassignTo: string | null } & CategoryDeleteTarget)[]
   order: string[] | null
 }
 
@@ -26,14 +28,14 @@ export function createDemoCategoryMutations(
   setEdits: Dispatch<SetStateAction<DemoCategoryEdits>>,
 ): CategoryMutations {
   return {
-    create(draft) {
+    create(draft, cycle) {
       const name = foldName(draft.name)
       const duplicate = currentGroups.some((group) => group.kind === 'category' && foldName(group.name) === name)
       if (duplicate) return Promise.reject(new Error(DUPLICATE_CATEGORY_NAME))
 
       counter += 1
       const id = `demo-category-${counter}`
-      setEdits((edits) => ({ ...edits, created: [...edits.created, { id, draft }] }))
+      setEdits((edits) => ({ ...edits, created: [...edits.created, { id, draft, cycle }] }))
       return Promise.resolve(id)
     },
     update(categoryId, draft, target) {
@@ -50,8 +52,8 @@ export function createDemoCategoryMutations(
       }))
       return Promise.resolve()
     },
-    delete(categoryId, reassignTo) {
-      setEdits((edits) => ({ ...edits, deleted: [...edits.deleted, { id: categoryId, reassignTo }] }))
+    delete(categoryId, reassignTo, target) {
+      setEdits((edits) => ({ ...edits, deleted: [...edits.deleted, { id: categoryId, reassignTo, ...target }] }))
       return Promise.resolve()
     },
     reorder(categoryIds) {

@@ -121,7 +121,7 @@ Restricción transversal: **coste cero**. Todo se elige dentro de capas gratuita
 | Front | React / Next.js + Tailwind | Preferencia propia |
 | Gráficos | Recharts | Se integra directo con React |
 | Componentes UI | shadcn/ui | Look profesional de entrada, theming incluido |
-| Auth | Supabase Auth: Google, con código por mail como alternativa | Sin contraseñas que mantener. Google trae el mail verificado; el código abre la sesión en la misma pestaña donde se pidió |
+| Auth | Supabase Auth: código por mail (Google, en el bloque 13) | Sin contraseñas que mantener. El código abre la sesión en la misma pestaña donde se pidió, y el mismo formulario sirve para entrar y para crearse la cuenta |
 | Idiomas | next-intl (o equivalente) | Estructura desde el día uno, ver más abajo |
  
 **Un repo, un deploy, coste cero.**
@@ -131,6 +131,8 @@ Restricción transversal: **coste cero**. Todo se elige dentro de capas gratuita
 > **Decisión (2026-09-28):** el **código por mail reemplaza al magic link** como alternativa a Google (`replace-magic-link-with-email-otp`). `/login` pide el mail, Supabase manda un código de 6 dígitos y la persona lo escribe en la misma página: la sesión queda en el navegador donde lo escribió. Por qué: el link abría otra pestaña, y con `?code=` solo abría sesión en el navegador que lo pidió, así que abrirlo desde la app de Mail del teléfono terminaba en "enlace inválido". El código no depende de dónde se abre el mail y no necesita el arreglo de `?token_hash=`. `/auth/confirm` se queda para el callback de Google y el link de un solo uso del bot.
 
 > **Actualización (2026-09-28):** Auth ya manda sus mails por SMTP propio, **Resend**, y salen con remitente del dominio (`no-reply@usemango.dev`). Con eso la plantilla se puede editar. El tope pasa a 30 mails por hora y 60 s entre dos mails a la misma dirección.
+
+> **Decisión (2026-09-28):** el **registro abre solo con el código por mail** (`open-web-signup`); Google pasa al bloque 13. `/login` crea la cuenta cuando la dirección no tiene una (`shouldCreateUser: true`), y el pedido lleva el idioma de la página y la zona horaria del navegador, que quedan en la metadata del auth user. El mail del código tiene la marca de Mango y sale en el idioma de esa metadata (español si no hay), con una sola plantilla (`supabase/templates/codigo.html`) pegada en *Confirm signup* y *Magic Link*. Por qué sin Google: el código ya funciona de punta a punta, y abrir el registro no tiene que esperar a configurar otro proveedor.
  
 ### Variables de entorno
  
@@ -318,7 +320,7 @@ Mango tiene **dos entradas**: el **registro web, abierto a cualquiera**, y **Wha
 
 #### Onboarding web (registro abierto)
 
-1. **Registro** con Google o código por mail (sección 2).
+1. **Registro** con código por mail (sección 2; Google llega en el bloque 13). La fila de `usuarios` la crea un trigger sobre `auth.users` cuando la persona escribe su primer código (sección 8). Hasta el bloque 9, la persona cae en un dashboard vacío del ciclo en curso, con EUR, UTC o la zona de su navegador, y ciclo desde el día 1; los pasos 2–8 todavía no existen.
 2. **Bienvenida sin gasto cargado.** No reusa la pantalla 1 de WhatsApp ("Ya cargaste tu primer gasto"): acá todavía no se cargó nada, y felicitar por algo que no pasó confunde.
 3. **Datos básicos:** nombre, país → moneda y timezone, día de inicio de ciclo. Es lo que en WhatsApp pregunta el chat; sin eso no hay ciclo (sección 6) ni moneda contra la que sumar.
 4. **Categorías.**
@@ -337,7 +339,8 @@ El guion de abajo (*Primera interacción*) queda como está: código → nombre 
 - **`onboarding_completo`** y redirección al paso pendiente si alguien abandona a mitad. Sin eso, quien cierra la pestaña en el paso 4 vuelve a un dashboard a medio configurar y no sabe por qué los números no cierran.
 - **Una invitación sirve para dos cosas:** crear la cuenta por chat, o vincular WhatsApp a una cuenta web existente (ver *Alta por código de invitación*, arriba).
 - **Sección "WhatsApp" en ajustes:** estado del canal, una explicación clara de que hoy es por invitación y por qué (el cupo de Meta), y vinculación del número (con código mientras la invitación sea obligatoria). Existe para que un usuario web no descubra el límite recién cuando quiere usar el bot (sección 11).
-- **`/login` no puede fallar en silencio** con un mail que no existe. Con registro abierto, el mismo formulario sirve para entrar y para crearse la cuenta.
+- **`/login` no puede fallar en silencio** con un mail que no existe. Con registro abierto, el mismo formulario sirve para entrar y para crearse la cuenta: una dirección nueva recibe su código de verdad, y una línea bajo el campo avisa que la primera vez se crea la cuenta.
+- **La fila de `usuarios` nace con el primer código confirmado**, sea cual sea el camino (el código hoy, Google en el bloque 13): la crea la base, no la web, así ninguna ruta necesita la service key ni una política de insert. Quien pidió un código y no lo escribió no tiene fila. "Cuenta sin vincular" queda solo para lo que el trigger saltea (una dirección que ya usa otra fila, un error).
 - **La home explica qué es Mango** y que el bot es por invitación, junto a "Demo" y "Entrar".
 
 ### Setup partido: lo mínimo en el chat, la carga pesada en la web
@@ -388,10 +391,10 @@ El wizard **no se repite**. La web expone después una pantalla de ajustes para 
  
 ### Acceso a la web
  
-Se entra con **Google o código por mail** (sección 2). Depende de por dónde llegó la persona:
+Se entra con **código por mail** (sección 2; Google, en el bloque 13). Depende de por dónde llegó la persona:
 
 - **Registro web:** el mail está desde el primer paso, porque es con lo que se registra.
-- **WhatsApp:** la primera vez entra con el link de **código de un solo uso** que manda el bot al final del chat, que abre sesión y vincula el teléfono. Ahí deja su mail o conecta Google, y de ahí en adelante entra como cualquiera.
+- **WhatsApp:** la primera vez entra con el link de **código de un solo uso** que manda el bot al final del chat, que abre sesión y vincula el teléfono. Ahí deja su mail (o conecta Google, cuando llegue en el bloque 13), y de ahí en adelante entra como cualquiera.
 El teléfono queda vinculado a la cuenta web. Un solo usuario, dos puertas.
 
 > **Decisión (sept 2026):** antes el mail aparecía recién cuando la persona quería entrar al dashboard: le pedía el acceso al bot, el bot le mandaba el link con código de un solo uso, entraba, dejaba su mail y de ahí en adelante usaba magic link. Con registro abierto la web ya no depende del bot para entrar, y el login suma Google. El 2026-09-28 el magic link pasó a código por mail (sección 2).
@@ -560,7 +563,7 @@ Deliberadamente no modela principal, interés ni una tabla de amortización — 
 - `telefono` (E.164, ej. `+353...`, **nullable** — una cuenta creada por la web no tiene; el bot identifica por `canales`, abajo)
 - `nombre` (se pregunta en el primer paso de cualquiera de los dos onboardings, ver sección 4)
 - `email` (nullable — una cuenta web lo tiene desde el registro; una de WhatsApp, desde que entra a la web)
-- `pais`
+- `pais` (nullable desde la `0025`: una cuenta web nace sin país hasta el onboarding del bloque 9)
 - `timezone`
 - `moneda_default`
 - `onboarding_completo` (bool)
@@ -573,6 +576,8 @@ Deliberadamente no modela principal, interés ni una tabla de amortización — 
 - `meta_ahorro_mensual` (numeric, nullable — meta de ahorro por ciclo; `null` es "sin meta fijada", ver sección 9)
 - `vip` (bool, default `false` — se marca a mano; activa el historial de conversación, ver sección 3)
 - `ciclo_generado_hasta` (`date`, nullable — primer día del último ciclo cuyos fijos insertó el cron; `null` es "nunca generó". La `0021` la llenó con el `max(ciclo_mes)` de cada usuario. Ver secciones 3 y 7)
+
+> **Alta desde la web (2026-09-28, `0025`):** un trigger sobre `auth.users` (`crear_usuario_desde_auth`, `security definer`) inserta la fila cuando el e-mail de un auth user queda confirmado: al crearse ya confirmado, o al pasar `email_confirmed_at` de null a una fecha con su primer código. No al crearse: con `shouldCreateUser: true` el auth user nace al *pedir* el código, y así cualquier dirección tipeada tendría fila. Valores: `nombre` = lo que va antes de la `@`, `idioma` y `timezone` de la metadata (validados; si no, `es` y `UTC`), `moneda_default` `EUR`, `pais` null, los demás por default. `on conflict do nothing`, y cualquier error queda como warning sin cortar la confirmación: sin fila, la persona entra y ve "cuenta sin vincular", que se arregla con un insert.
 
 > **Decisión (sept 2026):** `telefono` deja de ser el identificador principal y pasa a nullable. El usuario es una identidad sin teléfono; el teléfono es un canal más (`canales`, abajo). Por qué ahora, antes de escribir el bot: si el bot escribe pegado al teléfono, migrarlo después cuesta más que dejar el hueco hoy.
 
@@ -1102,10 +1107,10 @@ Son **3 usuarios en total**: Brian y dos amigos. Cada usuario se identifica por 
  
 Medidas:
  
-- **Registro web abierto**, sin invitación (sección 4).
+- **Registro web abierto**, sin invitación (sección 4). Abre **sin rate limiting propio** (`open-web-signup`): cualquiera puede hacer que Mango le mande un código a cualquier dirección. Lo acotan los topes de Supabase (60 s por dirección, 30 mails por hora para todo el proyecto, compartidos por entradas y registros) y el tope diario del plan de Resend. Esos 30 por hora son también el riesgo: quien los gaste deja a todos sin código hasta que cambie la hora. El freno es apagar *Allow new users to sign up* en el panel: la app sigue igual para las cuentas existentes y una dirección nueva vuelve a la respuesta silenciosa. El rate limiting del registro y un CAPTCHA (Turnstile o hCaptcha sobre `signInWithOtp`) van con el bloque 10.
 - **WhatsApp por código de invitación** (sección 4), mientras el interruptor esté encendido — un número desconocido no puede darse de alta solo. Reemplaza a la whitelist de teléfonos, que obligaba a cargar cada número a mano. Además, el número de prueba de Meta ya limita a 5 destinatarios.
 - **Rate limiting** — en base o con Upstash Redis. Cubre tres cosas: **mensajes** al bot, **intentos de código de invitación** por número (para cortar la fuerza bruta) y **registro** web (para que el sign-up abierto no se llene de cuentas basura).
-  - **Código de acceso por mail**: Supabase ya cubre parte. La verificación (`/auth/v1/verify`) tiene 360 intentos por hora por IP, no configurable; el envío, uno cada 60 s por dirección y 30 mails por hora con el SMTP propio; y el código vence a los 600 s. Lo que falta: un **contador de intentos fallidos por dirección** (Supabase no lo tiene: un intento errado no quema el código y no hay bloqueo) y **reenviar la IP real** a Supabase. Como la server action llama desde Vercel, la IP que ve Supabase es la de la función, no la de la persona, y todos los usuarios comparten el mismo balde de 360 por hora. Reenviar la IP (`Sb-Forwarded-For`) pide una clave secreta que el cliente del servidor, con la anon key, no usa. Las dos cosas van con este mismo ítem.
+  - **Código de acceso por mail**: Supabase ya cubre parte. La verificación (`/auth/v1/verify`) tiene 360 intentos por hora por IP, no configurable; el envío, uno cada 60 s por dirección y 30 mails por hora con el SMTP propio; y el código vence a los 600 s. Lo que falta: un **contador de intentos fallidos por dirección** (Supabase no lo tiene: un intento errado no quema el código y no hay bloqueo) y **reenviar la IP real** a Supabase. Como el pedido sale desde Vercel, la IP que ve Supabase es la de la función, no la de la persona, y todos los usuarios comparten el mismo balde de 360 por hora. Reenviar la IP (`Sb-Forwarded-For`) pide una clave secreta que el cliente del servidor, con la anon key, no usa. Las dos cosas van con este mismo ítem.
 - **Validación de firma del webhook** — HMAC SHA-256 con el App Secret; sin eso, cualquiera puede pegarle al endpoint.
 - **Verify token** — solo para el handshake inicial de suscripción del webhook (Meta manda un GET con `hub.challenge`).
 ### Volumen esperado
@@ -1138,6 +1143,8 @@ Todo este cálculo es del número de prueba. Con número propio el cupo desapare
 | Cold starts | Aceptables en Vercel (~100–300 ms) |
 | Un usuario web espera usar WhatsApp y no puede | La sección "WhatsApp" de ajustes lo explica desde el principio: que hoy es por invitación y por qué (sección 4). El onboarding web lo presenta como opcional |
 | Registros basura con el sign-up abierto | Rate limiting sobre el registro (sección 10) |
+| Registro abierto sin rate limiting (bloqueo del cupo de mails) | Hoy: 60 s por dirección, 30 mails por hora y el tope diario de Resend acotan el daño, pero quien gaste los 30 de la hora deja a todos sin código; el mensaje de "demasiados pedidos" pide esperar, y apagar el sign-up en el panel es el freno. Mails a direcciones que no los pidieron dañan la reputación de `usemango.dev`: mirar rebotes y quejas en Resend. Después: rate limiting del registro y CAPTCHA (bloque 10) |
+| Auth users sin confirmar | Quien pide un código y no lo escribe deja un auth user sin fila en `usuarios` ni datos. Se acumulan hasta que haya una limpieza periódica (deuda técnica) |
 | Fuerza bruta sobre el código de acceso | Hay 10⁶ códigos. Con el balde compartido de 360 verificaciones por hora, un código que vive 600 s admite unos 60 intentos: 0,006 % de acertar por código (con los 3600 s por defecto serían 360 intentos, 0,036 %). Hoy: vencimiento corto (600 s). Después: contador de intentos por dirección (en base o con Upstash) y reenvío de la IP real con clave secreta (sección 10). **La otra cara:** quien gaste las 360 verificaciones de la hora deja a todos sin poder entrar hasta que se renueve el balde; el contador por dirección y la IP real también cortan eso |
  
 ---
@@ -1171,7 +1178,7 @@ Esto hay que escribirlo así **desde el primer componente**. Hacerlo después si
 **Bot** funcional (carga, confirmación progresiva, correcciones y consultas cortas), con la identidad ya separada del canal (`canales`, sección 8) antes de escribirlo; **cron de gastos fijos**; y **proyección a 6 ciclos** (sección 9). Bloques 0–7 de `ROADMAP.md`.
  
 **Fase 2 — Abrir a otras personas**
-**Registro abierto con Google** (y código por mail), **dos onboardings** que terminan en la misma cuenta (sección 4), **invitaciones de WhatsApp** con rate limiting y RLS verificado con usuarios reales, **número propio** para la Cloud API (con la invitación obligatoria apagada, sección 4), y **Telegram** como segundo canal (sección 3). Bloques 8–11.
+**Registro abierto con código por mail** (Google pasó al bloque 13, fase 3), **dos onboardings** que terminan en la misma cuenta (sección 4), **invitaciones de WhatsApp** con rate limiting y RLS verificado con usuarios reales, **número propio** para la Cloud API (con la invitación obligatoria apagada, sección 4), y **Telegram** como segundo canal (sección 3). Bloques 8–11.
  
 > **La señal que se busca en fase 2:** si a los tres meses los cinco siguen cargando gastos, recién ahí tiene sentido gastar en número propio o en una estructura legal. Antes de eso, cualquier inversión es adelantarse a un dato que todavía no se tiene.
 

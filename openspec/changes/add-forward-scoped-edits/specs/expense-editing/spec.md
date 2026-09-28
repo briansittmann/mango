@@ -132,7 +132,7 @@ The sheet SHALL open from exactly these triggers:
 
 ### Requirement: Moving an expense to another category
 
-In edit mode, the category named in the sheet's header, with its colour dot, SHALL be a control. Activating it SHALL open a picker anchored to it, on the same glass surface as the month picker, listing every category alive in the expense's cycle with its colour dot and name, the current one marked. Choosing one SHALL change the header to that category, with its dot, and SHALL count as a change of the form; nothing SHALL be written until the sheet is saved.
+In edit mode, the category named in the sheet's header, with its colour dot, SHALL be a control. Activating it SHALL unfold, right under the header and inside the sheet, a picker styled like the month picker's grid, listing every category alive in the expense's cycle with its colour dot and name, the current one marked. Choosing one SHALL change the header to that category, with its dot, and SHALL count as a change of the form; nothing SHALL be written until the sheet is saved.
 
 - The control SHALL have a hit area of at least 44 × 44px, SHALL expose an accessible name that states the current category and that it can be changed, and SHALL be reachable by keyboard. The picker SHALL close on Escape, on a choice and on a pointer down outside it, returning focus to the control.
 - The picker SHALL open and close with the month picker's motion, and without movement under reduced motion.

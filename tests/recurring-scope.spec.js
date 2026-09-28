@@ -24,14 +24,15 @@ async function openDefinition(page, name) {
 }
 
 test.describe('recurring scope: touching a charge vs touching a definition', () => {
-  test('editing a charge from its category card leaves the definition alone', async ({ page }) => {
+  test('editing a charge from its category card with "Solo este mes" leaves the definition alone', async ({ page }) => {
     await page.goto('/demo')
     await page.locator('button[aria-controls="category-panel-vivienda"]').click()
     await page.locator('#category-panel-vivienda').getByRole('button', { name: /Alquiler/ }).click()
 
     const sheet = dialog(page)
-    await expect(sheet.getByText('Vivienda · Solo el cargo de este mes')).toBeVisible()
+    await expect(sheet.getByText('Vivienda · Se repite cada mes')).toBeVisible()
     await sheet.getByLabel('Importe').fill('880')
+    await sheet.getByText('Solo este mes').click()
     await sheet.getByRole('button', { name: 'Guardar', exact: true }).click()
     await expect(sheet).toBeHidden()
 
@@ -84,6 +85,7 @@ test.describe('recurring scope: touching a charge vs touching a definition', () 
       await page.locator('#category-panel-vivienda').getByRole('button', { name: /Alquiler/ }).click()
       const sheet = dialog(page)
       await sheet.getByLabel('Importe').fill(amount)
+      await sheet.getByText('Solo este mes').click()
       await sheet.getByRole('button', { name: 'Guardar', exact: true }).click()
       await expect(sheet).toBeHidden()
     }
@@ -152,6 +154,7 @@ test.describe('a deleted category carries its definition', () => {
     await page.getByRole('button', { name: /^Opciones de Hogar$/ }).click()
     const categorySheet = dialog(page)
     await categorySheet.getByRole('button', { name: 'Eliminar categoría' }).click()
+    await categorySheet.getByText('Desde este mes en adelante').click()
     await categorySheet.locator('select').selectOption('compras')
     await categorySheet.getByRole('button', { name: 'Eliminar', exact: true }).click()
     await expect(categorySheet).toBeHidden()

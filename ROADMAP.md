@@ -120,13 +120,11 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 ## 8 · Acceso web y registro abierto
 
 - [ ] 👤 Activar sign-ups en Supabase Auth
-- [ ] 👤 Crear credenciales OAuth en Google Cloud y activar el proveedor Google en Supabase
-- [ ] 🤖 Login con Google + código por mail como alternativa (el código ya reemplazó al magic link: `replace-magic-link-with-email-otp`)
-- [ ] 🤖 Al primer login, crear la fila en `usuarios` (hoy sale "cuenta sin vincular") y mandar al onboarding web
-- [ ] 🤖 `/login`: dejar de fallar en silencio con un mail no registrado; con registro abierto, el mismo formulario sirve para entrar y para crear la cuenta
-- [ ] 🤖 Home: "Demo" y "Entrar" con una línea que explique qué es Mango y que el bot de WhatsApp es por invitación
+- [x] 🤖 Al primer login, crear la fila en `usuarios` (hoy sale "cuenta sin vincular") y mandar al onboarding web — `open-web-signup`: un trigger sobre `auth.users` (`0025`) la crea con el primer código confirmado; la persona cae en un dashboard vacío hasta que el bloque 9 sume el onboarding y su redirección
+- [x] 🤖 `/login`: dejar de fallar en silencio con un mail no registrado; con registro abierto, el mismo formulario sirve para entrar y para crear la cuenta — `open-web-signup`: `POST /auth/request-code` con `shouldCreateUser: true`, idioma y zona horaria, y una línea bajo el campo
+- [x] 🤖 Home: "Demo" y "Entrar" con una línea que explique qué es Mango y que el bot de WhatsApp es por invitación — `open-web-signup`
 - [x] 👤 SMTP propio (p. ej. Resend) con remitente del dominio — adelantado al change `replace-magic-link-with-email-otp` (28/9): Resend, remitente `no-reply@usemango.dev`
-- [ ] 🤖 Template del código con la marca, es/en (hoy sale solo en español; el idioma por usuario va con esto)
+- [x] 🤖 Template del código con la marca, es/en (hoy sale solo en español; el idioma por usuario va con esto) — `open-web-signup`: `supabase/templates/codigo.html`, idioma por la metadata del auth user; 👤 pegarlo en *Confirm signup* y *Magic Link* (tareas 7.2 y 7.5)
 
 ## 9 · Dos onboardings, una cuenta
 
@@ -196,6 +194,8 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [ ] Reordenar gastos dentro de su categoría
 - [ ] Bot y parser en inglés
 - [ ] Movimiento lento del fondo de metal cepillado
+- [ ] 👤 Crear credenciales OAuth en Google Cloud y activar el proveedor Google en Supabase — pasado desde el bloque 8: el código por mail alcanza para el registro abierto
+- [ ] 🤖 Login con Google, con el código por mail como alternativa
 
 ## 14 · Fase 4 — pagos (a futuro)
 

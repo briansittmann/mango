@@ -6,6 +6,7 @@ import { Collapsible } from '@/components/atoms/collapsible'
 import { AmountField, parseAmount } from '@/components/molecules/amount-field'
 import { CATEGORY_COLORS, ColorSwatchPicker } from '@/components/molecules/color-swatch-picker'
 import { FieldRow } from '@/components/molecules/field-row'
+import { ScopeChoice, type Scope } from '@/components/molecules/scope-choice'
 import { SheetShell } from '@/components/organisms/sheet-shell'
 import { cn } from '@/lib/utils'
 import type {
@@ -28,7 +29,10 @@ type CategorySheetProps = {
   receivingCategories: { id: string; name: string }[]
   /** `scope` is the choice made for a budget change in a projected cycle, null otherwise. */
   onSave: (categoryId: string, draft: CategoryDraft, scope: CategoryUpdateTarget['scope']) => Promise<void>
-  onDelete: (categoryId: string, reassignTo: string | null) => Promise<void>
+  /** `scope`: "only this month" hides it in the displayed cycle, "from this month on" ends it there. */
+  onDelete: (categoryId: string, reassignTo: string | null, scope: Scope) => Promise<void>
+  /** Active recurring definitions in this category: they move with a delete from this month on. */
+  fixedCount?: number
   onCreate?: (draft: CategoryDraft) => Promise<string>
   /** Preselected swatch in create mode (D3); ignored in edit mode. */
   initialColor?: CategoryColor
@@ -81,6 +85,7 @@ export function CategorySheet({
   progressVisible,
   onToggleProgress,
   projected = false,
+  fixedCount = 0,
 }: CategorySheetProps) {
   const t = useTranslations('hojaCategoria')
   const tReorder = useTranslations('modoReordenar')
@@ -101,6 +106,7 @@ export function CategorySheet({
   const [nameError, setNameError] = useState(false)
   const [reassignTo, setReassignTo] = useState<string | null>(null)
   const [scope, setScope] = useState<CategoryUpdateTarget['scope']>(null)
+  const [deleteScope, setDeleteScope] = useState<Scope | null>(null)
 
   if (open !== wasOpen) {
     setWasOpen(open)
@@ -116,6 +122,7 @@ export function CategorySheet({
       setStep('form')
       setReassignTo(null)
       setScope(null)
+      setDeleteScope(null)
     }
   }
 
@@ -124,6 +131,10 @@ export function CategorySheet({
   }, [step])
 
   const expenseCount = target?.expenses.length ?? 0
+  // What each scope reaches (`category-editing` → *Deleting a category*): this cycle's rows for
+  // "only this month"; those, the rows of later cycles and the fixed charges for "from this month on".
+  const holdsAnything = expenseCount > 0 || (target?.rowsLater ?? 0) > 0 || fixedCount > 0
+  const needsReceiver = deleteScope === 'only' ? expenseCount > 0 : deleteScope === 'onward' && holdsAnything
   const nameValid = fieldState.name.trim() !== ''
   const budgetParsed = fieldState.budget.trim() === '' ? null : parseAmount(fieldState.budget)
   const budgetValid = fieldState.budget.trim() === '' || budgetParsed !== null
@@ -134,7 +145,7 @@ export function CategorySheet({
   const busy = status !== 'idle'
   const asksScope = projected && mode === 'edit' && fieldState.budget !== initialSnapshot.budget
   const primaryDisabled = busy || !nameValid || !budgetValid || (asksScope && scope == null)
-  const deleteDisabled = busy || (expenseCount > 0 && !reassignTo)
+  const deleteDisabled = busy || deleteScope == null || (needsReceiver && !reassignTo)
   // `receivingCategories` is every category but this one, so an empty list means this is the only one.
   const reorderDisabled = busy || !onReorder || receivingCategories.length === 0
 
@@ -169,7 +180,8 @@ export function CategorySheet({
 
   function openConfirmDelete() {
     const otros = receivingCategories.find((category) => category.name === 'Otros')
-    setReassignTo(expenseCount > 0 ? (otros?.id ?? null) : null)
+    setReassignTo(holdsAnything ? (otros?.id ?? null) : null)
+    setDeleteScope(null)
     setError(null)
     setStep('confirmDelete')
   }
@@ -183,7 +195,7 @@ export function CategorySheet({
     setStatus('deleting')
     setError(null)
     try {
-      await onDelete(target!.id, expenseCount > 0 ? reassignTo : null)
+      await onDelete(target!.id, needsReceiver ? reassignTo : null, deleteScope!)
     } catch {
       setStatus('idle')
       setError('delete')
@@ -306,43 +318,7 @@ export function CategorySheet({
           />
 
           <Collapsible open={asksScope}>
-            <fieldset className="pb-2">
-              <legend className="float-left w-full px-inset pb-1 pt-2 text-body-sm text-muted-foreground">{t('alcance')}</legend>
-              {(['only', 'onward'] as const).map((value) => {
-                const checked = scope === value
-                return (
-                  <label
-                    key={value}
-                    className="clear-left flex min-h-row cursor-pointer items-center gap-3 px-inset text-body-lg text-foreground hover:bg-muted has-[:focus-visible]:bg-muted"
-                  >
-                    <span className="flex-1">{t(value === 'only' ? 'soloEsteMes' : 'desdeEsteMes')}</span>
-                    <input
-                      type="radio"
-                      name={`${formId}-scope`}
-                      value={value}
-                      checked={checked}
-                      disabled={busy}
-                      onChange={() => setScope(value)}
-                      className="sr-only"
-                    />
-                    <span
-                      aria-hidden
-                      className={cn(
-                        'grid size-5 shrink-0 place-items-center rounded-full border-2 transition-colors duration-150 ease-out motion-reduce:transition-none',
-                        checked ? 'border-primary' : 'border-muted-foreground/50',
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          'size-2.5 rounded-full bg-primary transition-transform duration-200 ease-spring motion-reduce:transition-none',
-                          checked ? 'scale-100' : 'scale-0',
-                        )}
-                      />
-                    </span>
-                  </label>
-                )
-              })}
-            </fieldset>
+            <ScopeChoice value={scope} onChange={setScope} disabled={busy} />
           </Collapsible>
 
           <div className="flex min-h-row items-center px-inset">
@@ -419,9 +395,16 @@ export function CategorySheet({
             </div>
           ) : null}
           <h3 ref={confirmHeadingRef} tabIndex={-1} className="px-inset pb-4 pt-3 text-body-lg text-foreground outline-none">
-            {t('confirmarEliminar', { categoria: target?.name ?? '', count: expenseCount })}
+            {t('confirmarEliminar', { categoria: target?.name ?? '', count: expenseCount, fijos: fixedCount })}
           </h3>
-          {expenseCount > 0 ? (
+          <ScopeChoice
+            value={deleteScope}
+            onChange={setDeleteScope}
+            disabled={busy}
+            legend={t('alcanceEliminar')}
+            hints={{ only: t('vuelveElMesQueViene'), onward: t('mesesAnterioresLaConservan') }}
+          />
+          {holdsAnything ? (
             <FieldRow label={t('categoriaDestino')} htmlFor={reassignId}>
               <select
                 id={reassignId}

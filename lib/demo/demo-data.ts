@@ -118,6 +118,7 @@ function buildCategory(
     total,
     budget: null,
     expenses,
+    rowsLater: 0,
   }
 }
 

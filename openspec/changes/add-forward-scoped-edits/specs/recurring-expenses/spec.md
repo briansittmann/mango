@@ -55,7 +55,7 @@ Whenever a save or a delete from the entry sheet targets a row that belongs to a
 
 - a single choice with neither option preselected, shown in the sheet itself and not in a separate dialog
 - for a save, shown when any field differs from the value it opened with; the save action SHALL be unavailable until one is chosen
-- for a delete, shown as the delete confirmation step, where each option is its own destructive action and Cancel is the safe default, reachable first by keyboard
+- for a delete, shown in the delete confirmation step, with a destructive action that stays unavailable until an option is chosen, and Cancel as the safe default, reachable first by keyboard
 - never shown for a row that belongs to no definition
 
 **Swipe.** Swiping a recurring row, real or projected, SHALL delete that cycle's slot only ("Solo este mes"), without asking, and SHALL offer "Deshacer" as any swipe does. The toast SHALL state that only this month's row was deleted.
@@ -71,7 +71,7 @@ Whenever a save or a delete from the entry sheet targets a row that belongs to a
 
 #### Scenario: Delete asks in the confirmation step
 - **WHEN** the visitor activates the delete action on the "Gimnasio" charge
-- **THEN** the confirmation step offers "Solo este mes", "Desde este mes en adelante" and Cancel, and Cancel receives keyboard focus first
+- **THEN** the confirmation step offers "Solo este mes", "Desde este mes en adelante", a delete action that is unavailable until one is chosen, and Cancel, which receives keyboard focus first
 - **AND** cancelling returns to the fields with nothing deleted
 
 #### Scenario: Swipe deletes this month only

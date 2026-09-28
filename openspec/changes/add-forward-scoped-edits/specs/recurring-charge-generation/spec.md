@@ -4,7 +4,7 @@
 
 ### Requirement: Generating a charge counts it and ends the plan
 
-After a cycle is generated, each definition with a number of repetitions SHALL hold, as its count of charges produced, the number of cycles up to and including that one in which it holds a slot — a row linked to it for that cycle, whether the job inserted it, the entry sheet wrote it ahead of time (`recurring-expenses` → *A definition's slot in a cycle can be changed on its own*) or it was soft-deleted. The count SHALL be set from those rows, not incremented, so a slot written ahead is counted once, when its cycle is generated, and running the job again changes nothing. A slot of a cycle not yet generated SHALL NOT be counted.
+Generating a cycle SHALL add one to the count of charges produced of every definition that holds a slot in that cycle — a row linked to it for that cycle, whether the job inserted it, the entry sheet wrote it ahead of time (`recurring-expenses` → *A definition's slot in a cycle can be changed on its own*) or it was soft-deleted. A slot written in a cycle that was already generated SHALL add one when it is written; a slot written in a cycle not yet generated SHALL add nothing until that cycle is generated. So every slot is counted exactly once, a cycle is never generated twice, and a count set before any row existed (instalments paid before the app) is kept.
 
 When the count reaches the definition's number of repetitions, the definition SHALL become inactive in the same operation (`recurring-expenses` → *A recurrence can end, and ends itself*). A soft-deleted slot SHALL count as a repetition: skipping one month of a plan SHALL NOT move its end.
 

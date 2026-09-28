@@ -16,6 +16,7 @@ export default async function Home() {
           {t("entrar")}
         </Link>
       </div>
+      <p className="max-w-sm text-center text-body-md text-muted-foreground">{t("descripcion")}</p>
     </main>
   );
 }

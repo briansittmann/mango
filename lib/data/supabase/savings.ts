@@ -21,5 +21,29 @@ export function createSupabaseSavingsMutations({ client, usuarioId, currency, or
           .select('id'),
       )
     },
+    async softDelete(movementId) {
+      expectRows(
+        await client
+          .from('transacciones')
+          .update({ borrado_en: new Date().toISOString() })
+          .eq('id', movementId)
+          .eq('usuario_id', usuarioId)
+          .eq('tipo', 'ahorro')
+          .is('borrado_en', null)
+          .select('id'),
+      )
+    },
+    async restore(movementId) {
+      expectRows(
+        await client
+          .from('transacciones')
+          .update({ borrado_en: null })
+          .eq('id', movementId)
+          .eq('usuario_id', usuarioId)
+          .eq('tipo', 'ahorro')
+          .not('borrado_en', 'is', null)
+          .select('id'),
+      )
+    },
   }
 }

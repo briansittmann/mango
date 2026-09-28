@@ -79,7 +79,7 @@ test.describe('navigation into the projection', () => {
 })
 
 test.describe('a projected cycle', () => {
-  test('label and read-only rows', async ({ page }) => {
+  test('label, projected rows that open and swipe, and the add-category tile', async ({ page }) => {
     await page.goto('/demo')
     await goForward(page, 2)
     const line = page.locator('p', { hasText: 'Proyección' })
@@ -89,14 +89,14 @@ test.describe('a projected cycle', () => {
     await page.locator('button[aria-controls="category-panel-vivienda"]').click()
     const panel = page.locator('#category-panel-vivienda')
     await expect(panel).toContainText('Alquiler')
-    // Projected charges have no swipe wrapper and no entry sheet on tap; the add row is offered.
-    await expect(panel.getByRole('button')).toHaveCount(1)
+    // A projected charge opens the entry sheet as its definition's slot (`add-forward-scoped-edits`).
+    await expect(panel.getByRole('button', { name: /Alquiler/ })).toBeVisible()
     await expect(panel.getByRole('button', { name: 'Añadir gasto' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Añadir categoría' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Añadir categoría' })).toHaveCount(1)
 
     await page.getByRole('button', { name: /^Ingresos/ }).click()
     await expect(page.locator('#summary-group-panel')).toContainText('Salario')
-    await expect(page.locator('#summary-group-panel').getByRole('button')).toHaveCount(1)
+    await expect(page.locator('#summary-group-panel').getByRole('button', { name: /^Salario/ })).toBeVisible()
     await expect(page.locator('#summary-group-panel').getByRole('button', { name: 'Añadir ingreso' })).toBeVisible()
     await page.getByRole('button', { name: /^Ahorro/ }).click()
     await expect(page.locator('#summary-group-panel')).not.toContainText('Acumulado')
