@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 
 // The code step of /login (replace-magic-link-with-email-otp, D9). `/login?email=` opens it without
 // sending a code, so nothing here needs a database or a mail. The tests that submit six digits make
-// one real call to Supabase's verify endpoint through the server action (made-up address, no mail,
+// one real call to Supabase's verify endpoint through `/auth/verify-code` (made-up address, no mail,
 // no row; it counts against the shared 360/h verify bucket), so they run in Chromium only.
 
 test.use({ viewport: { width: 390, height: 844 } })
@@ -158,24 +158,68 @@ for (const theme of /** @type {const} */ (['light', 'dark'])) {
     await page.locator('#summary-group-panel').getByRole('button', { name: 'Añadir ingreso' }).dispatchEvent('click')
     const amount = page.locator('div[role="dialog"][data-open]').getByLabel('Importe')
     await amount.focus()
-    await page.waitForTimeout(400)
-    const field = await amount.evaluate((input) => {
-      const style = getComputedStyle(/** @type {HTMLElement} */ (input.parentElement))
-      return [style.borderTopColor, style.backgroundColor, style.boxShadow, getComputedStyle(input).caretColor]
-    })
+    // Both boxes transition into the active state (200 ms, longer under load): read them once the
+    // border has reached the ring colour, which the caret carries from the start.
+    const settled = (values) => values[0] === values[3] && / 2px 16px /.test(values[2])
+    let field = []
+    await expect
+      .poll(async () => {
+        field = await amount.evaluate((input) => {
+          const style = getComputedStyle(/** @type {HTMLElement} */ (input.parentElement))
+          return [style.borderTopColor, style.backgroundColor, style.boxShadow, getComputedStyle(input).caretColor]
+        })
+        return settled(field)
+      })
+      .toBe(true)
 
     await openCodeStep(page)
-    await page.waitForTimeout(400)
-    const box = await page.locator(`${CELL}[data-active]`).evaluate((el) => {
-      const style = getComputedStyle(el)
-      return [style.borderTopColor, style.backgroundColor, style.boxShadow]
-    })
-    const cellCaret = await codeInput(page).evaluate((input) => getComputedStyle(input).caretColor)
-    const cell = [...box, cellCaret]
+    let cell = []
+    await expect
+      .poll(async () => {
+        const box = await page.locator(`${CELL}[data-active]`).evaluate((el) => {
+          const style = getComputedStyle(el)
+          return [style.borderTopColor, style.backgroundColor, style.boxShadow]
+        })
+        cell = [...box, await codeInput(page).evaluate((input) => getComputedStyle(input).caretColor)]
+        return settled(cell)
+      })
+      .toBe(true)
 
     expect(cell).toEqual(field)
   })
 }
+
+test('a valid code plays the whole success sequence on /login before anything navigates', async ({ page }) => {
+  // The verify answer is stubbed: a real `ok` needs a code from a mail (tasks.md 7.x). What this
+  // guards is that nothing re-renders or leaves /login mid-sequence (it used to, when the verify
+  // was a server action that wrote cookies and made Next.js refresh the route).
+  await page.route('**/auth/verify-code', (route) => route.fulfill({ json: { status: 'ok' } }))
+  const navigations = []
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) navigations.push(frame.url())
+  })
+  const refreshes = []
+  page.on('request', (request) => {
+    if (request.headers()['rsc'] || request.headers()['next-action']) refreshes.push(request.url())
+  })
+  await openCodeStep(page)
+  navigations.length = 0
+  await page.keyboard.type('482913')
+
+  const cta = page.getByRole('button', { name: 'Ir a mi mes' })
+  await expect(cta).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByRole('heading', { name: 'Listo, entraste' })).toBeVisible()
+  await expect(cta).not.toBeFocused()
+  await page.waitForTimeout(6000)
+  expect(await page.locator('[data-spark], [data-ghost]').count()).toBe(0)
+  expect(await page.locator('[data-check]').evaluate((el) => getComputedStyle(el).transform)).toMatch(/^matrix\(1\.6\d*, 0, 0, 1\.6\d*/)
+  await expect(cta).toBeVisible()
+  expect(page.url()).toContain('/login?email=')
+  // WebKit reports the router's own `replaceState` as a navigation to the same URL; what matters
+  // is that nothing leaves the code step and no route refresh is requested.
+  expect(navigations.filter((url) => !url.includes('/login?email='))).toEqual([])
+  expect(refreshes).toEqual([])
+})
 
 test.describe('submitting a code (one real verify call each)', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'one real call per run is enough')

@@ -3,7 +3,8 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CodeEntry } from "@/components/organisms/code-entry";
-import { requestCode, verifyCode } from "./actions";
+import type { VerifyCodeResult } from "@/app/auth/verify-code/route";
+import { requestCode } from "./actions";
 import { LoginForm } from "./login-form";
 
 /**
@@ -26,7 +27,12 @@ export function LoginSteps({ initialEmail, linkError }: { initialEmail: string |
     <CodeEntry
       key={email}
       email={email}
-      onVerify={async (token) => (await verifyCode({ email, token })).status}
+      onVerify={async (token) => {
+        // A route handler, not a server action: see `app/auth/verify-code/route.ts`.
+        const response = await fetch("/auth/verify-code", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, token }) });
+        if (!response.ok) return "error";
+        return ((await response.json()) as VerifyCodeResult).status;
+      }}
       onResend={async () => {
         const data = new FormData();
         data.set("email", email);
