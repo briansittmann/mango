@@ -24,7 +24,7 @@ type CategoryCardProps = {
   reordering?: boolean
   /** Off hides the budget bar; toggled from the category options sheet. */
   showProgress?: boolean
-  /** A projected cycle: the header shows the budget alone, the bar stays empty, no add row. */
+  /** A projected cycle with no real row in this category: the header shows the budget alone and the bar stays empty. */
   projected?: boolean
 }
 
@@ -136,6 +136,8 @@ export function CategoryCard({
       <Collapsible open={expanded} id={panelId}>
         <div className="flex flex-col">
           {group.expenses.map((expense, index) => {
+            // A projected charge is computed, not stored: nothing to edit or delete.
+            const editable = !expense.projected
             const row = (
               <ExpenseRow
                 name={expense.name || name}
@@ -143,11 +145,11 @@ export function CategoryCard({
                 amount={expense.amount}
                 currency={currency}
                 timeZone={timeZone}
-                onActivate={onEditExpense ? () => onEditExpense(expense) : undefined}
+                onActivate={onEditExpense && editable ? () => onEditExpense(expense) : undefined}
                 first={index === 0}
               />
             )
-            return onDeleteExpense ? (
+            return onDeleteExpense && editable ? (
               <SwipeToDelete key={expense.id} onDelete={() => onDeleteExpense(expense)}>
                 {row}
               </SwipeToDelete>
@@ -155,7 +157,7 @@ export function CategoryCard({
               <div key={expense.id}>{row}</div>
             )
           })}
-          {projected ? null : <AddRow label={t('anadirGasto')} onClick={onAddExpense} />}
+          <AddRow label={t('anadirGasto')} onClick={onAddExpense} />
         </div>
       </Collapsible>
     </div>

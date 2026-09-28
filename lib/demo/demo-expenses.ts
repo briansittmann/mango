@@ -3,7 +3,7 @@ import { getBudgetStatus, getFreeMargin, type BudgetRow } from '@/lib/data/budge
 import type { DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
 import type { ExpenseDraft, ExpenseMutations } from '@/lib/data/expenses'
 import type { IncomeDraft, IncomeEntry } from '@/lib/data/income'
-import { proyectarCiclo } from '@/lib/data/projection'
+import { mezclarProyeccion, proyectarCiclo } from '@/lib/data/projection'
 import type { RecurringDefinition, RecurringDraft, RecurringTarget } from '@/lib/data/recurring'
 import { budgetFor, copyForward, dropCategory, setBudget, setBudgetInCycle } from '@/lib/demo/demo-budgets'
 import type { DemoCategoryEdits } from '@/lib/demo/demo-categories'
@@ -23,8 +23,21 @@ function toExpense(id: string, draft: ExpenseDraft, fixed?: Expense['fixed']): E
   return { id, name: draft.description, amount: draft.amount, date: `${draft.date}T12:00:00Z`, ...(fixed ? { fixed } : {}) }
 }
 
-function resolveExpenses(group: ExpenseGroup, edits: DemoExpenseEdits): Expense[] {
-  const created = edits.created.filter((c) => c.categoryId === group.id).map((c) => toExpense(c.id, c.draft))
+// A created row belongs to the cycle its effective date falls in, a calendar month in the demo
+// (D6 of `add-entries-in-projected-cycles`): its update's date when it has one, else its own.
+function inMonth(id: string, draft: { date: string }, updated: Record<string, { date: string }>, month: string): boolean {
+  return (updated[id]?.date ?? draft.date).slice(0, 7) === month
+}
+
+function resolveExpenses(
+  group: ExpenseGroup,
+  edits: DemoExpenseEdits,
+  month: string,
+  categoryOf: (categoryId: string) => string = (id) => id,
+): Expense[] {
+  const created = edits.created
+    .filter((c) => categoryOf(c.categoryId) === group.id && inMonth(c.id, c.draft, edits.updated, month))
+    .map((c) => toExpense(c.id, c.draft))
 
   return [...group.expenses, ...created]
     .filter((expense) => !edits.deletedIds.includes(expense.id))
@@ -144,8 +157,8 @@ function toIncomeEntry(id: string, draft: IncomeDraft, recurring?: IncomeEntry['
   return { id, name: draft.description, amount: draft.amount, date: `${draft.date}T12:00:00Z`, ...(recurring ? { recurring } : {}) }
 }
 
-function resolveIncome(base: IncomeEntry[], edits: DemoIncomeEdits): IncomeEntry[] {
-  const created = edits.created.map((c) => toIncomeEntry(c.id, c.draft))
+function resolveIncome(base: IncomeEntry[], edits: DemoIncomeEdits, month: string): IncomeEntry[] {
+  const created = edits.created.filter((c) => inMonth(c.id, c.draft, edits.updated, month)).map((c) => toIncomeEntry(c.id, c.draft))
 
   return [...base, ...created]
     .filter((entry) => !edits.deletedIds.includes(entry.id))
@@ -225,13 +238,20 @@ function monthsBetween(from: string, to: string): number {
   return (ty - fy) * 12 + (tm - fm)
 }
 
+function toMovement({ id, draft }: DemoSavingsEdits['created'][number]): DashboardData['savings']['movements'][number] {
+  return { id, name: draft.name, date: `${draft.date}T12:00:00Z`, amount: draft.kind === 'withdrawal' ? -draft.amount : draft.amount }
+}
+
 // A cycle after the sample, computed through `proyectarCiclo` with the sample as the last
-// generated cycle (D9): the sample's categories, in their order, holding only projected charges.
+// generated cycle (D9): the sample's categories, in their order, holding the projected charges
+// plus the rows the visitor entered in that month, merged as `resumenMensual` merges real rows.
 function projectDemoCycle(
   sample: DashboardData,
   definitions: RecurringDefinition[],
   budgetRows: BudgetRow[],
   month: string,
+  edits: { expenses: DemoExpenseEdits; income: DemoIncomeEdits; savings: DemoSavingsEdits },
+  categoryOf: (categoryId: string) => string,
 ): DashboardData {
   const start = `${month}-01`
   const [year, m] = month.split('-').map(Number)
@@ -245,9 +265,20 @@ function projectDemoCycle(
     savingsTarget: sample.savings.target,
   })
   const dayOf = new Map(definitions.map((definition) => [definition.id, definition.day]))
+  const realExpenses = new Map(
+    sample.expenses.groups.map((group) => [group.id, resolveExpenses({ ...group, expenses: [] }, edits.expenses, month, categoryOf)]),
+  )
+  const realIncome = resolveIncome([], edits.income, month)
+  // Demo rows entered in a projection are never linked (no recurrence switch there), so this
+  // keeps every charge; it is here so both data sources merge by the same rule.
+  const charges = mezclarProyeccion({
+    charges: projection.charges,
+    rows: [...[...realExpenses.values()].flat(), ...realIncome].map(() => ({ definitionId: null, cycle: null })),
+    start,
+  })
 
   const groups = sample.expenses.groups.map((group): ExpenseGroup => {
-    const expenses: Expense[] = projection.charges
+    const projectedExpenses: Expense[] = charges
       .filter((charge) => charge.tipo === 'gasto' && charge.categoryId === group.id)
       .map((charge) => ({
         id: `proj:${charge.definitionId}`,
@@ -255,7 +286,9 @@ function projectDemoCycle(
         amount: charge.amount,
         date: `${charge.date}T12:00:00Z`,
         fixed: { definitionId: charge.definitionId, day: dayOf.get(charge.definitionId)!, charged: false },
+        projected: true,
       }))
+    const expenses = [...projectedExpenses, ...realExpenses.get(group.id)!].sort((a, b) => a.date.localeCompare(b.date))
     const total = expenses.reduce((sum, expense) => sum + expense.amount, 0)
     const budgetAmount = projection.budgets.get(group.id) ?? null
     return {
@@ -265,27 +298,37 @@ function projectDemoCycle(
       expenses,
     }
   })
-  const entries: IncomeEntry[] = projection.charges
-    .filter((charge) => charge.tipo === 'ingreso')
-    .map((charge) => ({
-      id: `proj:${charge.definitionId}`,
-      name: charge.name,
-      amount: charge.amount,
-      date: `${charge.date}T12:00:00Z`,
-      recurring: { definitionId: charge.definitionId, day: dayOf.get(charge.definitionId)! },
-    }))
+  const entries: IncomeEntry[] = [
+    ...charges
+      .filter((charge) => charge.tipo === 'ingreso')
+      .map((charge) => ({
+        id: `proj:${charge.definitionId}`,
+        name: charge.name,
+        amount: charge.amount,
+        date: `${charge.date}T12:00:00Z`,
+        recurring: { definitionId: charge.definitionId, day: dayOf.get(charge.definitionId)! },
+        projected: true as const,
+      })),
+    ...realIncome,
+  ].sort((a, b) => a.date.localeCompare(b.date))
   const incomeTotal = entries.reduce((sum, entry) => sum + entry.amount, 0)
+  // The savings target is an envelope in a projection (D4).
+  const movements = edits.savings.created
+    .filter((c) => c.draft.date.slice(0, 7) === month)
+    .map(toMovement)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+  const savings = Math.max(projection.savings, movements.reduce((sum, movement) => sum + movement.amount, 0))
 
   return {
     ...sample,
     cycle: { ...sample.cycle, start, end, today: start, month, inProgress: false, projected: true },
     freeMargin: getFreeMargin({
       income: incomeTotal,
-      savings: projection.savings,
+      savings,
       categories: groups.map((group) => ({ budget: group.budget?.amount ?? null, spent: group.total })),
     }),
     income: { total: incomeTotal, entries },
-    savings: { ...sample.savings, cycle: projection.savings, movements: [] },
+    savings: { ...sample.savings, cycle: savings, movements },
     expenses: { total: groups.reduce((sum, group) => sum + group.total, 0), groups },
   }
 }
@@ -319,7 +362,10 @@ export function deriveDemoData(
   const groupsAfterRecurring = reconcileRecurringUpdatesAndDeletes(base.expenses.groups, recurringEdits, gastoDefinitionIds)
 
   // 2. Expense edits resolve each group's rows.
-  const expenseResolved = groupsAfterRecurring.map((group) => ({ group, expenses: resolveExpenses(group, expenseEdits) }))
+  const expenseResolved = groupsAfterRecurring.map((group) => ({
+    group,
+    expenses: resolveExpenses(group, expenseEdits, base.cycle.month),
+  }))
 
   // 3. A definition created in this submit claims the plain expense the same submit created.
   const resolved = attachCreatedDefinitions(expenseResolved, recurringEdits.created, currentDay, base.cycle.start)
@@ -405,18 +451,13 @@ export function deriveDemoData(
   //    expenses (step 2 before step 3) — so a recurring income create submitted alongside an
   //    income entry create has that entry to find and tag, rather than being resolved onto the
   //    untouched base list and then having `resolveIncome` add the same entry a second time.
-  const incomeResolved = resolveIncome(base.income.entries, incomeEdits)
+  const incomeResolved = resolveIncome(base.income.entries, incomeEdits, base.cycle.month)
   const incomeEntries = attachCreatedIncomeDefinition(incomeResolved, recurringEdits.created, base.cycle.start)
   const incomeTotal = incomeEntries.reduce((sum, entry) => sum + entry.amount, 0)
 
   // 10. Savings resolves after income: created movements append to the base ones and are
   //     stable-sorted by date, so a same-day addition lands after the existing movement(s).
-  const createdMovements = savingsEdits.created.map(({ id, draft }) => ({
-    id,
-    name: draft.name,
-    date: `${draft.date}T12:00:00Z`,
-    amount: draft.kind === 'withdrawal' ? -draft.amount : draft.amount,
-  }))
+  const createdMovements = savingsEdits.created.filter((c) => c.draft.date.slice(0, 7) === base.cycle.month).map(toMovement)
   const movements = [...base.savings.movements, ...createdMovements].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
   const savingsCycle = movements.reduce((sum, movement) => sum + movement.amount, 0)
   const savingsAccumulated = base.savings.accumulated - base.savings.cycle + savingsCycle
@@ -439,7 +480,17 @@ export function deriveDemoData(
   }
 
   return {
-    data: shownMonth > base.cycle.month ? projectDemoCycle(sample, relocatedDefinitions, budgetRows, shownMonth) : sample,
+    data:
+      shownMonth > base.cycle.month
+        ? projectDemoCycle(
+            sample,
+            relocatedDefinitions,
+            budgetRows,
+            shownMonth,
+            { expenses: expenseEdits, income: incomeEdits, savings: savingsEdits },
+            (categoryId) => categoryReassignment.get(categoryId) ?? categoryId,
+          )
+        : sample,
     definitions: relocatedDefinitions,
   }
 }

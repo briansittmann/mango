@@ -43,6 +43,11 @@ export type Expense = {
    * charge's local day is not after today (Q4): a pending charge whose day passed shows as taken.
    */
   fixed?: { definitionId: string; day: number; charged: boolean }
+  /**
+   * A charge computed by `proyectarCiclo` for a projected cycle (id `proj:<definitionId>`), not a
+   * stored row: it stays read-only, and a category holding only these keeps its empty bar (D3).
+   */
+  projected?: true
 }
 
 export type ExpenseGroup = {

@@ -187,8 +187,9 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   const savingsInitialFocusRef = useRef<HTMLInputElement>(null)
   const toasts = useMemo(() => Toast.createToastManager(), [])
   const currency = data.user.currency
-  // A projected cycle is read-only except for its budgets (`cycle-projection` → *What a projected
-  // cycle shows and allows*): no add rows, no row edits or swipes, no reorder, no spend chart.
+  // In a projected cycle (`cycle-projection` → *What a projected cycle shows and allows*) the
+  // computed charges stay read-only (`projected` on the row) and there is no category creation,
+  // reorder, spend chart, "Acumulado" or recurrence switch; real rows and add rows work as usual.
   const projected = data.cycle.projected
 
   function openCreateSheet(group: ExpenseGroup) {
@@ -1112,7 +1113,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                 <>
                   <div className="flex flex-col">
                     {sortedIncomeEntries.map((entry, index) => {
-                      const editable = actions.income && !projected
+                      const editable = actions.income && !entry.projected
                       const row = (
                         <ExpenseRow
                           name={entry.name || tHojaGasto('ingreso')}
@@ -1132,9 +1133,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                         <div key={entry.id}>{row}</div>
                       )
                     })}
-                    {projected ? null : (
-                      <AddRow label={t('anadirIngreso')} onClick={actions.income ? openIncomeCreateSheet : undefined} />
-                    )}
+                    <AddRow label={t('anadirIngreso')} onClick={actions.income ? openIncomeCreateSheet : undefined} />
                   </div>
                 </>
               ),
@@ -1200,9 +1199,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                         index={index}
                       />
                     ))}
-                    {projected ? null : (
-                      <AddRow label={t('anadirMovimientoAhorro')} onClick={actions.savings ? openSavingsCreateSheet : undefined} />
-                    )}
+                    <AddRow label={t('anadirMovimientoAhorro')} onClick={actions.savings ? openSavingsCreateSheet : undefined} />
                   </div>
                 </>
               ),
@@ -1286,13 +1283,14 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                   timeZone={data.user.timezone}
                   open={openIds.has(group.id)}
                   onToggle={() => toggleCard(group.id)}
-                  onAddExpense={actions.expenses && !projected ? () => openCreateSheet(group) : undefined}
-                  onEditExpense={actions.expenses && !projected ? (expense) => openEditSheet(group, expense) : undefined}
-                  onDeleteExpense={actions.expenses && !projected ? (expense) => handleDeleteExpense(expense) : undefined}
+                  onAddExpense={actions.expenses ? () => openCreateSheet(group) : undefined}
+                  onEditExpense={actions.expenses ? (expense) => openEditSheet(group, expense) : undefined}
+                  onDeleteExpense={actions.expenses ? (expense) => handleDeleteExpense(expense) : undefined}
                   onOpenOptions={actions.categories ? () => openCategorySheet(group) : undefined}
                   reordering={reordering}
                   showProgress={!hiddenProgressIds.has(group.id)}
-                  projected={projected}
+                  // The empty bar lasts until the category holds a real row (D3).
+                  projected={projected && !group.expenses.some((expense) => !expense.projected)}
                 />
                 {reordering ? (
                   <div
@@ -1406,6 +1404,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
         onSave={handleSaveEntry}
         onDelete={sheet.target?.mode === 'edit' ? handleSheetDelete : undefined}
         onSaveRecurrence={actions.recurring ? handleSaveRecurrence : undefined}
+        projected={projected}
       />
       <EntrySheet
         config={savingsEntry({ deposit: tResumen('deposito'), withdrawal: tResumen('retiro') })}

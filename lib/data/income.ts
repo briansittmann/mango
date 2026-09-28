@@ -7,6 +7,8 @@ export type IncomeEntry = {
   date: string
   /** Present only on an entry generated from a recurring definition (§7): `movimientos_recurrentes.id` and `.dia_del_mes`. */
   recurring?: { definitionId: string; day: number }
+  /** An entry computed by `proyectarCiclo` for a projected cycle (id `proj:<definitionId>`), not a stored row: read-only (D3). */
+  projected?: true
 }
 
 /** Same three fields as an expense — amount, description, date — validated identically. */

@@ -1062,17 +1062,22 @@ Lo que **sí** se gana con 2–3 meses de historial es **ajustar** los presupues
 - **Fijos activos a `monto_actual`**, respetando `repeticiones_totales`: una cuota que termina deja de aparecer en el ciclo siguiente al último pago (sección 7, *Recurrencias con un final*).
 - **Presupuestos heredados** del último ciclo con filas, igual que la copia (sección 8).
 - **Meta de ahorro.**
-- **Margen libre proyectado**, con la misma `getFreeMargin` del mes en curso.
+- **Filas reales del ciclo**: lo que el usuario ya cargó con fecha en ese ciclo (un viaje, un ingreso extra, un depósito planeado). `mezclarProyeccion` (`lib/data/projection.ts`) las junta con los cargos: una fila vinculada a una definición para ese ciclo (`ciclo_mes`) reemplaza su cargo proyectado; una fila suelta no reemplaza nada.
+- **Margen libre proyectado**, con la misma `getFreeMargin` del mes en curso: cada categoría gasta sus filas reales más sus cargos proyectados.
 
-**Cómo se ve:** marca visible de **"Proyección"**, barras de presupuesto en cero, y sin ritmo ni "gastado": en un ciclo que no empezó no se gastó nada, y un ritmo sobre cero días no significa nada.
+**Ahorro como sobre:** el ahorro de un ciclo proyectado es `max(meta, Σ movimientos reales)`. La meta juega el papel que un presupuesto juega en una categoría: un depósito planeado por debajo de la meta no cambia el margen; uno por encima lo baja por el exceso. Un retiro planeado solo deja el margen en la meta (aceptado).
+
+**Cómo se ve:** marca visible de **"Proyección"**. Una categoría con presupuesto muestra la barra vacía, sin ritmo ni "gastado", mientras no tenga una fila real en ese ciclo: en un ciclo que no empezó no se gastó nada. Con una fila real, la barra se llena como en el ciclo en curso, con los cargos proyectados contados y el ritmo semanal sobre el ciclo entero (hoy es su primer día). El salto de barra vacía a llena es a propósito: la barra y el margen nunca dicen cosas distintas.
 
 **Por qué:** lo valioso sale solo. Se ve que el margen **sube cuando termina una cuota o baja cuando arranca otra**, sin que nadie tenga que hacer la cuenta. Y como el cron escribe con la misma función (sección 7), lo proyectado y lo que después se inserta nunca se contradicen.
 
 **Fecha de cada cargo:** cae en el día del ciclo que coincide con `dia_del_mes`. Un día igual o posterior al de inicio del ciclo va en el mes de inicio, uno anterior en el mes siguiente. Si ese mes no tiene el día, el cargo va al último día de ese mes: el 31 cae el 30 de septiembre, y el 30, en el ciclo del 26/2 al 25/3/2027, cae el 28 de febrero. `fechaEnCiclo` en `lib/data/projection.ts`; el cron usa la misma regla.
 
-**Qué permite:** las filas proyectadas se ven como pendientes y no se editan, deslizan ni borran. No hay filas de alta, tarjeta "Añadir categoría" ni modo reordenar, y se ocultan el gráfico de gasto mensual y el acumulado de ahorro. "Próximos cobros" lista los cargos proyectados y sigue abriendo la hoja de cada definición. Las cuotas se cuentan desde la marca del cron (sección 7), así que una cuota sale de la proyección justo después de su último pago.
+**Qué permite:** los cargos proyectados se ven como pendientes y no se editan, deslizan ni borran. Las filas reales sí, igual que en el ciclo en curso, y hay filas de alta de gasto, ingreso y ahorro; la hoja arranca en el primer día del ciclo y no deja salir de su rango. No se ofrece el interruptor de recurrencia: `crear_movimiento_recurrente` vincula la fila del ciclo en curso, y una recurrencia que arranca en un ciclo futuro es otra funcionalidad. Cargar una fila en un ciclo proyectado escribe solo esa fila (confirmada, sin `ciclo_mes` ni definición): ni presupuesto ni marca del cron. No hay tarjeta "Añadir categoría" ni modo reordenar, y se ocultan el gráfico de gasto mensual y el acumulado de ahorro. "Próximos cobros" lista los cargos proyectados y sigue abriendo la hoja de cada definición. Las cuotas se cuentan desde la marca del cron (sección 7), así que una cuota sale de la proyección justo después de su último pago.
 
-`/demo` también la muestra: su ciclo de ejemplo (septiembre 2026) hace de último ciclo generado, y proyecta seis más.
+`/demo` también la muestra: su ciclo de ejemplo (septiembre 2026) hace de último ciclo generado, y proyecta seis más. Lo que el visitante carga queda en memoria en el mes de su fecha, y se junta con la proyección por la misma regla.
+
+**El cron y las filas cargadas a mano:** `generar_ciclo` inserta por definición con `on conflict (movimiento_recurrente_id, ciclo_mes) do nothing` y cuenta solo lo insertado, así que una fila suelta cargada antes queda como está, y una definición cuyo lugar ya ocupa una fila no se inserta ni se cuenta de nuevo.
 
 Los presupuestos de un ciclo futuro se pueden editar; las reglas de escritura están en la sección 8 (*presupuestos*). La hoja de la categoría pregunta "solo este mes" o "desde este mes en adelante" solo cuando cambia el presupuesto, sin opción preseleccionada, y no deja guardar hasta que se elija una.
  

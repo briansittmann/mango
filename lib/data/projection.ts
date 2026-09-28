@@ -87,3 +87,22 @@ export function proyectarCiclo({
 
   return { charges, budgets, savings: savingsTarget ?? 0 }
 }
+
+/**
+ * The projected charges still to list beside a projected cycle's real rows (`cycle-projection` →
+ * *A future cycle is computed, not stored*, D1): a real row linked to a definition for the cycle
+ * starting on `start` holds that definition's slot — the `(movimiento_recurrente_id, ciclo_mes)`
+ * key `generar_ciclo` respects — and replaces its charge. A row with no definition replaces nothing.
+ */
+export function mezclarProyeccion({
+  charges,
+  rows,
+  start,
+}: {
+  charges: ProjectedCharge[]
+  rows: { definitionId: string | null; cycle: LocalDate | null }[]
+  start: LocalDate
+}): ProjectedCharge[] {
+  const held = new Set(rows.filter((row) => row.definitionId != null && row.cycle === start).map((row) => row.definitionId))
+  return charges.filter((charge) => !held.has(charge.definitionId))
+}

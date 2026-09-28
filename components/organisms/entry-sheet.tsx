@@ -132,6 +132,8 @@ type EntrySheetProps<V> = {
    * resolves, only when the switch is on; `onSave` still runs the ordinary create either way.
    */
   onSaveRecurrence?: (draft: RecurringDraft) => Promise<void>
+  /** Opened from a projected cycle: no recurrence switch, whatever `onSaveRecurrence` is (D5). */
+  projected?: boolean
 }
 
 type FieldState = Record<string, string>
@@ -189,8 +191,10 @@ export function EntrySheet<V>({
   finalFocusRef,
   onSave,
   onDelete,
-  onSaveRecurrence,
+  onSaveRecurrence: onSaveRecurrenceProp,
+  projected = false,
 }: EntrySheetProps<V>) {
+  const onSaveRecurrence = projected ? undefined : onSaveRecurrenceProp
   const t = useTranslations('hojaGasto')
   const tRecurrente = useTranslations('gastoRecurrente')
   const format = useFormatter()
