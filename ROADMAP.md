@@ -91,17 +91,16 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 
 > Va después de los bloques 6 y 7 (decisión del 27/9).
 
-> **Estado (28/9), change `add-bot-parser-and-logging`, 18/25:** código del parser, la lógica, el adaptador y el envío escrito; `0023` aplicada en la base real (ensayo y verificación en `tasks.md` 2.6–2.7). Gemini pasa a pago: la capa gratis da 20 requests por día y usa los datos (ARCHITECTURE.md §1); modelo fijado en `gemini-3.8-flash`. Sigue:
-> 1. 👤 Activar billing en el proyecto de la key (29/9): AI Studio → *Set up billing*, comprobar Tier 1 en `aistudio.google.com/rate-limit`, presupuesto de 5 USD con alertas en Cloud Billing.
-> 2. 🤖 `npm run test:parser` hasta 15/15 dos veces seguidas, más los 3 casos extra (4.3–4.4).
-> 3. 🤖 Prueba local con la base real (5.1, con tu OK para las filas de prueba); 5.2 después de que el cron genere octubre el 1/10.
-> 4. 👤 `GEMINI_API_KEY` en Vercel y ronda de prueba por WhatsApp (6.x); documentación (7.1).
+> **Estado (28/9), change `add-bot-parser-and-logging`, 28/28:** parser, lógica, adaptador y envío escritos; `0023` aplicada en la base real. Gemini es pago (Tier 1, `gemini-3.8-flash`). `npm run test:parser` dio 18/18 dos veces seguidas. La prueba local contra la base real (5.1) pasó: carga, pregunta pendiente en `canales` y reintento descartado. Sigue:
+> Ronda por WhatsApp en producción (6.1–6.2) hecha el 28/9: los 15 casos y los dos fijos respondieron bien. Fallos para `add-bot-conversation`:
+> - "osea lo que gaste esos 50 eran comida", después de cargar 50 en Otros: el bot no contestó nada. Causa, según el log de Vercel: la llamada a Gemini se colgó y la función murió a los 60 s sin reintentar ni responder. Arreglado con un timeout de 20 s por llamada (3.7 del change) y la respuesta "no pude procesarlo" (3.6); el parser da `corregir` → Comida, así que en ese caso el bot contesta "todavía no".
+> - No fue un fallo, pero conviene saberlo: "gate 50" (por "gasté 50") se entendió bien y disparó la pregunta de categoría.
 
 - [x] 🤖 Sumar Zod y el SDK de Gemini a `package.json`
-- [ ] 🤖 Parser: prompt con categorías del usuario, schema Zod, reintento ante JSON inválido
-- [ ] 🤖 Carga de transacciones reusando `lib/data/supabase/*` con cliente admin; idempotencia; lo que no matchea va a `otros`
-- [ ] 🤖 Tipos `gasto` / `ingreso` / `ahorro` (incluido retiro en negativo)
-- [ ] 🤖 Dato faltante ("gasté 50") → repregunta en texto
+- [x] 🤖 Parser: prompt con categorías del usuario, schema Zod, reintento ante JSON inválido
+- [x] 🤖 Carga de transacciones reusando `lib/data/supabase/*` con cliente admin; idempotencia; lo que no matchea va a `otros`
+- [x] 🤖 Tipos `gasto` / `ingreso` / `ahorro` (incluido retiro en negativo)
+- [x] 🤖 Dato faltante ("gasté 50") → repregunta en texto
 - [ ] 🤖 Confirmación progresiva: `cargas_confirmadas`, `modo_confirmacion`, texto + Deshacer las primeras 15, reacción después
 - [ ] 🤖 Correcciones por texto sobre la última carga: "borrá eso", "no, era 40"
 - [ ] 🤖 Consultas cortas: "¿cómo vengo?", total del mes + top 5, link a la web
@@ -110,7 +109,7 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [ ] 👤 Marcarte VIP por SQL
 - [x] 👤 Decidir cuánto tiempo se guardan los mensajes → 30 días, los borra el cron diario (ARCHITECTURE.md §3)
 - [ ] 🤖 El cron diario del bloque 6 borra los `mensajes` de más de 30 días (pasado acá desde el bloque 6: la tabla nace en este bloque)
-- [ ] 👤 Ronda de prueba con los mensajes del bloque 3 y lista de fallos
+- [x] 👤 Ronda de prueba con los mensajes del bloque 3 y lista de fallos
 
 **→ Con los bloques 0–7 cerrados, Fase 1 terminada: uso personal real.**
 

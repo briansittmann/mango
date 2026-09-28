@@ -223,6 +223,11 @@ La respuesta y el log solo dicen ciclos generados, filas insertadas y filas cerr
 4. Zod valida la forma.
 5. Si la categoría no matchea ninguna existente, **se guarda en `otros`** — sin repreguntar.
 6. Se guarda con el **`mensaje_id_externo`** y el tipo de canal (antes `wa_message_id`, sección 8) para evitar duplicados.
+
+*(Implementado, `add-bot-parser-and-logging`, sept 2026.)* El parser se evalúa contra Gemini real con `npm run test:parser` (los mensajes del bloque 3 más casos propios). Tres piezas que el flujo de arriba no cuenta:
+- **Pregunta pendiente en el canal.** Si al mensaje le falta la descripción (*"gasté 50"*), el bot pregunta la categoría y el adaptador guarda la pregunta (`tipo`, `monto`, `diasAtras`) en `canales.pregunta_pendiente` con vencimiento a los **30 minutos** (`pregunta_vence_en`, migración `0023`). El mensaje siguiente del mismo canal se parsea con esa pregunta en el prompt (*"comida"* → 50 en Comida). Cualquier otra respuesta la borra. Vive en `canales` porque una función de Vercel no guarda nada entre dos llamadas del webhook. No es el historial VIP de abajo.
+- **Rama de recurrentes.** Si el parser reconoce el nombre de un gasto fijo activo (*"netflix 13"*), la lógica no inserta una fila nueva: completa el cargo pendiente de ese ciclo con `completar_cargo_recurrente`, que lo confirma con el monto real y le escribe `canal` y `mensaje_id_externo`. Si el monto difiere del esperado, la respuesta es la confirmación de siempre y el adaptador registra la diferencia; la pregunta de si el cambio es permanente queda para `add-bot-conversation`. Si el plan terminó o la definición ya no existe, se carga como gasto común en su categoría.
+- **Cargo ya confirmado.** Si ese cargo ya estaba confirmado (`already-confirmed`), no se escribe nada y el bot contesta que ya estaba cargado. Un segundo pago real del mismo fijo es raro y se carga desde la web; un duplicado silencioso de un fijo cuesta más.
 #### Sin repregunta de categoría
  
 **Todo lo que no mapea contra una categoría existente va a `otros`.** No se pregunta y no se inventan categorías nuevas.

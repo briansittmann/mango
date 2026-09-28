@@ -61,7 +61,7 @@ async function handleMessage(message: WhatsAppMessage): Promise<void> {
 
   if (reply.kind === 'ask') {
     await writePendingQuestion('whatsapp', message.phone, reply.pending)
-  } else {
+  } else if (reply.kind !== 'unavailable') {
     await clearPendingQuestion('whatsapp', message.phone)
   }
 

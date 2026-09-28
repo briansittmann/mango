@@ -100,7 +100,7 @@ When the bot's previous turn asked for the category of an amount, the parser SHA
 
 ### Requirement: Invalid model output is retried once
 
-When the model's output is not valid JSON or does not satisfy the action contract, the parser SHALL ask the model once more, telling it what was wrong. When the second output is invalid too, the result SHALL be `no_entendido`. The parser SHALL never call the model more than twice for one message, and SHALL never pass an unvalidated object on.
+When the model's output is not valid JSON or does not satisfy the action contract, the parser SHALL ask the model once more, telling it what was wrong. When the second output is invalid too, the result SHALL be `no_entendido`. When the model request fails on both attempts, so the model never answered, the result SHALL be `no_disponible`, an outcome the model itself cannot return. The parser SHALL never call the model more than twice for one message, and SHALL never pass an unvalidated object on.
 
 #### Scenario: First output broken, second valid
 - **WHEN** the first output is truncated JSON and the second is a valid `cargar`
@@ -111,8 +111,12 @@ When the model's output is not valid JSON or does not satisfy the action contrac
 - **THEN** the result is `no_entendido` and the model was called exactly twice
 
 #### Scenario: Model unavailable
-- **WHEN** the model request fails with a network or quota error on both attempts
-- **THEN** the result is `no_entendido` and nothing is written
+- **WHEN** the model request fails with a network, quota or 503 error on both attempts
+- **THEN** the result is `no_disponible` and nothing is written
+
+#### Scenario: Model fails once, then answers
+- **WHEN** the first request fails and the second output is invalid
+- **THEN** the result is `no_entendido`
 
 ### Requirement: The parser speaks the account's language
 

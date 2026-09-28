@@ -106,7 +106,7 @@ Every reply SHALL be plain text taken from the translation files, in the account
 
 ### Requirement: Recognised but unsupported actions get a fixed answer
 
-`consultar`, `corregir`, `borrar` and `crear_categoria` SHALL write nothing and SHALL reply with a text saying the bot cannot do that yet and that it can be done on the web. `no_entendido` SHALL write nothing and SHALL reply with a text saying the message was not understood and showing one example of the expected format.
+`consultar`, `corregir`, `borrar` and `crear_categoria` SHALL write nothing and SHALL reply with a text saying the bot cannot do that yet and that it can be done on the web. `no_entendido` SHALL write nothing and SHALL reply with a text saying the message was not understood and showing one example of the expected format. `no_disponible` SHALL write nothing, SHALL reply with a text saying the message could not be processed now and asking to send it again later, and SHALL keep the channel's pending question, so the resend can still answer it.
 
 #### Scenario: Correction not yet supported
 - **WHEN** the account sends "no, era 40"
@@ -115,6 +115,10 @@ Every reply SHALL be plain text taken from the translation files, in the account
 #### Scenario: Not understood
 - **WHEN** the account sends "asdasda"
 - **THEN** nothing is written and the reply says it was not understood and shows an example
+
+#### Scenario: Model down
+- **WHEN** the account answers a pending category question with "comida" and both model requests fail
+- **THEN** nothing is written, the reply asks to send the message again later, and the pending question is still on the channel
 
 ### Requirement: Retries never write twice
 

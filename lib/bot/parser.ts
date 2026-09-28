@@ -55,6 +55,9 @@ export const ActionSchema = z.discriminatedUnion('accion', [
 
 export type Action = z.infer<typeof ActionSchema>
 
+/** An action, or `no_disponible` when the model never answered (not something the model can return). */
+export type ParseResult = Action | { accion: 'no_disponible' }
+
 export type PendingQuestion = { tipo: 'gasto' | 'ingreso' | 'ahorro'; monto: number; diasAtras: number }
 
 export type ParseInput = {
@@ -148,11 +151,13 @@ const NOT_UNDERSTOOD: Action = { accion: 'no_entendido' }
 /**
  * Calls `model` at most twice: a second time with the previous output and what was wrong with it
  * when the first output is not JSON, fails the schema or the call throws. Two failures →
- * `no_entendido`; an unvalidated object is never returned.
+ * `no_entendido`, or `no_disponible` when both calls threw (the model never answered); an
+ * unvalidated object is never returned.
  */
-export async function parseMessage(input: ParseInput, model: Model): Promise<Action> {
+export async function parseMessage(input: ParseInput, model: Model): Promise<ParseResult> {
   const prompt = buildPrompt(input)
   let retryPrompt = prompt
+  let answered = false
 
   for (let attempt = 0; attempt < 2; attempt++) {
     let raw: string
@@ -162,6 +167,7 @@ export async function parseMessage(input: ParseInput, model: Model): Promise<Act
       console.warn(`[parser] model call failed (attempt ${attempt + 1}):`, error)
       continue
     }
+    answered = true
 
     let json: unknown
     try {
@@ -176,7 +182,7 @@ export async function parseMessage(input: ParseInput, model: Model): Promise<Act
     retryPrompt = withFeedback(prompt, raw, z.prettifyError(result.error))
   }
 
-  return NOT_UNDERSTOOD
+  return answered ? NOT_UNDERSTOOD : { accion: 'no_disponible' }
 }
 
 function withFeedback(prompt: string, previous: string, issues: string): string {

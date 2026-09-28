@@ -37,6 +37,11 @@ export type BotReply =
   | { kind: 'text'; text: string }
   | { kind: 'none' }
   | {
+      /** The model never answered: nothing was written, and the adapter keeps any pending question for the retry. */
+      kind: 'unavailable'
+      text: string
+    }
+  | {
       /** A category question: the adapter holds `pending` on the channel for 30 minutes, then sends `text`. */
       kind: 'ask'
       text: string
@@ -119,6 +124,8 @@ export async function processMessage(message: IncomingMessage): Promise<BotReply
       return ask(turn, { tipo: action.tipo, monto: action.monto, diasAtras: action.dias_atras })
     case 'no_entendido':
       return { kind: 'text', text: turn.t('noEntendi') }
+    case 'no_disponible':
+      return { kind: 'unavailable', text: turn.t('noDisponible') }
     default:
       // consultar, corregir, borrar, crear_categoria: `add-bot-conversation`.
       return { kind: 'text', text: turn.t('todaviaNo') }
