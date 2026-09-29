@@ -153,6 +153,29 @@ export function CodeEntry({ email, onVerify, onResend, onChangeEmail, onDone }: 
       layout()
       stage.style.visibility = 'visible'
     }
+    // Entrance: the text first, line by line, then the cells land one by one. Only opacity, blur,
+    // scale and yPercent move here; the orbit owns x, y and rotation, so the two never collide.
+    if (!reduced.current) {
+      context.add(() => {
+        gsap
+          .timeline()
+          .from(askRef.current ? [...askRef.current.children] : [], {
+            opacity: 0,
+            y: 14,
+            filter: 'blur(8px)',
+            duration: 0.55,
+            ease: 'power3.out',
+            stagger: 0.08,
+            clearProps: 'opacity,transform,filter',
+          })
+          .from(
+            slotRefs.current,
+            { opacity: 0, yPercent: 70, scale: 0.55, filter: 'blur(6px)', duration: 0.6, ease: 'back.out(1.7)', stagger: 0.075, clearProps: 'opacity,filter' },
+            0.3,
+          )
+          .from(footRef.current, { opacity: 0, y: 8, duration: 0.4, ease: 'power2.out', clearProps: 'opacity,transform' }, '-=0.25')
+      })
+    }
     if (!matchMedia('(pointer: coarse)').matches) inputRef.current?.focus()
     return () => {
       alive.current = false

@@ -119,7 +119,7 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 
 ## 8 · Acceso web y registro abierto
 
-- [ ] 👤 Activar sign-ups en Supabase Auth
+- [x] 👤 Activar sign-ups en Supabase Auth — 29/9, con `open-web-signup` desplegado; el tope real es el diario de Resend (100 mails, plan gratis)
 - [x] 🤖 Al primer login, crear la fila en `usuarios` (hoy sale "cuenta sin vincular") y mandar al onboarding web — `open-web-signup`: un trigger sobre `auth.users` (`0025`) la crea con el primer código confirmado; la persona cae en un dashboard vacío hasta que el bloque 9 sume el onboarding y su redirección
 - [x] 🤖 `/login`: dejar de fallar en silencio con un mail no registrado; con registro abierto, el mismo formulario sirve para entrar y para crear la cuenta — `open-web-signup`: `POST /auth/request-code` con `shouldCreateUser: true`, idioma y zona horaria, y una línea bajo el campo
 - [x] 🤖 Home: "Demo" y "Entrar" con una línea que explique qué es Mango y que el bot de WhatsApp es por invitación — `open-web-signup`
