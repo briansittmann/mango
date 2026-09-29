@@ -555,7 +555,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   // from the tile's old box into its own, its content fading in as a dashed-border overlay
   // (D6, 6.2) cross-fades out over its real solid border. Reduced motion skips straight to a plain
   // commit (D7, 6.4).
-  async function handleCreateCategory(draft: CategoryDraft): Promise<string> {
+  async function handleCreateCategory(draft: CategoryDraft, scope: Scope): Promise<string> {
     if (!actions.categories) throw new Error('missing category operations')
     const reduced = prefersReducedMotion()
 
@@ -572,7 +572,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
 
     let createPromise!: Promise<string>
     flushSync(() => {
-      createPromise = actions.categories!.create(draft, data.cycle.start)
+      createPromise = actions.categories!.create(draft, data.cycle.start, scope)
     })
     const id = await createPromise
 

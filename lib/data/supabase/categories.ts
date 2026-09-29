@@ -15,13 +15,14 @@ function fail(error: PostgrestError): never {
 export function createSupabaseCategoryMutations(ctx: DataContext): CategoryMutations {
   const { client, usuarioId } = ctx
   return {
-    async create(draft, cycle) {
+    async create(draft, cycle, scope) {
       const { data, error } = await client.rpc('crear_categoria', {
         p_usuario_id: usuarioId,
         p_nombre: draft.name,
         p_color: draft.color,
         p_presupuesto: draft.budget,
         p_periodo: cycle,
+        p_solo_este_ciclo: scope === 'only',
       })
       if (error) fail(error)
       return data as string

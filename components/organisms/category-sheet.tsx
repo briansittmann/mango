@@ -33,7 +33,8 @@ type CategorySheetProps = {
   onDelete: (categoryId: string, reassignTo: string | null, scope: Scope) => Promise<void>
   /** Active recurring definitions in this category: they move with a delete from this month on. */
   fixedCount?: number
-  onCreate?: (draft: CategoryDraft) => Promise<string>
+  /** `scope`: "only this month" makes the category live in the displayed cycle alone. */
+  onCreate?: (draft: CategoryDraft, scope: Scope) => Promise<string>
   /** Preselected swatch in create mode (D3); ignored in edit mode. */
   initialColor?: CategoryColor
   /** Turns reorder mode on for the whole screen. Absent when the page supplies no reorder operation. */
@@ -107,6 +108,7 @@ export function CategorySheet({
   const [reassignTo, setReassignTo] = useState<string | null>(null)
   const [scope, setScope] = useState<CategoryUpdateTarget['scope']>(null)
   const [deleteScope, setDeleteScope] = useState<Scope | null>(null)
+  const [createScope, setCreateScope] = useState<Scope | null>(null)
 
   if (open !== wasOpen) {
     setWasOpen(open)
@@ -123,6 +125,7 @@ export function CategorySheet({
       setReassignTo(null)
       setScope(null)
       setDeleteScope(null)
+      setCreateScope(null)
     }
   }
 
@@ -144,7 +147,7 @@ export function CategorySheet({
     fieldState.budget !== initialSnapshot.budget
   const busy = status !== 'idle'
   const asksScope = projected && mode === 'edit' && fieldState.budget !== initialSnapshot.budget
-  const primaryDisabled = busy || !nameValid || !budgetValid || (asksScope && scope == null)
+  const primaryDisabled = busy || !nameValid || !budgetValid || (asksScope && scope == null) || (mode === 'create' && createScope == null)
   const deleteDisabled = busy || deleteScope == null || (needsReceiver && !reassignTo)
   // `receivingCategories` is every category but this one, so an empty list means this is the only one.
   const reorderDisabled = busy || !onReorder || receivingCategories.length === 0
@@ -169,7 +172,7 @@ export function CategorySheet({
     const draft: CategoryDraft = { name: fieldState.name.trim(), color: fieldState.color, budget: budgetParsed }
     try {
       // `mode` decides the call; `target` is only null in create mode, where onSave is never reached.
-      if (mode === 'create') await onCreate?.(draft)
+      if (mode === 'create') await onCreate?.(draft, createScope!)
       else await onSave(target!.id, draft, asksScope ? scope : null)
     } catch (err) {
       setStatus('idle')
@@ -320,9 +323,13 @@ export function CategorySheet({
             invalidMessage={t('presupuestoInvalido')}
           />
 
-          <Collapsible open={asksScope}>
-            <ScopeChoice value={scope} onChange={setScope} disabled={busy} />
-          </Collapsible>
+          {mode === 'create' ? (
+            <ScopeChoice value={createScope} onChange={setCreateScope} disabled={busy} legend={t('valePara')} />
+          ) : (
+            <Collapsible open={asksScope}>
+              <ScopeChoice value={scope} onChange={setScope} disabled={busy} />
+            </Collapsible>
+          )}
 
           <div className="flex min-h-row items-center px-inset">
             <span id={colorsLabelId} className="text-body-lg text-foreground">

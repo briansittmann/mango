@@ -30,7 +30,8 @@ export type CategoryDeleteTarget = { cycle: LocalDate; scope: 'only' | 'onward' 
  *   after every existing category, alive from `cycle` on (the displayed cycle; a past one means
  *   the cycle in progress). It resolves with the new category's id, so the caller can tell the
  *   new card apart from the others. A budget writes `cycle`'s `BudgetRow` as an "onward" edit
- *   does; no budget writes no row.
+ *   does; no budget writes no row. With `'only'` the category also ends in `cycle`: it lives in
+ *   that one cycle, as one deleted "onward" from the next would.
  * - `update` writes the category's name, colour and budget. In the current cycle (or from a
  *   past one) the budget goes to the current cycle's `BudgetRow` only. In a projected cycle it
  *   first writes every row that cycle inherits when it holds none, then that cycle's row; with
@@ -49,7 +50,7 @@ export type CategoryDeleteTarget = { cycle: LocalDate; scope: 'only' | 'onward' 
  * another of the user's categories, comparing trimmed and case-insensitively.
  */
 export type CategoryMutations = {
-  create(draft: CategoryDraft, cycle: LocalDate): Promise<string>
+  create(draft: CategoryDraft, cycle: LocalDate, scope: 'only' | 'onward'): Promise<string>
   update(categoryId: string, draft: CategoryDraft, target: CategoryUpdateTarget): Promise<void>
   delete(categoryId: string, reassignTo: string | null, target: CategoryDeleteTarget): Promise<void>
   /**

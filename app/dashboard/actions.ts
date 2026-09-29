@@ -86,8 +86,8 @@ export async function restoreSavingsMovement(movementId: string) {
   await run((ctx) => createSupabaseSavingsMutations(ctx).restore(movementId));
 }
 
-export async function createCategory(draft: CategoryDraft, cycle: LocalDate) {
-  return catchDuplicateName(() => run((ctx) => createSupabaseCategoryMutations(ctx).create(draft, cycle)));
+export async function createCategory(draft: CategoryDraft, cycle: LocalDate, scope: 'only' | 'onward') {
+  return catchDuplicateName(() => run((ctx) => createSupabaseCategoryMutations(ctx).create(draft, cycle, scope)));
 }
 export async function updateCategory(categoryId: string, draft: CategoryDraft, target: CategoryUpdateTarget) {
   return catchDuplicateName(() => run((ctx) => createSupabaseCategoryMutations(ctx).update(categoryId, draft, target)));

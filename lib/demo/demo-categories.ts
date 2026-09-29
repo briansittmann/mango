@@ -5,8 +5,8 @@ import type { ExpenseGroup } from '@/lib/data/dashboard'
 import type { LocalDate } from '@/lib/data/expenses'
 
 export type DemoCategoryEdits = {
-  /** `cycle`: the first cycle the category lives in (`categorias.desde_ciclo`). */
-  created: { id: string; draft: CategoryDraft; cycle: LocalDate }[]
+  /** `cycle`: the first cycle the category lives in (`categorias.desde_ciclo`); `only`: it ends there too. */
+  created: { id: string; draft: CategoryDraft; cycle: LocalDate; only: boolean }[]
   /** Name and colour: the last saved draft wins. */
   updated: Record<string, CategoryDraft>
   /** Every budget save in order, with the cycle it was made from: each one builds on the last. */
@@ -28,14 +28,14 @@ export function createDemoCategoryMutations(
   setEdits: Dispatch<SetStateAction<DemoCategoryEdits>>,
 ): CategoryMutations {
   return {
-    create(draft, cycle) {
+    create(draft, cycle, scope) {
       const name = foldName(draft.name)
       const duplicate = currentGroups.some((group) => group.kind === 'category' && foldName(group.name) === name)
       if (duplicate) return Promise.reject(new Error(DUPLICATE_CATEGORY_NAME))
 
       counter += 1
       const id = `demo-category-${counter}`
-      setEdits((edits) => ({ ...edits, created: [...edits.created, { id, draft, cycle }] }))
+      setEdits((edits) => ({ ...edits, created: [...edits.created, { id, draft, cycle, only: scope === 'only' }] }))
       return Promise.resolve(id)
     },
     update(categoryId, draft, target) {

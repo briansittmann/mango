@@ -151,7 +151,8 @@
     },
     "alcanceEliminar": "Hasta dónde",
     "vuelveElMesQueViene": "Vuelve el mes que viene.",
-    "mesesAnterioresLaConservan": "Los meses anteriores la conservan, con sus gastos."
+    "mesesAnterioresLaConservan": "Los meses anteriores la conservan, con sus gastos.",
+    "valePara": "Vale para"
   },
   "alcance": {
     "aplicar": "Aplicar el cambio",

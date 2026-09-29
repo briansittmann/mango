@@ -34,6 +34,7 @@ test.describe('creating a category', () => {
     await expect(sheet.getByRole('radio', { name: 'Rojo' })).toHaveAttribute('aria-checked', 'true')
 
     await sheet.getByLabel('Nombre').fill('Viajes')
+    await sheet.getByText('Desde este mes en adelante').click()
     await sheet.getByRole('button', { name: 'Añadir', exact: true }).click()
     await expect(sheet).toBeHidden()
 
@@ -62,6 +63,7 @@ test.describe('creating a category', () => {
     const sheet = await openCreateSheet(page)
     await sheet.getByLabel('Nombre').fill('Viajes')
     await sheet.getByLabel('Presupuesto').fill('200')
+    await sheet.getByText('Desde este mes en adelante').click()
     await sheet.getByRole('button', { name: 'Añadir', exact: true }).click()
     await expect(sheet).toBeHidden()
 
@@ -71,8 +73,25 @@ test.describe('creating a category', () => {
   })
 })
 
+test('a category created for this month only is gone the next month', async ({ page }) => {
+  const sheet = await openCreateSheet(page)
+  await sheet.getByLabel('Nombre').fill('Viajes')
+  await sheet.getByLabel('Presupuesto').fill('200')
+  await sheet.getByText('Solo este mes').click()
+  await sheet.getByRole('button', { name: 'Añadir', exact: true }).click()
+  await expect(sheet).toBeHidden()
+  await expect(page.getByRole('button', { name: /^Opciones de Viajes$/ })).toHaveCount(1)
+  await expect.poll(() => body(page)).toMatch(/Margen libre\s*664\s?€/)
+
+  const title = page.locator('[data-month-picker-trigger]').last()
+  const before = await title.textContent()
+  await page.locator('button[aria-label="Ciclo siguiente"]').last().click()
+  await expect(title).not.toHaveText(before ?? '')
+  await expect(page.getByRole('button', { name: /^Opciones de Viajes$/ })).toHaveCount(0)
+})
+
 test.describe('creating a category: validation', () => {
-  test('the primary action waits for a name', async ({ page }) => {
+  test('the primary action waits for a name and for how long the category lasts', async ({ page }) => {
     const sheet = await openCreateSheet(page)
     const submit = sheet.getByRole('button', { name: 'Añadir', exact: true })
 
@@ -80,12 +99,18 @@ test.describe('creating a category: validation', () => {
     await sheet.getByLabel('Nombre').fill('   ')
     await expect(submit).toBeDisabled()
     await sheet.getByLabel('Nombre').fill('Viajes')
+    // Neither option is preselected.
+    await expect(sheet.getByRole('radio', { name: 'Solo este mes' })).not.toBeChecked()
+    await expect(sheet.getByRole('radio', { name: 'Desde este mes en adelante' })).not.toBeChecked()
+    await expect(submit).toBeDisabled()
+    await sheet.getByText('Solo este mes').click()
     await expect(submit).toBeEnabled()
   })
 
   test('a duplicate name reports in place and creates nothing', async ({ page }) => {
     const sheet = await openCreateSheet(page)
     await sheet.getByLabel('Nombre').fill('  comida  ')
+    await sheet.getByText('Desde este mes en adelante').click()
     await sheet.getByRole('button', { name: 'Añadir', exact: true }).click()
 
     await expect(sheet).toBeVisible()

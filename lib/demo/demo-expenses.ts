@@ -292,7 +292,9 @@ function categoryLifetimes(edits: DemoCategoryEdits) {
     gone: (id: string) => edits.deleted.some((d) => d.id === id && removes(d)),
     alive: (id: string, cycle: LocalDate) => {
       const from = firstCycle(id)
-      return (from == null || from <= cycle) && deleteAt(id, cycle) == null
+      // Created "only this month": it lives in its first cycle and no other.
+      const only = edits.created.find((c) => c.id === id)?.only ?? false
+      return (from == null || from <= cycle) && (!only || cycle === from) && deleteAt(id, cycle) == null
     },
     placeAt: (id: string, cycle: LocalDate): string | null => {
       let current: string | null = id

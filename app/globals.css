@@ -32,7 +32,8 @@
   --muted: light-dark(#E8EFE8, #19201A);
   --secondary: light-dark(#E8EFE8, #19201A);
   --brand: light-dark(#149052, #84CC16);
-  --brand-ink: light-dark(#4D6A0F, #84CC16);
+  /* Light: the free margin's green (`--positive`), so brand text and the hero figure read as one colour. */
+  --brand-ink: light-dark(#15803D, #84CC16);
   --primary: light-dark(#149052, #84CC16);
   --primary-foreground: #0D110E;
   --secondary-foreground: light-dark(#0D100D, #F2F5F2);

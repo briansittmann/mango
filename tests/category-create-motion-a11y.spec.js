@@ -17,6 +17,7 @@ async function openCreateSheet(page) {
 async function createViajes(page) {
   const sheet = await openCreateSheet(page)
   await sheet.getByLabel('Nombre').fill('Viajes')
+  await sheet.getByText('Desde este mes en adelante').click()
   await sheet.getByRole('button', { name: 'Añadir', exact: true }).click()
   await expect(sheet).toBeHidden()
 }
@@ -36,6 +37,7 @@ test.describe('creating a category: motion', () => {
 
     const sheet = await openCreateSheet(page)
     await sheet.getByLabel('Nombre').fill('Viajes')
+    await sheet.getByText('Desde este mes en adelante').click()
     await sheet.getByRole('button', { name: 'Añadir', exact: true }).click()
     await expect(sheet).toBeHidden()
 

@@ -81,6 +81,7 @@ test('a category created in a projection lives from that month on', async ({ pag
   const sheet = dialog(page)
   await sheet.getByLabel('Nombre').fill('Viajes')
   await sheet.getByLabel('Presupuesto').fill('200')
+  await sheet.getByText('Desde este mes en adelante').click()
   await sheet.getByRole('button', { name: 'Añadir', exact: true }).click()
   await expect(sheet).toBeHidden()
   await expect(page.getByRole('button', { name: /^Opciones de Viajes$/ })).toHaveCount(1)

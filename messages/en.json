@@ -151,7 +151,8 @@
     },
     "alcanceEliminar": "How far",
     "vuelveElMesQueViene": "It comes back next month.",
-    "mesesAnterioresLaConservan": "Earlier months keep it, with their expenses."
+    "mesesAnterioresLaConservan": "Earlier months keep it, with their expenses.",
+    "valePara": "Applies to"
   },
   "alcance": {
     "aplicar": "Apply the change",

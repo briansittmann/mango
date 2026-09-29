@@ -4,10 +4,11 @@
 
 The page that mounts the dashboard SHALL supply creation as one more injected operation, **create**, alongside those the `category-editing` and `category-reordering` capabilities describe. Every data source SHALL provide it with the same inputs and outcomes.
 
-- It SHALL take the same name, colour and budget a saved category form produces, and the displayed cycle, and no other input.
+- It SHALL take the same name, colour and budget a saved category form produces, the displayed cycle, and how long the category lasts — only that cycle, or that cycle and every later one — and no other input.
 - It SHALL complete asynchronously and then either succeed or fail. On success it SHALL resolve with the new category's identifier, so the caller can tell the new card apart from the others. A failed create SHALL leave the data unchanged and SHALL create nothing.
 - A name already used by another of the user's live categories SHALL be rejected, and that rejection SHALL be distinguishable by the caller from every other failure — the same distinguishable rejection update uses.
-- The created category SHALL start in the displayed cycle, or in the cycle in progress when a past cycle is displayed (`category-editing` → *A category lives from its first cycle to its last*): it SHALL NOT be shown in any earlier cycle.
+- The created category SHALL start in the displayed cycle, or in the cycle in progress when a past cycle is displayed (`category-editing` → *A category lives from its first cycle to its last*): it SHALL NOT be shown in any earlier cycle. Created for that cycle only, it SHALL also end there, as one deleted "from this month on" in the next cycle would: it SHALL NOT be shown in any later cycle, and its budget SHALL reserve nothing there.
+- The creation form SHALL ask how long the category lasts with the scope question of the other edits ("Solo este mes" / "Desde este mes en adelante", neither preselected), and its primary action SHALL stay unavailable until one is chosen.
 - The created category SHALL have no expenses, a total of 0, and a stored order placing it after every existing category. It SHALL have a budget only when the form supplied one, and that budget SHALL start in the category's first cycle and reach every later cycle that holds no entry of its own (`category-editing` → *Budgets belong to one cycle*).
 - Creating a category SHALL NOT change any other category, any expense or the expenses total. It SHALL move the free margin only through its budget, from its first cycle on: a category created with a budget SHALL lower the free margin of those cycles by that budget (`category-editing` → *A budget reserves its amount in the free margin*), and one created without a budget SHALL leave it unchanged.
 
@@ -17,7 +18,8 @@ Dashboard components SHALL create categories only through this operation.
 
 - **WHEN** the dashboard is mounted with an implementation of the category operations that records its calls instead of the demo's
 - **AND** the visitor creates a category named "Viajes" in `celeste` with no budget
-- **THEN** the recorder receives create with that name, that colour, no budget and the displayed cycle, and no other call
+- **AND** chooses "Desde este mes en adelante"
+- **THEN** the recorder receives create with that name, that colour, no budget, the displayed cycle and "from this month on", and no other call
 - **AND** no dashboard component needed a change for that data source
 
 #### Scenario: Creating changes no other figure
@@ -42,3 +44,14 @@ Dashboard components SHALL create categories only through this operation.
 
 - **WHEN** the injected create rejects
 - **THEN** no new card is listed, the category list ends with the same card it did before, and the tile is still present
+
+#### Scenario: A category for this month only
+
+- **WHEN** on `/demo` in Spanish the visitor creates "Viajes" with a budget of 200 and chooses "Solo este mes"
+- **THEN** the sample cycle shows a "Viajes" card with 0 € of 200 € and a free margin of 664 €
+- **AND** the October projection shows no "Viajes" card
+
+#### Scenario: How long it lasts has to be chosen
+
+- **WHEN** the visitor opens the creation form and types a name
+- **THEN** neither "Solo este mes" nor "Desde este mes en adelante" is selected and the primary action is unavailable until one is chosen

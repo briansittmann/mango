@@ -23,7 +23,7 @@ async function unwrapDuplicateName<T>(result: Promise<{ ok: true; value: T } | {
 }
 
 const categories: CategoryMutations = {
-  create: (draft, cycle) => unwrapDuplicateName(actions.createCategory(draft, cycle)),
+  create: (draft, cycle, scope) => unwrapDuplicateName(actions.createCategory(draft, cycle, scope)),
   update: (categoryId, draft, target) => unwrapDuplicateName(actions.updateCategory(categoryId, draft, target)),
   delete: actions.deleteCategory,
   reorder: actions.reorderCategories,
