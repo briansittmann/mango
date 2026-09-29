@@ -247,16 +247,16 @@
     "cerrarSesion": "Cerrar sesión"
   },
   "bot": {
-    "confirmacionGasto": "Anotado: {monto} en {categoria}, {dia}.",
-    "confirmacionIngreso": "Anotado: ingreso de {monto}, {dia}.",
-    "confirmacionAhorro": "Anotado: {monto} al ahorro, {dia}.",
-    "confirmacionRetiro": "Anotado: retiro de {monto} del ahorro, {dia}.",
+    "confirmacionGasto": "✅ Anotado: {monto} en {categoria}, {dia}.",
+    "confirmacionIngreso": "💰 Anotado: ingreso de {monto}, {dia}.",
+    "confirmacionAhorro": "🐷 Anotado: {monto} al ahorro, {dia}.",
+    "confirmacionRetiro": "🏦 Anotado: retiro de {monto} del ahorro, {dia}.",
     "hoy": "hoy",
     "ayer": "ayer",
-    "preguntaCategoria": "¿En qué categoría va? Respóndeme con una: {categorias}.",
-    "yaCargado": "{nombre} ya está anotado en este ciclo. Si fue otro pago, cárgalo desde la web.",
-    "noEntendi": "No te entendí. Escríbeme el importe y en qué fue, por ejemplo: «súper 30» o «café 3,5 ayer».",
-    "noDisponible": "No pude procesar tu mensaje ahora. Vuelve a mandarlo en un rato.",
-    "todaviaNo": "Eso todavía no lo puedo hacer por aquí. Puedes hacerlo desde la web."
+    "preguntaCategoria": "🤔 ¿En qué categoría va? Respóndeme con una: {categorias}.",
+    "yaCargado": "📌 {nombre} ya está anotado en este ciclo. Si fue otro pago, cárgalo desde la web.",
+    "noEntendi": "😅 No te entendí. Escríbeme el importe y en qué fue, por ejemplo: «súper 30» o «café 3,5 ayer».",
+    "noDisponible": "⏳ No pude procesar tu mensaje ahora. Vuelve a mandarlo en un rato.",
+    "todaviaNo": "🚧 Eso todavía no lo puedo hacer por aquí. Puedes hacerlo desde la web."
   }
 }

@@ -84,7 +84,8 @@ test.describe('a projected cycle', () => {
     await goForward(page, 2)
     const line = page.locator('p', { hasText: 'Proyección' })
     await expect(line).toContainText(/Proyección\s*·\s*1\s*[–-]\s*30\s*nov/i)
-    await expect(page.getByText('en curso')).toHaveCount(0)
+    // The month picker keeps an sr-only "en curso" on the current month; what must go is the cycle line's.
+    await expect(page.locator('p', { hasText: 'en curso' })).toHaveCount(0)
 
     await page.locator('button[aria-controls="category-panel-vivienda"]').click()
     const panel = page.locator('#category-panel-vivienda')

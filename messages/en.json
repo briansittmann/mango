@@ -247,16 +247,16 @@
     "cerrarSesion": "Log out"
   },
   "bot": {
-    "confirmacionGasto": "Logged: {monto} in {categoria}, {dia}.",
-    "confirmacionIngreso": "Logged: income of {monto}, {dia}.",
-    "confirmacionAhorro": "Logged: {monto} to savings, {dia}.",
-    "confirmacionRetiro": "Logged: {monto} taken out of savings, {dia}.",
+    "confirmacionGasto": "✅ Logged: {monto} in {categoria}, {dia}.",
+    "confirmacionIngreso": "💰 Logged: income of {monto}, {dia}.",
+    "confirmacionAhorro": "🐷 Logged: {monto} to savings, {dia}.",
+    "confirmacionRetiro": "🏦 Logged: {monto} taken out of savings, {dia}.",
     "hoy": "today",
     "ayer": "yesterday",
-    "preguntaCategoria": "Which category is it? Reply with one: {categorias}.",
-    "yaCargado": "{nombre} is already logged this cycle. If it was another payment, add it on the web.",
-    "noEntendi": "I didn't get that. Send me the amount and what it was for, for example: \"groceries 30\" or \"coffee 3.5 yesterday\".",
-    "noDisponible": "I couldn't process your message right now. Send it again in a bit.",
-    "todaviaNo": "I can't do that here yet. You can do it on the web."
+    "preguntaCategoria": "🤔 Which category is it? Reply with one: {categorias}.",
+    "yaCargado": "📌 {nombre} is already logged this cycle. If it was another payment, add it on the web.",
+    "noEntendi": "😅 I didn't get that. Send me the amount and what it was for, for example: \"groceries 30\" or \"coffee 3.5 yesterday\".",
+    "noDisponible": "⏳ I couldn't process your message right now. Send it again in a bit.",
+    "todaviaNo": "🚧 I can't do that here yet. You can do it on the web."
   }
 }

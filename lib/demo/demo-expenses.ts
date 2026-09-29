@@ -432,7 +432,7 @@ export function deriveDemoData(
   const ordered = order ? [...categories].sort((a, b) => rank(a.id) - rank(b.id)) : categories
 
   // The groups of one cycle: the categories alive in it, each with the rows placed in it.
-  function groupsIn(cycle: LocalDate, rows: Placed[], budgetOf: (id: string) => number | null, day: number): ExpenseGroup[] {
+  function groupsIn(cycle: LocalDate, rows: Placed[], budgetOf: (id: string) => number | null, day: number, days: number): ExpenseGroup[] {
     const month = cycle.slice(0, 7)
     const bucket = new Map<string, Expense[]>()
     for (const { categoryId, expense } of rows) {
@@ -459,7 +459,7 @@ export function deriveDemoData(
           name,
           color,
           total,
-          budget: budgetAmount != null ? getBudgetStatus({ amount: budgetAmount, spent: total, currentDay: day, cycleDays }) : null,
+          budget: budgetAmount != null ? getBudgetStatus({ amount: budgetAmount, spent: total, currentDay: day, cycleDays: days }) : null,
           expenses,
           rowsLater: later.get(id) ?? 0,
         }
@@ -476,7 +476,7 @@ export function deriveDemoData(
     })
 
   // 7. The sample cycle.
-  const groups = groupsIn(sampleStart, sampleRows, (id) => budgetFor(budgetRows, id, sampleStart), currentDay)
+  const groups = groupsIn(sampleStart, sampleRows, (id) => budgetFor(budgetRows, id, sampleStart), currentDay, cycleDays)
   const total = groups.reduce((sum, group) => sum + group.total, 0)
   const history = base.history.map((entry) => (entry.month === base.cycle.month ? { ...entry, total } : entry))
 
@@ -576,7 +576,10 @@ export function deriveDemoData(
     ...slotExpenses,
     ...createdIn(expenseEdits, shownMonth),
   ]
-  const projectedGroups = groupsIn(cycle, projectedRows, (id) => projection.budgets.get(id) ?? null, 1)
+  // The demo's cycles run from day 1, so a projected cycle has the days of its own month.
+  const [shownYear, shownMonthNumber] = shownMonth.split('-').map(Number)
+  const shownDays = new Date(Date.UTC(shownYear, shownMonthNumber, 0)).getUTCDate()
+  const projectedGroups = groupsIn(cycle, projectedRows, (id) => projection.budgets.get(id) ?? null, 1, shownDays)
 
   const entries: IncomeEntry[] = [
     ...charges
