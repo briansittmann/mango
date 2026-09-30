@@ -112,6 +112,8 @@ test('swiping a projected charge deletes that month only, and undo brings it bac
 
   await page.getByRole('button', { name: 'Deshacer' }).click()
   await expect(panel).toContainText('Parking')
+  // The restored row grows in from zero height: measure it once it has settled.
+  await panel.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)))
 
   await longSwipe(page, panel.getByRole('button', { name: /Parking/ }))
   await expect(panel).not.toContainText('Parking')

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
 import { Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Collapsible } from '@/components/atoms/collapsible'
@@ -6,8 +6,18 @@ import { cn } from '@/lib/utils'
 
 type SwipeToDeleteProps = {
   onDelete: () => Promise<void>
+  /** The row's id, matched against `SwipeRestoreContext`. */
+  rowId: string
   children: ReactNode
 }
+
+/**
+ * How many times each row id was brought back by "Deshacer". After a delete the row stays
+ * collapsed until the refreshed data unmounts it; an undo that lands before that refresh (two
+ * overlapping refreshes, the first one skipped) keeps the same instance mounted, so the bump here
+ * is what opens it again.
+ */
+export const SwipeRestoreContext = createContext<Record<string, number>>({})
 
 // Un desliz corto basta para abrir: el umbral es bajo y el eje se decide con sesgo horizontal.
 const LOCK_THRESHOLD_PX = 6
@@ -22,12 +32,24 @@ function wait(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms))
 }
 
-export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
+export function SwipeToDelete({ onDelete, rowId, children }: SwipeToDeleteProps) {
   const t = useTranslations('hojaGasto')
   const [offset, setOffset] = useState(0)
   const [dragging, setDragging] = useState(false)
   const [armed, setArmed] = useState(false)
   const [removing, setRemoving] = useState(false)
+
+  const restored = useContext(SwipeRestoreContext)[rowId] ?? 0
+  const [seenRestored, setSeenRestored] = useState(restored)
+  if (restored !== seenRestored) {
+    setSeenRestored(restored)
+    // Only a row left folded by its own delete; a live row (maybe mid-gesture) is left alone.
+    if (removing) {
+      setRemoving(false)
+      setArmed(false)
+      setOffset(0)
+    }
+  }
 
   const offsetRef = useRef(0)
   const widthRef = useRef(0)
@@ -70,6 +92,8 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
     if (removing) return
+    // A restore resets `offset` during render, where the ref can't be written: catch it up here.
+    offsetRef.current = offset
     draggedRef.current = false
     widthRef.current = event.currentTarget.getBoundingClientRect().width
     gestureRef.current = {

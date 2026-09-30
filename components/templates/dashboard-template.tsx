@@ -26,7 +26,7 @@ import { ExpenseRow } from '@/components/molecules/expense-row'
 import { MonthSelector } from '@/components/molecules/month-selector'
 import { SavingsMovementRow } from '@/components/molecules/savings-movement-row'
 import { SummaryRow } from '@/components/molecules/summary-row'
-import { SwipeToDelete } from '@/components/molecules/swipe-to-delete'
+import { SwipeRestoreContext, SwipeToDelete } from '@/components/molecules/swipe-to-delete'
 import { UndoToast } from '@/components/molecules/undo-toast'
 import type { Scope } from '@/components/molecules/scope-choice'
 import { AccountMenu } from '@/components/organisms/account-menu'
@@ -148,6 +148,9 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   // Categories whose budget bar is hidden from the card, toggled in the category options sheet.
   // The stored preference (`group.showProgress`) with the latest toggle on top, so the bar moves at
   // once; a failed save drops the toggle and the stored value shows again.
+  // Row ids a "Deshacer" brought back, counted, so a swiped row that is still mounted reopens.
+  const [restoredRows, setRestoredRows] = useState<Record<string, number>>({})
+  const markRestored = (rowId: string) => setRestoredRows((prev) => ({ ...prev, [rowId]: (prev[rowId] ?? 0) + 1 }))
   const [progressOverrides, setProgressOverrides] = useState<Map<string, boolean>>(new Map())
   const progressShown = (group: ExpenseGroup) => progressOverrides.get(group.id) ?? group.showProgress
   const [openSummary, setOpenSummary] = useState<SummaryKey | null>(null)
@@ -638,6 +641,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     if (!actions.expenses) return
     try {
       await actions.expenses.restore(expense.id)
+      markRestored(expense.id)
       toasts.close(id)
     } catch {
       toasts.update(id, { title: tHojaGasto('errorDeshacer'), priority: 'high', actionProps: undefined })
@@ -650,26 +654,27 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   const cycleStart = data.cycle.start
   const monthName = format.dateTime(new Date(`${data.cycle.month}-01T00:00:00Z`), { month: 'long', timeZone: 'UTC' })
 
-  function showSlotUndo(definitionId: string) {
+  function showSlotUndo(definitionId: string, rowId: string) {
     toasts.close()
     const id = toasts.add({
       title: tHojaGasto('eliminadoSoloEsteMes'),
       priority: 'low',
-      actionProps: { children: tHojaGasto('deshacer'), onClick: () => void undoSlotDelete(id, definitionId) },
+      actionProps: { children: tHojaGasto('deshacer'), onClick: () => void undoSlotDelete(id, definitionId, rowId) },
     })
   }
 
-  async function undoSlotDelete(id: string, definitionId: string) {
+  async function undoSlotDelete(id: string, definitionId: string, rowId: string) {
     if (!actions.recurring) return
     try {
       await actions.recurring.restoreInCycle(definitionId, cycleStart)
+      markRestored(rowId)
       toasts.close(id)
     } catch {
       toasts.update(id, { title: tHojaGasto('errorDeshacer'), priority: 'high', actionProps: undefined })
     }
   }
 
-  async function deleteSlot(definitionId: string, scope: Scope, errorTitle: string) {
+  async function deleteSlot(definitionId: string, rowId: string, scope: Scope, errorTitle: string) {
     if (!actions.recurring) return
     try {
       await actions.recurring.deleteInCycle(definitionId, cycleStart, scope)
@@ -677,7 +682,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
       toasts.add({ title: errorTitle, priority: 'high' })
       throw error
     }
-    if (scope === 'only') showSlotUndo(definitionId)
+    if (scope === 'only') showSlotUndo(definitionId, rowId)
     else setStatusMessage(tHojaGasto('eliminadoDesde', { mes: monthName }))
   }
 
@@ -694,6 +699,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     if (!actions.savings) return
     try {
       await actions.savings.restore(movementId)
+      markRestored(movementId)
       toasts.close(id)
     } catch {
       toasts.update(id, { title: tHojaGasto('errorDeshacer'), priority: 'high', actionProps: undefined })
@@ -712,7 +718,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   }
 
   async function handleDeleteExpense(expense: Expense) {
-    if (expense.fixed && actions.recurring) return deleteSlot(expense.fixed.definitionId, 'only', tHojaGasto('errorEliminar'))
+    if (expense.fixed && actions.recurring) return deleteSlot(expense.fixed.definitionId, expense.id, 'only', tHojaGasto('errorEliminar'))
     if (!actions.expenses) return
     try {
       await actions.expenses.softDelete(expense.id)
@@ -736,6 +742,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     if (!actions.income) return
     try {
       await actions.income.restore(entry.id)
+      markRestored(entry.id)
       toasts.close(id)
     } catch {
       toasts.update(id, { title: tHojaGasto('errorDeshacer'), priority: 'high', actionProps: undefined })
@@ -743,7 +750,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   }
 
   async function handleDeleteIncome(entry: IncomeEntry) {
-    if (entry.recurring && actions.recurring) return deleteSlot(entry.recurring.definitionId, 'only', tHojaGasto('errorEliminarIngreso'))
+    if (entry.recurring && actions.recurring) return deleteSlot(entry.recurring.definitionId, entry.id, 'only', tHojaGasto('errorEliminarIngreso'))
     if (!actions.income) return
     try {
       await actions.income.softDelete(entry.id)
@@ -761,7 +768,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     if (definitionId && actions.recurring) {
       await actions.recurring.deleteInCycle(definitionId, cycleStart, scope ?? 'only')
       setSheet((prev) => ({ ...prev, open: false }))
-      if ((scope ?? 'only') === 'only') showSlotUndo(definitionId)
+      if ((scope ?? 'only') === 'only') showSlotUndo(definitionId, sheet.target.kind === 'income' ? sheet.target.entry.id : sheet.target.expense.id)
       else setStatusMessage(tHojaGasto('eliminadoDesde', { mes: monthName }))
       return
     }
@@ -1068,6 +1075,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
 
   return (
     <Toast.Provider toastManager={toasts} limit={1} timeout={5000}>
+      <SwipeRestoreContext.Provider value={restoredRows}>
     <div className="pb-12">
       {/* One fixed layer pushes the whole page back; the category list is raised above it (D3). */}
       <div
@@ -1233,7 +1241,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                         />
                       )
                       return editable ? (
-                        <SwipeToDelete key={entry.id} onDelete={() => handleDeleteIncome(entry)}>
+                        <SwipeToDelete key={entry.id} rowId={entry.id} onDelete={() => handleDeleteIncome(entry)}>
                           {row}
                         </SwipeToDelete>
                       ) : (
@@ -1307,7 +1315,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                         />
                       )
                       return actions.savings ? (
-                        <SwipeToDelete key={movement.id} onDelete={() => handleDeleteSavings(movement.id)}>
+                        <SwipeToDelete key={movement.id} rowId={movement.id} onDelete={() => handleDeleteSavings(movement.id)}>
                           {row}
                         </SwipeToDelete>
                       ) : (
@@ -1575,6 +1583,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
         {statusMessage}
       </div>
     </div>
+      </SwipeRestoreContext.Provider>
     </Toast.Provider>
   )
 }

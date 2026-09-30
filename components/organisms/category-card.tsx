@@ -150,7 +150,7 @@ export function CategoryCard({
               />
             )
             return onDeleteExpense ? (
-              <SwipeToDelete key={expense.id} onDelete={() => onDeleteExpense(expense)}>
+              <SwipeToDelete key={expense.id} rowId={expense.id} onDelete={() => onDeleteExpense(expense)}>
                 {row}
               </SwipeToDelete>
             ) : (

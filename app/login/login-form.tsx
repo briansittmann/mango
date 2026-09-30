@@ -2,7 +2,9 @@
 
 import { useActionState, useEffect } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { RequestCodeResult } from "@/app/auth/request-code/route";
 import { sendCode } from "./request-code";
 
@@ -37,9 +39,29 @@ export function LoginForm({ linkError, defaultEmail, onSent }: { linkError: bool
         className="field-focus h-target rounded-lg bg-muted px-3 text-body-lg text-foreground outline-none"
       />
       <p className="text-body-sm text-muted-foreground">{t("primeraVez")}</p>
-      <Button type="submit" size="lg" disabled={pending} className="h-target w-full text-body-lg font-semibold">
-        {t("enviarCodigo")}
-      </Button>
+      {/* While the code is requested the button folds into a round spinner, as "Ir a mi mes" does
+          on the code step; aria-disabled rather than disabled so it keeps its colour. */}
+      <div className="flex justify-center">
+        <Button
+          type="submit"
+          size="lg"
+          aria-disabled={pending || undefined}
+          aria-busy={pending || undefined}
+          onClick={(event) => {
+            if (pending) event.preventDefault();
+          }}
+          className={cn(
+            "relative h-target overflow-hidden text-body-lg font-semibold transition-[width,border-radius,scale] duration-300 ease-out active:scale-95 motion-reduce:transition-none",
+            pending ? "w-target rounded-full" : "w-full",
+          )}
+        >
+          <span className={cn("transition-opacity duration-150 motion-reduce:transition-none", pending && "opacity-0")}>{t("enviarCodigo")}</span>
+          <Loader2
+            aria-hidden
+            className={cn("absolute inset-0 m-auto size-5 animate-spin transition-opacity duration-200 motion-reduce:transition-none", pending ? "opacity-100 delay-150" : "opacity-0")}
+          />
+        </Button>
+      </div>
       {state.status === "error" && <p role="alert" className="text-body-sm text-destructive-ink">{t("errorEnvio")}</p>}
       {state.status === "rate_limited" && <p role="alert" className="text-body-sm text-destructive-ink">{t("demasiadosPedidos")}</p>}
       {state.status === "idle" && linkError && <p role="alert" className="text-body-sm text-destructive-ink">{t("enlaceInvalido")}</p>}
