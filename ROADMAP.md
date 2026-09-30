@@ -68,7 +68,7 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [x] 👤 Decidir si `dia_del_mes` pasa a `NOT NULL` → sí, en la `0021`
 - [x] 👤 Decidir a qué hora corre el cron → 05:00 UTC, todos los días; el ciclo de cada usuario se calcula en su timezone
 - [x] 👤 Decidir cuándo un fijo se muestra cobrado → confirmado o con su día ya pasado; `estado` concilia
-- [ ] 👤 Confirmar que el cron dispara en producción
+- [x] 👤 Confirmar que el cron dispara en producción — 29/9 05:34 UTC, visto en los logs de la API de Supabase (sin generar nada, como se esperaba)
 
 ## 7 · Meses futuros: proyección a 6 ciclos
 
