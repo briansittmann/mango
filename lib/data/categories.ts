@@ -1,6 +1,25 @@
 import type { CategoryColor } from './dashboard'
 import type { LocalDate } from './expenses'
 
+/** The palette, in picker order. The sheet and the bot take the first one no category uses. */
+export const CATEGORY_COLORS: CategoryColor[] = [
+  'granate',
+  'rojo',
+  'coral',
+  'rosa',
+  'naranja_calido',
+  'violeta_metalico',
+  'azul_electrico',
+  'azul_apagado',
+  'celeste',
+  'turquesa',
+  'verde_menta',
+  'verde_profundo',
+  'gris_calido',
+  'gris_oscuro',
+  'blanco',
+]
+
 export type CategoryDraft = {
   name: string // trimmed, non-empty
   color: CategoryColor

@@ -4,7 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 import { DynamicBackground } from "@/components/theme/dynamic-background";
 import { ThemeSync } from "@/components/theme/theme-sync";
-import { socialMetadata } from "@/lib/metadata";
+import { SITE_URL, socialMetadata } from "@/lib/metadata";
 import "./globals.css";
 
 const inter = Inter({
@@ -26,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("metadatos");
 
   return {
-    metadataBase: new URL("https://www.usemango.dev"),
+    metadataBase: new URL(SITE_URL),
     title: { default: t("nombre"), template: t("plantillaTitulo") },
     description: t("descripcion"),
     ...(await socialMetadata("/")),

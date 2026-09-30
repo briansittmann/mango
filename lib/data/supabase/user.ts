@@ -13,10 +13,15 @@ export type Usuario = {
   /** First day of the last cycle whose charges were generated (0021); null before the first. */
   ciclo_generado_hasta: LocalDate | null
   idioma: 'es' | 'en'
+  /** The bot keeps this account's conversation (0028, `bot-conversation-history`). */
+  vip: boolean
+  /** Loads confirmed on WhatsApp so far (progressive confirmation, 0002). */
+  cargas_confirmadas: number
+  modo_confirmacion: 'auto' | 'texto' | 'reaccion'
 }
 
 const USUARIO_COLUMNS =
-  'id, nombre, telefono, foto_url, moneda_default, timezone, dia_inicio_ciclo, meta_ahorro_mensual, ciclo_generado_hasta, idioma'
+  'id, nombre, telefono, foto_url, moneda_default, timezone, dia_inicio_ciclo, meta_ahorro_mensual, ciclo_generado_hasta, idioma, vip, cargas_confirmadas, modo_confirmacion'
 
 /**
  * The `usuarios` row linked to the session's auth user, or null when none is linked. RLS

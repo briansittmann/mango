@@ -9,6 +9,8 @@ export type WhatsAppMessage = {
   phone: string
   text: string
   messageId: string
+  /** A reply button's id (`interactive.button_reply.id`); `text` is empty then (design D2). */
+  buttonId?: string
 }
 
 export function extractTextMessages(payload: unknown): WhatsAppMessage[] {
@@ -63,16 +65,20 @@ export function describeEvents(payload: unknown): string[] {
 function extractMessage(message: unknown): WhatsAppMessage | null {
   if (!isObject(message)) return null
 
-  // Text only for now. Incoming images, audio and reactions are discarded
-  // until there's something to do with them.
-  if (message.type !== 'text') return null
-
+  // Text and reply-button presses only. Incoming images, audio, reactions and other
+  // interactive types are discarded until there's something to do with them.
   const { id, from } = message
-  const text = isObject(message.text) ? message.text.body : undefined
+  if (typeof id !== 'string' || typeof from !== 'string') return null
 
-  if (typeof id !== 'string' || typeof from !== 'string' || typeof text !== 'string') {
-    return null
+  if (message.type === 'interactive') {
+    const reply = isObject(message.interactive) && message.interactive.type === 'button_reply' ? message.interactive.button_reply : undefined
+    const buttonId = isObject(reply) ? reply.id : undefined
+    return typeof buttonId === 'string' ? { phone: toE164(from), text: '', messageId: id, buttonId } : null
   }
+
+  if (message.type !== 'text') return null
+  const text = isObject(message.text) ? message.text.body : undefined
+  if (typeof text !== 'string') return null
 
   return { phone: toE164(from), text, messageId: id }
 }

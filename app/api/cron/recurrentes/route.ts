@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server'
 
 import type { LocalDate } from '@/lib/data/expenses'
+import { purgeOldMessages } from '@/lib/data/messages'
 import { proyectarCiclo } from '@/lib/data/projection'
 import type { RecurringDefinition } from '@/lib/data/recurring'
 import { cycleRange, localDateOf } from '@/lib/data/supabase/cycle'
@@ -69,8 +70,17 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  console.log('[cron] recurrentes', JSON.stringify({ users }))
-  return Response.json({ users })
+  // Conversation messages past their retention (`bot-conversation-history`), after the charges: a
+  // failure here is reported and blocks nothing.
+  let purge: { purged: number } | { purgeError: string }
+  try {
+    purge = { purged: await purgeOldMessages() }
+  } catch (err) {
+    purge = { purgeError: err instanceof Error ? err.message : String(err) }
+  }
+
+  console.log('[cron] recurrentes', JSON.stringify({ users, ...purge }))
+  return Response.json({ users, ...purge })
 }
 
 async function runForUser(client: ReturnType<typeof supabaseAdmin>, usuario: UsuarioRow): Promise<UserReport> {

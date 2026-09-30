@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
+/** The production origin: the pages' `metadataBase` and the bot's dashboard link. */
+export const SITE_URL = "https://www.usemango.dev";
+
 // Child segments replace openGraph and twitter whole, so an indexable page that sets its own url rebuilds both here.
 export async function socialMetadata(path: string, title?: string): Promise<Metadata> {
   const locale = await getLocale();

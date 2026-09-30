@@ -1,23 +1,38 @@
+import { createTranslator } from 'next-intl'
+
 import {
   processMessage,
   processUnknownNumber,
   type BotReply,
 } from '@/lib/bot/logic'
-import { clearPendingQuestion, readPendingQuestion, writePendingQuestion } from '@/lib/data/channels'
+import { clearPendingQuestion, readChannelState, setLastLoad, writePendingQuestion } from '@/lib/data/channels'
 import { messageAlreadyProcessed } from '@/lib/data/transactions'
-import { findUserIdByPhone } from '@/lib/data/users'
+import { findUserIdByPhone, readConfirmationState, setConfirmedLoads } from '@/lib/data/users'
+import es from '@/messages/es.json'
+import en from '@/messages/en.json'
 import { isInviteRequired } from './invite'
-import { maskPhone, sendText } from './send'
+import { maskPhone, sendReaction, sendText, sendUndoButton } from './send'
 
 import type { WhatsAppMessage } from './payload'
 
 export { maskPhone }
 
+/** Loads confirmed in text before reactions take over, in mode `auto` (§3). One constant for every account. */
+export const TEXT_CONFIRMATIONS = 15
+
+/** An Undo button's id names the row it deletes (`add-bot-conversation` design D2). */
+const UNDO_PREFIX = 'undo:'
+const UNDO_ID = /^undo:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
+
+const MESSAGES = { es, en }
+
 /**
  * Adapter: resolves the number against the linked `whatsapp` channels, discards retries and
- * calls the bot logic with the internal format `{ userId, text, messageId, channel, pending }`
- * (ARCHITECTURE.md §3). It owns the channel's pending question (design D7, D12): reads it before
- * the logic, writes it on an `ask` and clears it on any other reply.
+ * calls the bot logic with the internal format `{ userId, text, messageId, channel, pending,
+ * lastLoadId, undoId }` (ARCHITECTURE.md §3). It owns the channel's state (design D1, D7, D12):
+ * reads the pending question and the last load before the logic, writes the question on an `ask`
+ * and clears it on any other reply, and applies the reply's `lastLoad`. It also decides how a load
+ * is confirmed (D6).
  */
 export async function handleMessages(messages: WhatsAppMessage[]): Promise<void> {
   for (const message of messages) {
@@ -49,7 +64,13 @@ async function handleMessage(message: WhatsAppMessage): Promise<void> {
     return
   }
 
-  const pending = await readPendingQuestion('whatsapp', message.phone)
+  const undoId = message.buttonId === undefined ? undefined : UNDO_ID.exec(message.buttonId)?.[1]
+  if (message.buttonId !== undefined && !undoId) {
+    console.info(`[whatsapp] unknown button discarded: ${message.messageId}`)
+    return
+  }
+
+  const { pending, lastLoadId } = await readChannelState('whatsapp', message.phone)
 
   const reply = await processMessage({
     userId,
@@ -57,6 +78,8 @@ async function handleMessage(message: WhatsAppMessage): Promise<void> {
     messageId: message.messageId,
     channel: 'whatsapp',
     pending: pending ?? undefined,
+    lastLoadId: lastLoadId ?? undefined,
+    undoId,
   })
 
   if (reply.kind === 'ask') {
@@ -64,48 +87,40 @@ async function handleMessage(message: WhatsAppMessage): Promise<void> {
   } else if (reply.kind !== 'unavailable') {
     await clearPendingQuestion('whatsapp', message.phone)
   }
+  if (reply.lastLoad !== undefined) await setLastLoad('whatsapp', message.phone, reply.lastLoad)
 
-  await sendReply(message.phone, reply)
+  if (reply.kind === 'loaded') {
+    await confirmLoad(userId, message, reply)
+  } else {
+    await sendReply(message.phone, reply)
+  }
 }
 
 /**
- * A `recurring-discrepancy` reply turned into a question, held across turns. `recurring-expenses`
- * → *The bot asks whether a change is permanent, and the adapter owns the answer*: the message
- * logic (`lib/bot/logic.ts`) only reports the discrepancy: it never asks anything and never
- * updates a definition. Holding this — and answering it — is the adapter's job, because it is
- * WhatsApp-specific conversation state, not something the platform-agnostic logic should know
- * about (D1's "no answer is not a state to store" applies to the *definition*, not to this —
- * this pending decision itself is exactly the state the adapter is responsible for holding).
+ * This is where **how** a load is confirmed gets decided (progressive confirmation, §3, D6): text
+ * with an Undo button while the account has fewer than `TEXT_CONFIRMATIONS` loads in mode `auto`,
+ * always in mode `texto` or when the logic asks for text, and a reaction with the confirmation's
+ * icon otherwise. Every load raises the count, whichever form went out; the sends never throw.
  */
-type PendingRecurringDecision = {
-  userId: string
-  definitionId: string
-  expectedAmount: number
-  loadedAmount: number
-}
+async function confirmLoad(userId: string, message: WhatsAppMessage, reply: Extract<BotReply, { kind: 'loaded' }>): Promise<void> {
+  const state = await readConfirmationState(userId)
+  const asText =
+    reply.alwaysText ||
+    state.modo_confirmacion === 'texto' ||
+    (state.modo_confirmacion === 'auto' && state.cargas_confirmadas < TEXT_CONFIRMATIONS)
 
-/**
- * This is where **how** the bot replies gets decided: text with an Undo
- * button for the first 15 charges, emoji reaction from the 16th on
- * (progressive confirmation, §3). The bot logic doesn't take part in that
- * decision.
- */
-async function sendReply(phone: string, reply: BotReply): Promise<void> {
-  if (reply.kind === 'none') return
-
-  if (reply.kind === 'recurring-discrepancy') {
-    // TODO (recurring-expenses): turn this into the follow-up question ("¿Son {loadedAmount}
-    // todos los meses?"), store a `PendingRecurringDecision` for this phone number, and resolve
-    // it on the next turn: an affirmative answer updates the definition's expected amount via
-    // `actions.recurring`'s eventual Supabase-backed equivalent; silence or a negative answer
-    // both clear the pending decision without touching the definition — this cycle's charge
-    // simply stands as the exception, exactly as the message logic already left it.
-    console.info(
-      `[whatsapp] recurring discrepancy for ${maskPhone(phone)}: ${reply.definitionName} expected ${reply.expectedAmount}, loaded ${reply.loadedAmount}`,
-    )
+  if (asText) {
+    const t = createTranslator({ locale: state.idioma, messages: MESSAGES[state.idioma], namespace: 'bot' })
+    await sendUndoButton(message.phone, reply.text, `${UNDO_PREFIX}${reply.transactionId}`, t('deshacer'))
+  } else {
+    await sendReaction(message.phone, message.messageId, reply.icon)
   }
 
-  // TODO: choose message or reaction based on the user's `cargas_confirmadas` and
-  // `modo_confirmacion` (§3, `add-bot-conversation`).
+  await setConfirmedLoads(userId, state.cargas_confirmadas + 1)
+}
+
+/** Every reply that is not a load is plain text, without buttons. */
+async function sendReply(phone: string, reply: BotReply): Promise<void> {
+  if (reply.kind === 'none') return
   await sendText(phone, reply.text)
 }

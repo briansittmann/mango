@@ -50,7 +50,12 @@ export const ActionSchema = z.discriminatedUnion('accion', [
       message: 'corregir needs monto or categoria',
     }),
   z.strictObject({ accion: z.literal('borrar') }),
-  z.strictObject({ accion: z.literal('crear_categoria'), nombre: z.string().min(1) }),
+  z.strictObject({
+    accion: z.literal('crear_categoria'),
+    nombre: z.string().min(1),
+    presupuesto: z.number().positive().optional(),
+    confirmada: z.boolean().default(false),
+  }),
 ])
 
 export type Action = z.infer<typeof ActionSchema>
@@ -58,7 +63,13 @@ export type Action = z.infer<typeof ActionSchema>
 /** An action, or `no_disponible` when the model never answered (not something the model can return). */
 export type ParseResult = Action | { accion: 'no_disponible' }
 
-export type PendingQuestion = { tipo: 'gasto' | 'ingreso' | 'ahorro'; monto: number; diasAtras: number }
+/**
+ * The question the channel holds (design D5): a category for an amount, or whether to create a
+ * category whose name is close to `parecida`.
+ */
+export type PendingQuestion =
+  | { pregunta: 'categoria'; tipo: 'gasto' | 'ingreso' | 'ahorro'; monto: number; diasAtras: number }
+  | { pregunta: 'crear_categoria'; nombre: string; presupuesto: number | null; parecida: string }
 
 export type ParseInput = {
   text: string
@@ -70,6 +81,8 @@ export type ParseInput = {
   /** Today's local date, `YYYY-MM-DD`. */
   today: string
   pending?: PendingQuestion
+  /** A VIP account's recent messages, oldest first (`bot-conversation-history`). */
+  history?: { direction: 'entrante' | 'saliente'; text: string }[]
 }
 
 export type Model = (prompt: string) => Promise<string>
@@ -82,6 +95,11 @@ const EXAMPLES: Record<ParseInput['locale'], [string, object][]> = {
     ['saqué 100 del ahorro', { accion: 'cargar', tipo: 'ahorro', monto: -100, categoria: null, descripcion: null, dias_atras: 0, recurrente: null }],
     ['gasté 50', { accion: 'repreguntar', falta: 'categoria', tipo: 'gasto', monto: 50, dias_atras: 0 }],
     ['no, era 40', { accion: 'corregir', monto: 40 }],
+    ['osea esos 30 eran salud', { accion: 'corregir', categoria: 'Salud' }],
+    ['borrá eso', { accion: 'borrar' }],
+    ['¿cuánto me queda?', { accion: 'consultar', consulta: 'margen_libre' }],
+    ['¿cómo voy este mes?', { accion: 'consultar', consulta: 'mes' }],
+    ['creá la categoría Regalos con presupuesto 150', { accion: 'crear_categoria', nombre: 'Regalos', presupuesto: 150, confirmada: false }],
     ['asdasda', { accion: 'no_entendido' }],
   ],
   en: [
@@ -91,12 +109,19 @@ const EXAMPLES: Record<ParseInput['locale'], [string, object][]> = {
     ['took 100 out of savings', { accion: 'cargar', tipo: 'ahorro', monto: -100, categoria: null, descripcion: null, dias_atras: 0, recurrente: null }],
     ['spent 50', { accion: 'repreguntar', falta: 'categoria', tipo: 'gasto', monto: 50, dias_atras: 0 }],
     ['no, it was 40', { accion: 'corregir', monto: 40 }],
+    ['i mean those 30 were health', { accion: 'corregir', categoria: 'Health' }],
+    ['delete that', { accion: 'borrar' }],
+    ['how much do I have left?', { accion: 'consultar', consulta: 'margen_libre' }],
+    ['how is the month going?', { accion: 'consultar', consulta: 'mes' }],
+    ['create the category Gifts with a budget of 150', { accion: 'crear_categoria', nombre: 'Gifts', presupuesto: 150, confirmada: false }],
     ['asdasda', { accion: 'no_entendido' }],
   ],
 }
 
 /** Marks the pending-question block, so tests can check it is there only when `pending` is set. */
 export const PENDING_HEADER = 'PREGUNTA PENDIENTE'
+/** Marks the VIP conversation block (design D8). */
+export const HISTORY_HEADER = 'CONVERSACIÓN RECIENTE'
 
 export function buildPrompt(input: ParseInput): string {
   const language = input.locale === 'en' ? 'inglés' : 'español'
@@ -117,7 +142,7 @@ ACCIONES Y CAMPOS (ningún campo fuera de estos):
 - {"accion":"consultar","consulta":"margen_libre"|"mes"}  "libre" o cuánto le queda → margen_libre; cómo viene el mes → mes.
 - {"accion":"corregir","monto"?:número,"categoria"?:string}  Corrige la última carga; al menos uno de los dos.
 - {"accion":"borrar"}  Borra la última carga ("borrá eso").
-- {"accion":"crear_categoria","nombre":string}  Crear una categoría; el nombre con la ortografía correcta, tildes incluidas.`,
+- {"accion":"crear_categoria","nombre":string,"presupuesto"?:número,"confirmada":boolean}  Solo cuando el mensaje pide crear una categoría. nombre con la ortografía correcta, tildes incluidas; presupuesto solo si el mensaje lo da (positivo); confirmada es false salvo que el mensaje confirme la pregunta pendiente.`,
 
     `DATOS DE LA CUENTA
 Hoy es ${input.today}. Idioma de la cuenta: ${language}; los mensajes llegan en ese idioma.
@@ -131,15 +156,29 @@ Gastos fijos activos: ${recurring}`,
 - recurrente: el nombre exacto de un "Gasto fijo activo" solo cuando el mensaje lo nombra; si no, null. En ingreso y ahorro siempre null.
 - "cobré", "me pagaron", "propina", "sueldo" son ingreso; "ahorré", "guardé" son ahorro.
 - monto: número JSON, nunca string. La coma es separador decimal ("3,5" → 3.5); ignorá la puntuación final.
-- dias_atras: 0 si el mensaje no nombra un día; "ayer" → 1; "anteayer" → 2; "hace N días" → N. "date" es una cita (Ocio), no una fecha.`,
+- dias_atras: 0 si el mensaje no nombra un día; "ayer" → 1; "anteayer" → 2; "hace N días" → N. "date" es una cita (Ocio), no una fecha.
+- corregir: cualquier forma de decir que la última carga estaba mal, aunque sea suelta ("osea lo que gasté esos 50 eran comida" → corregir con categoria "Comida"; "no, eran 80" → corregir con monto 80). Un monto que solo repite el de la carga para identificarla no es un monto nuevo.
+- Un "sí", "dale" u "ok" suelto, sin una pregunta pendiente que confirme, es no_entendido.`,
 
     `EJEMPLOS\n${examples}`,
   ]
 
-  if (input.pending) {
+  if (input.history && input.history.length > 0) {
+    const lines = input.history.map((message) => `${message.direction === 'entrante' ? 'Usuario' : 'Mango'}: ${message.text}`)
+    sections.push(`${HISTORY_HEADER}
+Los últimos mensajes de este chat, del más viejo al más nuevo. Usalos solo para entender el MENSAJE (por ejemplo, "lo mismo que ayer"); devolvé una sola acción para el MENSAJE.
+${lines.join('\n')}`)
+  }
+
+  if (input.pending?.pregunta === 'categoria') {
     const { tipo, monto, diasAtras } = input.pending
     sections.push(`${PENDING_HEADER}
 En el turno anterior el bot preguntó qué categoría corresponde a un ${tipo} de ${monto} (dias_atras ${diasAtras}). Si este mensaje responde esa pregunta con una categoría, devolvé "cargar" con tipo "${tipo}", monto ${monto}, dias_atras ${diasAtras} y esa categoría. Si el mensaje es otra cosa (por ejemplo, un gasto nuevo con su propio monto), interpretalo por sí solo e ignorá la pregunta.`)
+  } else if (input.pending?.pregunta === 'crear_categoria') {
+    const { nombre, presupuesto, parecida } = input.pending
+    const campos = { accion: 'crear_categoria', nombre, ...(presupuesto ? { presupuesto } : {}), confirmada: true }
+    sections.push(`${PENDING_HEADER}
+En el turno anterior el bot preguntó si crea la categoría "${nombre}" aunque ya existe "${parecida}". Si este mensaje lo confirma ("sí", "dale", "creala"), devolvé ${JSON.stringify(campos)}. Si el mensaje es otra cosa, interpretalo por sí solo e ignorá la pregunta; confirmada solo es true en esa confirmación.`)
   }
 
   sections.push(`MENSAJE\n${input.text}`)

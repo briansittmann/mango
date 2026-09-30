@@ -26,7 +26,7 @@ An account SHALL be VIP only when its VIP flag is set, and that flag SHALL be se
 
 ### Requirement: The parser sees the recent conversation of a VIP account
 
-For a VIP account, the parser SHALL receive the account's last 10 stored messages from the last 24 hours on any channel, oldest first, each marked as the user's or the bot's, before the new message. It SHALL use them only to understand the new message, and SHALL still return one action for the new message alone. Both limits SHALL be constants of the code. A non-VIP account's parser input SHALL carry no conversation.
+For a VIP account, the parser SHALL receive the account's last 20 stored messages from the last 24 hours on any channel, oldest first, each marked as the user's or the bot's, before the new message. It SHALL use them only to understand the new message, and SHALL still return one action for the new message alone. Both limits SHALL be constants of the code. A non-VIP account's parser input SHALL carry no conversation.
 
 #### Scenario: Same as yesterday
 - **WHEN** a VIP account sent "almuerzo 12" 20 hours ago and now sends "lo mismo que ayer"
@@ -36,9 +36,9 @@ For a VIP account, the parser SHALL receive the account's last 10 stored message
 - **WHEN** a VIP account's only stored messages are from 30 hours ago
 - **THEN** the parser receives no conversation
 
-#### Scenario: More than ten
-- **WHEN** a VIP account has 25 stored messages in the last 24 hours
-- **THEN** the parser receives only the 10 most recent, oldest first
+#### Scenario: More than twenty
+- **WHEN** a VIP account has 30 stored messages in the last 24 hours
+- **THEN** the parser receives only the 20 most recent, oldest first
 
 ### Requirement: Messages are kept for 30 days
 

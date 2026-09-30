@@ -3,7 +3,8 @@ import { categoriaViva } from '../categories.ts'
 
 export type BotCategory = { id: string; nombre: string }
 export type BotRecurring = { id: string; nombre: string; monto_actual: number; categoria_id: string }
-export type BotContext = { categories: BotCategory[]; recurring: BotRecurring[] }
+/** `cycle` is the first day of the cycle in progress (`periodo_presupuesto`). */
+export type BotContext = { cycle: string; categories: BotCategory[]; recurring: BotRecurring[] }
 
 type CategoriaRow = BotCategory & { desde_ciclo: string | null; hasta_ciclo: string | null }
 
@@ -51,6 +52,7 @@ export async function loadBotContext(client: SupabaseClient, usuarioId: string):
   if (recurring.error) throw recurring.error
 
   return {
+    cycle: cycle.data as string,
     categories: categoriesAliveIn(
       categories.data as CategoriaRow[],
       (hidden.data as { categoria_id: string }[]).map((row) => row.categoria_id),
@@ -63,4 +65,36 @@ export async function loadBotContext(client: SupabaseClient, usuarioId: string):
 /** Name matching key: lowercase, accents stripped ("Súper" and "super" match). */
 export function normalizeName(name: string): string {
   return name.trim().toLowerCase().normalize('NFD').replace(/\p{M}/gu, '')
+}
+
+/**
+ * The category `name` would clash with before creating it (design D7): `same` on equal names,
+ * `similar` when one contains the other or they are at most two edits apart, both ignoring case
+ * and accents. Same wins over similar; null when none is close.
+ */
+export function similarCategory<T extends { nombre: string }>(
+  name: string,
+  categories: T[],
+): { kind: 'same' | 'similar'; category: T } | null {
+  const key = normalizeName(name)
+  const same = categories.find((category) => normalizeName(category.nombre) === key)
+  if (same) return { kind: 'same', category: same }
+
+  const similar = categories.find((category) => {
+    const other = normalizeName(category.nombre)
+    return other.includes(key) || key.includes(other) || levenshtein(key, other) <= 2
+  })
+  return similar ? { kind: 'similar', category: similar } : null
+}
+
+function levenshtein(a: string, b: string): number {
+  let previous = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i]
+    for (let j = 1; j <= b.length; j++) {
+      current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+    }
+    previous = current
+  }
+  return previous[b.length]
 }

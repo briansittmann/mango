@@ -2,25 +2,13 @@ import { Check } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { cn } from '@/lib/utils'
+// The palette lives with the category contracts so the bot reaches it without a client component
+// (add-bot-conversation D7); it is a constant list, not data access.
+// eslint-disable-next-line @typescript-eslint/no-restricted-imports
+import { CATEGORY_COLORS } from '@/lib/data/categories'
 import type { CategoryColor } from '@/lib/data/dashboard'
 
-export const CATEGORY_COLORS: CategoryColor[] = [
-  'granate',
-  'rojo',
-  'coral',
-  'rosa',
-  'naranja_calido',
-  'violeta_metalico',
-  'azul_electrico',
-  'azul_apagado',
-  'celeste',
-  'turquesa',
-  'verde_menta',
-  'verde_profundo',
-  'gris_calido',
-  'gris_oscuro',
-  'blanco',
-]
+export { CATEGORY_COLORS }
 
 type ColorSwatchPickerProps = {
   value: CategoryColor

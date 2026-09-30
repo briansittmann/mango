@@ -6,7 +6,7 @@ Decides how the WhatsApp adapter confirms a successful load, text with an Undo b
 
 ### Requirement: The first loads are confirmed in text with Undo, later ones with a reaction
 
-A successful load confirmed on WhatsApp SHALL be confirmed in one of two forms. The first is the confirmation text with one reply button labelled Undo in the account's language. The second is an emoji reaction on the user's own message, with the same icon the confirmation text starts with. With the account's confirmation mode `auto`, a load SHALL be confirmed in text while the account has fewer than 15 counted loads, and with a reaction from then on. Every successful load confirmed on WhatsApp SHALL add one to the account's count, whichever form it was confirmed in. The threshold SHALL be one constant for every account, not a stored value.
+A successful load confirmed on WhatsApp SHALL be confirmed in one of two forms. The first is the confirmation text with one reply button labelled Undo in the account's language. The second is an emoji reaction on the user's own message, with the confirmation's icon. With the account's confirmation mode `auto`, a load SHALL be confirmed in text while the account has fewer than 15 counted loads, and with a reaction from then on. Every successful load confirmed on WhatsApp SHALL add one to the account's count, whichever form it was confirmed in. The threshold SHALL be one constant for every account, not a stored value.
 
 #### Scenario: First load
 - **WHEN** an account in mode `auto` with a count of 0 sends "nafta 45"

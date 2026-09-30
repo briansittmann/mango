@@ -70,7 +70,7 @@ Retries are rare (Meta retries only on non-2xx or timeout), and every outcome is
 ### D5. The reply contract
 
 `BotReply` gains:
-- `{ kind: 'loaded'; text; icon; transactionId; alwaysText: boolean }`. `alwaysText` is true after a pending category answer and for a differing recurring amount. It replaces `recurring-discrepancy`, and the discrepancy note is appended to `text`.
+- `{ kind: 'loaded'; text; icon; transactionId; alwaysText: boolean }`. `alwaysText` is true after a pending category answer and for a differing recurring amount. It replaces `recurring-discrepancy`, and the discrepancy note is appended to `text`. `text` is built as D10 says.
 - `lastLoad?: string | null` on every kind (D1).
 - `ask` carries `pending: PendingQuestion`, which becomes a union: `{ pregunta: 'categoria', tipo, monto, diasAtras } | { pregunta: 'crear_categoria', nombre, presupuesto, parecida }`. A stored question without `pregunta` (written before this change, at most 30 minutes old at deploy time) is read as `categoria`.
 
@@ -83,7 +83,7 @@ On a `loaded` reply the adapter reads `cargas_confirmadas` and `modo_confirmacio
 - **text + Undo** when `alwaysText`, or mode `texto`, or mode `auto` with a count under `TEXT_CONFIRMATIONS = 15`;
 - **a reaction** otherwise.
 
-It then sets `cargas_confirmadas = count + 1`. A read-then-write is enough, because one account's messages are handled one at a time in a webhook batch, and a lost increment only means one extra text. `send.ts` gains `sendUndoButton(phone, text, buttonId, label)` and `sendReaction(phone, messageId, emoji)`, both logging and swallowing failures like `sendText`. The emoji is the icon the text starts with (✅ 💰 🐷 🏦). The logic returns it explicitly instead of the adapter slicing the text.
+It then sets `cargas_confirmadas = count + 1`. A read-then-write is enough, because one account's messages are handled one at a time in a webhook batch, and a lost increment only means one extra text. `send.ts` gains `sendUndoButton(phone, text, buttonId, label)` and `sendReaction(phone, messageId, emoji)`, both logging and swallowing failures like `sendText`. The emoji is the confirmation's icon (✅ 💰 🐷 🏦), which now sits after "Anotado" (D10). The logic returns it explicitly instead of the adapter slicing the text.
 
 ### D7. Queries reuse `resumenMensual`; creation reuses `crear_categoria`
 
@@ -107,7 +107,7 @@ Migration `0028` creates `mensajes`:
 - RLS on, no policies.
 
 `lib/data/messages.ts` (admin client) provides:
-- `recentMessages(userId)`: the last `HISTORY_LIMIT = 10` from the last `HISTORY_WINDOW_MS = 24 h`, oldest first;
+- `recentMessages(userId)`: the last `HISTORY_LIMIT = 20` from the last `HISTORY_WINDOW_MS = 24 h`, oldest first;
 - `storeExchange(...)`: incoming with `on conflict do nothing`, then outgoing;
 - `purgeOldMessages()`: deletes messages older than `RETENTION_DAYS = 30`.
 
@@ -126,12 +126,28 @@ The cron calls `purgeOldMessages()` after the per-user loop, in its own `try`, a
   - the history block (D8).
 - **`parser-cases.json`**: gains the conversation cases listed in `bot-message-parsing`, with an optional `pending` per case, and `parser.eval.mjs` passes it through.
 
+### D10. Confirmation text: what was loaded, and the budget of its category
+
+Decision of 2026-10-01. Every load confirmation reads `Anotado <icon> <name> · <amount>`:
+
+- **Expense**: name is the parsed `descripcion`, or the definition's name for a recurring charge, or the category when there is neither; ` en <categoría>` follows the amount when the name is not the category. "súper 15" → `Anotado ✅ Súper · 15 € en Comida.`
+- **Income**: name is `descripcion`, else "Ingreso". `Anotado 💰 Propina · 500 €.` No totals line.
+- **Savings / withdrawal**: `Anotado 🐷 Ahorro · 50 €.` / `Anotado 🏦 Retiro del ahorro · 100 €.`
+- **Day**: omitted when it is today; `, ayer` or `, <short date>` before the period otherwise.
+- **Budget line**: for an expense whose date falls in the cycle in progress and whose category has a budget there, the text adds `Llevás <spent> de <budget> este mes <light>`. The figures are that category's group in `resumenMensual(client, usuario)` after the write, so they match the dashboard bar (pending recurring charges at their expected amount included). The light comes from `getBudgetStatus(...).level` (`lib/data/budget.ts`): `ok` 🟢, `warning` 🟡 (from 80 %), `exceeded` 🔴 (from 100 %). A recurring completion gets the line too. A load in a past cycle or a category without a budget gets none.
+- **Language**: the `bot` texts in `messages/es.json` move to voseo (`Llevás`, `Respondeme`, `Podés`), the same register as the chat. `en.json` reads `Logged ✅ …` and `You've spent … of … this month`.
+
+`resumenMensual` is already called by queries (D7). Calling it after an expense adds a few hundred ms per load, inside the 60 s budget, and keeps one truth for "how much is left". It is skipped for incomes and savings. If it fails, the confirmation goes out without the budget line: the load is already written.
+
+- *Alternative: a lighter sum over `transacciones` for the category.* It would miss pending recurring charges at their expected amount and disagree with the bar.
+
 ## Risks / Trade-offs
 
 - **"borrá eso" long after the load** → it still deletes the chat's last load, even days later. The reply names amount, category and day, so a wrong target is visible, and the web restores nothing (no undo for a chat delete). This is accepted per ARCHITECTURE §4 ("siempre la última").
 - **Undo pressed after a correction** → it deletes the corrected row. That is what the button is attached to, and it is accepted.
 - **Reopening a recurring charge recomputes the date from the definition's current day** → if the definition's day changed since generation, the reopened row moves to the new day. Rare, and it matches what the projection shows.
-- **The interactive message counts as a message** (same quota as text) → no change in cost for the first 15. Reactions don't open a conversation.
+- **The interactive message counts as a message** (same quota as text) → no change in cost for the first 15. Meta charges only template messages, and a reply inside the 24-hour customer service window is free, button or not (checked 2026-10-01). Reactions don't open a conversation.
+- **A reaction shows no budget line** → after 15 loads the budget line is only seen on text confirmations (a category answer, a differing recurring amount, or mode `texto`). Accepted: the dashboard and "¿cómo vengo?" still show it.
 - **`resumenMensual` cost per query** → six cycle reads and the projection branch are skipped (cycle in progress). If it becomes slow, a lighter reader can come later.
 - **Count drift under concurrent messages** → at most an extra text confirmation; no data at risk.
 - **Similarity false positives** ("Ocio" vs "Oficio" is distance 2) → costs one "¿la creo igual?" round.

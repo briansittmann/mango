@@ -13,7 +13,11 @@
     { "mensaje": "gasté 50", "esperado": { "accion": "repreguntar", "falta": "categoria", "tipo": "gasto", "monto": 50 }, "nota": "Repregunta ofreciendo categorías." },
     { "mensaje": "no, era 40", "esperado": { "accion": "corregir", "monto": 40 }, "nota": "Sobre la última carga." },
     { "mensaje": "borrá eso", "esperado": { "accion": "borrar" }, "nota": "Borra la última carga." },
-    { "mensaje": "crea categoria Musica", "esperado": { "accion": "crear_categoria", "nombre": "Música" } },
+    { "mensaje": "crea categoria Musica", "esperado": { "accion": "crear_categoria", "nombre": "Música", "confirmada": false } },
+    { "mensaje": "osea lo que gaste esos 50 eran comida", "esperado": { "accion": "corregir", "categoria": "Comida" }, "nota": "Corrección suelta sobre la última carga (ronda del 28/9)." },
+    { "mensaje": "nueva categoría Viajes, presupuesto 200", "esperado": { "accion": "crear_categoria", "nombre": "Viajes", "presupuesto": 200, "confirmada": false } },
+    { "mensaje": "sí", "pending": { "pregunta": "crear_categoria", "nombre": "Mascota", "presupuesto": null, "parecida": "Mascotas" }, "esperado": { "accion": "crear_categoria", "nombre": "Mascota", "confirmada": true }, "nota": "Confirma la creación que el bot preguntó." },
+    { "mensaje": "sí", "esperado": { "accion": "no_entendido" }, "nota": "Sin nada pendiente, un sí suelto no se entiende." },
     { "mensaje": "libre", "esperado": { "accion": "consultar", "consulta": "margen_libre" } },
     { "mensaje": "¿cómo vengo?", "esperado": { "accion": "consultar", "consulta": "mes" } },
     { "mensaje": "asdasda", "esperado": { "accion": "no_entendido" }, "nota": "Responde que no entendió." }
