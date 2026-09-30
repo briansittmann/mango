@@ -4,6 +4,8 @@ import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { RevealText } from '@/components/ui/reveal-text'
+import { RevealTitle } from '@/components/ui/reveal-title'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -89,10 +91,12 @@ export function LandingPace() {
     <section ref={root} aria-labelledby={`${id}-heading`} className="flex min-h-svh items-center justify-center px-gutter py-16">
       <div className="flex w-full max-w-[920px] flex-col gap-8">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 id={`${id}-heading`} className="text-balance font-display text-[32px] font-bold leading-[1.05] tracking-[-0.035em] text-foreground md:text-[52px]">
-            {t('ritmoTitulo')}
-          </h2>
-          <p className="mx-auto mt-4 max-w-xl text-pretty text-body-lg text-muted-foreground">{t('ritmoTexto')}</p>
+          <RevealTitle
+            id={`${id}-heading`}
+            text={t('ritmoTitulo')}
+            className="text-balance font-display text-[32px] font-bold leading-[1.05] tracking-[-0.035em] text-foreground md:text-[52px]"
+          />
+          <RevealText text={t('ritmoTexto')} delay={0.3} className="mx-auto mt-4 max-w-xl text-pretty text-body-lg text-muted-foreground" />
         </div>
         <figure>
           <div ref={panel} className="liquid-glass relative overflow-hidden rounded-[28px] tabular-nums">

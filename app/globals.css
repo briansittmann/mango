@@ -618,11 +618,74 @@ body {
     box-shadow: 0 10px 40px -8px color-mix(in oklab, var(--primary) 60%, transparent);
   }
   &:active {
-    scale: 0.97;
+    scale: 0.93;
   }
   &:focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 3px;
+  }
+}
+
+/* Pressing "Empezar" or "Entrar": a wave of the button's ink, started in `ripple()`. */
+.press-ripple {
+  position: absolute;
+  border-radius: 999px;
+  background: currentColor;
+  pointer-events: none;
+}
+
+/* "Ver la demo": a brand glow and a lit edge follow the pointer, and the label rolls over itself. */
+.landing-demo {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transition: scale 200ms var(--ease-spring), translate 400ms var(--ease-spring);
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 300ms ease-out;
+  }
+  &::before {
+    z-index: -1;
+    background: radial-gradient(110px circle at var(--x, 50%) var(--y, 50%), color-mix(in oklab, var(--brand) 32%, transparent), transparent 70%);
+  }
+  &::after {
+    padding: 1px;
+    background: radial-gradient(70px circle at var(--x, 50%) var(--y, 50%), var(--brand), transparent 75%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+  @media (hover: hover) {
+    &:hover {
+      translate: 0 -2px;
+    }
+    &:hover::before,
+    &:hover::after {
+      opacity: 1;
+    }
+  }
+}
+
+.text-roll {
+  display: inline-flex;
+  height: 1.25em;
+  overflow: hidden;
+  line-height: 1.25em;
+  > span {
+    display: inline-block;
+    text-shadow: 0 1.25em currentColor;
+    transition: translate 550ms var(--ease-out) calc(var(--i) * 18ms);
+  }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  a:hover .text-roll > span {
+    translate: 0 -1.25em;
   }
 }
 

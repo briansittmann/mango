@@ -7,6 +7,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { Check } from 'lucide-react'
 import { Money } from '@/components/atoms/money'
 import { FreeMarginCard } from '@/components/organisms/free-margin-card'
+import { RevealTitle } from '@/components/ui/reveal-title'
 import { cn } from '@/lib/utils'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -227,9 +228,11 @@ export function LandingFeatures() {
 
   return (
     <section ref={root} aria-labelledby="landing-funciones" className="mx-auto w-full max-w-6xl px-gutter py-24 md:py-32">
-      <h2 id="landing-funciones" className="mx-auto max-w-2xl text-balance text-center font-display text-[32px] font-bold leading-[1.05] tracking-[-0.035em] text-foreground md:text-[52px]">
-        {t('funcionesTitulo')}
-      </h2>
+      <RevealTitle
+        id="landing-funciones"
+        text={t('funcionesTitulo')}
+        className="mx-auto max-w-2xl text-balance text-center font-display text-[32px] font-bold leading-[1.05] tracking-[-0.035em] text-foreground md:text-[52px]"
+      />
       <div className="mt-12 grid gap-4 md:mt-16 md:grid-cols-6">
         <Tile title={t('margenTitulo')} text={t('margenTexto')} className="md:col-span-4">
           <MarginVisual />

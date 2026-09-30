@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useTransition, type CSSProperties, type PointerEvent } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
@@ -13,6 +13,8 @@ import { LandingPace } from '@/components/organisms/landing-pace'
 import { LandingStory } from '@/components/organisms/landing-story'
 import { useDarkTheme } from '@/components/theme/dynamic-background'
 import { DotField } from '@/components/ui/dot-field'
+import { RevealText } from '@/components/ui/reveal-text'
+import { RevealTitle } from '@/components/ui/reveal-title'
 import { ScrambledText } from '@/components/ui/scrambled-text'
 import { cn } from '@/lib/utils'
 
@@ -46,19 +48,77 @@ function Logo() {
   )
 }
 
-function Actions({ className }: { className?: string }) {
+// A wave of the button's own ink spreads from where it was pressed.
+function ripple(event: PointerEvent<HTMLElement>) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  const button = event.currentTarget
+  const { left, top, width, height } = button.getBoundingClientRect()
+  const size = Math.hypot(width, height) * 2
+  const wave = document.createElement('span')
+  wave.className = 'press-ripple'
+  Object.assign(wave.style, {
+    width: `${size}px`,
+    height: `${size}px`,
+    left: `${event.clientX - left - size / 2}px`,
+    top: `${event.clientY - top - size / 2}px`,
+  })
+  button.append(wave)
+  gsap.fromTo(wave, { scale: 0, opacity: 0.4 }, { scale: 1, opacity: 0, duration: 0.75, ease: 'power2.out', onComplete: () => wave.remove() })
+}
+
+// The demo button's glow and edge follow the pointer.
+function spotlight(event: PointerEvent<HTMLElement>) {
+  const { left, top } = event.currentTarget.getBoundingClientRect()
+  event.currentTarget.style.setProperty('--x', `${event.clientX - left}px`)
+  event.currentTarget.style.setProperty('--y', `${event.clientY - top}px`)
+}
+
+function Actions({ delay = 0, className }: { delay?: number; className?: string }) {
   const t = useTranslations('inicio')
+  const root = useRef<HTMLDivElement>(null)
+  const demo = t('verDemo')
+
+  // Buttons spring up from below, one after the other, the first time they come into view.
+  useLayoutEffect(() => {
+    const media = gsap.matchMedia(root)
+    media.add('(prefers-reduced-motion: no-preference)', () => {
+      gsap.from(root.current!.children, {
+        y: 28,
+        scale: 0.7,
+        autoAlpha: 0,
+        duration: 1.1,
+        ease: 'elastic.out(1, 0.65)',
+        stagger: 0.12,
+        delay,
+        scrollTrigger: { trigger: root.current, start: 'top 95%', once: true, refreshPriority: -1 },
+      })
+    })
+    return () => media.revert()
+  }, [delay])
+
   return (
-    <div className={cn('flex flex-wrap items-center justify-center gap-3', className)}>
+    <div ref={root} className={cn('flex flex-wrap items-center justify-center gap-3', className)}>
       <Link
         href="/login"
-        className="landing-cta group inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 text-body-lg font-semibold text-primary-foreground"
+        onPointerDown={ripple}
+        className="landing-cta group relative inline-flex h-12 items-center gap-2 overflow-hidden rounded-full bg-primary px-6 text-body-lg font-semibold text-primary-foreground"
       >
         {t('empezar')}
         <ArrowRight className="size-4 transition-transform duration-300 ease-spring group-hover:translate-x-1" aria-hidden />
       </Link>
-      <Link href="/demo" className="liquid-glass pressable inline-flex h-12 items-center rounded-full px-6 text-body-lg font-medium text-foreground">
-        {t('verDemo')}
+      <Link
+        href="/demo"
+        onPointerMove={spotlight}
+        className="landing-demo liquid-glass pressable inline-flex h-12 items-center rounded-full px-6 text-body-lg font-medium text-foreground"
+      >
+        <span className="sr-only">{demo}</span>
+        <span aria-hidden className="text-roll">
+          {[...demo].map((char, index) => (
+            <span key={index} style={{ '--i': index } as CSSProperties}>
+              {char === ' ' ? NBSP : char}
+            </span>
+          ))}
+        </span>
       </Link>
     </div>
   )
@@ -132,7 +192,7 @@ function Nav({ changeLanguage }: LandingTemplateProps) {
               </button>
             ))}
           </div>
-          <Link href="/login" className="nav-entrar pressable rounded-full px-3 py-2 text-body-md font-medium text-foreground">
+          <Link href="/login" onPointerDown={ripple} className="nav-entrar pressable relative overflow-hidden rounded-full px-3 py-2 text-body-md font-medium text-foreground">
             <span className="nav-shine">{t('entrar')}</span>
           </Link>
         </div>
@@ -161,10 +221,7 @@ function Hero() {
   useLayoutEffect(() => {
     const media = gsap.matchMedia(root)
     media.add('(prefers-reduced-motion: no-preference)', () => {
-      gsap
-        .timeline({ delay: 0.15 })
-        .from('.hero-word', { yPercent: 110, rotate: 4, filter: 'blur(12px)', opacity: 0, duration: 1.1, ease: 'expo.out', stagger: 0.055 })
-        .from('.hero-fade', { y: 24, opacity: 0, filter: 'blur(8px)', duration: 0.9, ease: 'power3.out', stagger: 0.1 }, '-=0.7')
+      gsap.from('.hero-word', { yPercent: 110, rotate: 4, filter: 'blur(12px)', opacity: 0, duration: 1.1, ease: 'expo.out', stagger: 0.055, delay: 0.15 })
     })
     return () => media.revert()
   }, [])
@@ -175,8 +232,8 @@ function Hero() {
         <SplitWords text={t('heroTitulo1')} />
         <SplitWords text={t('heroTitulo2')} />
       </h1>
-      <p className="hero-fade mx-auto mt-7 max-w-xl text-pretty text-body-lg text-muted-foreground md:text-[18px] md:leading-7">{t('heroTexto')}</p>
-      <Actions className="hero-fade mt-9" />
+      <RevealText text={t('heroTexto')} delay={0.55} className="mx-auto mt-7 max-w-xl text-pretty text-body-lg text-muted-foreground md:text-[18px] md:leading-7" />
+      <Actions delay={0.9} className="mt-9" />
     </section>
   )
 }
@@ -188,10 +245,12 @@ function Examples() {
   return (
     <section aria-labelledby="landing-escribe" className="py-24 md:py-32">
       <div className="mx-auto max-w-2xl px-gutter text-center">
-        <h2 id="landing-escribe" className="text-balance font-display text-[32px] font-bold leading-[1.05] tracking-[-0.035em] text-foreground md:text-[52px]">
-          {t('escribeTitulo')}
-        </h2>
-        <p className="mx-auto mt-4 max-w-xl text-pretty text-body-lg text-muted-foreground">{t('escribeTexto')}</p>
+        <RevealTitle
+          id="landing-escribe"
+          text={t('escribeTitulo')}
+          className="text-balance font-display text-[32px] font-bold leading-[1.05] tracking-[-0.035em] text-foreground md:text-[52px]"
+        />
+        <RevealText text={t('escribeTexto')} delay={0.3} className="mx-auto mt-4 max-w-xl text-pretty text-body-lg text-muted-foreground" />
       </div>
       <div aria-hidden className="landing-marquee mt-4 -mb-8 flex overflow-x-clip flex-col gap-3 py-8 md:mt-8">
         {rows.map((row, index) => (
@@ -213,11 +272,12 @@ function Closing() {
   const t = useTranslations('inicio')
   return (
     <section className="flex flex-col items-center px-gutter py-28 text-center md:py-40">
-      <h2 className="max-w-3xl text-balance font-display text-[36px] font-extrabold leading-[1.02] tracking-[-0.04em] text-foreground md:text-[64px]">
-        {t('cierreTitulo')}
-      </h2>
-      <p className="mx-auto mt-5 max-w-md text-pretty text-body-lg text-muted-foreground">{t('cierreTexto')}</p>
-      <Actions className="mt-9" />
+      <RevealTitle
+        text={t('cierreTitulo')}
+        className="max-w-3xl text-balance font-display text-[36px] font-extrabold leading-[1.02] tracking-[-0.04em] text-foreground md:text-[64px]"
+      />
+      <RevealText text={t('cierreTexto')} delay={0.4} className="mx-auto mt-5 max-w-md text-pretty text-body-lg text-muted-foreground" />
+      <Actions delay={0.7} className="mt-9" />
     </section>
   )
 }
