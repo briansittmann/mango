@@ -534,6 +534,12 @@ body {
     0 8px 20px -8px light-dark(transparent, rgba(0, 0, 0, 0.7));
 }
 
+/* The dashboard keeps its bands quiet behind the cards; the landing and the login are a stage, so
+   the greens come forward there. */
+:root:has(.vivid-background) [data-dynamic-background] {
+  opacity: 0.8;
+}
+
 /* ── Landing (/) ─────────────────────────────────────────────────────────────────────────────── */
 
 /* The dot field replaces the dark shell's diagonal streaks here. */
@@ -559,7 +565,7 @@ body {
 .landing-cta {
   transition: scale 200ms var(--ease-spring), box-shadow 300ms ease-out;
   &:hover {
-    box-shadow: 0 10px 40px -8px color-mix(in oklab, var(--foreground) 45%, transparent);
+    box-shadow: 0 10px 40px -8px color-mix(in oklab, var(--primary) 60%, transparent);
   }
   &:active {
     scale: 0.97;

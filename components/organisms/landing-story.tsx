@@ -180,11 +180,18 @@ export function LandingStory() {
     return () => window.removeEventListener('resize', measure)
   }, [])
 
+  // The pin reads the latest `goTo` through a ref: rebuilding the pin when the texts change (a
+  // language switch) would put it after the pace chart's, whose start then ignores this spacer.
+  const goToRef = useRef(goTo)
+  useEffect(() => {
+    goToRef.current = goTo
+  }, [goTo])
+
   useLayoutEffect(() => {
     const media = gsap.matchMedia()
     media.add({ motion: '(prefers-reduced-motion: no-preference)', reduced: '(prefers-reduced-motion: reduce)' }, (context) => {
       if (context.conditions?.reduced) {
-        goTo(messages.length)
+        goToRef.current(STEP_AT.length)
         return
       }
       gsap.fromTo(
@@ -198,15 +205,18 @@ export function LandingStory() {
         end: () => `+=${window.innerHeight * 3.2}`,
         pin: true,
         invalidateOnRefresh: true,
+        // It sits above the pace chart's pin, so it measures first (see `LandingPace`).
+        refreshPriority: 2,
         onUpdate: (self) => {
-          goTo(stepAt(self.progress))
+          goToRef.current(stepAt(self.progress))
           const inner = gsap.utils.clamp(0, 1, (self.progress - INNER_SCROLL_FROM) / (1 - INNER_SCROLL_FROM))
           frameRef.current?.contentWindow?.scrollTo(0, gsap.parseEase('power2.inOut')(inner) * INNER_SCROLL_DISTANCE)
         },
       })
+      ScrollTrigger.refresh()
     })
     return () => media.revert()
-  }, [goTo, messages.length])
+  }, [])
 
   function onFrameLoad(event: React.SyntheticEvent<HTMLIFrameElement>) {
     event.currentTarget.contentDocument?.documentElement.style.setProperty('scrollbar-width', 'none')

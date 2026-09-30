@@ -18,7 +18,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const address = typeof email === "string" && email.includes("@") ? email : null;
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-6 px-4">
+    <main className="vivid-background flex flex-1 flex-col items-center justify-center gap-6 px-4">
       <LoginSteps initialEmail={address} linkError={error === "enlace"} />
     </main>
   );

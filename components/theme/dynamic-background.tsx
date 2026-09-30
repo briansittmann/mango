@@ -54,6 +54,7 @@ export function DynamicBackground() {
   return (
     <div
       aria-hidden
+      data-dynamic-background
       // The layer is fixed, so scrolled content always sits over the un-faded part of the bands:
       // what reads as a hero backdrop at full strength is too loud behind a whole dashboard.
       // `h-lvh` and not `inset-0`: the mobile toolbar collapsing mid-scroll would otherwise resize

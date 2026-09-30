@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { gsap } from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ArrowRight, CheckCheck } from 'lucide-react'
 import { LandingFeatures } from '@/components/organisms/landing-features'
 import { LandingPace } from '@/components/organisms/landing-pace'
@@ -34,9 +35,9 @@ function Logo() {
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/mango-logo-light.svg" alt="" aria-hidden className="size-9 dark:hidden" />
+      <img src="/mango-logo-light.svg" alt="" aria-hidden className="-me-2 size-11 dark:hidden" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/mango-logo-dark.svg" alt="" aria-hidden className="hidden size-9 dark:block" />
+      <img src="/mango-logo-dark.svg" alt="" aria-hidden className="-me-2 hidden size-11 dark:block" />
     </>
   )
 }
@@ -47,7 +48,7 @@ function Actions({ className }: { className?: string }) {
     <div className={cn('flex flex-wrap items-center justify-center gap-3', className)}>
       <Link
         href="/login"
-        className="landing-cta group inline-flex h-12 items-center gap-2 rounded-full bg-foreground px-6 text-body-lg font-semibold text-background"
+        className="landing-cta group inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 text-body-lg font-semibold text-primary-foreground"
       >
         {t('empezar')}
         <ArrowRight className="size-4 transition-transform duration-300 ease-spring group-hover:translate-x-1" aria-hidden />
@@ -84,8 +85,8 @@ function Nav({ changeLanguage }: LandingTemplateProps) {
   return (
     <header className="fixed inset-x-0 top-0 z-50">
       <div aria-hidden className={cn('glass-bar absolute inset-0 transition-opacity duration-500', scrolled ? 'opacity-100' : 'opacity-0')} />
-      <nav className="relative mx-auto flex h-16 max-w-6xl items-center justify-between px-gutter">
-        <Link href="/" className="landing-rise flex items-center gap-2 font-display text-headline-md text-foreground">
+      <nav className="relative mx-auto flex h-[3.6rem] max-w-6xl items-center justify-between px-gutter">
+        <Link href="/" className="landing-rise -ms-1.5 flex items-center font-display text-headline-md text-foreground">
           <Logo />
           {t('titulo')}
         </Link>
@@ -148,7 +149,7 @@ function Hero() {
     <section ref={root} className="relative flex min-h-[calc(100svh-4rem)] flex-col items-center justify-center px-gutter pb-10 pt-28 text-center">
       <h1 className="max-w-6xl font-display text-[44px] font-extrabold leading-[0.98] tracking-[-0.045em] text-foreground sm:text-[64px] lg:text-[80px]">
         <SplitWords text={t('heroTitulo1')} />
-        <SplitWords text={t('heroTitulo2')} className="text-muted-foreground" />
+        <SplitWords text={t('heroTitulo2')} />
       </h1>
       <p className="hero-fade mx-auto mt-7 max-w-xl text-pretty text-body-lg text-muted-foreground md:text-[18px] md:leading-7">{t('heroTexto')}</p>
       <Actions className="hero-fade mt-9" />
@@ -199,11 +200,17 @@ function Closing() {
 
 export function LandingTemplate({ changeLanguage }: LandingTemplateProps) {
   const t = useTranslations('inicio')
+  const locale = useLocale()
   const dark = useDarkTheme()
   const dots = dark ? DOTS.dark : DOTS.light
 
+  // Another language re-wraps every heading: the pins below them start somewhere else now.
+  useEffect(() => {
+    ScrollTrigger.refresh()
+  }, [locale])
+
   return (
-    <div className="landing relative flex-1">
+    <div className="landing vivid-background relative flex-1">
       <DotField
         gradientFrom={dots.from}
         gradientTo={dots.to}

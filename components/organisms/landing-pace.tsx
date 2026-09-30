@@ -70,6 +70,8 @@ export function LandingPace() {
             pin: true,
             scrub: 0.5,
             invalidateOnRefresh: true,
+            // Below the story's pin: measured after it, so its start includes that pin's spacer.
+            refreshPriority: 1,
           },
         })
         .to('.pace-reveal', { attr: { width: width - inset * 2 + 2 }, duration: 0.88 }, 0)
@@ -77,6 +79,8 @@ export function LandingPace() {
         .to('.pace-signal', { autoAlpha: 1, scale: 1, filter: 'blur(0px)', duration: 0.06, ease: 'power2.out' }, (9 / 29) * 0.88)
         .to('.pace-bank', { autoAlpha: 1, duration: 0.05 }, 0.88)
         .to('.pace-bracket', { autoAlpha: 1, duration: 0.06 }, 0.94)
+      // Rebuilt on a resize: every pin below or above has to be measured again with it.
+      ScrollTrigger.refresh()
     })
     return () => media.revert()
   }, [width, inset])
