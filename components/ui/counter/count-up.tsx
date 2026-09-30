@@ -71,11 +71,13 @@ export default function CountUp({
     [maxDecimals, separator, format],
   )
 
+  // Paints where the count stands, not `from`: a new `formatValue` (a language switch) re-runs this
+  // after the count has finished, and nothing would move it back off `from`.
   useEffect(() => {
     if (ref.current) {
-      ref.current.textContent = formatValue(direction === 'down' ? to : from)
+      ref.current.textContent = formatValue(motionValue.get())
     }
-  }, [from, to, direction, formatValue])
+  }, [motionValue, formatValue])
 
   useEffect(() => {
     if (isInView && startWhen) {

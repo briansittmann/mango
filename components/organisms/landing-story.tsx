@@ -18,10 +18,7 @@ const STATUS_BAR = 47
 const BEZEL = 10
 const CLOCK = '9:41'
 // Step thresholds along the pinned scroll: the intro, then one message each.
-const STEP_AT = [0.14, 0.36, 0.58]
-// The last stretch of the pin scrolls the dashboard down to its categories.
-const INNER_SCROLL_FROM = 0.76
-const INNER_SCROLL_DISTANCE = 430
+const STEP_AT = [0.18, 0.47, 0.76]
 // The reply lands this long after its message: the margin drops with it, not before.
 const REPLY_DELAY_MS = 1100
 
@@ -202,15 +199,13 @@ export function LandingStory() {
       ScrollTrigger.create({
         trigger: rootRef.current,
         start: 'top top',
-        end: () => `+=${window.innerHeight * 3.2}`,
+        end: () => `+=${window.innerHeight * 2.45}`,
         pin: true,
         invalidateOnRefresh: true,
         // It sits above the pace chart's pin, so it measures first (see `LandingPace`).
         refreshPriority: 2,
         onUpdate: (self) => {
           goToRef.current(stepAt(self.progress))
-          const inner = gsap.utils.clamp(0, 1, (self.progress - INNER_SCROLL_FROM) / (1 - INNER_SCROLL_FROM))
-          frameRef.current?.contentWindow?.scrollTo(0, gsap.parseEase('power2.inOut')(inner) * INNER_SCROLL_DISTANCE)
         },
       })
       ScrollTrigger.refresh()

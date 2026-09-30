@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { SplitText } from 'gsap/SplitText'
 import { ArrowRight, CheckCheck } from 'lucide-react'
 import { LandingFeatures } from '@/components/organisms/landing-features'
 import { LandingPace } from '@/components/organisms/landing-pace'
@@ -14,6 +15,8 @@ import { useDarkTheme } from '@/components/theme/dynamic-background'
 import { DotField } from '@/components/ui/dot-field'
 import { ScrambledText } from '@/components/ui/scrambled-text'
 import { cn } from '@/lib/utils'
+
+gsap.registerPlugin(SplitText)
 
 type LandingTemplateProps = {
   changeLanguage: (locale: 'es' | 'en') => Promise<void>
@@ -34,12 +37,12 @@ const DOTS = {
 
 function Logo() {
   return (
-    <>
+    <span className="nav-logo -me-1.5 inline-flex">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/mango-logo-light.svg" alt="" aria-hidden className="-me-1.5 size-[2.6rem] dark:hidden" />
+      <img src="/mango-logo-light.svg" alt="" aria-hidden className="size-[2.6rem] dark:hidden" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/mango-logo-dark.svg" alt="" aria-hidden className="-me-1.5 hidden size-[2.6rem] dark:block" />
-    </>
+      <img src="/mango-logo-dark.svg" alt="" aria-hidden className="hidden size-[2.6rem] dark:block" />
+    </span>
   )
 }
 
@@ -67,6 +70,26 @@ function Nav({ changeLanguage }: LandingTemplateProps) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [scrolled, setScrolled] = useState(false)
+  const header = useRef<HTMLElement>(null)
+
+  // Each piece arrives its own way: the mango rolls in, the wordmark rises letter by letter, the
+  // language switch opens from its centre, and "Entrar" slides in and catches a green shine.
+  useLayoutEffect(() => {
+    const media = gsap.matchMedia(header)
+    media.add('(prefers-reduced-motion: no-preference)', () => {
+      const wordmark = SplitText.create('.nav-wordmark', { type: 'chars', mask: 'chars', charsClass: 'nav-char' })
+      gsap
+        .timeline({ delay: 0.05, onComplete: () => wordmark.revert() })
+        .from('.nav-logo', { scale: 0, rotate: -200, x: -24, duration: 1.1, ease: 'back.out(1.8)' })
+        .from(wordmark.chars, { yPercent: 115, duration: 0.8, ease: 'expo.out', stagger: 0.045 }, 0.25)
+        .from('.nav-locales', { clipPath: 'inset(0 50% 0 50% round 999px)', scale: 0.8, duration: 0.9, ease: 'expo.inOut' }, 0.2)
+        .from('.nav-locales button', { opacity: 0, y: 8, filter: 'blur(4px)', duration: 0.5, ease: 'power3.out', stagger: 0.08 }, 0.6)
+        .from('.nav-entrar', { x: 32, opacity: 0, filter: 'blur(10px)', duration: 0.9, ease: 'expo.out' }, 0.4)
+        .fromTo('.nav-entrar .nav-shine', { backgroundPosition: '100% 0' }, { backgroundPosition: '0% 0', duration: 1.2, ease: 'power2.inOut' }, 0.95)
+      return () => wordmark.revert()
+    })
+    return () => media.revert()
+  }, [])
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
@@ -84,15 +107,15 @@ function Nav({ changeLanguage }: LandingTemplateProps) {
   }
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50">
+    <header ref={header} className="fixed inset-x-0 top-0 z-50">
       <div aria-hidden className={cn('glass-bar absolute inset-0 transition-opacity duration-500', scrolled ? 'opacity-100' : 'opacity-0')} />
       <nav className="relative mx-auto flex h-[3.42rem] max-w-6xl items-center justify-between px-gutter">
-        <Link href="/" className="landing-rise -ms-1.5 flex items-center font-display text-[19px]/[25px] font-semibold tracking-[-0.015em] text-foreground">
+        <Link href="/" className="-ms-1.5 flex items-center font-display text-[19px]/[25px] font-semibold tracking-[-0.015em] text-foreground">
           <Logo />
-          {t('titulo')}
+          <span className="nav-wordmark">{t('titulo')}</span>
         </Link>
-        <div className="landing-rise flex items-center gap-2 [animation-delay:80ms]">
-          <div role="radiogroup" aria-label={t('idioma')} className={cn('segment-track flex rounded-full p-1', pending && 'opacity-60')}>
+        <div className="flex items-center gap-2">
+          <div role="radiogroup" aria-label={t('idioma')} className={cn('nav-locales segment-track flex rounded-full p-1', pending && 'opacity-60')}>
             {LOCALES.map(({ value, label }) => (
               <button
                 key={value}
@@ -109,8 +132,8 @@ function Nav({ changeLanguage }: LandingTemplateProps) {
               </button>
             ))}
           </div>
-          <Link href="/login" className="pressable rounded-full px-3 py-2 text-body-md font-medium text-foreground">
-            {t('entrar')}
+          <Link href="/login" className="nav-entrar pressable rounded-full px-3 py-2 text-body-md font-medium text-foreground">
+            <span className="nav-shine">{t('entrar')}</span>
           </Link>
         </div>
       </nav>

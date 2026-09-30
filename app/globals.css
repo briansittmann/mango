@@ -597,8 +597,19 @@ body {
   mask-image: radial-gradient(130% 95% at 50% 0%, black 35%, transparent 100%);
 }
 
-.landing-rise {
-  animation: header-in 700ms var(--ease-out) backwards;
+/* Nav: the wordmark's letters rise inside masks tall enough for the g's descender. */
+.nav-char-mask {
+  padding-bottom: 0.25em;
+  margin-bottom: -0.25em;
+}
+
+/* Nav: "Entrar" carries a brand-green band that sweeps across once on arrival. Resting at either
+   end of the image, the visible window is all foreground. */
+.nav-shine {
+  background: linear-gradient(110deg, var(--foreground) 40%, var(--brand) 50%, var(--foreground) 60%) 0 0 / 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .landing-cta {
@@ -829,7 +840,6 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .landing-rise,
   .landing-marquee > div,
   .landing-typing,
   .landing-wire::after {
