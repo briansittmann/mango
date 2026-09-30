@@ -12,6 +12,7 @@ import { LandingPace } from '@/components/organisms/landing-pace'
 import { LandingStory } from '@/components/organisms/landing-story'
 import { useDarkTheme } from '@/components/theme/dynamic-background'
 import { DotField } from '@/components/ui/dot-field'
+import { ScrambledText } from '@/components/ui/scrambled-text'
 import { cn } from '@/lib/utils'
 
 type LandingTemplateProps = {
@@ -228,7 +229,15 @@ export function LandingTemplate({ changeLanguage }: LandingTemplateProps) {
       </main>
       <footer className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-gutter pb-10 text-center text-body-sm text-muted-foreground">
         <p>{t('descripcion')}</p>
-        <p>{t('pie')}</p>
+        <p>
+          {t.rich('pie', {
+            nombre: (chunks) => (
+              <a href="https://briansittmann.dev" target="_blank" rel="noopener" className="rounded-sm transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                <ScrambledText text={String(chunks)} scrambleChars="01" duration={3.8} speed={1.2} />
+              </a>
+            ),
+          })}
+        </p>
       </footer>
     </div>
   )

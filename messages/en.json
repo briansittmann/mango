@@ -270,7 +270,7 @@
     "presupuestoOcio": "Leisure",
     "cierreTitulo": "Start seeing your month clearly.",
     "cierreTexto": "Create your account with your e-mail. The WhatsApp bot is by invitation.",
-    "pie": "Made by Brian Sittmann"
+    "pie": "Made by <nombre>Brian Sittmann</nombre>"
   },
   "acceso": {
     "titulo": "Log in to Mango",
