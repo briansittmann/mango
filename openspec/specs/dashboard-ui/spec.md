@@ -470,6 +470,8 @@ A card whose category has a budget SHALL show "spent of budget" in its header an
 - From 80 % to 100 %, the text SHALL be preceded by a warning icon and a "near limit" label.
 - When spent exceeds the budget, the amount left SHALL be zero, the bar SHALL be full, and the text SHALL instead state the amount over budget (spent − budget), preceded by an alert icon with a different shape from the warning icon.
 
+**In a projected cycle** a budgeted card SHALL show only its budget amount in its header and an empty bar exposed to assistive technology as 0 out of 100, with no spent figure, no text under the bar and no warning or alert icon, whatever its projected recurring charges add up to, while the category holds no real row in that cycle. Once the category holds a real row in that cycle, the card SHALL show spent of budget, the bar, its assistive-technology value and the text under the bar exactly as in the cycle in progress, with spent being the real rows plus the projected charges and today being the cycle's first day.
+
 Categories without a budget SHALL show only their total.
 
 #### Scenario: Worked example from ARCHITECTURE.md
@@ -497,6 +499,20 @@ Categories without a budget SHALL show only their total.
 - **WHEN** the "transporte" card on `/demo` (budget 100, "Gasolina" 80 € and the recurring "Parking" 50 €) is rendered in Spanish
 - **THEN** its header shows 130 € of 100 €, its bar is full in the danger colour, and the text states "30 € por encima del presupuesto"
 - **AND** when expanded it lists both "Gasolina" and "Parking", and the expenses panel lists "transporte" with 130 €
+
+#### Scenario: A budgeted card in a projection
+- **WHEN** the "suplementos" card, budget 100 with projected recurring charges of 90 €, is rendered in a projected cycle in Spanish
+- **THEN** its header shows 100 € and no "90 € de 100 €", its bar is empty and exposed as 0 out of 100, and no text is shown under it
+
+#### Scenario: A budgeted card in a projection with a real row
+- **WHEN** on `/demo` in Spanish the visitor adds 60 € described as "Taxi" to "transporte" (budget 100, projected "Parking" 50 €) in the October 2026 projection
+- **THEN** the card header shows 110 € of 100 €, the bar is full in the danger colour and exposed as 100 out of 100 (capped, as in the cycle in progress), and the text states "10 € por encima del presupuesto"
+- **AND** the free margin shows 465 €, 10 € below the untouched projection's 475 €
+
+#### Scenario: A projection bar within budget
+- **WHEN** on `/demo` in Spanish the visitor adds 120 € described as "Cumpleaños" to "comida" (budget 400, no projected charge) in the October 2026 projection
+- **THEN** the card header shows 120 € of 400 €, the bar is exposed as 30 out of 100 in the brand colour, and the text states the amount left per week over the whole cycle
+- **AND** the free margin still shows 475 €
 
 ### Requirement: Category colour placement
 A category's colour SHALL appear only in these places:
@@ -624,12 +640,12 @@ Below the bar, the cycle name SHALL be the screen's title:
 - It SHALL be left-aligned and larger than every other text except the free-margin number.
 - Previous/next cycle controls SHALL sit beside it.
 - The cycle SHALL be named after the month in which it ends.
-- Under the title, the cycle's first and last day SHALL be shown as a date range in the active language. While the cycle contains today, the range SHALL be preceded by an "in progress" label.
+- Under the title, the cycle's first and last day SHALL be shown as a date range in the active language. While the cycle contains today, the range SHALL be preceded by an "in progress" label. While the cycle is a projection, the range SHALL be preceded by a "Proyección" label instead.
 - The title's accessible name SHALL contain the visible month name.
 
-Activating the title SHALL open a month picker. In the picker, the selected month SHALL be marked by a filled shape and heavier weight, and exposed as current. Months after an in-progress cycle SHALL NOT be selectable.
+Activating the title SHALL open a month picker. In the picker, the selected month SHALL be marked by a filled shape and heavier weight, and exposed as current. Months more than six cycles after the cycle in progress SHALL NOT be selectable.
 
-Navigation SHALL reach the current cycle and earlier ones only. While the displayed cycle is in progress, the next-cycle control SHALL be disabled, beside the title and in the top bar alike, even when the mounting page supplies a handler for it. No control SHALL display a cycle after the current one.
+Navigation SHALL reach every earlier cycle and up to six cycles after the one in progress. While the sixth cycle after the one in progress is displayed, the next-cycle control SHALL be disabled, beside the title and in the top bar alike, even when the mounting page supplies a handler for it. No control SHALL display a cycle further ahead.
 
 Once the title has scrolled under the top bar, the bar SHALL become a frosted surface and show the month name with previous/next controls in place of the app name. The avatar SHALL stay in the same position. While the title is in view, the bar SHALL be transparent and its month controls SHALL be hidden and unreachable, so the month is never shown twice.
 
@@ -649,14 +665,22 @@ Below the header, a free-margin card SHALL show a "free margin" label and the su
 - **AND** the line under it shows the "en curso" label followed by a date range covering 1 and 30 September
 - **AND** the title's computed font size is larger than every other text on the page except the free-margin number
 
+#### Scenario: Projection label
+- **WHEN** the displayed cycle is the November 2026 projection and the language is Spanish
+- **THEN** the line under the title shows "Proyección" followed by a date range covering 1 and 30 November, and no "en curso" label
+
 #### Scenario: Month picker marks the selection
 - **WHEN** the user activates the title
 - **THEN** a month picker opens, in which September has a filled background and heavier weight than the other months and is exposed as current
 
+#### Scenario: Navigation into the projection
+- **WHEN** the displayed cycle is September 2026, in progress, and the mounting page supplies previous- and next-cycle handlers
+- **THEN** the next-cycle control beside the title and the one in the top bar are both enabled
+- **AND** in the month picker, October 2026 to March 2027 are enabled and April 2027 onwards is disabled
+
 #### Scenario: No way past the current cycle
-- **WHEN** the displayed cycle is in progress and the mounting page supplies previous- and next-cycle handlers
+- **WHEN** the displayed cycle is March 2027, the last reachable one, six cycles past the September 2026 cycle in progress
 - **THEN** the next-cycle control beside the title and the one in the top bar are both disabled, and the previous-cycle controls are enabled
-- **AND** in the month picker, every month after the displayed one is disabled
 
 #### Scenario: Month moves into the top bar
 - **WHEN** the user scrolls until the title is under the top bar

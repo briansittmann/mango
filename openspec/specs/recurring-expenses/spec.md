@@ -89,9 +89,10 @@ The switch SHALL be exposed to assistive technology as a switch, with its on or 
 
 A definition with a number of repetitions SHALL produce that many charges and no more.
 
-- Each charge inserted for a definition SHALL increase its count of charges produced.
+- Each charge inserted for a definition — by the daily generation (`recurring-charge-generation`) or linked when the definition is created — SHALL increase its count of charges produced. A charge that already existed and was left in place SHALL NOT be counted again.
 - When the charge that brings the count up to the number of repetitions is inserted, the definition SHALL become inactive in the same operation. No user action SHALL be required to stop it.
-- An inactive definition SHALL NOT produce further charges, and SHALL NOT be listed in "Próximos cobros" for later cycles. Charges it already produced SHALL stay exactly as they are.
+- An inactive definition SHALL NOT produce further charges, SHALL NOT be listed in "Próximos cobros" for later cycles, and SHALL NOT appear in any projected cycle. Charges it already produced SHALL stay exactly as they are.
+- A projected cycle SHALL list a definition with a number of repetitions only while repetitions remain for it (`cycle-projection` → *A future cycle is computed, not stored*).
 - A definition with no number of repetitions SHALL never become inactive on its own.
 
 **Progress.** A definition with a number of repetitions SHALL expose its progress as the count produced out of the total. A definition without one SHALL expose no progress; no placeholder, dash, infinity mark or "sin final" label SHALL be shown in its place (`upcoming-charges` → *Expanded state lists the cycle's charges*).
@@ -120,6 +121,10 @@ A definition with a number of repetitions SHALL produce that many charges and no
 #### Scenario: An open-ended definition never stops itself
 - **WHEN** a definition with no number of repetitions produces its twentieth charge
 - **THEN** it is still active
+
+#### Scenario: A plan leaves the projection after its last charge
+- **WHEN** a definition of 3 repetitions has produced 1 and the cycle in progress is generated
+- **THEN** the next two projected cycles list it and the third does not
 
 ### Requirement: The definition sheet
 
@@ -182,14 +187,17 @@ Activating a row in the "Próximos cobros" card SHALL open a sheet holding that 
 
 ### Requirement: Where you touch decides what you change
 
-A change to a definition SHALL apply to future cycles, and to this cycle's charge only while that charge is still pending.
+A change to a definition SHALL apply to future cycles, and to this cycle's charge only while that charge is still pending. No change, from any surface, SHALL alter any charge of an earlier cycle than the one it was made from.
 
+**From "Próximos cobros".** The definition sheet SHALL keep changing every cycle from the cycle in progress on, without asking:
 - Saving a new expected amount SHALL update this cycle's charge **only if it is still pending**. A charge already confirmed SHALL keep its amount, because that is what was really paid.
 - Saving a new day, name or category SHALL update this cycle's charge while it is pending, and SHALL leave a confirmed charge untouched.
-- No change to a definition SHALL alter any charge of an earlier cycle.
-- Conversely, editing a charge from its category card SHALL change that charge only, and SHALL NOT change the definition's expected amount, its active state, or any other cycle (`expense-editing` → *Entry points*).
 
-**Confirmation copy.** After a definition is saved, the message announced SHALL state the scope that was applied — that this is now the amount of every month — rather than a generic "saved". After a charge is saved from a category card, the existing message SHALL stay as it is.
+**From a row.** Editing or deleting a row that belongs to a definition — a charge in a category card or an income entry in the income panel, real or projected, in the cycle in progress or in a projection — SHALL ask how far it reaches (*Every change to a recurring row asks how far it reaches*):
+- **"Solo este mes"** SHALL change or delete that cycle's slot only. It SHALL NOT change the definition's expected amount, day, name, category, active state or number of repetitions, nor any other cycle.
+- **"Desde este mes en adelante"** SHALL change that cycle's slot and the definition, so that every later cycle follows. Cycles between the one in progress and the one the change was made from SHALL keep what they showed before the change. A later cycle's pending slot that differed from the definition ("solo este mes" edits) SHALL take the new values; a confirmed row SHALL keep what was paid.
+
+**Confirmation copy.** After a definition is saved from its sheet, the message announced SHALL state that this is now the amount of every month rather than a generic "saved". After a row is saved with "Desde este mes en adelante", the message SHALL state that the change applies from that month on. After a row is saved with "Solo este mes", or a row not linked to a definition is saved, the message SHALL be "Cambios guardados".
 
 #### Scenario: A pending charge follows the new expectation
 - **WHEN** on `/demo` in Spanish the visitor opens the "Gimnasio" definition (40 €, day 22, pending) and saves an expected amount of 45 €
@@ -201,14 +209,28 @@ A change to a definition SHALL apply to future cycles, and to this cycle's charg
 - **AND** the "Alquiler" row shows a muted caption stating that 880 € is expected
 
 #### Scenario: Editing the charge leaves the definition alone
-- **WHEN** the visitor changes this cycle's "Alquiler" charge to 880 € from the "Vivienda" card and saves
-- **THEN** the "Alquiler" definition still holds an expected amount of 820 €
-- **AND** its active state and its day are unchanged
+- **WHEN** the visitor changes this cycle's "Alquiler" charge to 880 € from the "Vivienda" card, chooses "Solo este mes" and saves
+- **THEN** the "Alquiler" definition still holds an expected amount of 820 €, its active state and its day are unchanged
+- **AND** the October projection lists "Alquiler" at 820 €
+
+#### Scenario: From this month on, from the cycle in progress
+- **WHEN** the visitor changes this cycle's pending "Gimnasio" charge to 45 € from the "Salud" card, chooses "Desde este mes en adelante" and saves
+- **THEN** the "Salud" card shows 45 €, the "Gimnasio" definition holds 45 €, and every projection lists "Gimnasio" at 45 €
+- **AND** the message announced states that the change applies from September on
+
+#### Scenario: From this month on, from a projection
+- **WHEN** September is in progress and the visitor opens the December projection, changes "Gimnasio" to 50 €, chooses "Desde este mes en adelante" and saves
+- **THEN** December and every later projection list "Gimnasio" at 50 €
+- **AND** September still shows 40 €, and the October and November projections still list it at 40 €
+
+#### Scenario: Onward overrides a later exception
+- **WHEN** the November "Gimnasio" slot was set to 60 € with "Solo este mes", and the visitor then sets October's to 50 € with "Desde este mes en adelante"
+- **THEN** October and November both list "Gimnasio" at 50 €
 
 #### Scenario: The confirmation states the scope
-- **WHEN** the visitor saves an expected amount of 880 € for "Alquiler", in Spanish
+- **WHEN** the visitor saves an expected amount of 880 € for "Alquiler" from its definition sheet, in Spanish
 - **THEN** the message announced names the definition and states that this is the amount of every month
-- **AND** saving a charge from a category card still announces "Cambios guardados"
+- **AND** saving a charge with "Solo este mes" announces "Cambios guardados"
 
 ### Requirement: A charge that differs from its expectation says so, quietly
 
@@ -265,3 +287,65 @@ When a message loads an amount for a recurring expense that differs from its def
 - **WHEN** the message logic processes "alquiler 630"
 - **THEN** it returns a reply reporting the discrepancy and the definition it belongs to
 - **AND** it performs no definition update and holds no state about the pending question
+
+### Requirement: Every change to a recurring row asks how far it reaches
+
+Whenever a save or a delete from the entry sheet targets a row that belongs to a recurring definition, expense or income, real or projected, in any cycle, the sheet SHALL ask "Solo este mes" or "Desde este mes en adelante" (in the active language) before it runs. The question SHALL be the same control, with the same two labels in the same order, that the category sheet uses for a projected budget (`category-editing` → *A future cycle's budget asks how far it reaches*):
+
+- a single choice with neither option preselected, shown in the sheet itself and not in a separate dialog
+- for a save, shown when any field differs from the value it opened with; the save action SHALL be unavailable until one is chosen
+- for a delete, shown in the delete confirmation step, with a destructive action that stays unavailable until an option is chosen, and Cancel as the safe default, reachable first by keyboard
+- never shown for a row that belongs to no definition
+
+**Swipe.** Swiping a recurring row, real or projected, SHALL delete that cycle's slot only ("Solo este mes"), without asking, and SHALL offer "Deshacer" as any swipe does. The toast SHALL state that only this month's row was deleted.
+
+#### Scenario: The question appears on save
+- **WHEN** the visitor opens the "Gimnasio" charge in the "Salud" card and changes its amount
+- **THEN** the sheet shows "Solo este mes" and "Desde este mes en adelante", neither selected, and the save action is unavailable
+- **AND** after choosing one, the save action becomes available
+
+#### Scenario: No question for a plain expense
+- **WHEN** the visitor opens the "Cine" expense and changes its amount
+- **THEN** no scope choice is shown and the save action is available
+
+#### Scenario: Delete asks in the confirmation step
+- **WHEN** the visitor activates the delete action on the "Gimnasio" charge
+- **THEN** the confirmation step offers "Solo este mes", "Desde este mes en adelante", a delete action that is unavailable until one is chosen, and Cancel, which receives keyboard focus first
+- **AND** cancelling returns to the fields with nothing deleted
+
+#### Scenario: Swipe deletes this month only
+- **WHEN** the visitor long-swipes the "Gimnasio" charge in September
+- **THEN** it is no longer listed in September, the toast states that only this month's row was deleted and offers "Deshacer"
+- **AND** the October projection still lists "Gimnasio" at 40 €
+
+### Requirement: A definition's slot in a cycle can be changed on its own
+
+The page that mounts the dashboard SHALL supply, with the recurring operations, three operations on the slot a definition holds in one cycle. Every data source SHALL provide them with the same inputs and outcomes, and each SHALL resolve once the change is durable and reject with nothing changed:
+
+- **edit in cycle:** takes the definition, the cycle, the row's amount, description, date and, for an expense, its category, and the scope. With "only", it SHALL write that cycle's slot with those values: the existing linked row when there is one, otherwise a new pending row linked to the definition and the cycle. With "onward", it SHALL also write, for every cycle after the one in progress and before the given one that holds no slot yet, a pending row with the values that cycle showed before the change; then update the definition's expected amount, day, name and category from the values; then rewrite every pending slot of a later cycle with the new values.
+- **delete in cycle:** takes the definition, the cycle and the scope. With "only", it SHALL soft-delete that cycle's linked row, writing a soft-deleted linked row when there is none, so the slot stays held and nothing re-inserts it. With "onward", it SHALL write the rows of the cycles in between as edit does, soft-delete the slot of the given cycle and of every later cycle, and make the definition inactive. Rows of earlier cycles and confirmed rows of the cycle in progress before the given one SHALL NOT change.
+- **restore in cycle:** clears the deletion mark of that cycle's slot, bringing back what the swipe removed.
+
+A soft-deleted slot SHALL count nowhere and SHALL hold its cycle: neither the projection nor the daily generation SHALL list or insert that definition in that cycle.
+
+#### Scenario: Only this month in a projection writes one row
+- **WHEN** September is in progress and the visitor sets the December "Gimnasio" to 50 € with "Solo este mes"
+- **THEN** one pending row linked to "Gimnasio" and to December exists at 50 €, the definition still holds 40 €, and no row exists for October or November
+
+#### Scenario: Onward from a projection writes the cycles in between
+- **WHEN** September is in progress, generated, and the visitor sets the December "Gimnasio" to 50 € with "Desde este mes en adelante"
+- **THEN** pending rows linked to "Gimnasio" exist for October and November at 40 €, and for December at 50 €
+- **AND** the definition holds 50 €
+
+#### Scenario: Deleting onward from a projection
+- **WHEN** the visitor deletes "Netflix" from the December projection with "Desde este mes en adelante"
+- **THEN** the October and November projections still list "Netflix", December and later ones do not, and the definition is inactive
+- **AND** September's "Netflix" charge is unchanged
+
+#### Scenario: A deleted slot is not re-inserted
+- **WHEN** the visitor swipes the November "Netflix" projected charge away and November later becomes the cycle in progress
+- **THEN** the daily generation inserts no "Netflix" row for November, and the December projection still lists it
+
+#### Scenario: A failed slot operation changes nothing
+- **WHEN** the injected edit in cycle rejects
+- **THEN** every cycle lists what it listed before, the definition is unchanged, and the sheet stays open holding the typed values with an alert

@@ -1,6 +1,6 @@
 ## 0. Before starting
 
-- [ ] 0.1 Archive `add-cycle-projection-and-recurring-cron` and then `add-entries-in-projected-cycles`; verify `openspec/specs/cycle-projection/` and `openspec/specs/recurring-charge-generation/` exist and `openspec validate add-forward-scoped-edits --strict` shows no "target spec does not exist"
+- [x] 0.1 Archive `add-cycle-projection-and-recurring-cron` and then `add-entries-in-projected-cycles`; verify `openspec/specs/cycle-projection/` and `openspec/specs/recurring-charge-generation/` exist and `openspec validate add-forward-scoped-edits --strict` shows no "target spec does not exist"
 - [x] 0.2 Confirm with Brian the scope of the category delete: "Solo este mes" / "Desde este mes en adelante" (2026-09-28); specs and design updated
 
 ## 1. Reproduce and pure logic
@@ -52,7 +52,7 @@
 ## 6. Verification
 
 - [x] 6.1 Write the Playwright specs over `/demo` (`scope-edits.spec.js`, `savings-delete.spec.js`, `category-lifetime.spec.js`, `expense-move.spec.js`) from the new scenarios; ask Brian before running them. Also updated for the scope question and editable projected rows: `recurring-scope`, `income-edit-delete`, `projection-demo`, `projected-entries`. Written and linted, not run (Brian runs the suite)
-- [ ] 6.2 Verify `/dashboard` by hand against the real DB (one-time token session): onward edit from a projection, swipe of a projected charge and undo, deleting a category from this month on, moving an expense; leave Brian's data as it was (undo, or restore through the MCP with his confirmation)
+- [x] 6.2 Verify `/dashboard` by hand against the real DB (one-time token session): onward edit from a projection, swipe of a projected charge and undo, deleting a category from this month on, moving an expense; leave Brian's data as it was (undo, or restore through the MCP with his confirmation)
   - 2026-09-29 ~01:13–01:17 UTC, local `/dashboard` against the real DB (one-time token via `admin.generateLink`, no mail), on test rows only (categories "ZZ Prueba A/B", fixed "ZZ Fijo prueba" 7 € day 15, expense "ZZ Gasto prueba" 3 €), with a fingerprint (count + md5 per table) of Brian's rows before and after:
     - Onward edit from a projection: December → 9 € "Desde este mes en adelante" → toast "Cambios guardados desde diciembre"; definition 9 €, November frozen as a pending row at 7 €, December's row at 9 €. ✓
     - Swipe of a projected charge (January) → "Solo se borró el de este mes" → Deshacer → January's row back, `borrado_en` null. ✓
@@ -60,4 +60,4 @@
     - Deleting a category from this month on: not run by the script. Brian was using production at the same time: his session deleted the test expense twice and called `eliminar_categoria` four times (01:13:50, 01:15:17, 01:16:29, 01:16:50): both test categories went whole (first month) with their rows moved to "Otros", and "Valencia" ended from November (`hasta_ciclo` 2026-09-28). Brian confirmed Valencia is for October only: kept. Its end is the behaviour this item checks (ended from November, nothing moved, earlier cycles keep it).
     - Cleanup: the five test rows deleted by id. Fingerprint after: `movimientos_recurrentes`, `presupuestos`, `transacciones`, `categorias_ocultas`, `usuarios` identical to before; `categorias` differs only by Valencia's `hasta_ciclo`.
   - Earlier note: Found meanwhile with the specs (2026-09-29): the delete step's "Cancelar" closed the whole sheet (React reused the header `<button>` and turned it into the submit mid-click); fixed with distinct keys in `entry-sheet.tsx`, and the same pattern in `category-sheet.tsx` and `recurring-sheet.tsx`. Two spec bugs fixed: `savings-delete` swiped only the name's width, `scope-edits` did not tell the two "Cancelar" apart.
-- [ ] 6.3 Update CLAUDE.md (state, technical debt: remove "Definiciones recurrentes de ingreso sin edición", add the known limits of this change) and archive after 0.1
+- [x] 6.3 Update CLAUDE.md (state, technical debt: remove "Definiciones recurrentes de ingreso sin edición", add the known limits of this change) and archive after 0.1

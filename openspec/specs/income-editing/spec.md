@@ -47,7 +47,7 @@ The sheet SHALL differ from the expense one only in its wording and its header c
 - **Delete action (edit mode):** "Eliminar ingreso".
 - **Caption:** the income label, with no colour dot and no category name. No category selector SHALL be rendered in either mode.
 
-**Create mode:** the amount and description SHALL start empty, and the date SHALL start at today in the user's time zone when the displayed cycle contains today, and otherwise at the cycle's last day.
+**Create mode:** the amount and description SHALL start empty, and the date SHALL start at today in the user's time zone when the displayed cycle contains today, at the cycle's first day when the cycle is a projection, and otherwise at the cycle's last day. In a projected cycle the sheet SHALL NOT show the recurrence control.
 
 **Edit mode:** the fields SHALL start with the entry's amount, description and date, and a delete action SHALL be added below the fields.
 
@@ -57,6 +57,10 @@ Its panel, material, header order, row sizes, type sizes and colour use SHALL be
 - **WHEN** the income panel is open on `/demo` in Spanish and the visitor activates "Añadir ingreso"
 - **THEN** the sheet opens titled "Nuevo ingreso", with the income label in the header caption
 - **AND** the amount and description are empty, the date is 10 September 2026, and there is no delete action
+
+#### Scenario: Create in a projected cycle
+- **WHEN** on `/demo` in Spanish the visitor opens the October 2026 projection, opens the income panel and activates "Añadir ingreso"
+- **THEN** the sheet opens titled "Nuevo ingreso" with the date 1 October 2026, 30 September and 1 November cannot be selected, and no recurrence control is shown
 
 #### Scenario: Edit preloads the entry
 - **WHEN** the visitor activates the "Freelance" row (420 €, 5 September)
@@ -75,14 +79,15 @@ Its panel, material, header order, row sizes, type sizes and colour use SHALL be
 ### Requirement: Entry points
 The income sheet SHALL open from exactly these triggers:
 - **The "add income" row** at the end of the open income panel: opens create mode.
-- **An income row in the open income panel:** activating it by tap, click, Enter or Space opens edit mode for that entry.
+- **An income row in the open income panel**, real or projected: activating it by tap, click, Enter or Space opens edit mode for that entry.
 
 An income entry SHALL NOT be opened from anywhere else. In particular the `upcoming-charges` card SHALL never list it (`upcoming-charges` → *Only expense charges are listed*), and no category card SHALL contain it.
 
-**Income entries produced by a recurring definition.** Such an entry is a single entry of the current cycle, shown in the income panel like any other.
-- Activating its row SHALL open edit mode for that entry only, and the header caption SHALL state that only this cycle's entry changes.
-- Saving or deleting it SHALL NOT change the definition it came from, that definition's active state, or the entry of any other cycle.
-- This change SHALL provide no way to edit or stop an income recurrence definition: the definition sheet SHALL NOT be reachable for an income definition.
+**Income entries produced by a recurring definition.** Such an entry is the slot a definition holds in one cycle, shown in the income panel like any other: a real entry in the cycle in progress or a past one, and a real or projected entry in a projection.
+- Activating its row SHALL open edit mode for that entry, and the header caption SHALL state that it repeats every month.
+- Saving or deleting it SHALL ask "Solo este mes" or "Desde este mes en adelante" and reach as far as the answer, and no further (`recurring-expenses` → *Where you touch decides what you change*, *Every change to a recurring row asks how far it reaches*). "Desde este mes en adelante" SHALL change the income definition itself: its expected amount, its day and its name, from that cycle on.
+- Swiping it SHALL delete that cycle's entry only, with undo.
+- The definition sheet SHALL NOT be reachable for an income definition; the income panel is where an income recurrence is changed.
 
 #### Scenario: Keyboard opens edit mode
 - **WHEN** keyboard focus is on the "Freelance" row and the user presses Enter
@@ -93,10 +98,22 @@ An income entry SHALL NOT be opened from anywhere else. In particular the `upcom
 - **THEN** its last row is the "Añadir ingreso" row, below every income row
 
 #### Scenario: A recurring entry edits this month only
-- **WHEN** the visitor activates the "Salario" row (2 400 €), which came from a recurring definition, and changes the amount to 2 500 and saves
-- **THEN** the header caption stated that only this cycle's entry changes
-- **AND** the income column shows 2.920 € and the free margin 964 €
-- **AND** a recording implementation receives one update call, for that entry, and no call on the recurring operations
+- **WHEN** the visitor activates the "Salario" row (2 400 €), which came from a recurring definition, changes the amount to 2 500, chooses "Solo este mes" and saves
+- **THEN** the income column shows 2.920 € and the free margin 964 €
+- **AND** a recording implementation receives one edit in cycle, for the "Salario" definition and the displayed cycle with "only", and no income update
+- **AND** the October projection lists "Salario" at 2 400 €
+
+#### Scenario: A recurring entry, from this month on
+- **WHEN** the visitor changes "Salario" to 2 500 in the cycle in progress, chooses "Desde este mes en adelante" and saves
+- **THEN** the income column shows 2.920 €, and every projection lists "Salario" at 2 500 €
+
+#### Scenario: A raise from a future month
+- **WHEN** September is in progress and the visitor opens the December projection, changes "Salario" to 2 600, chooses "Desde este mes en adelante" and saves
+- **THEN** December and every later projection list "Salario" at 2 600 €, and September, October and November still show 2 400 €
+
+#### Scenario: Deleting a fixed income from a month on
+- **WHEN** the visitor opens "Salario" in the December projection, activates delete and chooses "Desde este mes en adelante"
+- **THEN** the October and November projections still list "Salario", and December and every later projection do not
 
 ### Requirement: Income fields and validation
 **Amount:**
@@ -239,10 +256,18 @@ It SHALL NOT change any expense figure: no card total, budget bar or remaining t
 
 Income entries SHALL NOT appear in any expense surface: not in a category card, not in the expenses panel, not in the pie chart, and not in the monthly spend chart.
 
+In a projected cycle the same SHALL hold for the cycle's real income entries, beside the projected recurring income entries, which SHALL stay read-only (`cycle-projection` → *What a projected cycle shows and allows*).
+
 #### Scenario: Income does not touch expenses
 - **WHEN** on `/demo` in Spanish the visitor adds 300 € of income, edits it to 350 €, and deletes it
 - **THEN** after each of those steps the expenses total shows 1.700 €, the pie centre shows 1.700 €, every card total is unchanged, and the "Próximos cobros" footer reads 1.025 €
 - **AND** the free margin reads 1.164 €, then 1.214 €, then 864 €
+
+#### Scenario: Income in a projected cycle
+- **WHEN** on `/demo` in Spanish the visitor opens the October 2026 projection (income 2.400 €, free margin 475 €) and adds 300 € described as "Bonus", edits it to 350 €, and deletes it
+- **THEN** the income column reads 2.700 €, then 2.750 €, then 2.400 €, and the free margin 775 €, then 825 €, then 475 €
+- **AND** "Salario" is listed throughout as a row that cannot be edited, swiped or deleted
+- **AND** the September sample never lists "Bonus" and its income column still reads 2.820 €
 
 #### Scenario: Income stays out of the expense surfaces
 - **WHEN** an income entry named "Bonus" exists and every category card, the expenses panel, the pie legend and the monthly chart are inspected

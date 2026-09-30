@@ -179,7 +179,7 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 
 - [ ] Monedas mezcladas: `resumenMensual` suma sin mirar `moneda`
 - [ ] Ahorro: editar/borrar movimientos, montar barra y sparkline
-- [ ] Recurrencias de ingreso sin edición
+- [x] Recurrencias de ingreso sin edición — `add-forward-scoped-edits`: los ingresos fijos se editan desde el panel, con alcance
 - [ ] `ingresos_esperados` sin usar / "piso del mes"
 - [ ] `presupuestos.periodo` si cambia `dia_inicio_ciclo`
 - [ ] Renombrar namespace `hojaGasto`
