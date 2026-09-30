@@ -46,7 +46,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         {/* Raw inline script on purpose: next/script beforeInteractive only lands in the RSC payload, so it never runs before paint. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);if(localStorage.getItem("background")==="solid")document.documentElement.setAttribute("data-background","solid")}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem("theme");if(t!=="system")document.documentElement.setAttribute("data-theme",t==="light"?"light":"dark");if(localStorage.getItem("background")==="solid")document.documentElement.setAttribute("data-background","solid")}catch(e){}})()`,
           }}
         />
       </head>

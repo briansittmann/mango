@@ -6,24 +6,28 @@ Defines how a person reaches the product on the web: the public routes, sign-in 
 
 ## Requirements
 
-### Requirement: Home offers the demo and the login
-The application SHALL serve `/` without a session. The page SHALL show exactly two actions: "Demo", leading to `/demo`, and "Entrar", leading to `/login`. Under the two actions it SHALL show one line of text that says what Mango is and that the WhatsApp bot is by invitation. It SHALL show nothing that depends on a session, SHALL NOT redirect a signed-in visitor, and SHALL make no request to a Supabase host. Its texts SHALL come from the translation files.
+### Requirement: Home is the landing page
+The application SHALL serve `/` without a session as the landing page. Its header SHALL show a language choice (ES/EN) and "Entrar", leading to `/login`. The hero and the closing section SHALL each offer "Empezar", leading to `/login`, and "Ver la demo", leading to `/demo`. Between them, a pinned scroll story SHALL show `/demo` inside a phone frame (`/demo?embed=1`, without the demo notice and without the animated background) while three WhatsApp messages and their bot replies appear beside it, each one adding its expense to the embedded dashboard so the free margin drops; with reduced motion the story is not pinned and shows its final state. The footer SHALL say what Mango is and that the WhatsApp bot is by invitation. The page SHALL show nothing that depends on a session, SHALL NOT redirect a signed-in visitor, and SHALL make no request to a Supabase host. Its texts SHALL come from the translation files. On the dark theme the dot field replaces the shell's diagonal streaks.
 
-#### Scenario: Two actions
+#### Scenario: Entry points
 - **WHEN** an unauthenticated visitor opens `/`
-- **THEN** the page shows "Demo" and "Entrar", "Demo" navigates to `/demo`, "Entrar" navigates to `/login`, and no request to a Supabase host is made
+- **THEN** "Entrar" and "Empezar" navigate to `/login`, "Ver la demo" navigates to `/demo`, and no request to a Supabase host is made
 
 #### Scenario: What Mango is
 - **WHEN** an unauthenticated visitor opens `/`
-- **THEN** below the two actions, one line says what Mango is and that the WhatsApp bot is by invitation
+- **THEN** the footer says what Mango is and that the WhatsApp bot is by invitation
 
 #### Scenario: Home in English
 - **WHEN** the active language is English and `/` is opened
-- **THEN** the actions read "Demo" and "Log in", and the line is in English
+- **THEN** the header reads "Log in", the actions read "Get started" and "See the demo", and the footer line is in English
+
+#### Scenario: The story lowers the margin
+- **WHEN** the visitor scrolls through the phone story
+- **THEN** each message's reply adds its expense to the embedded dashboard and its free margin goes from 864 € to 783,20 € after the third; scrolling back removes them in reverse
 
 #### Scenario: Signed-in visitor on Home
 - **WHEN** a signed-in user opens `/`
-- **THEN** the same two actions and the same line are shown and no redirect happens
+- **THEN** the same landing is shown and no redirect happens
 
 ### Requirement: Sign-in by e-mail code
 `/login` SHALL be two steps on one page, and the same page SHALL serve to sign in and to create an account. The **e-mail step** SHALL show an e-mail field, a submit action, and one line saying that a first-time address gets its account created. Submitting a well-formed e-mail SHALL request a 6-digit one-time code for that address; when the address has no account, the request SHALL create one, so the code reaches the address and verifies like any other. The request SHALL carry the page's active language and the browser's timezone; they SHALL be stored with a newly created account and SHALL NOT change an existing one. After a successful request the page SHALL move to the **code step** for that address, whether or not the address had an account, so the page never tells which e-mails have one. A malformed e-mail SHALL be refused by the field without any request. When the request itself fails, the e-mail step SHALL stay with a message stating the code could not be sent.

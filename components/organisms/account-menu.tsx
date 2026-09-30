@@ -56,9 +56,10 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
   const [theme, setTheme] = useState<ThemeChoice>(() => {
     try {
       const stored = localStorage.getItem('theme')
-      return stored === 'light' || stored === 'dark' ? stored : null
+      if (stored === 'system') return null
+      return stored === 'light' ? 'light' : 'dark'
     } catch {
-      return null
+      return 'dark'
     }
   })
   const [background, setBackground] = useState<BackgroundChoice>(() => {
@@ -104,7 +105,7 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
         localStorage.setItem('theme', next)
         document.documentElement.setAttribute('data-theme', next)
       } else {
-        localStorage.removeItem('theme')
+        localStorage.setItem('theme', 'system')
         document.documentElement.removeAttribute('data-theme')
       }
     } catch {}

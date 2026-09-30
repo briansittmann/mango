@@ -533,3 +533,271 @@ body {
     inset 0 1px 0 light-dark(transparent, rgba(255, 255, 255, 0.08)),
     0 8px 20px -8px light-dark(transparent, rgba(0, 0, 0, 0.7));
 }
+
+/* ── Landing (/) ─────────────────────────────────────────────────────────────────────────────── */
+
+/* The dot field replaces the dark shell's diagonal streaks here. */
+:root:has(.landing) body {
+  @variant dark {
+    background-image: linear-gradient(135deg, var(--shell-stop-1) 0%, var(--shell-stop-2) 28%, var(--shell-stop-3) 50%, var(--shell-stop-4) 72%, var(--shell-stop-5) 100%);
+  }
+}
+
+.landing {
+  --landing-phone-shadow: 0 50px 120px -30px light-dark(rgba(13, 17, 14, 0.35), rgba(0, 0, 0, 0.75)), 0 0 90px -20px light-dark(transparent, rgba(132, 204, 22, 0.28));
+  --landing-pulse: color-mix(in oklab, var(--brand) 55%, transparent);
+}
+
+.landing-dots {
+  mask-image: radial-gradient(130% 95% at 50% 0%, black 35%, transparent 100%);
+}
+
+.landing-rise {
+  animation: header-in 700ms var(--ease-out) backwards;
+}
+
+.landing-cta {
+  transition: scale 200ms var(--ease-spring), box-shadow 300ms ease-out;
+  &:hover {
+    box-shadow: 0 10px 40px -8px color-mix(in oklab, var(--foreground) 45%, transparent);
+  }
+  &:active {
+    scale: 0.97;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+}
+
+/* Story: the step captions cross-fade in place. */
+.landing-caption {
+  opacity: 0;
+  translate: 0 14px;
+  filter: blur(8px);
+  transition: opacity 500ms var(--ease-out), translate 700ms var(--ease-spring), filter 500ms var(--ease-out);
+  &[data-active='true'] {
+    opacity: 1;
+    translate: 0 0;
+    filter: blur(0);
+  }
+}
+
+/* A phone is dark in both themes: only its shadow follows the page. */
+.landing-phone {
+  background: linear-gradient(150deg, #3a403b 0%, #151916 45%, #0b0d0b 100%);
+  box-shadow: var(--landing-phone-shadow), inset 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  will-change: transform;
+}
+
+/* Chat: the message springs in from its side, the reply types for a beat, then lands. */
+.landing-chat-out,
+.landing-chat-in {
+  opacity: 0;
+  translate: var(--from-x) 12px;
+  scale: 0.7;
+  filter: blur(8px);
+  transition: opacity 250ms ease-out, translate 250ms ease-out, scale 250ms ease-out, filter 250ms ease-out;
+}
+.landing-chat-out {
+  transform-origin: bottom right;
+}
+.landing-chat-in {
+  transform-origin: top left;
+}
+.landing-chat[data-visible='true'] .landing-chat-out,
+.landing-chat[data-visible='true'] .landing-chat-in {
+  opacity: 1;
+  translate: 0 0;
+  scale: 1;
+  filter: blur(0);
+  transition: opacity 400ms var(--ease-out), translate 800ms var(--ease-spring), scale 800ms var(--ease-bounce), filter 400ms var(--ease-out);
+}
+.landing-chat[data-visible='true'] .landing-chat-in {
+  transition-delay: 420ms;
+}
+.landing-reply {
+  opacity: 0;
+}
+.landing-typing {
+  opacity: 0;
+}
+.landing-typing > span {
+  animation: landing-typing-dot 900ms ease-in-out infinite;
+}
+.landing-typing > span:nth-child(2) {
+  animation-delay: 150ms;
+}
+.landing-typing > span:nth-child(3) {
+  animation-delay: 300ms;
+}
+.landing-chat[data-visible='true'] .landing-typing {
+  animation: landing-typing-window 1100ms linear both;
+}
+.landing-chat[data-visible='true'] .landing-reply {
+  opacity: 1;
+  transition: opacity 400ms var(--ease-out) 1050ms;
+}
+
+@keyframes landing-typing-window {
+  0%,
+  38% {
+    opacity: 0;
+  }
+  45%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes landing-typing-dot {
+  0%,
+  100% {
+    translate: 0 0;
+    opacity: 0.4;
+  }
+  50% {
+    translate: 0 -3px;
+    opacity: 1;
+  }
+}
+
+/* The wire from a chat to the phone draws once the reply lands, and a spark runs along it. */
+.landing-wire {
+  position: absolute;
+  top: 26px;
+  width: 2.5rem;
+  height: 1px;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--foreground) 25%, transparent), var(--brand));
+  transform-origin: left;
+  scale: 0 1;
+  transition: scale 200ms ease-out;
+  &[data-side='right'] {
+    background: linear-gradient(270deg, color-mix(in oklab, var(--foreground) 25%, transparent), var(--brand));
+    transform-origin: right;
+  }
+  &::after {
+    position: absolute;
+    top: -2.5px;
+    left: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--brand);
+    box-shadow: 0 0 12px 2px var(--brand);
+    opacity: 0;
+    content: '';
+  }
+  &[data-visible='true'] {
+    scale: 1 1;
+    transition: scale 500ms var(--ease-out) 1000ms;
+  }
+  &[data-visible='true']::after {
+    animation: landing-spark 1400ms var(--ease-in-out) 1100ms infinite;
+  }
+  &[data-side='right'][data-visible='true']::after {
+    animation-name: landing-spark-reverse;
+  }
+}
+
+@keyframes landing-spark {
+  0% {
+    left: 0;
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% - 6px);
+    opacity: 0;
+  }
+}
+
+@keyframes landing-spark-reverse {
+  0% {
+    left: calc(100% - 6px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    left: 0;
+    opacity: 0;
+  }
+}
+
+.landing-entry {
+  opacity: 0;
+  translate: 0 12px;
+  filter: blur(6px);
+  transition: opacity 500ms var(--ease-out), translate 700ms var(--ease-spring), filter 500ms var(--ease-out);
+  &[data-visible='true'] {
+    opacity: 1;
+    translate: 0 0;
+    filter: blur(0);
+  }
+}
+
+@media (width < 48rem) {
+  .landing-chat-slot {
+    transition: opacity 300ms var(--ease-out);
+    &[data-latest='false'] {
+      opacity: 0;
+    }
+  }
+}
+
+.landing-bar {
+  transform-origin: bottom;
+  transition: scale 900ms var(--ease-spring);
+}
+
+/* Examples: two rows running opposite ways, faded at the edges. */
+.landing-marquee {
+  mask-image: linear-gradient(90deg, transparent, black 12%, black 88%, transparent);
+  > div {
+    animation: landing-marquee 60s linear infinite;
+  }
+  > div[data-direction='right'] {
+    animation-direction: reverse;
+  }
+  &:hover > div {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes landing-marquee {
+  to {
+    translate: -50% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-rise,
+  .landing-marquee > div,
+  .landing-typing,
+  .landing-wire::after {
+    animation: none !important;
+  }
+  .landing-caption,
+  .landing-chat-out,
+  .landing-chat-in,
+  .landing-reply,
+  .landing-wire,
+  .landing-bar,
+  .landing-entry,
+  .landing-cta {
+    transition: none !important;
+  }
+}

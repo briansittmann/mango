@@ -54,7 +54,11 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows, changeLa
   // (resolved from the request on both the server and client render) instead of `window.location`
   // — a lazy `useState` initializer that differs between them would leave that attribute unpatched:
   // React logs the hydration mismatch but does not fix up the DOM for it.
-  const noCategoryActions = useSearchParams().get('e2eNoCategoryActions') === '1'
+  const searchParams = useSearchParams()
+  const noCategoryActions = searchParams.get('e2eNoCategoryActions') === '1'
+  // The landing's phone frames this page with `?embed=1` and tells it, as the visitor scrolls,
+  // which of its story's expenses have been sent so far; the list replaces the visitor's edits.
+  const embedded = searchParams.get('embed') === '1'
   const categories = useMemo(() => {
     const base = createDemoCategoryMutations(view.expenses.groups, setCategoryEdits)
     if (!failReorder) return base
@@ -66,6 +70,22 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows, changeLa
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
     }
   }, [])
+
+  useEffect(() => {
+    if (!embedded) return
+    const today = view.cycle.today
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin || event.data?.type !== 'mango:story') return
+      const entries: { id: string; categoryId: string; description: string; amount: number }[] = event.data.entries
+      setEdits({
+        ...noDemoEdits,
+        created: entries.map(({ id, categoryId, description, amount }) => ({ id, categoryId, draft: { description, amount, date: today } })),
+      })
+    }
+    window.addEventListener('message', onMessage)
+    window.parent.postMessage({ type: 'mango:ready' }, window.location.origin)
+    return () => window.removeEventListener('message', onMessage)
+  }, [embedded, view.cycle.today])
 
   function showUnavailable() {
     setMessageOpen(true)
@@ -99,7 +119,7 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows, changeLa
           // There is no session to end: it only leads to the real login.
           signOut: () => router.push('/login'),
         }}
-        notice={<DemoNotice />}
+        notice={embedded ? undefined : <DemoNotice />}
       />
       <DemoToast open={messageOpen} />
     </>

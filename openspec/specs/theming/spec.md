@@ -29,7 +29,7 @@ A category's colour SHALL be identified by one of the eight stored palette names
 - **THEN** every category dot and pie slice updates to its light-theme value without reloading
 
 ### Requirement: Theme selection
-The account menu SHALL offer light, dark and automatic themes. Automatic SHALL be the default and SHALL follow the operating-system preference, including changes made while the page is open. The choice SHALL persist in the browser across reloads.
+The account menu SHALL offer light, dark and automatic themes. Dark SHALL be the default for a browser with no stored choice. Automatic SHALL follow the operating-system preference, including changes made while the page is open. The choice SHALL persist in the browser across reloads.
 
 #### Scenario: Choose light on a dark OS
 - **WHEN** the operating system prefers dark and the user selects light, then reloads
