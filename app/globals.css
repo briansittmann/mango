@@ -228,6 +228,9 @@
      and then every 6 s until it is touched. */
   --animate-caret-blink: caret-blink 1s steps(1) infinite;
   --animate-nudge: nudge 6s ease-in-out 0.3s infinite;
+  /* Login card's star border (`components/ui/star-border.tsx`); its duration is set inline. */
+  --animate-star-top: star-top 6s linear infinite alternate;
+  --animate-star-bottom: star-bottom 6s linear infinite alternate;
 
   --spacing-gutter: 1rem;
   --spacing-section: 2rem;
@@ -260,6 +263,28 @@
     }
     to {
       filter: blur(0);
+    }
+  }
+
+  @keyframes star-top {
+    from {
+      transform: translate(0%, 0%);
+      opacity: 1;
+    }
+    to {
+      transform: translate(100%, 0%);
+      opacity: 0;
+    }
+  }
+
+  @keyframes star-bottom {
+    from {
+      transform: translate(0%, 0%);
+      opacity: 1;
+    }
+    to {
+      transform: translate(-100%, 0%);
+      opacity: 0;
     }
   }
 
@@ -393,6 +418,20 @@ body {
      mid-scroll, and flickers. */
   @media (hover: hover) and (pointer: fine) {
     background-attachment: fixed;
+  }
+  /* Without it the canvas repeats the background every viewport height (html is h-full), and the
+     seams show while scrolling. A fixed layer at the large viewport height paints it once and
+     never resizes with the toolbar. */
+  @media not ((hover: hover) and (pointer: fine)) {
+    &::before {
+      position: fixed;
+      inset: 0 0 auto;
+      z-index: -20;
+      height: 100lvh;
+      background: inherit;
+      content: '';
+      pointer-events: none;
+    }
   }
   font-variant-numeric: tabular-nums;
 

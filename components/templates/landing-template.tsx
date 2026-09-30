@@ -169,7 +169,7 @@ function Examples() {
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-pretty text-body-lg text-muted-foreground">{t('escribeTexto')}</p>
       </div>
-      <div aria-hidden className="landing-marquee mt-12 flex flex-col gap-3 md:mt-16">
+      <div aria-hidden className="landing-marquee mt-4 -mb-8 flex overflow-x-clip flex-col gap-3 py-8 md:mt-8">
         {rows.map((row, index) => (
           <div key={index} className="flex w-max gap-3" data-direction={index % 2 === 0 ? 'left' : 'right'}>
             {[...row, ...row, ...row, ...row].map((example, position) => (

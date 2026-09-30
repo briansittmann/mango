@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { ForceDarkTheme } from "@/components/theme/force-dark-theme";
+import { StarBorder } from "@/components/ui/star-border";
 import { supabaseServer } from "@/lib/supabase/server";
 import { LoginSteps } from "./login-steps";
 
@@ -21,7 +22,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <main className="vivid-background flex flex-1 flex-col items-center justify-center gap-6 px-4">
       <ForceDarkTheme />
-      <LoginSteps initialEmail={address} linkError={error === "enlace"} />
+      <StarBorder className="w-full max-w-sm">
+        <LoginSteps initialEmail={address} linkError={error === "enlace"} />
+      </StarBorder>
     </main>
   );
 }
