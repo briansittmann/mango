@@ -18,7 +18,14 @@ import {
 } from './cycle'
 import type { Usuario } from './user'
 
-type CategoriaRow = { id: string; nombre: string; color: CategoryColor; desde_ciclo: LocalDate | null; hasta_ciclo: LocalDate | null }
+type CategoriaRow = {
+  id: string
+  nombre: string
+  color: CategoryColor
+  desde_ciclo: LocalDate | null
+  hasta_ciclo: LocalDate | null
+  mostrar_progreso: boolean
+}
 type PresupuestoRow = { categoria_id: string; monto: number | string | null; periodo: LocalDate }
 type MovimientoRecurrenteRow = {
   id: string
@@ -128,7 +135,7 @@ export async function resumenMensual(
   const [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores] = await Promise.all([
     client
       .from('categorias')
-      .select('id, nombre, color, desde_ciclo, hasta_ciclo')
+      .select('id, nombre, color, desde_ciclo, hasta_ciclo, mostrar_progreso')
       .eq('usuario_id', usuario.id)
       .order('orden')
       .order('nombre'),
@@ -297,6 +304,7 @@ export async function resumenMensual(
       budget: budgetAmount != null ? getBudgetStatus({ amount: budgetAmount, spent: total, currentDay, cycleDays }) : null,
       expenses,
       rowsLater: laterByCategory.get(categoria.id) ?? 0,
+      showProgress: categoria.mostrar_progreso,
     }
   })
   const expensesTotal = groups.reduce((sum, group) => sum + group.total, 0)

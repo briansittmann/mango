@@ -146,7 +146,10 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   const format = useFormatter()
   const [openIds, setOpenIds] = useState<Set<string>>(new Set())
   // Categories whose budget bar is hidden from the card, toggled in the category options sheet.
-  const [hiddenProgressIds, setHiddenProgressIds] = useState<Set<string>>(new Set())
+  // The stored preference (`group.showProgress`) with the latest toggle on top, so the bar moves at
+  // once; a failed save drops the toggle and the stored value shows again.
+  const [progressOverrides, setProgressOverrides] = useState<Map<string, boolean>>(new Map())
+  const progressShown = (group: ExpenseGroup) => progressOverrides.get(group.id) ?? group.showProgress
   const [openSummary, setOpenSummary] = useState<SummaryKey | null>(null)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [titleInView, setTitleInView] = useState(true)
@@ -923,13 +926,21 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     reorderingRef.current = reordering
   }, [reordering])
 
-  function toggleProgress(id: string) {
-    setHiddenProgressIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+  async function toggleProgress(group: ExpenseGroup) {
+    const visible = !progressShown(group)
+    setProgressOverrides((prev) => new Map(prev).set(group.id, visible))
+    if (!actions.categories) return
+    try {
+      await actions.categories.setProgressVisible(group.id, visible)
+    } catch {
+      setProgressOverrides((prev) => {
+        if (prev.get(group.id) !== visible) return prev
+        const next = new Map(prev)
+        next.delete(group.id)
+        return next
+      })
+      toasts.add({ title: tHojaCategoria('errorGuardar'), priority: 'high' })
+    }
   }
 
   function toggleCard(id: string) {
@@ -1392,7 +1403,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
                   onDeleteExpense={actions.expenses ? (expense) => handleDeleteExpense(expense) : undefined}
                   onOpenOptions={actions.categories ? () => openCategorySheet(group) : undefined}
                   reordering={reordering}
-                  showProgress={!hiddenProgressIds.has(group.id)}
+                  showProgress={progressShown(group)}
                   // The empty bar lasts until the category holds a real row (D3).
                   projected={projected && !group.expenses.some((expense) => !expense.projected)}
                 />
@@ -1539,9 +1550,9 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
         onCreate={actions.categories ? handleCreateCategory : undefined}
         initialColor={categorySheetMode === 'create' ? createCategoryColor : undefined}
         onReorder={actions.categories && !projected ? handleEnterReorder : undefined}
-        progressVisible={!hiddenProgressIds.has(categorySheetTargetGroup?.id ?? '')}
+        progressVisible={categorySheetTargetGroup ? progressShown(categorySheetTargetGroup) : true}
         onToggleProgress={() => {
-          if (categorySheetTargetGroup) toggleProgress(categorySheetTargetGroup.id)
+          if (categorySheetTargetGroup) void toggleProgress(categorySheetTargetGroup)
         }}
         projected={projected}
       />

@@ -26,6 +26,7 @@ const categories: CategoryMutations = {
   create: (draft, cycle, scope) => unwrapDuplicateName(actions.createCategory(draft, cycle, scope)),
   update: (categoryId, draft, target) => unwrapDuplicateName(actions.updateCategory(categoryId, draft, target)),
   delete: actions.deleteCategory,
+  setProgressVisible: actions.setCategoryProgressVisible,
   reorder: actions.reorderCategories,
 }
 

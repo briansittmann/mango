@@ -13,9 +13,11 @@ export type DemoCategoryEdits = {
   budgets: ({ categoryId: string; amount: number | null } & CategoryUpdateTarget)[]
   deleted: ({ id: string; reassignTo: string | null } & CategoryDeleteTarget)[]
   order: string[] | null
+  /** Budget bar shown or hidden, by category; missing means shown. */
+  progress: Record<string, boolean>
 }
 
-export const noDemoCategoryEdits: DemoCategoryEdits = { created: [], updated: {}, budgets: [], deleted: [], order: null }
+export const noDemoCategoryEdits: DemoCategoryEdits = { created: [], updated: {}, budgets: [], deleted: [], order: null, progress: {} }
 
 let counter = 0
 
@@ -54,6 +56,10 @@ export function createDemoCategoryMutations(
     },
     delete(categoryId, reassignTo, target) {
       setEdits((edits) => ({ ...edits, deleted: [...edits.deleted, { id: categoryId, reassignTo, ...target }] }))
+      return Promise.resolve()
+    },
+    setProgressVisible(categoryId, visible) {
+      setEdits((edits) => ({ ...edits, progress: { ...edits.progress, [categoryId]: visible } }))
       return Promise.resolve()
     },
     reorder(categoryIds) {

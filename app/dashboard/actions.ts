@@ -95,6 +95,10 @@ export async function updateCategory(categoryId: string, draft: CategoryDraft, t
 export async function deleteCategory(categoryId: string, reassignTo: string | null, target: CategoryDeleteTarget) {
   await run((ctx) => createSupabaseCategoryMutations(ctx).delete(categoryId, reassignTo, target));
 }
+export async function setCategoryProgressVisible(categoryId: string, visible: boolean) {
+  await run((ctx) => createSupabaseCategoryMutations(ctx).setProgressVisible(categoryId, visible));
+}
+
 export async function reorderCategories(categoryIds: string[]) {
   await run((ctx) => createSupabaseCategoryMutations(ctx).reorder(categoryIds));
 }

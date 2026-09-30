@@ -119,6 +119,7 @@ function buildCategory(
     budget: null,
     expenses,
     rowsLater: 0,
+    showProgress: true,
   }
 }
 

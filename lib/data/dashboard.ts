@@ -64,6 +64,8 @@ export type ExpenseGroup = {
    * "from this month on" reaches beyond this cycle (`category-editing` → *Deleting a category*).
    */
   rowsLater: number
+  /** Whether the card shows its budget bar: the category's stored preference, the same in every cycle. */
+  showProgress: boolean
 }
 
 export type DashboardData = {

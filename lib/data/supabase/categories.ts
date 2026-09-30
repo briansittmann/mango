@@ -92,6 +92,16 @@ export function createSupabaseCategoryMutations(ctx: DataContext): CategoryMutat
       })
       if (error) fail(error)
     },
+    async setProgressVisible(categoryId, visible) {
+      const { data, error } = await client
+        .from('categorias')
+        .update({ mostrar_progreso: visible })
+        .eq('id', categoryId)
+        .eq('usuario_id', usuarioId)
+        .select('id')
+      if (error) fail(error)
+      if (!data?.length) throw new Error('not-found')
+    },
     async reorder(categoryIds) {
       const { error } = await client.rpc('reordenar_categorias', { p_usuario_id: usuarioId, p_ids: categoryIds })
       if (error) fail(error)

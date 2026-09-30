@@ -23,7 +23,7 @@ export type CategoryUpdateTarget = { cycle: LocalDate; scope: 'only' | 'onward' 
 export type CategoryDeleteTarget = { cycle: LocalDate; scope: 'only' | 'onward' }
 
 /**
- * Four operations, injected by the page, that every data source implements with the same
+ * Five operations, injected by the page, that every data source implements with the same
  * inputs and outcomes:
  * - each operation resolves once the change is durable, and rejects with nothing changed
  * - `create` adds a category with no expenses, a total of 0, and a stored order placing it
@@ -44,6 +44,8 @@ export type CategoryDeleteTarget = { cycle: LocalDate; scope: 'only' | 'onward' 
  *   rows of `cycle` and later, and every definition, to `reassignTo`, removes its `BudgetRow`s of
  *   those cycles and ends it at the cycle before. `reassignTo` is `null` only when the scope
  *   reaches no row (and, for `'onward'`, no definition).
+ * - `setProgressVisible` stores whether the category's card shows its budget bar, the same in
+ *   every cycle. It changes no budget and no figure.
  * - `reorder` writes the stored order of every category at once. See below.
  *
  * `create` and `update` reject with `DUPLICATE_CATEGORY_NAME` on a name already used by
@@ -53,6 +55,7 @@ export type CategoryMutations = {
   create(draft: CategoryDraft, cycle: LocalDate, scope: 'only' | 'onward'): Promise<string>
   update(categoryId: string, draft: CategoryDraft, target: CategoryUpdateTarget): Promise<void>
   delete(categoryId: string, reassignTo: string | null, target: CategoryDeleteTarget): Promise<void>
+  setProgressVisible(categoryId: string, visible: boolean): Promise<void>
   /**
    * The complete list of the user's category ids in their new order — never a single moved
    * id and never a pair of positions. Sending the same list twice has the same result as

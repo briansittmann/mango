@@ -464,6 +464,7 @@ export function deriveDemoData(
           budget: budgetAmount != null ? getBudgetStatus({ amount: budgetAmount, spent: total, currentDay: day, cycleDays: days }) : null,
           expenses,
           rowsLater: later.get(id) ?? 0,
+          showProgress: categoryEdits.progress[id] ?? true,
         }
       })
   }
