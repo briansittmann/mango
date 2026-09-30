@@ -1126,7 +1126,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/mango-logo-dark.svg" alt="" aria-hidden className="hidden size-12 object-contain dark:block" />
             </button>
-            <div className="relative -ms-2 min-w-0 flex-1 animate-header-in [animation-delay:90ms] motion-reduce:animate-none">
+            <div className="relative -ms-1.5 min-w-0 flex-1 animate-header-in [animation-delay:90ms] motion-reduce:animate-none">
               <span
                 aria-hidden={!titleInView}
                 inert={!titleInView}

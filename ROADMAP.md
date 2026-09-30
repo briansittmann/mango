@@ -144,6 +144,7 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 
 **Comunes**
 - [ ] 🤖 `onboarding_completo` y redirección al paso pendiente si alguien lo abandona a mitad
+- [ ] 🤖 Elección de tema (claro / oscuro / sistema, "sistema" por defecto) como control flotante arriba a la derecha con efecto cristal, en todas las pantallas del onboarding. Landing y login son oscuras siempre (`ForceDarkTheme`), así que el onboarding es el primer lugar donde se ve y se elige el tema
 - [ ] 🤖 Sección "WhatsApp" en ajustes: estado del canal, explicación de que hoy es por invitación y por qué, y vinculación con código si la persona tiene uno
 - [ ] 👤 Revisar en Stitch la nueva pantalla 1 y la de datos básicos
 

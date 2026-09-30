@@ -35,9 +35,9 @@ function Logo() {
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/mango-logo-light.svg" alt="" aria-hidden className="-me-2 size-11 dark:hidden" />
+      <img src="/mango-logo-light.svg" alt="" aria-hidden className="-me-1.5 size-[2.6rem] dark:hidden" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/mango-logo-dark.svg" alt="" aria-hidden className="-me-2 hidden size-11 dark:block" />
+      <img src="/mango-logo-dark.svg" alt="" aria-hidden className="-me-1.5 hidden size-[2.6rem] dark:block" />
     </>
   )
 }
@@ -85,8 +85,8 @@ function Nav({ changeLanguage }: LandingTemplateProps) {
   return (
     <header className="fixed inset-x-0 top-0 z-50">
       <div aria-hidden className={cn('glass-bar absolute inset-0 transition-opacity duration-500', scrolled ? 'opacity-100' : 'opacity-0')} />
-      <nav className="relative mx-auto flex h-[3.6rem] max-w-6xl items-center justify-between px-gutter">
-        <Link href="/" className="landing-rise -ms-1.5 flex items-center font-display text-headline-md text-foreground">
+      <nav className="relative mx-auto flex h-[3.42rem] max-w-6xl items-center justify-between px-gutter">
+        <Link href="/" className="landing-rise -ms-1.5 flex items-center font-display text-[19px]/[25px] font-semibold tracking-[-0.015em] text-foreground">
           <Logo />
           {t('titulo')}
         </Link>
@@ -121,7 +121,7 @@ function SplitWords({ text, className }: { text: string; className?: string }) {
   return (
     <span className={cn('block', className)}>
       {text.split(' ').map((word, index) => (
-        <span key={index} className="inline-block overflow-hidden pb-[0.08em] align-bottom">
+        <span key={index} className="-mx-[0.06em] -mb-[0.14em] inline-block overflow-hidden px-[0.06em] pb-[0.22em] align-bottom">
           <span className="hero-word inline-block">{word}</span>
           {NBSP}
         </span>
