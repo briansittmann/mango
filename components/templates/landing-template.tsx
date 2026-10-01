@@ -37,15 +37,30 @@ const DOTS = {
   light: { from: 'rgba(13, 17, 14, 0.2)', to: 'rgba(20, 144, 82, 0.3)', glow: 'rgba(20, 144, 82, 0.1)' },
 }
 
+// The fruit hangs low in its artwork; 2px up puts its body on the wordmark's cap-height centre.
 function Logo() {
   return (
-    <span className="nav-logo -me-1.5 inline-flex">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/mango-logo-light.svg" alt="" aria-hidden className="size-[2.6rem] dark:hidden" />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/mango-logo-dark.svg" alt="" aria-hidden className="hidden size-[2.6rem] dark:block" />
+    <span className="nav-logo -me-1.5 inline-flex -translate-y-0.5">
+      <span className="nav-fruit inline-flex">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/mango-logo-light.svg" alt="" aria-hidden className="size-[2.6rem] dark:hidden" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/mango-logo-dark.svg" alt="" aria-hidden className="hidden size-[2.6rem] dark:block" />
+      </span>
     </span>
   )
+}
+
+// On hover the mango hops and swings from its stem like fruit on a branch, settling on its own
+// even if the pointer leaves mid-swing.
+function swing(event: PointerEvent<HTMLElement>) {
+  if (event.pointerType !== 'mouse' || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  const fruit = event.currentTarget.querySelector('.nav-fruit')
+  if (!fruit || gsap.isTweening(fruit)) return
+  gsap
+    .timeline({ defaults: { transformOrigin: '62% 30%' } })
+    .to(fruit, { rotate: -18, y: -3, scale: 1.1, duration: 0.2, ease: 'power2.out' })
+    .to(fruit, { rotate: 0, y: 0, scale: 1, duration: 1.2, ease: 'elastic.out(1.1, 0.28)' })
 }
 
 // A wave of the button's own ink spreads from where it was pressed.
@@ -170,7 +185,14 @@ function Nav({ changeLanguage }: LandingTemplateProps) {
     <header ref={header} className="fixed inset-x-0 top-0 z-50">
       <div aria-hidden className={cn('glass-bar absolute inset-0 transition-opacity duration-500', scrolled ? 'opacity-100' : 'opacity-0')} />
       <nav className="relative mx-auto flex h-[3.42rem] max-w-6xl items-center justify-between px-gutter">
-        <Link href="/" className="-ms-1.5 flex items-center font-display text-[19px]/[25px] font-semibold tracking-[-0.015em] text-foreground">
+        <Link
+          href="/"
+          onPointerEnter={swing}
+          onClick={(event) => {
+            event.preventDefault()
+            window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+          }}
+          className="-ms-1.5 flex items-center font-display text-[19px]/[25px] font-semibold tracking-[-0.015em] text-foreground">
           <Logo />
           <span className="nav-wordmark">{t('titulo')}</span>
         </Link>

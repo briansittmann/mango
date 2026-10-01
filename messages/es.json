@@ -221,7 +221,7 @@
     "titulo": "Mango",
     "demo": "Demo",
     "entrar": "Entrar",
-    "descripcion": "Mango ordena tu mes: gastos, ingresos, ahorro y lo que te queda libre. El bot de WhatsApp es por invitación.",
+    "descripcion": "Mango ordena tu mes: gastos, ingresos, ahorro y lo que te queda libre.",
     "idioma": "Idioma",
     "heroTitulo1": "Anota un gasto por WhatsApp.",
     "heroTitulo2": "Mira cuánto te queda.",
@@ -240,7 +240,7 @@
     ],
     "escribeTitulo": "Escribe como hablas.",
     "escribeTexto": "El importe y en qué fue. Mango se encarga del resto: la categoría, el día y si era un fijo que ya esperaba.",
-    "ejemplos": ["súper 30", "café 3,5 ayer", "alquiler 820", "cobré 2100", "cena con amigos 42", "gasolina 60", "netflix 13,99", "farmacia 8,40", "ahorré 150", "taxi 12,50", "regalo mamá 35", "gimnasio 40"],
+    "ejemplos": ["súper 50 lucas", "café 3,5 ayer", "alquiler 820", "cobré 2100", "birra con los pibes 24€", "gasolina 60", "netflix 13,99", "farmacia 8,40", "ahorré 150", "taxi 12,50", "regalo mamá 35", "gimnasio 40"],
     "ritmoTitulo": "Ves el ritmo antes de pasarte.",
     "ritmoTexto": "Cada categoría con presupuesto te dice cuánto te queda por semana. Te enteras el día 10, no cuando llega el extracto.",
     "ritmoGrafico": "Gasto en comida durante el mes, en euros",
@@ -269,7 +269,7 @@
     "presupuestoComida": "Comida",
     "presupuestoOcio": "Ocio",
     "cierreTitulo": "Empieza a ver tu mes con claridad.",
-    "cierreTexto": "Crea tu cuenta con tu correo. El bot de WhatsApp es por invitación.",
+    "cierreTexto": "Crea tu cuenta con tu correo.",
     "pie": "Hecho por <nombre>Brian Sittmann</nombre>"
   },
   "acceso": {

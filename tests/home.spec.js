@@ -14,9 +14,9 @@ test('home shows its entry points and talks to no Supabase host', async ({ page 
   expect(supabaseRequests).toEqual([])
 })
 
-test('home says what Mango is and that the bot is by invitation', async ({ page }) => {
+test('home says what Mango is', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByText(/Mango ordena tu mes.*El bot de WhatsApp es por invitación\./)).toBeAttached()
+  await expect(page.getByText(/Mango ordena tu mes: gastos, ingresos, ahorro y lo que te queda libre\./)).toBeAttached()
 })
 
 test('home in English', async ({ page }) => {
@@ -25,7 +25,7 @@ test('home in English', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'See the demo' }).first()).toBeVisible()
   await expect(page.getByRole('link', { name: 'Get started' }).first()).toBeVisible()
   await expect(page.getByRole('link', { name: 'Log in', exact: true })).toBeVisible()
-  await expect(page.getByText(/Mango sorts out your month.*The WhatsApp bot is by invitation\./)).toBeAttached()
+  await expect(page.getByText(/Mango sorts out your month: spending, income, savings and what you have left\./)).toBeAttached()
 })
 
 test('Ver la demo opens /demo', async ({ page }) => {

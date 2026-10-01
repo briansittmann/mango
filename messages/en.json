@@ -221,7 +221,7 @@
     "titulo": "Mango",
     "demo": "Demo",
     "entrar": "Log in",
-    "descripcion": "Mango sorts out your month: spending, income, savings and what you have left. The WhatsApp bot is by invitation.",
+    "descripcion": "Mango sorts out your month: spending, income, savings and what you have left.",
     "idioma": "Language",
     "heroTitulo1": "Log spending on WhatsApp.",
     "heroTitulo2": "See what you have left.",
@@ -269,7 +269,7 @@
     "presupuestoComida": "Food",
     "presupuestoOcio": "Leisure",
     "cierreTitulo": "Start seeing your month clearly.",
-    "cierreTexto": "Create your account with your e-mail. The WhatsApp bot is by invitation.",
+    "cierreTexto": "Create your account with your e-mail.",
     "pie": "Made by <nombre>Brian Sittmann</nombre>"
   },
   "acceso": {

@@ -57,6 +57,7 @@ function ChatBubbles({ message, side, visible }: { message: StoryMessage; side: 
   return (
     <div
       data-visible={visible}
+      data-side={side}
       className={cn('landing-chat flex w-[min(62vw,264px)] flex-col gap-2', side === 'left' ? 'items-end' : 'items-start')}
       style={{ '--from-x': side === 'left' ? '-28px' : '28px' } as React.CSSProperties}
     >
@@ -214,7 +215,10 @@ export function LandingStory() {
   }, [])
 
   function onFrameLoad(event: React.SyntheticEvent<HTMLIFrameElement>) {
-    event.currentTarget.contentDocument?.documentElement.style.setProperty('scrollbar-width', 'none')
+    const root = event.currentTarget.contentDocument?.documentElement
+    root?.style.setProperty('scrollbar-width', 'none')
+    // The phone shows the top of the dashboard only: neither wheel, touch nor keys scroll it.
+    root?.style.setProperty('overflow', 'hidden')
     setLoaded(true)
   }
 
@@ -273,6 +277,8 @@ export function LandingStory() {
                     style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT, transform: `scale(${scale})` }}
                   />
                 ) : null}
+                {/* iOS Safari can still hand a touch to an iframe with `pointer-events: none`. */}
+                <div aria-hidden className="absolute inset-0" />
               </div>
             </div>
           </div>
@@ -286,7 +292,7 @@ export function LandingStory() {
                 data-latest={step === index + 1}
                 className={cn(
                   'landing-chat-slot absolute top-[48%] z-20 md:top-[var(--slot-top)]',
-                  side === 'left' ? '-left-5 md:left-auto md:right-[calc(100%+2.5rem)]' : '-right-5 md:left-[calc(100%+2.5rem)] md:right-auto',
+                  side === 'left' ? 'md:right-[calc(100%+2.5rem)]' : 'md:left-[calc(100%+2.5rem)]',
                 )}
                 style={{ '--slot-top': `${[20, 44, 66][index]}%` } as React.CSSProperties}
               >

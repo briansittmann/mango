@@ -597,10 +597,13 @@ body {
   mask-image: radial-gradient(130% 95% at 50% 0%, black 35%, transparent 100%);
 }
 
-/* Nav: the wordmark's letters rise inside masks tall enough for the g's descender. */
+/* Nav: the wordmark's letters rise inside masks tall enough for the g's descender. Top-aligned,
+   because WebKit puts the baseline of a clipped inline-block at its bottom edge and the word would
+   sit higher while split, then drop when the split reverts. */
 .nav-char-mask {
   padding-bottom: 0.25em;
   margin-bottom: -0.25em;
+  vertical-align: top;
 }
 
 /* Nav: "Entrar" carries a brand-green band that sweeps across once on arrival. Resting at either
@@ -869,11 +872,78 @@ body {
 }
 
 @media (width < 48rem) {
+  /* The pair spans the viewport, 12px from its edges, and each bubble leans on its own side, out
+     past the phone: the one on the left to the left edge, the one on the right to the right. */
   .landing-chat-slot {
+    left: calc(50% - 50vw + 0.75rem);
+    right: calc(50% - 50vw + 0.75rem);
     transition: opacity 300ms var(--ease-out);
     &[data-latest='false'] {
       opacity: 0;
     }
+  }
+  .landing-chat {
+    width: 100%;
+    .landing-chat-out {
+      max-width: 78%;
+    }
+    .landing-chat-in {
+      max-width: 84%;
+    }
+    &[data-side='left'] .landing-chat-in {
+      align-self: flex-start;
+    }
+    &[data-side='right'] .landing-chat-in {
+      align-self: flex-end;
+      transform-origin: top right;
+    }
+    &[data-side='right'] .landing-chat-out {
+      transform-origin: bottom left;
+    }
+  }
+
+  /* On a phone the chat lies over the dashboard, which shares its greys: a soft shade lifts it off
+     the screen, the sent message takes the brand's green and the reply is a solid card. */
+  .landing-chat {
+    position: relative;
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -28px -20px;
+      z-index: -1;
+      background: radial-gradient(closest-side, rgba(5, 8, 6, 0.55), transparent);
+      opacity: 0;
+      transition: opacity 500ms var(--ease-out);
+      pointer-events: none;
+    }
+    &[data-visible='true']::before {
+      opacity: 1;
+    }
+  }
+  .landing-chat-out {
+    background: linear-gradient(160deg, color-mix(in oklab, var(--primary) 88%, white), var(--primary) 55%, color-mix(in oklab, var(--primary) 82%, black));
+    border-color: transparent;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      0 14px 34px -10px color-mix(in oklab, var(--brand) 60%, transparent),
+      0 0 0 1px color-mix(in oklab, var(--primary) 70%, black);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    p,
+    svg {
+      color: var(--primary-foreground);
+    }
+    p + p {
+      color: color-mix(in oklab, var(--primary-foreground) 65%, transparent);
+    }
+  }
+  .landing-chat-in {
+    background: light-dark(#FFFFFF, #222A23);
+    border-color: color-mix(in oklab, var(--brand) 45%, transparent);
+    box-shadow:
+      inset 0 1px 0 light-dark(transparent, rgba(255, 255, 255, 0.1)),
+      0 22px 44px -14px rgba(0, 0, 0, 0.75),
+      0 0 32px -6px color-mix(in oklab, var(--brand) 35%, transparent);
   }
 }
 
