@@ -65,7 +65,7 @@ test('a category holding a fixed expense cannot be swiped away', async ({ page }
   await page.goto('/demo/onboarding?paso=3&e2eSeed=1')
   const row = list(page).getByRole('listitem').filter({ hasText: 'Vivienda' })
   await longSwipe(page, row)
-  await expect(page.getByText('Primero quita sus gastos fijos')).toBeVisible()
+  await expect(page.getByText('Primero quita sus gastos fijos').first()).toBeVisible()
   await expect(list(page)).toContainText('Vivienda')
 })
 

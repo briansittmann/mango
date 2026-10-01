@@ -120,10 +120,27 @@ export function countryOf(code: string | null | undefined): Country | null {
   return COUNTRIES.find((country) => country.code === code) ?? null
 }
 
+/**
+ * A zone as the runtime canonicalises it: browsers report `America/Cordoba` for
+ * `America/Argentina/Cordoba` (an ICU alias), so two names of one zone compare equal here.
+ * An unknown name comes back as it is.
+ */
+function canonicalZone(timezone: string): string {
+  try {
+    return new Intl.DateTimeFormat('en', { timeZone: timezone }).resolvedOptions().timeZone
+  } catch {
+    return timezone
+  }
+}
+
+function sameZone(a: string, b: string): boolean {
+  return a === b || canonicalZone(a) === canonicalZone(b)
+}
+
 /** The country whose zones include `timezone` (the first match), or null when none holds it. */
 export function countryForTimezone(timezone: string | null | undefined): string | null {
   if (!timezone) return null
-  return COUNTRIES.find((country) => country.timezones.includes(timezone))?.code ?? null
+  return COUNTRIES.find((country) => country.timezones.some((zone) => sameZone(zone, timezone)))?.code ?? null
 }
 
 /**
@@ -133,7 +150,7 @@ export function countryForTimezone(timezone: string | null | undefined): string 
 export function timezoneForCountry(code: string, stored: string | null | undefined): string | null {
   const country = countryOf(code)
   if (!country) return null
-  return stored && country.timezones.includes(stored) ? stored : country.timezones[0]
+  return stored && country.timezones.some((zone) => sameZone(zone, stored)) ? stored : country.timezones[0]
 }
 
 /** The `usuarios.telefono` check (migration 0002): E.164 with a leading `+`. */

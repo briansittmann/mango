@@ -15,15 +15,16 @@ test.describe('from an Argentine timezone', () => {
     await expect(page.getByLabel('Moneda')).toHaveValue('ARS')
     await expect(page.locator('[data-derived-line]')).toHaveText(/Peso argentino · hora de Cordoba/)
 
+    // The control sits inside a collapsible that clips it when closed: in the viewport means open.
     const control = page.locator('[data-format-control]')
-    await expect(control).toBeVisible()
+    await expect(control).toBeInViewport()
     await expect(control.getByRole('radio', { name: 'Completo' })).toHaveText('350.000')
     await expect(control.getByRole('radio', { name: 'Completo' })).toHaveAttribute('aria-checked', 'true')
     await expect(control.getByRole('radio', { name: 'Abreviado' })).toHaveText('350k')
 
     // The currency stays editable and the control stays: the country is still Argentina.
     await page.getByLabel('Moneda').selectOption('EUR')
-    await expect(control).toBeVisible()
+    await expect(control).toBeInViewport()
     await expect(page.locator('[data-derived-line]')).toHaveText(/Euro · hora de Cordoba/)
   })
 })
@@ -36,7 +37,7 @@ test.describe('from an Irish timezone', () => {
     await expect(page.getByLabel('País')).toHaveValue('IE')
     await expect(page.getByLabel('Moneda')).toHaveValue('EUR')
     await expect(page.locator('[data-derived-line]')).toHaveText(/Euro · hora de Dublin/)
-    await expect(page.locator('[data-format-control]')).toBeHidden()
+    await expect(page.locator('[data-format-control]')).not.toBeInViewport()
   })
 
   test('the timezone follows the country: Spain takes Madrid', async ({ page }) => {
@@ -45,7 +46,7 @@ test.describe('from an Irish timezone', () => {
     await expect(page.locator('[data-derived-line]')).toHaveText(/Euro · hora de Madrid/)
     await page.getByLabel('País').selectOption('AR')
     await expect(page.locator('[data-derived-line]')).toHaveText(/Peso argentino · hora de Buenos Aires/)
-    await expect(page.locator('[data-format-control]')).toBeVisible()
+    await expect(page.locator('[data-format-control]')).toBeInViewport()
   })
 
   test('the day is editable on a fresh account and locked once something is keyed to the cycle', async ({ page }) => {

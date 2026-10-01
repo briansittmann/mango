@@ -448,10 +448,13 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
                 )}
               >
                 <span className={cn('transition-opacity duration-150 motion-reduce:transition-none', pending && 'opacity-0')}>{primaryLabel}</span>
-                <Loader2
-                  aria-hidden
-                  className={cn('absolute inset-0 m-auto size-5 animate-spin transition-opacity duration-200 motion-reduce:transition-none', pending ? 'opacity-100 delay-150' : 'opacity-0')}
-                />
+                {/* Mounted only while pending: a hidden spinner would still be an endless animation. */}
+                {pending ? (
+                  <Loader2
+                    aria-hidden
+                    className="absolute inset-0 m-auto size-5 animate-spin transition-opacity delay-150 duration-200 starting:opacity-0 motion-reduce:transition-none"
+                  />
+                ) : null}
               </button>
               {step === 7 ? (
                 <button

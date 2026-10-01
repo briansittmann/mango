@@ -7,6 +7,7 @@ test.use({ viewport: { width: 390, height: 844 }, timezoneId: 'Europe/Dublin' })
 // `onboarding` → *The onboarding is one route with seven steps*, on `/demo/onboarding` in Spanish.
 
 const TITLES = ['Bienvenida', 'Sobre ti', 'Tus categorías', 'Ingresos y fijos', 'Presupuestos', 'Meta de ahorro', 'WhatsApp']
+const HEADINGS = ['', '', 'Tus categorías', 'Ingresos y fijos', 'Presupuestos', 'Meta de ahorro', '¿Quieres cargar por WhatsApp?']
 
 test('seven steps forward, the progress line counts them and names them', async ({ page }) => {
   await page.goto('/demo/onboarding')
@@ -27,7 +28,7 @@ test('seven steps forward, the progress line counts them and names them', async 
     await primary(page).click()
     await expectStep(page, n)
     await expect(progress(page)).toHaveAttribute('aria-valuetext', TITLES[n - 1])
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(TITLES[n - 1])
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(HEADINGS[n - 1])
   }
   await expect(primary(page)).toHaveText('Vincular')
   expect(await body(page)).not.toMatch(/\b\d de 7\b/)

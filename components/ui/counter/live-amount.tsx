@@ -36,7 +36,7 @@ function getReducedServerSnapshot() {
  * the symbol keeps its place and size.
  */
 export function LiveAmount({ amount, currency, className, currencyClassName }: LiveAmountProps) {
-  const { parts } = useAmountFormatter()
+  const { parts, figure } = useAmountFormatter()
   const reduced = useSyncExternalStore(subscribeToReducedMotion, getReducedSnapshot, getReducedServerSnapshot)
   const value = useMotionValue(amount)
   const initial = useRef(amount)
@@ -66,14 +66,15 @@ export function LiveAmount({ amount, currency, className, currencyClassName }: L
 
   useEffect(() => {
     if (!live) return
+    // The figure rolls in the target's unit and decimals (no cents under an integer target, `k`
+    // under an abbreviated one); the sign follows the current value.
     const paint = (current: number) => {
-      const formatted = parts(current, currency)
-      if (signRef.current) signRef.current.textContent = formatted.sign
-      if (figureRef.current) figureRef.current.textContent = formatted.figure
+      if (signRef.current) signRef.current.textContent = parts(current, currency).sign
+      if (figureRef.current) figureRef.current.textContent = figure(current, currency, amount)
     }
     paint(value.get())
     return value.on('change', paint)
-  }, [live, value, parts, currency])
+  }, [live, value, parts, figure, currency, amount])
 
   if (!live) {
     return <AnimatedAmount amount={amount} currency={currency} className={className} currencyClassName={currencyClassName} />
