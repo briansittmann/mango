@@ -1,10 +1,10 @@
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
-import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react'
-import { flushSync } from 'react-dom'
-import { Loader2, LogOut, Moon, Sun, SunMoon, X } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { ChevronRight, Loader2, LogOut, Moon, Sun, SunMoon, UserRound, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/atoms/avatar'
+import { useThemeChoice } from '@/components/theme/use-theme-choice'
 import type { DashboardActions } from '@/lib/data/dashboard'
 
 type AccountMenuProps = {
@@ -12,9 +12,9 @@ type AccountMenuProps = {
   actions: DashboardActions
   open: boolean
   onClose: () => void
+  /** Opens the account sheet (D16); absent when the page supplies no profile operations, so the row is disabled. */
+  onOpenAccount?: () => void
 }
-
-type ThemeChoice = 'light' | 'dark' | null
 
 type BackgroundChoice = 'dynamic' | 'solid'
 
@@ -45,7 +45,7 @@ const thumbClassName =
 const segmentClassName =
   'relative flex items-center justify-center rounded-[18px] transition-[color,scale] duration-200 active:scale-95 focus-visible:outline-2 focus-visible:-outline-offset-2 disabled:pointer-events-none'
 
-export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) {
+export function AccountMenu({ user, actions, open, onClose, onOpenAccount }: AccountMenuProps) {
   const t = useTranslations('menuCuenta')
   const locale = useLocale()
   const router = useRouter()
@@ -53,15 +53,8 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
   const [mounted, setMounted] = useState(open)
   const [pendingLocale, setPendingLocale] = useState<string | null>(null)
   const [signingOut, setSigningOut] = useState(false)
-  const [theme, setTheme] = useState<ThemeChoice>(() => {
-    try {
-      const stored = localStorage.getItem('theme')
-      if (stored === 'system') return null
-      return stored === 'light' ? 'light' : 'dark'
-    } catch {
-      return 'dark'
-    }
-  })
+  // One implementation with the onboarding's floating pill (add-web-onboarding D13); dark when nothing is stored.
+  const { theme, applyTheme } = useThemeChoice('dark')
   const [background, setBackground] = useState<BackgroundChoice>(() => {
     try {
       return localStorage.getItem('background') === 'solid' ? 'solid' : 'dynamic'
@@ -97,41 +90,6 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
     }
     dialog.focus({ preventScroll: true })
   }, [open])
-
-  function commitTheme(next: ThemeChoice) {
-    flushSync(() => setTheme(next))
-    try {
-      if (next) {
-        localStorage.setItem('theme', next)
-        document.documentElement.setAttribute('data-theme', next)
-      } else {
-        localStorage.setItem('theme', 'system')
-        document.documentElement.removeAttribute('data-theme')
-      }
-    } catch {}
-  }
-
-  function applyTheme(next: ThemeChoice, event: MouseEvent<HTMLButtonElement>) {
-    if (next === theme) return
-    if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      commitTheme(next)
-      return
-    }
-    const root = document.documentElement
-    const { left, top, width, height } = event.currentTarget.getBoundingClientRect()
-    const x = left + width / 2
-    const y = top + height / 2
-    const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))
-    root.classList.add('theme-switching')
-    const transition = document.startViewTransition(() => commitTheme(next))
-    transition.ready.then(() => {
-      root.animate(
-        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
-        { duration: 700, easing: 'cubic-bezier(0.32, 0.72, 0, 1)', pseudoElement: '::view-transition-new(root)' },
-      )
-    })
-    transition.finished.finally(() => root.classList.remove('theme-switching'))
-  }
 
   function applyBackground(next: BackgroundChoice) {
     if (next === background) return
@@ -217,7 +175,21 @@ export function AccountMenu({ user, actions, open, onClose }: AccountMenuProps) 
           </button>
         </div>
 
-        <div className={`mt-6 ${enterClassName}`} style={{ transitionDelay: '50ms' }}>
+        <div className={`mt-4 ${enterClassName}`} style={{ transitionDelay: '25ms' }}>
+          {/* The account sheet's row (D16): disabled when the page supplies no profile operations. */}
+          <button
+            type="button"
+            disabled={!onOpenAccount}
+            onClick={onOpenAccount}
+            className="pressable flex min-h-row w-full items-center gap-3 rounded-[18px] bg-foreground/[0.04] px-4 text-left text-body-lg text-foreground disabled:opacity-40"
+          >
+            <UserRound aria-hidden className="size-5 text-muted-foreground" />
+            <span className="flex-1">{t('cuenta')}</span>
+            <ChevronRight aria-hidden className="size-4 text-muted-foreground" />
+          </button>
+        </div>
+
+        <div className={`mt-4 ${enterClassName}`} style={{ transitionDelay: '50ms' }}>
           <p id="account-menu-theme" className="mb-2 px-1 text-body-sm text-muted-foreground">
             {t('tema')}
           </p>

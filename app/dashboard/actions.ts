@@ -10,6 +10,8 @@ import {
 } from "@/lib/data/categories";
 import type { ExpenseDraft, LocalDate } from "@/lib/data/expenses";
 import type { IncomeDraft } from "@/lib/data/income";
+import { PROFILE_ERRORS, validateBasics, type ProfileBasics } from "@/lib/data/profile";
+import { createSupabaseProfileMutations } from "@/lib/data/supabase/profile";
 import type { RecurringDraft, RecurringTarget, SlotEntry } from "@/lib/data/recurring";
 import type { SavingsMovementDraft } from "@/lib/data/savings";
 import { createSupabaseCategoryMutations } from "@/lib/data/supabase/categories";
@@ -123,6 +125,24 @@ export async function deleteRecurringInCycle(definitionId: string, cycle: LocalD
 }
 export async function restoreRecurringInCycle(definitionId: string, cycle: LocalDate) {
   await run((ctx) => createSupabaseRecurringMutations(ctx).restoreInCycle(definitionId, cycle));
+}
+
+/**
+ * The account sheet's save (D16): the same validation as the onboarding's basics step; a known
+ * rejection (`cycle-locked`, `invalid-*`) travels as a value, like the duplicate name above.
+ */
+export async function updateProfileBasics(
+  basics: ProfileBasics,
+): Promise<{ ok: true } | { ok: false; error: (typeof PROFILE_ERRORS)[number] }> {
+  try {
+    await run((ctx) => createSupabaseProfileMutations(ctx).updateBasics(validateBasics(basics)));
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof Error && (PROFILE_ERRORS as readonly string[]).includes(error.message)) {
+      return { ok: false, error: error.message as (typeof PROFILE_ERRORS)[number] };
+    }
+    throw error;
+  }
 }
 
 export async function signOut() {

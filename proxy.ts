@@ -3,9 +3,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 /**
  * Refreshes the Supabase session on every matched request and keeps
- * `/dashboard` behind a login. `/` and `/demo` are outside the matcher, so
- * no Supabase client is created for them. `app/dashboard/page.tsx` repeats
- * the redirect so the page does not depend on this file.
+ * `/dashboard` and `/onboarding` behind a login. `/` and `/demo` are outside
+ * the matcher, so no Supabase client is created for them. The pages repeat
+ * the redirect so they do not depend on this file.
  */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
@@ -34,7 +34,8 @@ export async function proxy(request: NextRequest) {
   // creation and this call.
   const { data } = await supabase.auth.getClaims()
 
-  if (!data?.claims && request.nextUrl.pathname.startsWith('/dashboard')) {
+  const pathname = request.nextUrl.pathname
+  if (!data?.claims && (pathname.startsWith('/dashboard') || pathname.startsWith('/onboarding'))) {
     const redirect = NextResponse.redirect(new URL('/login', request.url))
     for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie)
     return redirect
@@ -44,5 +45,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/auth/:path*'],
+  matcher: ['/dashboard/:path*', '/onboarding/:path*', '/login', '/auth/:path*'],
 }

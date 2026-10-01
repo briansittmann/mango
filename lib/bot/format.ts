@@ -3,13 +3,14 @@
  * `format.test.mjs` loads it from plain Node.
  */
 
-import { currencyFormatOptions } from '../../i18n/formats.ts'
+import { formatAmount, type AmountFormat } from '../data/amount-format.ts'
 import { normalizeName } from '../data/supabase/bot.ts'
 
 /** A translator of the `bot` namespace, as `createTranslator` builds it. */
 export type BotTranslate = (key: string, values?: Record<string, string | number>) => string
 
-export type BotFormat = { locale: string; currency: string; today: string; t: BotTranslate }
+/** `amountFormat` is the account's format in effect (`effectiveAmountFormat`, D12). */
+export type BotFormat = { locale: string; currency: string; amountFormat: AmountFormat; today: string; t: BotTranslate }
 
 /** The dashboard bar's levels (`getBudgetStatus`), as the confirmation's light (design D10). */
 const LIGHTS = { ok: '🟢', warning: '🟡', exceeded: '🔴' } as const
@@ -42,8 +43,8 @@ export function loadIcon(load: Pick<LoadSummary, 'tipo' | 'amount'>): string {
  * name is not the category, and the budget line when `budget` is set; the day shows only when it
  * is not today.
  */
-export function confirmationText({ locale, currency, today, t }: BotFormat, load: LoadSummary): string {
-  const monto = formatBotAmount(locale, currency, Math.abs(load.amount))
+export function confirmationText({ locale, currency, amountFormat, today, t }: BotFormat, load: LoadSummary): string {
+  const monto = formatBotAmount(locale, currency, Math.abs(load.amount), amountFormat)
   const when = { cuando: load.date === today ? 'hoy' : 'otro', dia: formatBotDay(locale, today, load.date, t) }
 
   if (load.tipo === 'ingreso') return t('confirmacionIngreso', { nombre: load.name ?? t('ingreso'), monto, ...when })
@@ -55,8 +56,8 @@ export function confirmationText({ locale, currency, today, t }: BotFormat, load
   if (!load.budget) return text
 
   return `${text} ${t('lineaPresupuesto', {
-    gastado: formatBotAmount(locale, currency, load.budget.spent),
-    presupuesto: formatBotAmount(locale, currency, load.budget.amount),
+    gastado: formatBotAmount(locale, currency, load.budget.spent, amountFormat),
+    presupuesto: formatBotAmount(locale, currency, load.budget.amount, amountFormat),
     luz: LIGHTS[load.budget.level],
   })}`
 }
@@ -74,9 +75,9 @@ export function topCategories<T extends { total: number }>(
   return { top: spent.slice(0, limit), rest: { count: left.length, total: left.reduce((sum, group) => sum + group.total, 0) } }
 }
 
-/** An amount as the web shows it: "45 €" in `es`, "€45.50" in `en`. */
-export function formatBotAmount(locale: string, currency: string, amount: number): string {
-  return new Intl.NumberFormat(locale, { ...currencyFormatOptions, currency }).format(amount)
+/** An amount as the web shows it for the account: "45 €" in `es`, "€45.50" in `en`, "$ 15k" abbreviated. */
+export function formatBotAmount(locale: string, currency: string, amount: number, amountFormat: AmountFormat = 'completo'): string {
+  return formatAmount(amount, { locale, currency, amountFormat })
 }
 
 /**

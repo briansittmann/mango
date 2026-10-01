@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { effectiveAmountFormat } from '@/lib/data/amount-format'
 import { getBudgetStatus, getFreeMargin } from '@/lib/data/budget'
 import { categoriaViva } from '@/lib/data/categories'
 import type { CategoryColor, DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
@@ -132,7 +133,7 @@ export async function resumenMensual(
   }
 
   const presupuestosQuery = client.from('presupuestos').select('categoria_id, monto, periodo').eq('usuario_id', usuario.id)
-  const [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores] = await Promise.all([
+  const [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores, movimientos] = await Promise.all([
     client
       .from('categorias')
       .select('id, nombre, color, desde_ciclo, hasta_ciclo, mostrar_progreso')
@@ -182,8 +183,10 @@ export async function resumenMensual(
       .eq('tipo', 'gasto')
       .is('borrado_en', null)
       .gte('fecha', shownRange.fin.toISOString()),
+    // One existence check: whether the user holds any movement at all (the account sheet's warning).
+    client.from('transacciones').select('usuario_id', { count: 'exact', head: true }).eq('usuario_id', usuario.id).is('borrado_en', null),
   ])
-  for (const result of [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores]) {
+  for (const result of [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores, movimientos]) {
     if (result?.error) throw result.error
   }
 
@@ -351,6 +354,10 @@ export async function resumenMensual(
         photoUrl: usuario.foto_url,
         currency: usuario.moneda_default,
         timezone,
+        country: usuario.pais,
+        amountFormat: effectiveAmountFormat(usuario),
+        cycleDay: usuario.dia_inicio_ciclo,
+        hasMovements: (movimientos.count ?? 0) > 0,
       },
       cycle: {
         start,

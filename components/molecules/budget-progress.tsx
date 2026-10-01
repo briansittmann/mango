@@ -1,6 +1,6 @@
 import { CircleAlert, TriangleAlert } from 'lucide-react'
-import { useFormatter, useTranslations } from 'next-intl'
-import { currencyFormatOptions } from '@/i18n/formats'
+import { useTranslations } from 'next-intl'
+import { useAmountFormatter } from '@/components/atoms/amount-format'
 import { ProgressBar } from '@/components/atoms/progress-bar'
 import type { BudgetStatus } from '@/lib/data/dashboard'
 
@@ -13,25 +13,25 @@ type BudgetProgressProps = {
 
 export function BudgetProgress({ budget, currency, projected = false }: BudgetProgressProps) {
   const t = useTranslations('categoria')
-  const format = useFormatter()
+  const { money } = useAmountFormatter()
 
   if (projected) {
-    return <ProgressBar usage={0} level="ok" valueText={format.number(budget.amount, { ...currencyFormatOptions, currency })} />
+    return <ProgressBar usage={0} level="ok" valueText={money(budget.amount, currency)} />
   }
 
   const remainingText =
     budget.weeklyAllowance !== null
       ? t('disponibleSemanal', {
-          monto: format.number(budget.weeklyAllowance, { ...currencyFormatOptions, currency }),
+          monto: money(budget.weeklyAllowance, currency),
         })
       : t('disponibleDias', {
-          monto: format.number(budget.remaining, { ...currencyFormatOptions, currency }),
+          monto: money(budget.remaining, currency),
           dias: budget.daysLeft,
         })
 
   const valueText = t.markup('gastadoDePresupuesto', {
-    gastado: format.number(budget.spent, { ...currencyFormatOptions, currency }),
-    presupuesto: format.number(budget.amount, { ...currencyFormatOptions, currency }),
+    gastado: money(budget.spent, currency),
+    presupuesto: money(budget.amount, currency),
     // The card header animates the spent figure inside this tag; spoken aloud it is just the number.
     montoGastado: (chunks) => chunks,
     muted: (chunks) => chunks,
@@ -44,7 +44,7 @@ export function BudgetProgress({ budget, currency, projected = false }: BudgetPr
         <p className="mt-2 flex items-center gap-1.5 text-body-sm font-medium text-destructive">
           <CircleAlert aria-hidden className="size-4 shrink-0" />
           {t('overBudget', {
-            monto: format.number(budget.spent - budget.amount, { ...currencyFormatOptions, currency }),
+            monto: money(budget.spent - budget.amount, currency),
           })}
         </p>
       ) : budget.level === 'warning' ? (

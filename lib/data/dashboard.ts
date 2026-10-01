@@ -1,5 +1,7 @@
+import type { AmountFormat } from './amount-format'
 import type { LocalDate, ExpenseMutations } from './expenses'
 import type { CategoryMutations } from './categories'
+import type { ProfileMutations } from './profile'
 import type { RecurringMutations } from './recurring'
 import type { IncomeEntry, IncomeMutations } from './income'
 import type { SavingsMutations } from './savings'
@@ -69,7 +71,21 @@ export type ExpenseGroup = {
 }
 
 export type DashboardData = {
-  user: { name: string; phone: string | null; photoUrl: string | null; currency: string; timezone: string }
+  user: {
+    name: string
+    phone: string | null
+    photoUrl: string | null
+    currency: string
+    timezone: string
+    /** ISO code (`'AR'`), null until the onboarding asks. Absent on a mount with no profile (the demo). */
+    country?: string | null
+    /** The format in effect (`localization` → *Amount format preference*); missing means complete. */
+    amountFormat?: AmountFormat
+    /** `dia_inicio_ciclo`, shown read-only by the account sheet. */
+    cycleDay?: number
+    /** Whether the user holds any movement: the account sheet then warns that currencies are summed unconverted. */
+    hasMovements?: boolean
+  }
   cycle: {
     start: string
     end: string
@@ -108,6 +124,8 @@ export type DashboardActions = Partial<{
   recurring: RecurringMutations
   income: IncomeMutations
   savings: SavingsMutations
+  /** The account sheet's operations (`dashboard-ui` → *Account avatar and menu*); the demo supplies none. */
+  profile: ProfileMutations
   signOut(): void
   changeLanguage(l: 'es' | 'en'): Promise<void>
 }>

@@ -16,8 +16,8 @@ import { Flip } from 'gsap/Flip'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
-import { currencyFormatOptions } from '@/i18n/formats'
 import { cn } from '@/lib/utils'
+import { AmountFormatProvider, useAmountFormatter } from '@/components/atoms/amount-format'
 import { Avatar } from '@/components/atoms/avatar'
 import { AddCategoryTile } from '@/components/molecules/add-category-tile'
 import { AddRow } from '@/components/molecules/add-row'
@@ -30,6 +30,7 @@ import { SwipeRestoreContext, SwipeToDelete } from '@/components/molecules/swipe
 import { UndoToast } from '@/components/molecules/undo-toast'
 import type { Scope } from '@/components/molecules/scope-choice'
 import { AccountMenu } from '@/components/organisms/account-menu'
+import { AccountSheet } from '@/components/organisms/account-sheet'
 import { CategoryCard } from '@/components/organisms/category-card'
 import { CategoryPieChart } from '@/components/organisms/category-pie-chart'
 import { CategorySheet } from '@/components/organisms/category-sheet'
@@ -135,8 +136,18 @@ function neighbourShift(index: number, visual: DragVisual): number {
   return index >= targetIndex && index < startIndex ? rowHeight : 0
 }
 
-export function DashboardTemplate({ data, actions, charges, definitions, notice }: DashboardTemplateProps) {
+/** The format in effect wraps the whole tree (`localization` → *Amount format preference*); a mount without one paints complete. */
+export function DashboardTemplate(props: DashboardTemplateProps) {
+  return (
+    <AmountFormatProvider format={props.data.user.amountFormat ?? 'completo'}>
+      <Dashboard {...props} />
+    </AmountFormatProvider>
+  )
+}
+
+function Dashboard({ data, actions, charges, definitions, notice }: DashboardTemplateProps) {
   const t = useTranslations('dashboard')
+  const tCuenta = useTranslations('cuenta')
   const tResumen = useTranslations('resumen')
   const tMenu = useTranslations('menuCuenta')
   const tHojaGasto = useTranslations('hojaGasto')
@@ -144,6 +155,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   const tRecurrente = useTranslations('gastoRecurrente')
   const tReordenar = useTranslations('modoReordenar')
   const format = useFormatter()
+  const { money } = useAmountFormatter()
   const [openIds, setOpenIds] = useState<Set<string>>(new Set())
   // Categories whose budget bar is hidden from the card, toggled in the category options sheet.
   // The stored preference (`group.showProgress`) with the latest toggle on top, so the bar moves at
@@ -155,6 +167,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
   const progressShown = (group: ExpenseGroup) => progressOverrides.get(group.id) ?? group.showProgress
   const [openSummary, setOpenSummary] = useState<SummaryKey | null>(null)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const [accountSheetOpen, setAccountSheetOpen] = useState(false)
   const [titleInView, setTitleInView] = useState(true)
   const [sheet, setSheet] = useState<{ open: boolean; target: SheetTarget | null }>({ open: false, target: null })
   const [categorySheet, setCategorySheet] = useState<{ open: boolean; target: CategorySheetTarget | null }>({
@@ -844,7 +857,7 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
     await actions.recurring.update(definitionId, draft)
     setRecurringSheet((prev) => ({ ...prev, open: false }))
     setStatusMessage(
-      tRecurrente('cambiosGuardados', { nombre: draft.name, monto: format.number(draft.expectedAmount, { ...currencyFormatOptions, currency }) }),
+      tRecurrente('cambiosGuardados', { nombre: draft.name, monto: money(draft.expectedAmount, currency) }),
     )
   }
 
@@ -1514,7 +1527,26 @@ export function DashboardTemplate({ data, actions, charges, definitions, notice 
         actions={actions}
         open={accountMenuOpen}
         onClose={() => setAccountMenuOpen(false)}
+        onOpenAccount={
+          actions.profile
+            ? () => {
+                setAccountMenuOpen(false)
+                setAccountSheetOpen(true)
+              }
+            : undefined
+        }
       />
+      {actions.profile ? (
+        <AccountSheet
+          open={accountSheetOpen}
+          onOpenChange={setAccountSheetOpen}
+          user={data.user}
+          onSave={async (basics) => {
+            await actions.profile!.updateBasics(basics)
+            setStatusMessage(tCuenta('guardado'))
+          }}
+        />
+      ) : null}
       <EntrySheet
         config={sheetIsIncome ? incomeEntry : expenseEntry}
         open={sheet.open && sheet.target?.kind !== 'savings'}

@@ -44,12 +44,15 @@ function monthsBetween(from: string, to: string): number {
  * The cycle in progress and the cycles after it up to `until` (inclusive, at most the horizon),
  * each with its count after the last generated cycle — what `proyectarCiclo` needs to say what a
  * projected cycle shows (`add-forward-scoped-edits` D2, D3). With no generation marker the cycle in
- * progress is still to generate, so counting starts at the one before, as in `resumenMensual`.
+ * progress is still to generate, so counting starts at the one before, as in `resumenMensual`:
+ * `currentAfterGenerated` is 1 with a null marker and 0 once the marker is the cycle in progress
+ * (the onboarding's pending charges, `add-web-onboarding` D9). `until` may be a function of the
+ * cycle in progress, for a caller that only needs that cycle.
  */
 export async function futureCycles(
   { client, usuarioId }: DataContext,
-  until: LocalDate,
-): Promise<{ current: LocalDate; cycles: { start: LocalDate; cyclesAfterGenerated: number }[] }> {
+  until: LocalDate | ((current: LocalDate) => LocalDate),
+): Promise<{ current: LocalDate; currentAfterGenerated: number; cycles: { start: LocalDate; cyclesAfterGenerated: number }[] }> {
   const { data: usuario, error } = await client
     .from('usuarios')
     .select('dia_inicio_ciclo, timezone, ciclo_generado_hasta')
@@ -66,12 +69,15 @@ export async function futureCycles(
       ? monthOf(await cycleRange(client, { ...params, ref: new Date(range.inicio.getTime() - 1) }))
       : monthOf(await cycleRange(client, { ...params, ref: new Date(`${usuario.ciclo_generado_hasta}T12:00:00Z`) }))
 
+  const currentAfterGenerated = monthsBetween(generatedMonth, monthOf(range))
+  const last = typeof until === 'function' ? until(current) : until
+
   const cycles: { start: LocalDate; cyclesAfterGenerated: number }[] = []
   for (let i = 0; i < PROJECTION_HORIZON; i++) {
     range = await cycleRange(client, { ...params, ref: range.fin })
     const start = localDateOf(range.inicio, usuario.timezone)
-    if (start > until) break
+    if (start > last) break
     cycles.push({ start, cyclesAfterGenerated: monthsBetween(generatedMonth, monthOf(range)) })
   }
-  return { current, cycles }
+  return { current, currentAfterGenerated, cycles }
 }

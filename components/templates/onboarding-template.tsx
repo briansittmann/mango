@@ -1,0 +1,501 @@
+'use client'
+
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Toast } from '@base-ui/react/toast'
+import { Loader2 } from 'lucide-react'
+import { useLocale, useTranslations } from 'next-intl'
+import { cn } from '@/lib/utils'
+import { AmountFormatProvider, useAmountFormatter } from '@/components/atoms/amount-format'
+import { parseAmount } from '@/components/molecules/amount-field'
+import { basicsValid, looksLikeName, type BasicsDraft } from '@/components/molecules/basics-fields'
+import { parseInteger } from '@/components/molecules/integer-field'
+import { SwipeRestoreContext } from '@/components/molecules/swipe-to-delete'
+import { GlassBackButton, ThemePill } from '@/components/molecules/theme-pill'
+import { UndoToast } from '@/components/molecules/undo-toast'
+import { BasicsStep } from '@/components/organisms/onboarding/basics-step'
+import { BudgetsStep, type Envelope } from '@/components/organisms/onboarding/budgets-step'
+import { CategoriesStep } from '@/components/organisms/onboarding/categories-step'
+import { FixedStep } from '@/components/organisms/onboarding/fixed-step'
+import { SavingsStep } from '@/components/organisms/onboarding/savings-step'
+import { WelcomeStep } from '@/components/organisms/onboarding/welcome-step'
+import { WhatsAppStep } from '@/components/organisms/onboarding/whatsapp-step'
+import { RecurringSheet } from '@/components/organisms/recurring-sheet'
+import { ensureStoredChoice } from '@/components/theme/use-theme-choice'
+import { LiveAmount } from '@/components/ui/counter/live-amount'
+import type { OnboardingActions, OnboardingData } from '@/lib/data/onboarding'
+import type { RecurringDefinition } from '@/lib/data/recurring'
+// Pure functions over the typed values, not data access: the margin formula the dashboard uses
+// (D10) and the country table (D4, D11). The atoms' amount-format module takes the same exception.
+// eslint-disable-next-line @typescript-eslint/no-restricted-imports
+import { getFreeMargin } from '@/lib/data/budget'
+// eslint-disable-next-line @typescript-eslint/no-restricted-imports
+import { countryForTimezone, countryOf, normalizePhone, timezoneForCountry } from '@/lib/data/countries'
+import type { AmountFormat } from '@/lib/data/amount-format'
+
+const STEPS = 7
+/** How long the outgoing layer stays mounted: its 180 ms exit plus a frame (D14). */
+const LEAVE_MS = 220
+
+type Direction = 'forward' | 'back'
+type Layer = { key: number; step: number; direction: Direction; leaving: boolean }
+
+export type OnboardingTemplateProps = {
+  data: OnboardingData
+  actions: OnboardingActions
+  /** Called once `finish` resolved: the mount navigates to the dashboard. */
+  onFinished: () => void
+  /** The sandbox's "nothing is saved" line. */
+  notice?: ReactNode
+}
+
+/** Mirrors the profile contract's rejection messages (`lib/data/profile.ts`) without a runtime import. */
+const CYCLE_LOCKED = 'cycle-locked'
+const PHONE_TAKEN = 'phone-taken'
+const INVALID_PHONE = 'invalid-phone'
+
+function formatAmountForEdit(amount: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { minimumFractionDigits: 2, trailingZeroDisplay: 'stripIfInteger', useGrouping: false }).format(amount)
+}
+
+function initialBasics(profile: OnboardingData['profile']): BasicsDraft {
+  // No country yet: the one whose zones hold the stored timezone, with its currency (D4).
+  const country = profile.country ?? countryForTimezone(profile.timezone)
+  const derived = profile.country == null && country ? countryOf(country) : null
+  return {
+    name: looksLikeName(profile.name) ? profile.name : '',
+    country,
+    currency: derived?.currency ?? profile.currency,
+    timezone: country ? (timezoneForCountry(country, profile.timezone) ?? profile.timezone) : profile.timezone,
+    cycleDay: String(profile.cycleDay),
+    amountFormat: profile.amountFormat,
+  }
+}
+
+export function OnboardingTemplate(props: OnboardingTemplateProps) {
+  const { profile } = props.data
+  const format: AmountFormat = profile.country === 'AR' ? profile.amountFormat : 'completo'
+  return (
+    <AmountFormatProvider format={format}>
+      <Onboarding {...props} />
+    </AmountFormatProvider>
+  )
+}
+
+function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplateProps) {
+  const t = useTranslations('onboarding')
+  const tRecurrente = useTranslations('gastoRecurrente')
+  const locale = useLocale()
+  const { money } = useAmountFormatter()
+  const toasts = useMemo(() => Toast.createToastManager(), [])
+
+  const [step, setStep] = useState(data.step)
+  const keyRef = useRef(1)
+  const [layers, setLayers] = useState<Layer[]>(() => [{ key: 0, step: data.step, direction: 'forward', leaving: false }])
+  // The welcome plays its entrance once, on the first mount; "Empezar" follows it after 200 ms.
+  const [welcomeEntrance, setWelcomeEntrance] = useState(data.step === 1)
+  const [basics, setBasics] = useState<BasicsDraft>(() => initialBasics(data.profile))
+  const [budgetDrafts, setBudgetDrafts] = useState<Record<string, string>>({})
+  const [savingsText, setSavingsText] = useState(() => (data.profile.savingsTarget == null ? '' : String(data.profile.savingsTarget)))
+  const [phone, setPhone] = useState(data.profile.phone ?? '')
+  const [code, setCode] = useState(data.profile.inviteCode ?? '')
+  const [pending, setPending] = useState(false)
+  const [basicsError, setBasicsError] = useState<string | null>(null)
+  const [whatsAppError, setWhatsAppError] = useState<'taken' | 'invalid' | 'save' | null>(null)
+  const [phoneSaved, setPhoneSaved] = useState(false)
+  const [statusMessage, setStatusMessage] = useState('')
+  const [recurringSheet, setRecurringSheet] = useState<{ open: boolean; definition: RecurringDefinition | null }>({ open: false, definition: null })
+
+  // A browser with no stored choice follows the OS from the first frame and keeps it (D13).
+  useLayoutEffect(() => {
+    ensureStoredChoice()
+  }, [])
+
+  // The outgoing layer leaves the tree once its exit has played.
+  useEffect(() => {
+    if (!layers.some((layer) => layer.leaving)) return
+    const timeout = setTimeout(() => setLayers((prev) => prev.filter((layer) => !layer.leaving)), LEAVE_MS)
+    return () => clearTimeout(timeout)
+  }, [layers])
+
+  function go(next: number) {
+    if (next === step || next < 1 || next > STEPS) return
+    const direction: Direction = next > step ? 'forward' : 'back'
+    if (step === 1) setWelcomeEntrance(false)
+    setStep(next)
+    setLayers((prev) => [
+      ...prev.filter((layer) => !layer.leaving).map((layer) => ({ ...layer, leaving: true, direction })),
+      { key: keyRef.current++, step: next, direction, leaving: false },
+    ])
+    // Optimistic: the step is already shown; a failed write only loses the resume point.
+    actions.profile.setStep(next).catch(() => {})
+  }
+
+  // ── The envelope model (D10): the same formula and inputs the dashboard will have ───────────
+  const cycleStart = data.cycle.start
+  const envelope: Envelope = useMemo(() => {
+    const active = data.definitions.filter((definition) => definition.active)
+    const income = active.filter((d) => d.tipo === 'ingreso').reduce((sum, d) => sum + d.expectedAmount, 0)
+    const rows = data.categories.map((category) => {
+      const stored = data.budgets[category.id]
+      const draft = budgetDrafts[category.id]
+      // A field never touched reads the stored budget; a typed one, what it holds (invalid = empty).
+      const budget = draft == null ? (stored ?? null) : parseAmount(draft)
+      return {
+        ...category,
+        fixed: active.filter((d) => d.tipo === 'gasto' && d.categoryId === category.id).reduce((sum, d) => sum + d.expectedAmount, 0),
+        budget,
+      }
+    })
+    const margin = getFreeMargin({ income, savings: 0, categories: rows.map((row) => ({ budget: row.budget, spent: row.fixed })) })
+    return { income, rows, margin }
+  }, [data.definitions, data.categories, data.budgets, budgetDrafts])
+
+  const drafts = useMemo(() => {
+    const result: Record<string, string> = {}
+    for (const category of data.categories) {
+      const stored = data.budgets[category.id]
+      result[category.id] = budgetDrafts[category.id] ?? (stored == null ? '' : formatAmountForEdit(stored, locale))
+    }
+    return result
+  }, [data.categories, data.budgets, budgetDrafts, locale])
+
+  async function commitBudget(categoryId: string, text: string): Promise<'ok' | 'invalid' | 'failed'> {
+    const category = data.categories.find((c) => c.id === categoryId)
+    if (!category) return 'failed'
+    const trimmed = text.trim()
+    const budget = trimmed === '' ? null : parseAmount(trimmed)
+    if (trimmed !== '' && budget == null) return 'invalid'
+    if (budget === (data.budgets[categoryId] ?? null)) return 'ok'
+    try {
+      await actions.categories.update(categoryId, { name: category.name, color: category.color, budget }, { cycle: cycleStart, scope: null })
+      return 'ok'
+    } catch {
+      // Back to the stored value; the step shows "No se pudo guardar".
+      setBudgetDrafts((prev) => {
+        const next = { ...prev }
+        delete next[categoryId]
+        return next
+      })
+      return 'failed'
+    }
+  }
+
+  const savingsValue = parseAmount(savingsText)
+  const savingsInvalid = savingsText.trim() !== '' && savingsValue == null
+
+  // ── The closing step (D11) ──────────────────────────────────────────────────────────────────
+  const country = basics.country ?? data.profile.country
+  const phoneValid = country != null && normalizePhone(phone, country) != null
+  const canLink = phoneValid && (!data.inviteRequired || code.trim() !== '')
+
+  async function finish() {
+    await actions.finish()
+    onFinished()
+  }
+
+  // ── The primary action of each step (D7) ────────────────────────────────────────────────────
+  async function runPrimary() {
+    if (pending) return
+    setPending(true)
+    try {
+      switch (step) {
+        case 1:
+          go(2)
+          break
+        case 2: {
+          setBasicsError(null)
+          const cycleDay = parseInteger(basics.cycleDay, { min: 1, max: 28 })
+          if (!basics.country || cycleDay == null) return
+          try {
+            await actions.profile.updateBasics({
+              name: basics.name.trim(),
+              country: basics.country,
+              currency: basics.currency,
+              timezone: basics.timezone,
+              cycleDay,
+              amountFormat: basics.amountFormat,
+            })
+          } catch (error) {
+            setBasicsError(error instanceof Error && error.message === CYCLE_LOCKED ? t('datos.cicloBloqueado') : t('errorGuardar'))
+            return
+          }
+          go(3)
+          break
+        }
+        case 3:
+          go(4)
+          break
+        case 4:
+          try {
+            await actions.materializeCurrentCycle()
+          } catch {
+            toasts.add({ title: t('errorGuardar'), priority: 'high' })
+            return
+          }
+          go(5)
+          break
+        case 5:
+          go(6)
+          break
+        case 6:
+          if (savingsInvalid) return
+          try {
+            await actions.profile.setSavingsTarget(savingsValue)
+          } catch {
+            toasts.add({ title: t('errorGuardar'), priority: 'high' })
+            return
+          }
+          go(7)
+          break
+        case 7: {
+          setWhatsAppError(null)
+          try {
+            await actions.profile.requestWhatsApp(phone, data.inviteRequired ? code : null)
+          } catch (error) {
+            const message = error instanceof Error ? error.message : ''
+            setWhatsAppError(message === PHONE_TAKEN ? 'taken' : message === INVALID_PHONE ? 'invalid' : 'save')
+            return
+          }
+          setPhoneSaved(true)
+          await finish()
+          break
+        }
+      }
+    } finally {
+      setPending(false)
+    }
+  }
+
+  async function skipWhatsApp() {
+    if (pending) return
+    setPending(true)
+    try {
+      await finish()
+    } catch {
+      toasts.add({ title: t('errorGuardar'), priority: 'high' })
+      setPending(false)
+    }
+  }
+
+  const primaryDisabled =
+    (step === 2 && !basicsValid(basics)) || (step === 6 && savingsInvalid) || (step === 7 && !canLink)
+  const primaryLabel = step === 1 ? t('empezar') : step === 7 ? t('whatsapp.vincular') : t('continuar')
+  const showsHero = step === 5 || step === 6
+  const listStep = step === 3 || step === 4 || step === 5
+  const currency = basics.country ? basics.currency : data.profile.currency
+  const callingCode = country ? (countryOf(country)?.callingCode ?? null) : null
+  const sheetDefinition = recurringSheet.definition
+  const sheetCategory = sheetDefinition ? data.categories.find((c) => c.id === sheetDefinition.categoryId) : undefined
+
+  function renderStep(current: number) {
+    switch (current) {
+      case 1:
+        return <WelcomeStep />
+      case 2:
+        return (
+          <BasicsStep
+            value={basics}
+            onChange={(next) => {
+              setBasics(next)
+              setBasicsError(null)
+            }}
+            storedTimezone={data.profile.timezone}
+            namePlaceholder={looksLikeName(data.profile.name) ? undefined : data.profile.name}
+            locked={data.hasData}
+            disabled={pending}
+            error={basicsError}
+          />
+        )
+      case 3:
+        return (
+          <CategoriesStep
+            categories={data.categories}
+            definitions={data.definitions}
+            budgets={data.budgets}
+            cycleStart={cycleStart}
+            actions={actions.categories}
+            onStatus={setStatusMessage}
+          />
+        )
+      case 4:
+        return (
+          <FixedStep
+            categories={data.categories}
+            definitions={data.definitions}
+            currency={currency}
+            actions={actions.recurring}
+            onOpenDefinition={(definition) => setRecurringSheet({ open: true, definition })}
+            onCategoriesStep={() => go(3)}
+            onStatus={setStatusMessage}
+          />
+        )
+      case 5:
+        return (
+          <BudgetsStep
+            envelope={envelope}
+            currency={currency}
+            drafts={drafts}
+            onDraftChange={(categoryId, text) => setBudgetDrafts((prev) => ({ ...prev, [categoryId]: text }))}
+            onCommit={commitBudget}
+            onIncomeStep={() => go(4)}
+          />
+        )
+      case 6:
+        return <SavingsStep value={savingsText} onChange={setSavingsText} currency={currency} invalid={savingsInvalid} disabled={pending} />
+      case 7:
+        return (
+          <WhatsAppStep
+            phone={phone}
+            code={code}
+            onPhoneChange={(next) => {
+              setPhone(next)
+              setWhatsAppError(null)
+            }}
+            onCodeChange={setCode}
+            inviteRequired={data.inviteRequired}
+            callingCode={callingCode}
+            error={whatsAppError}
+            saved={phoneSaved}
+            disabled={pending}
+          />
+        )
+      default:
+        return null
+    }
+  }
+
+  return (
+    <Toast.Provider toastManager={toasts} limit={1} timeout={5000}>
+      <SwipeRestoreContext.Provider value={{}}>
+        <div className="relative min-h-dvh pb-32 sm:pb-12">
+          {/* The progress line: a 2 px line under the safe area, growing with the step (D14). */}
+          <div
+            role="progressbar"
+            aria-label={t('progreso')}
+            aria-valuemin={1}
+            aria-valuemax={STEPS}
+            aria-valuenow={step}
+            aria-valuetext={t(`pasos.${step}`)}
+            className="fixed inset-x-0 top-[env(safe-area-inset-top,0px)] z-30 h-0.5 bg-foreground/10"
+          >
+            <span aria-hidden className="onboarding-progress block h-full w-full bg-brand-ink" style={{ transform: `scaleX(${step / STEPS})` }} />
+          </div>
+
+          <ThemePill />
+
+          <div className={cn('relative mx-auto w-full px-gutter pt-20', listStep ? 'max-w-[440px] sm:max-w-[520px]' : 'max-w-[440px]')}>
+            {step > 1 ? <GlassBackButton label={t('volver')} onClick={() => go(step - 1)} className="sm:absolute sm:left-0 sm:top-4" /> : null}
+
+            {notice ? <div className="pb-4">{notice}</div> : null}
+
+            {/* The hero persists from budgets to the savings target: outside the layers (D10, D11). */}
+            {showsHero ? (
+              <div className={cn('onboarding-hero onboarding-row mb-6', envelope.margin < 0 && 'hero-card--negative')} data-hero>
+                <h1 key={step} className="onboarding-row font-display text-headline-lg text-foreground">
+                  {t(step === 5 ? 'presupuestos.titulo' : 'ahorro.titulo')}
+                </h1>
+                <p className="mt-4 text-body-lg text-muted-foreground">{t('presupuestos.margenLibre')}</p>
+                <LiveAmount
+                  amount={envelope.margin}
+                  currency={currency}
+                  currencyClassName="text-headline-md"
+                  className="hero-value mt-1 block font-display text-display-mobile sm:text-display"
+                />
+                <p className="mt-2 text-body-md text-muted-foreground">{t('presupuestos.explicacion')}</p>
+                {step === 6 && savingsValue != null ? (
+                  <p data-savings-preview className="mt-2 text-body-md text-muted-foreground">
+                    {t('ahorro.preview', { monto: money(envelope.margin - savingsValue, currency) })}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="relative">
+              {layers.map((layer) => (
+                <section
+                  key={layer.key}
+                  data-step={layer.step}
+                  data-direction={layer.direction}
+                  data-leaving={layer.leaving || undefined}
+                  aria-hidden={layer.leaving || undefined}
+                  inert={layer.leaving}
+                  className="onboarding-layer"
+                >
+                  {renderStep(layer.step)}
+                </section>
+              ))}
+            </div>
+          </div>
+
+          {/* The primary action's slot: pinned above the safe area on a phone, at the column's bottom on desktop. */}
+          <div className="fixed inset-x-0 bottom-0 z-20 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:static sm:pb-0 sm:pt-8">
+            <div
+              className={cn(
+                'mx-auto flex w-full max-w-[440px] flex-col items-center gap-2 px-gutter',
+                step === 1 && welcomeEntrance && 'onboarding-fade-in [animation-delay:200ms]',
+              )}
+            >
+              <button
+                type="button"
+                data-primary
+                onClick={() => void runPrimary()}
+                disabled={primaryDisabled}
+                aria-disabled={pending || undefined}
+                aria-busy={pending || undefined}
+                className={cn(
+                  'onboarding-button relative flex h-12 items-center justify-center overflow-hidden whitespace-nowrap bg-primary text-body-lg font-semibold text-primary-foreground outline-none transition-[width,border-radius] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 motion-reduce:transition-none',
+                  pending ? 'w-12 rounded-full' : 'w-full rounded-[18px]',
+                )}
+              >
+                <span className={cn('transition-opacity duration-150 motion-reduce:transition-none', pending && 'opacity-0')}>{primaryLabel}</span>
+                <Loader2
+                  aria-hidden
+                  className={cn('absolute inset-0 m-auto size-5 animate-spin transition-opacity duration-200 motion-reduce:transition-none', pending ? 'opacity-100 delay-150' : 'opacity-0')}
+                />
+              </button>
+              {step === 7 ? (
+                <button
+                  type="button"
+                  onClick={() => void skipWhatsApp()}
+                  disabled={pending}
+                  className="onboarding-button h-11 rounded-full px-4 text-body-lg font-medium text-brand-ink outline-none focus-visible:outline-2 disabled:opacity-50"
+                >
+                  {t('whatsapp.seguirSin')}
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          {sheetDefinition ? (
+            <RecurringSheet
+              open={recurringSheet.open}
+              onOpenChange={(open) => setRecurringSheet((prev) => ({ ...prev, open }))}
+              target={sheetDefinition}
+              categoryName={sheetCategory?.name ?? ''}
+              categoryColor={sheetCategory?.color ?? 'gris_calido'}
+              currency={currency}
+              currentAmount={sheetDefinition.expectedAmount}
+              onSave={async (definitionId, draft) => {
+                await actions.recurring.update(definitionId, draft)
+                setRecurringSheet((prev) => ({ ...prev, open: false }))
+                setStatusMessage(tRecurrente('cambiosGuardados', { nombre: draft.name, monto: money(draft.expectedAmount, currency) }))
+              }}
+              onStop={async (definitionId) => {
+                await actions.recurring.stop(definitionId)
+                setRecurringSheet((prev) => ({ ...prev, open: false }))
+              }}
+              onDelete={async (definitionId) => {
+                await actions.recurring.delete(definitionId)
+                setRecurringSheet((prev) => ({ ...prev, open: false }))
+              }}
+            />
+          ) : null}
+          <UndoToast />
+          <div role="status" className="sr-only">
+            {statusMessage}
+          </div>
+        </div>
+      </SwipeRestoreContext.Provider>
+    </Toast.Provider>
+  )
+}

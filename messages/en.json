@@ -52,7 +52,8 @@
     "idioma": "Language",
     "espanol": "Spanish",
     "ingles": "English",
-    "cerrarSesion": "Log out"
+    "cerrarSesion": "Log out",
+    "cuenta": "Account"
   },
   "graficos": {
     "total": "Total",
@@ -323,6 +324,127 @@
     "enlaceInvalido": "The link expired or was already used. Request a new one.",
     "cuentaSinVincular": "You're signed in, but this account isn't linked to a Mango user yet.",
     "cerrarSesion": "Log out"
+  },
+  "cuenta": {
+    "titulo": "Account",
+    "guardar": "Save",
+    "cancelar": "Cancel",
+    "diaInicio": "Your month starts on day {dia}",
+    "monedasMezcladas": "Movements already loaded keep their currency and are summed without conversion.",
+    "errorGuardar": "Couldn't save. Try again.",
+    "guardado": "Changes saved"
+  },
+  "onboarding": {
+    "sandbox": "This is a sandbox: nothing is saved",
+    "progreso": "Progress",
+    "volver": "Back",
+    "empezar": "Get started",
+    "continuar": "Continue",
+    "errorGuardar": "Couldn't save. Try again.",
+    "pasos": {
+      "1": "Welcome",
+      "2": "About you",
+      "3": "Your categories",
+      "4": "Income and fixed expenses",
+      "5": "Budgets",
+      "6": "Savings target",
+      "7": "WhatsApp"
+    },
+    "bienvenida": {
+      "titulo": "Hi. Let's set up your month.",
+      "linea1": "First, your spending categories.",
+      "linea2": "Then what you earn and what you pay every month.",
+      "linea3": "And finally, budgets: that's where your free margin shows up."
+    },
+    "datos": {
+      "titulo": "About you",
+      "nombre": "Name",
+      "pais": "Country",
+      "elegirPais": "Choose a country",
+      "moneda": "Currency",
+      "formato": "Format",
+      "formatoCompleto": "Complete",
+      "formatoAbreviado": "Abbreviated",
+      "horaDe": "{ciudad} time",
+      "diaInicio": "Start day",
+      "diaInvalido": "Choose a day from 1 to 28",
+      "cicloBloqueado": "The start day can no longer be changed"
+    },
+    "ciclo": {
+      "ayuda": "If you get paid on the 1st or it doesn't apply, leave 1",
+      "bloqueado": "Fixed with the first category"
+    },
+    "sugerencias": [
+      "Food",
+      "Housing",
+      "Transport",
+      "Leisure",
+      "Health",
+      "Subscriptions",
+      "Shopping",
+      "Other"
+    ],
+    "categorias": {
+      "titulo": "Your categories",
+      "sugeridas": "Suggestions",
+      "nombre": "Category name",
+      "anadir": "Add",
+      "lista": "Categories",
+      "renombrar": "Rename {categoria}",
+      "color": "Colour of {categoria}",
+      "creada": "Category created",
+      "eliminada": "Category deleted",
+      "deshacer": "Undo",
+      "tieneFijos": "Remove its fixed expenses first",
+      "errorDeshacer": "Couldn't undo"
+    },
+    "fijos": {
+      "titulo": "Income and fixed expenses",
+      "cobras": "What you earn",
+      "pagas": "What you pay every month",
+      "nombre": "Name",
+      "nombreIngreso": "For example, Salary",
+      "nombreGasto": "For example, Rent",
+      "monto": "Amount",
+      "dia": "Day",
+      "categoria": "Category",
+      "anadir": "Add",
+      "fila": "{nombre} · day {dia}",
+      "diaCorto": "day {dia}",
+      "sinCategorias": "To add fixed expenses, first add a category.",
+      "irACategorias": "Go to categories",
+      "anadido": "Added",
+      "errorAnadir": "Couldn't add. Try again."
+    },
+    "presupuestos": {
+      "titulo": "Budgets",
+      "margenLibre": "Free margin",
+      "explicacion": "What's left after your fixed expenses and your envelopes.",
+      "fijos": "Fixed: {monto}",
+      "presupuestoDe": "Budget for {categoria}",
+      "sinIngresos": "Add your income to see the margin",
+      "irAIngresos": "Go to income",
+      "reparto": "How your income is split",
+      "sinCategorias": "No categories, no envelopes. You can add them from your month."
+    },
+    "ahorro": {
+      "titulo": "Savings target",
+      "meta": "Savings target per month",
+      "opcional": "Optional",
+      "preview": "With this target you have {monto} left per month"
+    },
+    "whatsapp": {
+      "titulo": "Want to log through WhatsApp?",
+      "explicacion": "It's optional: with the bot you log expenses by sending a message. Today it works by invitation.",
+      "explicacionSinCodigo": "It's optional: with the bot you log expenses by sending a message.",
+      "telefono": "Your number",
+      "codigo": "Invitation code",
+      "vincular": "Link",
+      "seguirSin": "Continue without WhatsApp",
+      "numeroEnOtraCuenta": "That number is already on another account",
+      "numeroInvalido": "Check the number: it has to be an international number",
+      "guardado": "We saved your number. When the bot is ready for you, you'll get a message from Mango."
+    }
   },
   "bot": {
     "confirmacionGasto": "Logged ✅ {nombre} · {monto}{conCategoria, select, si { in {categoria}} other {}}{cuando, select, hoy {} other {, {dia}}}.",

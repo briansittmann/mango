@@ -1090,3 +1090,146 @@ body {
     transition: none !important;
   }
 }
+
+/* ── Onboarding (/onboarding, /demo/onboarding) ─────────────────────────────────────────────── */
+
+/* Step change (add-web-onboarding D14): the incoming layer slides in from the direction of travel
+   on --ease-out, 100 ms after the outgoing one starts leaving; the outgoing layer is lifted out of
+   flow so the column never holds two steps' height. Back mirrors forward. Reduced motion
+   cross-fades with no horizontal movement. */
+.onboarding-layer {
+  transition: opacity 280ms var(--ease-out) 100ms, transform 280ms var(--ease-out) 100ms;
+}
+@starting-style {
+  .onboarding-layer[data-direction="forward"] {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  .onboarding-layer[data-direction="back"] {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+.onboarding-layer[data-leaving] {
+  position: absolute;
+  inset: 0 0 auto 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+}
+.onboarding-layer[data-leaving][data-direction="forward"] {
+  transform: translateX(-24px);
+}
+.onboarding-layer[data-leaving][data-direction="back"] {
+  transform: translateX(24px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-layer,
+  .onboarding-layer[data-leaving] {
+    transition: opacity 200ms ease;
+    transform: none;
+  }
+  @starting-style {
+    .onboarding-layer[data-direction="forward"],
+    .onboarding-layer[data-direction="back"] {
+      transform: none;
+    }
+  }
+}
+
+/* The progress line grows on --ease-in-out: movement on screen, not an entrance. */
+.onboarding-progress {
+  transform-origin: left;
+  transition: transform 300ms var(--ease-in-out);
+}
+
+/* A row added to a list fades in from a few pixels below; no stagger, it repeats. */
+.onboarding-row {
+  transition: opacity 200ms var(--ease-out), translate 200ms var(--ease-out);
+}
+@starting-style {
+  .onboarding-row {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+/* A suggestion chip: the press recipe, a fade when taken, hover only on a fine pointer. */
+.onboarding-chip {
+  transition: transform 160ms var(--ease-out), opacity 150ms var(--ease-out), background-color 150ms var(--ease-out);
+}
+.onboarding-chip:active {
+  transform: scale(0.97);
+}
+.onboarding-chip[data-leaving] {
+  opacity: 0;
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .onboarding-chip:hover {
+    background-color: color-mix(in oklab, var(--foreground) 10%, transparent);
+  }
+}
+
+/* Every onboarding button shrinks slightly while pressed (recipies.md → Button press). */
+.onboarding-button {
+  transition: transform 160ms var(--ease-out);
+}
+.onboarding-button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* The welcome's three lines and "Empezar": the stagger recipe, 300ms --ease-out from 8px below. */
+@keyframes onboarding-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.onboarding-fade-in {
+  animation: onboarding-fade-in 300ms var(--ease-out) both;
+}
+
+/* The envelope bar's segments resize with transforms only: no layout per keystroke. */
+.onboarding-envelope {
+  transform-origin: left;
+  transition: transform 300ms var(--ease-in-out);
+}
+
+/* The free margin outside a hero card: the same value colour, negative through hero-card--negative. */
+.onboarding-hero {
+  --hero-value-color: var(--brand-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-progress,
+  .onboarding-row,
+  .onboarding-chip,
+  .onboarding-button,
+  .onboarding-envelope {
+    transition: none;
+  }
+  .onboarding-chip:active,
+  .onboarding-button:active:not(:disabled) {
+    transform: none;
+  }
+  .onboarding-fade-in {
+    animation: none;
+  }
+  @starting-style {
+    .onboarding-row {
+      opacity: 1;
+      translate: none;
+    }
+  }
+}
+
+/* The floating theme control and back control go opaque when the OS asks for less transparency
+   (design-system → Translucent materials). */
+@media (prefers-reduced-transparency: reduce) {
+  .glass-control {
+    background: var(--card);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

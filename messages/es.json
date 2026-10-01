@@ -52,7 +52,8 @@
     "idioma": "Idioma",
     "espanol": "Español",
     "ingles": "Inglés",
-    "cerrarSesion": "Cerrar sesión"
+    "cerrarSesion": "Cerrar sesión",
+    "cuenta": "Cuenta"
   },
   "graficos": {
     "total": "Total",
@@ -323,6 +324,127 @@
     "enlaceInvalido": "El enlace venció o ya se usó. Pide uno nuevo.",
     "cuentaSinVincular": "Tu sesión está abierta, pero esta cuenta todavía no está vinculada a ningún usuario de Mango.",
     "cerrarSesion": "Cerrar sesión"
+  },
+  "cuenta": {
+    "titulo": "Cuenta",
+    "guardar": "Guardar",
+    "cancelar": "Cancelar",
+    "diaInicio": "Tu mes empieza el día {dia}",
+    "monedasMezcladas": "Los movimientos ya cargados mantienen su moneda y se suman sin convertir.",
+    "errorGuardar": "No se pudo guardar. Inténtalo de nuevo.",
+    "guardado": "Cambios guardados"
+  },
+  "onboarding": {
+    "sandbox": "Esto es una prueba: nada se guarda",
+    "progreso": "Progreso",
+    "volver": "Volver",
+    "empezar": "Empezar",
+    "continuar": "Continuar",
+    "errorGuardar": "No se pudo guardar. Inténtalo de nuevo.",
+    "pasos": {
+      "1": "Bienvenida",
+      "2": "Sobre ti",
+      "3": "Tus categorías",
+      "4": "Ingresos y fijos",
+      "5": "Presupuestos",
+      "6": "Meta de ahorro",
+      "7": "WhatsApp"
+    },
+    "bienvenida": {
+      "titulo": "Hola. Vamos a armar tu mes.",
+      "linea1": "Primero, tus categorías de gasto.",
+      "linea2": "Después, lo que cobras y lo que pagas todos los meses.",
+      "linea3": "Y al final, presupuestos: ahí aparece tu margen libre."
+    },
+    "datos": {
+      "titulo": "Sobre ti",
+      "nombre": "Nombre",
+      "pais": "País",
+      "elegirPais": "Elige un país",
+      "moneda": "Moneda",
+      "formato": "Formato",
+      "formatoCompleto": "Completo",
+      "formatoAbreviado": "Abreviado",
+      "horaDe": "hora de {ciudad}",
+      "diaInicio": "Día de inicio",
+      "diaInvalido": "Elige un día del 1 al 28",
+      "cicloBloqueado": "El día de inicio ya no se puede cambiar"
+    },
+    "ciclo": {
+      "ayuda": "Si cobras el 1 o no te aplica, deja 1",
+      "bloqueado": "Se fija con la primera categoría"
+    },
+    "sugerencias": [
+      "Comida",
+      "Vivienda",
+      "Transporte",
+      "Ocio",
+      "Salud",
+      "Suscripciones",
+      "Compras",
+      "Otros"
+    ],
+    "categorias": {
+      "titulo": "Tus categorías",
+      "sugeridas": "Sugerencias",
+      "nombre": "Nombre de la categoría",
+      "anadir": "Añadir",
+      "lista": "Categorías",
+      "renombrar": "Cambiar el nombre de {categoria}",
+      "color": "Color de {categoria}",
+      "creada": "Categoría creada",
+      "eliminada": "Categoría eliminada",
+      "deshacer": "Deshacer",
+      "tieneFijos": "Primero quita sus gastos fijos",
+      "errorDeshacer": "No se pudo deshacer"
+    },
+    "fijos": {
+      "titulo": "Ingresos y fijos",
+      "cobras": "Lo que cobras",
+      "pagas": "Lo que pagas todos los meses",
+      "nombre": "Nombre",
+      "nombreIngreso": "Por ejemplo, Sueldo",
+      "nombreGasto": "Por ejemplo, Alquiler",
+      "monto": "Monto",
+      "dia": "Día",
+      "categoria": "Categoría",
+      "anadir": "Añadir",
+      "fila": "{nombre} · día {dia}",
+      "diaCorto": "día {dia}",
+      "sinCategorias": "Para cargar fijos, primero añade una categoría.",
+      "irACategorias": "Ir a categorías",
+      "anadido": "Añadido",
+      "errorAnadir": "No se pudo añadir. Inténtalo de nuevo."
+    },
+    "presupuestos": {
+      "titulo": "Presupuestos",
+      "margenLibre": "Margen libre",
+      "explicacion": "Lo que te queda después de tus fijos y tus sobres.",
+      "fijos": "Fijos: {monto}",
+      "presupuestoDe": "Presupuesto de {categoria}",
+      "sinIngresos": "Añade tus ingresos para ver el margen",
+      "irAIngresos": "Ir a ingresos",
+      "reparto": "Reparto de tus ingresos",
+      "sinCategorias": "Sin categorías no hay sobres. Puedes añadirlas desde tu mes."
+    },
+    "ahorro": {
+      "titulo": "Meta de ahorro",
+      "meta": "Meta de ahorro por mes",
+      "opcional": "Opcional",
+      "preview": "Con esta meta te quedan {monto} por mes"
+    },
+    "whatsapp": {
+      "titulo": "¿Quieres cargar por WhatsApp?",
+      "explicacion": "Es opcional: con el bot cargas gastos escribiendo un mensaje. Hoy funciona por invitación.",
+      "explicacionSinCodigo": "Es opcional: con el bot cargas gastos escribiendo un mensaje.",
+      "telefono": "Tu número",
+      "codigo": "Código de invitación",
+      "vincular": "Vincular",
+      "seguirSin": "Seguir sin WhatsApp",
+      "numeroEnOtraCuenta": "Ese número ya está en otra cuenta",
+      "numeroInvalido": "Revisa el número: tiene que ser un número internacional",
+      "guardado": "Guardamos tu número. Cuando el bot esté listo para ti, te llega un mensaje de Mango."
+    }
   },
   "bot": {
     "confirmacionGasto": "Anotado ✅ {nombre} · {monto}{conCategoria, select, si { en {categoria}} other {}}{cuando, select, hoy {} other {, {dia}}}.",

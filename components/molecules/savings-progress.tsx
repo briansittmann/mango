@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
-import { currencyFormatOptions } from '@/i18n/formats'
+import { useAmountFormatter } from '@/components/atoms/amount-format'
 import { ProgressBar } from '@/components/atoms/progress-bar'
 import type { SavingsProgress } from '@/lib/data/savings'
 
@@ -12,14 +12,15 @@ type SavingsProgressBarProps = {
 export function SavingsProgressBar({ progress, currency }: SavingsProgressBarProps) {
   const t = useTranslations('resumen')
   const format = useFormatter()
+  const { money } = useAmountFormatter()
 
   const caption = t('progresoAhorro', {
     ahorrado: format.number(progress.net),
     meta: format.number(progress.target),
   })
   const valueText = t('progresoAhorroDetalle', {
-    ahorrado: format.number(progress.net, { ...currencyFormatOptions, currency }),
-    meta: format.number(progress.target, { ...currencyFormatOptions, currency }),
+    ahorrado: money(progress.net, currency),
+    meta: money(progress.target, currency),
   })
 
   return (

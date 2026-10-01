@@ -1,5 +1,4 @@
-import { useFormatter, useLocale } from 'next-intl'
-import { currencyFormatOptions } from '@/i18n/formats'
+import { useAmountFormatter } from '@/components/atoms/amount-format'
 import { cn } from '@/lib/utils'
 
 type MoneyProps = {
@@ -11,34 +10,32 @@ type MoneyProps = {
 }
 
 export function Money({ amount, currency, className, currencyClassName, signDisplay }: MoneyProps) {
-  const format = useFormatter()
-  const locale = useLocale()
+  const { parts } = useAmountFormatter()
+  const formatted = parts(amount, currency, signDisplay)
 
   if (!currencyClassName) {
     return (
       <span className={className} style={{ fontVariantNumeric: 'tabular-nums' }}>
-        {format.number(amount, { ...currencyFormatOptions, currency, signDisplay })}
+        {formatted.text}
       </span>
     )
   }
 
-  const parts = new Intl.NumberFormat(locale, { ...currencyFormatOptions, currency, signDisplay }).formatToParts(amount)
-  const currencyIndex = parts.findIndex((part) => part.type === 'currency')
-  const currencyIsFirst = currencyIndex === 0
+  const symbolIndex = formatted.parts.findIndex((part) => part.type === 'symbol')
 
   return (
     <span className={className} style={{ fontVariantNumeric: 'tabular-nums' }}>
-      {parts.map((part, index) => {
+      {formatted.parts.map((part, index) => {
         const isSpaceNextToCurrency =
-          part.type === 'literal' && part.value.trim() === '' && (index === currencyIndex - 1 || index === currencyIndex + 1)
+          part.type === 'literal' && part.value.trim() === '' && (index === symbolIndex - 1 || index === symbolIndex + 1)
 
         if (isSpaceNextToCurrency) {
           return null
         }
 
-        if (part.type === 'currency') {
+        if (part.type === 'symbol') {
           return (
-            <span key={index} className={cn(currencyClassName, currencyIsFirst ? 'mr-2' : 'ml-2')}>
+            <span key={index} className={cn(currencyClassName, formatted.symbolFirst ? 'mr-2' : 'ml-2')}>
               {part.value}
             </span>
           )

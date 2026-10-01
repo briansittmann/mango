@@ -6,6 +6,7 @@ import { DashboardTemplate } from '@/components/templates/dashboard-template'
 import { changeLanguage } from '@/app/actions/language'
 import { DUPLICATE_CATEGORY_NAME, type CategoryMutations } from '@/lib/data/categories'
 import type { DashboardData } from '@/lib/data/dashboard'
+import type { ProfileMutations } from '@/lib/data/profile'
 import type { RecurringDefinition } from '@/lib/data/recurring'
 import { shiftMonth } from '@/lib/data/supabase/cycle'
 import { selectUpcomingCharges } from '@/lib/data/upcoming-charges'
@@ -30,7 +31,24 @@ const categories: CategoryMutations = {
   reorder: actions.reorderCategories,
 }
 
+/** Only `updateBasics` is reachable from the dashboard (the account sheet); the rest belongs to `/onboarding`. */
+async function unsupported(): Promise<never> {
+  throw new Error('unsupported')
+}
+
+const profile: ProfileMutations = {
+  async updateBasics(basics) {
+    const result = await actions.updateProfileBasics(basics)
+    if (!result.ok) throw new Error(result.error)
+  },
+  setSavingsTarget: unsupported,
+  requestWhatsApp: unsupported,
+  setStep: unsupported,
+  complete: unsupported,
+}
+
 const mutations = {
+  profile,
   expenses: {
     create: actions.createExpense,
     update: actions.updateExpense,

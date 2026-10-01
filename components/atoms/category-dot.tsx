@@ -10,6 +10,7 @@ export function CategoryDot({ color, className }: CategoryDotProps) {
   return (
     <span
       aria-hidden
+      data-category-dot={color}
       className={cn('inline-block size-2.5 shrink-0 rounded-full', className)}
       style={{ background: `var(--cat-${color})` }}
     />

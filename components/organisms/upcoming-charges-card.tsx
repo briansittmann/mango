@@ -1,6 +1,6 @@
 import { Check, ChevronDown } from 'lucide-react'
-import { useFormatter, useTranslations } from 'next-intl'
-import { currencyFormatOptions } from '@/i18n/formats'
+import { useTranslations } from 'next-intl'
+import { useAmountFormatter } from '@/components/atoms/amount-format'
 import { CategoryDot } from '@/components/atoms/category-dot'
 import { Collapsible } from '@/components/atoms/collapsible'
 import { DayChip } from '@/components/atoms/day-chip'
@@ -30,7 +30,7 @@ export function selectNextCharge(charges: UpcomingCharge[]): UpcomingCharge | nu
 export function UpcomingChargesCard({ charges, currency, open, onToggle, onOpenDefinition }: UpcomingChargesCardProps) {
   const t = useTranslations('proximosCobros')
   const tRecurrente = useTranslations('gastoRecurrente')
-  const format = useFormatter()
+  const { money } = useAmountFormatter()
 
   if (charges.length === 0) return null
 
@@ -67,14 +67,14 @@ export function UpcomingChargesCard({ charges, currency, open, onToggle, onOpenD
       <Collapsible open={open} id={PANEL_ID}>
         <div className="flex flex-col">
           {charges.map((charge) => {
-            const amountText = format.number(charge.amount, { ...currencyFormatOptions, currency })
+            const amountText = money(charge.amount, currency)
             const stateText = t(charge.charged ? 'cobrado' : 'pendiente')
             const showExpected = charge.amount !== charge.expectedAmount
             const progressText = charge.progress
               ? tRecurrente('progreso', { hechas: charge.progress.done, total: charge.progress.total })
               : null
             const expectedText = showExpected
-              ? tRecurrente('esperado', { monto: format.number(charge.expectedAmount, { ...currencyFormatOptions, currency }) })
+              ? tRecurrente('esperado', { monto: money(charge.expectedAmount, currency) })
               : null
             // The progress and the expected-amount caption are visible but sit outside the
             // aria-label's plain text, so a screen reader would otherwise skip them entirely
@@ -115,7 +115,7 @@ export function UpcomingChargesCard({ charges, currency, open, onToggle, onOpenD
 
         <div className="border-t border-border" />
         <p className="px-inset py-3 text-body-sm text-muted-foreground" style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {t('pie', { monto: format.number(total, { ...currencyFormatOptions, currency }) })}
+          {t('pie', { monto: money(total, currency) })}
         </p>
       </Collapsible>
     </div>

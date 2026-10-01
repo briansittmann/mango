@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, XAxis } from 'recharts'
 import type { LabelProps, XAxisTickContentProps } from 'recharts'
 import { useFormatter, useTranslations } from 'next-intl'
-import { compactFormatOptions, currencyFormatOptions } from '@/i18n/formats'
+import { compactFormatOptions } from '@/i18n/formats'
+import { useAmountFormatter } from '@/components/atoms/amount-format'
 
 type MonthlyBarsChartProps = {
   history: { month: string; total: number }[]
@@ -13,6 +14,7 @@ type MonthlyBarsChartProps = {
 export function MonthlyBarsChart({ history, currentMonth, currency }: MonthlyBarsChartProps) {
   const t = useTranslations('graficos')
   const format = useFormatter()
+  const { money } = useAmountFormatter()
   const [selected, setSelected] = useState(currentMonth)
 
   const monthDate = (month: string) => new Date(`${month}-01T00:00:00Z`)
@@ -93,7 +95,7 @@ export function MonthlyBarsChart({ history, currentMonth, currency }: MonthlyBar
       <ul className="sr-only">
         {history.map((entry) => {
           const monthLabel = format.dateTime(monthDate(entry.month), { month: 'long', year: 'numeric', timeZone: 'UTC' })
-          const totalLabel = format.number(entry.total, { ...currencyFormatOptions, currency })
+          const totalLabel = money(entry.total, currency)
           return (
             <li key={entry.month}>
               {monthLabel}

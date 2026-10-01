@@ -10,6 +10,7 @@
 import { createTranslator } from 'next-intl'
 
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { effectiveAmountFormat } from '@/lib/data/amount-format'
 import { CATEGORY_COLORS, DUPLICATE_CATEGORY_NAME } from '@/lib/data/categories'
 import { recentMessages, storeExchange, type StoredMessage } from '@/lib/data/messages'
 import { fechaEnCiclo } from '@/lib/data/projection'
@@ -131,6 +132,7 @@ export async function processMessage(message: IncomingMessage): Promise<BotReply
     fmt: {
       locale,
       currency: usuario.moneda_default,
+      amountFormat: effectiveAmountFormat(usuario),
       today: localDateOf(new Date(), usuario.timezone),
       t: t as BotTranslate,
     },
@@ -307,7 +309,7 @@ async function completeRecurring(
   }
   const differs = amount !== definition.monto_actual
   const note = differs
-    ? t('soloEsteMes', { nombre: definition.nombre, monto: formatBotAmount(fmt.locale, fmt.currency, definition.monto_actual) })
+    ? t('soloEsteMes', { nombre: definition.nombre, monto: formatBotAmount(fmt.locale, fmt.currency, definition.monto_actual, fmt.amountFormat) })
     : undefined
   return loaded(turn, summary, id as string, answered || differs, note)
 }
@@ -422,7 +424,7 @@ async function deleteLoad({ data }: Turn, row: LoadRow): Promise<void> {
 /** What the delete, correct and undo replies say about a row: amount, category or type, and day. */
 function describeLoad({ fmt, usuario }: Turn, row: LoadRow, amount = Math.abs(row.monto), categoria = row.categoria?.nombre ?? '') {
   return {
-    monto: formatBotAmount(fmt.locale, fmt.currency, amount),
+    monto: formatBotAmount(fmt.locale, fmt.currency, amount, fmt.amountFormat),
     tipo: row.tipo,
     categoria,
     dia: formatBotDay(fmt.locale, fmt.today, localDateOf(row.fecha, usuario.timezone), fmt.t),
@@ -496,7 +498,7 @@ async function correct(turn: Turn, action: Corregir): Promise<BotReply> {
 async function query(turn: Turn, consulta: 'margen_libre' | 'mes'): Promise<BotReply> {
   const { data, usuario, fmt, t } = turn
   const summary = (await resumenMensual(data.client, usuario)).data
-  const money = (amount: number) => formatBotAmount(fmt.locale, fmt.currency, amount)
+  const money = (amount: number) => formatBotAmount(fmt.locale, fmt.currency, amount, fmt.amountFormat)
   const link = `${SITE_URL}/dashboard`
 
   if (consulta === 'margen_libre') return { kind: 'text', text: t('consultaLibre', { monto: money(summary.freeMargin), link }) }
@@ -544,7 +546,7 @@ async function createCategory(turn: Turn, action: CrearCategoria): Promise<BotRe
   }
 
   return presupuesto
-    ? { kind: 'text', text: t('categoriaCreadaConPresupuesto', { nombre, monto: formatBotAmount(fmt.locale, fmt.currency, presupuesto) }) }
+    ? { kind: 'text', text: t('categoriaCreadaConPresupuesto', { nombre, monto: formatBotAmount(fmt.locale, fmt.currency, presupuesto, fmt.amountFormat) }) }
     : { kind: 'text', text: t('categoriaCreada', { nombre }) }
 }
 

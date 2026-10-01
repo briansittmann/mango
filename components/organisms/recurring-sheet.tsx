@@ -1,7 +1,7 @@
 import { useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { Ban, Loader2, Trash2 } from 'lucide-react'
-import { useFormatter, useLocale, useTranslations } from 'next-intl'
-import { currencyFormatOptions } from '@/i18n/formats'
+import { useLocale, useTranslations } from 'next-intl'
+import { useAmountFormatter } from '@/components/atoms/amount-format'
 import { CategoryDot } from '@/components/atoms/category-dot'
 import { Collapsible } from '@/components/atoms/collapsible'
 import { Switch } from '@/components/atoms/switch'
@@ -66,7 +66,7 @@ export function RecurringSheet({
 }: RecurringSheetProps) {
   const t = useTranslations('gastoRecurrente')
   const locale = useLocale()
-  const format = useFormatter()
+  const { money } = useAmountFormatter()
   const formId = useId()
   const confirmHeadingRef = useRef<HTMLHeadingElement>(null)
   const deleteRowRef = useRef<HTMLButtonElement>(null)
@@ -200,14 +200,14 @@ export function RecurringSheet({
   const daysBeforeId = `${formId}-days-before`
 
   const currentAmountDiffers = currentAmount !== target.expectedAmount
-  const currentAmountText = format.number(currentAmount, { ...currencyFormatOptions, currency })
+  const currentAmountText = money(currentAmount, currency)
 
   // Pending total (proposal §C): how many charges this instalment plan has left and what they add
   // up to at the amount currently typed — live, before saving. Absent for an open-ended definition.
   const remainingCount = target.repetitions ? target.repetitions.total - target.repetitions.done : null
   const remainingAmountText =
     remainingCount != null
-      ? format.number(remainingCount * (amountParsed ?? target.expectedAmount), { ...currencyFormatOptions, currency })
+      ? money(remainingCount * (amountParsed ?? target.expectedAmount), currency)
       : null
 
   return (

@@ -33,6 +33,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     );
   }
 
+  // A new account sets itself up first (`web-access` → *The dashboard requires a session*, D1).
+  if (!usuario.onboarding_completo) redirect("/onboarding");
+
   const { mes } = await searchParams;
   const { data, definitions } = await resumenMensual(client, usuario, mes);
 

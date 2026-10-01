@@ -1,5 +1,5 @@
 import { useMemo, type FocusEvent } from 'react'
-import { useLocale } from 'next-intl'
+import { useAmountFormatter } from '@/components/atoms/amount-format'
 import { FieldRow } from '@/components/molecules/field-row'
 
 const AMOUNT_PATTERN = /^\d{0,10}([.,]\d{0,2})?$/
@@ -41,18 +41,20 @@ export function AmountField({
   invalidMessage,
   optional,
 }: AmountFieldProps) {
-  const locale = useLocale()
+  const { parts } = useAmountFormatter()
 
+  // Only the symbol and its side come from the formatter: the field always holds the full number
+  // (`localization` → *Fields keep the full number*).
   const currencyParts = useMemo(() => {
     if (!currency) return null
     try {
-      return new Intl.NumberFormat(locale, { style: 'currency', currency }).formatToParts(1)
+      return parts(1, currency)
     } catch {
       return null
     }
-  }, [locale, currency])
-  const currencySymbol = currencyParts?.find((part) => part.type === 'currency')?.value
-  const currencyFirst = currencyParts ? currencyParts[0]?.type === 'currency' : false
+  }, [parts, currency])
+  const currencySymbol = currencyParts?.symbol
+  const currencyFirst = currencyParts?.symbolFirst ?? false
 
   const showInvalid = Boolean(invalid) && !(optional && value.trim() === '')
 

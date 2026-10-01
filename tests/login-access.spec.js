@@ -23,7 +23,7 @@ test('a malformed e-mail is refused without a request', async ({ page }) => {
   expect(posts).toEqual([])
 })
 
-for (const path of ['/dashboard', '/dashboard?mes=2026-08']) {
+for (const path of ['/dashboard', '/dashboard?mes=2026-08', '/onboarding']) {
   test(`${path} without a session redirects to /login`, async ({ page }) => {
     await page.goto(path)
     await expect(page).toHaveURL(/\/login$/)

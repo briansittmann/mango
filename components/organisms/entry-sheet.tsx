@@ -2,7 +2,7 @@ import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type For
 import { Drawer } from '@base-ui/react/drawer'
 import { Check, ChevronDown, Loader2, Trash2 } from 'lucide-react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
-import { currencyFormatOptions } from '@/i18n/formats'
+import { useAmountFormatter } from '@/components/atoms/amount-format'
 import { CategoryDot } from '@/components/atoms/category-dot'
 import { Collapsible } from '@/components/atoms/collapsible'
 import { Switch } from '@/components/atoms/switch'
@@ -212,6 +212,7 @@ export function EntrySheet<V>({
   const t = useTranslations('hojaGasto')
   const tRecurrente = useTranslations('gastoRecurrente')
   const format = useFormatter()
+  const { money } = useAmountFormatter()
   const locale = useLocale()
 
   const formId = useId()
@@ -408,7 +409,7 @@ export function EntrySheet<V>({
     const countId = `${formId}-recurrence-count`
     const dayInvalid = Boolean(recurrenceTouched.day) && !recurrenceDayValid
     const countInvalid = recurrenceEnding === 'count' && Boolean(recurrenceTouched.count) && !recurrenceCountValid
-    const amountText = format.number(amountValue ?? 0, { ...currencyFormatOptions, currency: fieldOptions.amount?.currency ?? 'EUR' })
+    const amountText = money(amountValue ?? 0, fieldOptions.amount?.currency ?? 'EUR')
 
     return (
       <>

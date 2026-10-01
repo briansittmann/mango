@@ -43,10 +43,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <head>
-        {/* Raw inline script on purpose: next/script beforeInteractive only lands in the RSC payload, so it never runs before paint. */}
+        {/* Raw inline script on purpose: next/script beforeInteractive only lands in the RSC payload, so it never runs before paint.
+            On the onboarding a browser with no stored choice follows the OS (no attribute); everywhere else it is dark (add-web-onboarding D13). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var p=location.pathname;if(p==="/"||p==="/login")document.documentElement.setAttribute("data-theme","dark");else{var t=localStorage.getItem("theme");if(t!=="system")document.documentElement.setAttribute("data-theme",t==="light"?"light":"dark")}if(localStorage.getItem("background")==="solid")document.documentElement.setAttribute("data-background","solid")}catch(e){}})()`,
+            __html: `(function(){try{var p=location.pathname;if(p==="/"||p==="/login")document.documentElement.setAttribute("data-theme","dark");else{var t=localStorage.getItem("theme");var o=p.indexOf("/onboarding")===0||p.indexOf("/demo/onboarding")===0;if(t!=="system"&&!(t===null&&o))document.documentElement.setAttribute("data-theme",t==="light"?"light":"dark")}if(localStorage.getItem("background")==="solid")document.documentElement.setAttribute("data-background","solid")}catch(e){}})()`,
           }}
         />
       </head>

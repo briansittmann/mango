@@ -136,11 +136,11 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 > Los dos terminan en el mismo dashboard. La diferencia es de dónde viene la persona y qué datos ya se tienen.
 
 **Onboarding web** (registro abierto, sin bot)
-- [ ] 🤖 Pantalla 1 nueva: bienvenida sin gasto cargado (reemplaza "Ya cargaste tu primer gasto")
-- [ ] 🤖 Pantalla de datos básicos: nombre, país → moneda y timezone, día de inicio de ciclo
-- [ ] 🤖 Pantallas 2–4 de Stitch: categorías, ingresos y fijos, presupuestos (con margen libre en vivo)
-- [ ] 🤖 Meta de ahorro dentro del onboarding (hoy `meta_ahorro_mensual` no tiene UI)
-- [ ] 🤖 Cierre: número de WhatsApp (+ código mientras la invitación sea obligatoria) → Mango le manda un mensaje para vincular el canal; si no, "Seguir sin WhatsApp"
+- [x] 🤖 Pantalla 1 nueva: bienvenida sin gasto cargado (reemplaza "Ya cargaste tu primer gasto") — `add-web-onboarding` (2026-10-01)
+- [x] 🤖 Pantalla de datos básicos: nombre, país → moneda y timezone, día de inicio de ciclo — `add-web-onboarding`: país de una tabla fija, formato de montos abreviado para Argentina, día editable solo hasta la primera categoría
+- [x] 🤖 Pantallas 2–4 de Stitch: categorías, ingresos y fijos, presupuestos (con margen libre en vivo) — `add-web-onboarding`, sin pasar por Stitch: chips y compositores en pantalla, margen en vivo con la misma `getFreeMargin`, cargos pendientes del ciclo en curso vía `insertar_cargos_pendientes` (`0029`)
+- [x] 🤖 Meta de ahorro dentro del onboarding (hoy `meta_ahorro_mensual` no tiene UI) — `add-web-onboarding`
+- [x] 🤖 Cierre: número de WhatsApp (+ código mientras la invitación sea obligatoria) → Mango le manda un mensaje para vincular el canal; si no, "Seguir sin WhatsApp" — `add-web-onboarding` guarda número, código y fecha del pedido; el mensaje de vinculación es un stub (`lib/whatsapp/link-request.ts`) hasta la plantilla de Meta del bloque 10
 
 **Onboarding WhatsApp** (por invitación)
 - [ ] 🤖 Por chat: código → nombre → país → día de ciclo → gasto de prueba → link a la web
@@ -148,8 +148,8 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [ ] 🤖 En la web: las cuatro pantallas de Stitch tal como están (pantalla 1 con el gasto ya cargado), saltando lo que el chat ya preguntó
 
 **Comunes**
-- [ ] 🤖 `onboarding_completo` y redirección al paso pendiente si alguien lo abandona a mitad
-- [ ] 🤖 Elección de tema (claro / oscuro / sistema, "sistema" por defecto) como control flotante arriba a la derecha con efecto cristal, en todas las pantallas del onboarding. Landing y login son oscuras siempre (`ForceDarkTheme`), así que el onboarding es el primer lugar donde se ve y se elige el tema
+- [x] 🤖 `onboarding_completo` y redirección al paso pendiente si alguien lo abandona a mitad — `add-web-onboarding`: `usuarios.onboarding_paso`, `/dashboard` ↔ `/onboarding`
+- [x] 🤖 Elección de tema (claro / oscuro / sistema, "sistema" por defecto) como control flotante arriba a la derecha con efecto cristal, en todas las pantallas del onboarding. Landing y login son oscuras siempre (`ForceDarkTheme`), así que el onboarding es el primer lugar donde se ve y se elige el tema — `add-web-onboarding` (`theme-pill.tsx`, `use-theme-choice.ts` compartido con el menú de cuenta)
 - [ ] 🤖 Sección "WhatsApp" en ajustes: estado del canal, explicación de que hoy es por invitación y por qué, y vinculación con código si la persona tiene uno
 - [ ] 👤 Revisar en Stitch la nueva pantalla 1 y la de datos básicos
 

@@ -1,6 +1,6 @@
 import { MoreHorizontal } from 'lucide-react'
-import { useFormatter, useTranslations } from 'next-intl'
-import { currencyFormatOptions } from '@/i18n/formats'
+import { useTranslations } from 'next-intl'
+import { useAmountFormatter } from '@/components/atoms/amount-format'
 import { Collapsible } from '@/components/atoms/collapsible'
 import { CategoryDot } from '@/components/atoms/category-dot'
 import { ExpandChevron } from '@/components/atoms/expand-chevron'
@@ -45,7 +45,7 @@ export function CategoryCard({
   const t = useTranslations('dashboard')
   const tCategoria = useTranslations('categoria')
   const tHojaCategoria = useTranslations('hojaCategoria')
-  const format = useFormatter()
+  const { money } = useAmountFormatter()
 
   const name = group.name
   const panelId = `category-panel-${group.id}`
@@ -90,8 +90,8 @@ export function CategoryCard({
           ) : group.budget ? (
             <span id={amountId} className="text-tabular-numeric-md font-semibold text-foreground">
               {tCategoria.rich('gastadoDePresupuesto', {
-                gastado: format.number(group.budget.spent, { ...currencyFormatOptions, currency }),
-                presupuesto: format.number(group.budget.amount, { ...currencyFormatOptions, currency }),
+                gastado: money(group.budget.spent, currency),
+                presupuesto: money(group.budget.amount, currency),
                 // The tag wraps the formatted `gastado` — which is what `t.markup` reads for the
                 // progress bar's value text; on screen the counter takes its place.
                 montoGastado: () => <AnimatedAmount amount={group.budget!.spent} currency={currency} />,
