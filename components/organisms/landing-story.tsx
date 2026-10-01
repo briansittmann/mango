@@ -176,7 +176,10 @@ export function LandingStory() {
 
   useEffect(() => {
     function measure() {
-      const byHeight = (window.innerHeight - (window.innerWidth >= 768 ? 250 : 200)) / (SCREEN_HEIGHT + STATUS_BAR)
+      // The section's own height (`h-svh`), not `innerHeight`: on a phone that one grows when the
+      // toolbar collapses, and the phone would grow mid-scroll and spill over the next section.
+      const height = rootRef.current?.clientHeight ?? window.innerHeight
+      const byHeight = (height - (window.innerWidth >= 768 ? 250 : 200)) / (SCREEN_HEIGHT + STATUS_BAR)
       const byWidth = (window.innerWidth - 72) / SCREEN_WIDTH
       setScale(Math.max(0.5, Math.min(0.86, byHeight, byWidth)))
     }
