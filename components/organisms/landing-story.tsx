@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { gsap } from 'gsap'
+import { Observer } from 'gsap/Observer'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { BatteryFull, CheckCheck, Signal, Wifi } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-gsap.registerPlugin(ScrollTrigger)
+gsap.registerPlugin(ScrollTrigger, Observer)
 
 type StoryMessage = { texto: string; descripcion: string; categoria: string; monto: number; respuesta: string }
 
@@ -21,6 +22,12 @@ const CLOCK = '9:41'
 const STEP_AT = [0.18, 0.47, 0.76]
 // The reply lands this long after its message: the margin drops with it, not before.
 const REPLY_DELAY_MS = 1100
+// Inside the pin, a gesture moves one step; the next waits this long, so each message is seen.
+const STEP_HOLD_MS = 900
+// A new gesture starts after this long without input.
+const GESTURE_GAP_MS = 200
+// How long a jump holds the page still against a fling's leftover momentum.
+const MOMENTUM_HOLD_MS = 700
 
 function stepAt(progress: number) {
   return STEP_AT.filter((at) => progress >= at).length
@@ -197,7 +204,58 @@ export function LandingStory() {
         { rotateX: 28, scale: 0.84, y: 60 },
         { rotateX: 0, scale: 1, y: 0, ease: 'none', scrollTrigger: { trigger: rootRef.current, start: 'top bottom', end: 'top top', scrub: 0.6 } },
       )
-      ScrollTrigger.create({
+      // While the phone is pinned, a swipe or a wheel gesture moves one step, however long it was:
+      // a long fling would otherwise run the whole story in a second. A step jumps the scroll to
+      // that step's place, so the scroll position still decides what shows.
+      let anchor = 0
+      let holdUntil = 0
+      let lastInput = 0
+      let lastStep = 0
+      let lastDrag = 0
+      let lastClick = 0
+      const holdAt = (y: number) => {
+        anchor = y
+        holdUntil = performance.now() + MOMENTUM_HOLD_MS
+        window.scrollTo(0, y)
+      }
+      // iOS keeps a fling's momentum going without touch events: the page is held in place a beat.
+      const onScroll = () => {
+        if (performance.now() < holdUntil && window.scrollY !== anchor) window.scrollTo(0, anchor)
+      }
+      const onDrag = () => {
+        lastDrag = performance.now()
+      }
+      const onClick = () => {
+        lastClick = performance.now()
+      }
+      const advance = (direction: 1 | -1) => {
+        const now = performance.now()
+        // One step per gesture: the events of a drag, or a wheel's inertia, come without a pause.
+        const fresh = now - lastInput > GESTURE_GAP_MS
+        lastInput = now
+        if (!fresh || now - lastStep < STEP_HOLD_MS) return
+        lastStep = now
+        const next = stepRef.current + direction
+        if (next < 0 || next > STEP_AT.length) {
+          observer.disable()
+          window.scrollTo(0, next < 0 ? pin.start - 2 : pin.end + 2)
+          return
+        }
+        holdAt(next === 0 ? pin.start + 1 : pin.start + (pin.end - pin.start) * (STEP_AT[next - 1] + 0.02))
+      }
+      const observer = Observer.create({
+        target: window,
+        type: 'wheel,touch',
+        wheelSpeed: -1,
+        tolerance: 10,
+        preventDefault: true,
+        allowClicks: true,
+        onUp: () => advance(1),
+        onDown: () => advance(-1),
+      })
+      observer.disable()
+
+      const pin = ScrollTrigger.create({
         trigger: rootRef.current,
         start: 'top top',
         end: () => `+=${window.innerHeight * 2.45}`,
@@ -208,8 +266,33 @@ export function LandingStory() {
         onUpdate: (self) => {
           goToRef.current(stepAt(self.progress))
         },
+        onToggle: (self) => {
+          if (!self.isActive) {
+            observer.disable()
+            return
+          }
+          observer.enable()
+          // The gesture that brought the page here doesn't count as a step.
+          lastInput = performance.now()
+          // Arriving on a swipe or a wheel, the story starts at its edge and the momentum stops. A
+          // pixel inside: right on the edge, the pin counts as left.
+          // A tap on the logo scrolls through smoothly: it isn't held.
+          const now = performance.now()
+          if (now - lastDrag < 2500 && lastDrag > lastClick) holdAt(self.direction > 0 ? self.start + 1 : self.end - 1)
+        },
       })
+      window.addEventListener('scroll', onScroll)
+      window.addEventListener('touchmove', onDrag, { passive: true, capture: true })
+      window.addEventListener('wheel', onDrag, { passive: true, capture: true })
+      window.addEventListener('click', onClick, { capture: true })
       ScrollTrigger.refresh()
+      return () => {
+        observer.kill()
+        window.removeEventListener('scroll', onScroll)
+        window.removeEventListener('touchmove', onDrag, { capture: true })
+        window.removeEventListener('wheel', onDrag, { capture: true })
+        window.removeEventListener('click', onClick, { capture: true })
+      }
     })
     return () => media.revert()
   }, [])

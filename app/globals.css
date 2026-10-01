@@ -579,6 +579,14 @@ body {
   opacity: 0.8;
 }
 
+/* Login's e-mail step: its pieces wait hidden for their entrance (`login-form.tsx`), instead of
+   showing in the server's HTML and then vanishing to enter. */
+@media (prefers-reduced-motion: no-preference) {
+  .login-enter:not([data-entered]) > :not([data-logo]) {
+    opacity: 0;
+  }
+}
+
 /* ── Landing (/) ─────────────────────────────────────────────────────────────────────────────── */
 
 /* The dot field replaces the dark shell's diagonal streaks here. */
