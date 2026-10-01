@@ -234,9 +234,9 @@
     "historiaPaso3": "And your free margin updates instantly.",
     "historiaDescripcion": "Preview of the Mango dashboard with sample data. Three WhatsApp messages log expenses and the free margin drops from €864 to €783.20.",
     "historiaMensajes": [
-      { "texto": "sneakers 59.90", "descripcion": "Sneakers", "categoria": "compras", "monto": 59.9, "respuesta": "✅ Logged: €59.90 in Shopping, today." },
-      { "texto": "taxi 12.50", "descripcion": "Taxi", "categoria": "transporte", "monto": 12.5, "respuesta": "✅ Logged: €12.50 in Transport, today." },
-      { "texto": "pharmacy 8.40", "descripcion": "Pharmacy", "categoria": "salud", "monto": 8.4, "respuesta": "✅ Logged: €8.40 in Health, today." }
+      { "texto": "sneakers 59.90", "descripcion": "Sneakers", "categoria": "compras", "monto": 59.9, "respuesta": "Logged ✅ Sneakers · €59.90 in Shopping." },
+      { "texto": "taxi 12.50", "descripcion": "Taxi", "categoria": "transporte", "monto": 12.5, "respuesta": "Logged ✅ Taxi · €12.50 in Transport. You've spent €85 of €100 this month 🟡" },
+      { "texto": "pharmacy 8.40", "descripcion": "Pharmacy", "categoria": "salud", "monto": 8.4, "respuesta": "Logged ✅ Pharmacy · €8.40 in Health." }
     ],
     "escribeTitulo": "Write the way you talk.",
     "escribeTexto": "The amount and what it was for. Mango does the rest: the category, the day, and whether it was a fixed cost it was expecting.",

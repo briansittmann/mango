@@ -234,9 +234,9 @@
     "historiaPaso3": "Y tu margen se actualiza al instante.",
     "historiaDescripcion": "Vista previa del panel de Mango con datos de ejemplo. Tres mensajes de WhatsApp anotan gastos y el margen libre baja de 864 € a 783,20 €.",
     "historiaMensajes": [
-      { "texto": "zapatillas 59,90", "descripcion": "Zapatillas", "categoria": "compras", "monto": 59.9, "respuesta": "✅ Anotado: 59,90 € en Compras, hoy." },
-      { "texto": "taxi 12,50", "descripcion": "Taxi", "categoria": "transporte", "monto": 12.5, "respuesta": "✅ Anotado: 12,50 € en Transporte, hoy." },
-      { "texto": "farmacia 8,40", "descripcion": "Farmacia", "categoria": "salud", "monto": 8.4, "respuesta": "✅ Anotado: 8,40 € en Salud, hoy." }
+      { "texto": "zapatillas 59,90", "descripcion": "Zapatillas", "categoria": "compras", "monto": 59.9, "respuesta": "Anotado ✅ Zapatillas · 59,90 € en Compras." },
+      { "texto": "taxi 12,50", "descripcion": "Taxi", "categoria": "transporte", "monto": 12.5, "respuesta": "Anotado ✅ Taxi · 12,50 € en Transporte. Llevás 85 € de 100 € este mes 🟡" },
+      { "texto": "farmacia 8,40", "descripcion": "Farmacia", "categoria": "salud", "monto": 8.4, "respuesta": "Anotado ✅ Farmacia · 8,40 € en Salud." }
     ],
     "escribeTitulo": "Escribe como hablas.",
     "escribeTexto": "El importe y en qué fue. Mango se encarga del resto: la categoría, el día y si era un fijo que ya esperaba.",
