@@ -29,13 +29,13 @@ Charla real por WhatsApp del 1 de octubre de 2026 (ronda de prueba de `add-bot-c
 
 > **Vos:** Como vengo ?
 >
-> **Mango:** 📊 Este mes llevás 2.878,02 € gastados.  
+> **Mango:** 📊 Este mes llevás 2.913,02 € gastados.  
 > • Vivienda: 1.000 €  
 > • Deudas: 932 €  
 > • Otros: 290 €  
 > • Salud: 211 €  
-> • Suscripciones: 123 €  
-> • 3 categorías más: 322 €
+> • Comida: 126,02 €  
+> • 5 categorías más: 354 €
 >
 > El detalle: https://www.usemango.dev/dashboard
 
@@ -45,9 +45,7 @@ Charla real por WhatsApp del 1 de octubre de 2026 (ronda de prueba de `add-bot-c
 >
 > El detalle: https://www.usemango.dev/dashboard
 
-**Qué muestra:** dos preguntas rápidas, con los mismos números del dashboard y el link para ver el detalle.
-
-> Nota: en la charla real la línea "3 categorías más: 322 €" no estaba; se agregó después de esta ronda para que las líneas sumen el total. La cantidad de categorías de esa línea es ilustrativa.
+**Qué muestra:** dos preguntas rápidas, con los mismos números del dashboard y el link para ver el detalle. Las cinco categorías más grandes van con nombre y el resto en una línea, así todo suma el total.
 
 ## 4. Corregir y borrar lo último que cargaste
 

@@ -131,7 +131,7 @@
   - after the round, `mensajes` holds the exchange and `cargas_confirmadas` rose.
 
   Findings (2026-10-01):
-  - "¿cómo vengo?" listed 2.878 € and five categories adding up to 2.556 €: the other 322 € were the categories past the top 5. Fixed in code with a `consultaResto` line ("3 categorías más: 322 €"); spec, design and 4.3 updated. Needs a redeploy.
+  - "¿cómo vengo?" listed 2.878 € and five categories adding up to 2.556 €: the other 322 € were the categories past the top 5. Fixed in code with a `consultaResto` line ("3 categorías más: 322 €"); spec, design and 4.3 updated. Verified after the redeploy (2026-10-01): "2.913,02 €" with five lines and "5 categorías más: 354 €", which add up to the total.
   - Passed: café with Undo; súper with the budget line (91,02 € de 300 € 🟢); "como vengo" and "y el margen libre"; nafta 45 → "no, era 40" → "borra eso"; "gaste 50 en comida" → "ósea era ocio" → "bórralo". `mensajes` holds 14 incoming and 14 outgoing; `cargas_confirmadas` went 0 → 4.
   - "crea categoría mascota" created Mascota without asking: correct, since the account had no similar category (the checklist assumed a Mascotas). The "sí" that followed was `no_entendido`, as specified. The similar-name question was not exercised.
   - "Prime 9€" (definition 7 €, due day 2) → "Anotado ✅ Prime · 9 € en Suscripciones.\n📌 Solo cambia este mes: Prime sigue en 7 €.", sent as text. The definition stayed at 7. At Brian's request the test was undone through the MCP: the charge is back to pending at 7 € on 2/10, without `canal` / `mensaje_id_externo`, and the channel's last load cleared.
