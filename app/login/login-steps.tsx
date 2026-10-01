@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { CodeEntry } from "@/components/organisms/code-entry";
@@ -17,6 +17,25 @@ export function LoginSteps({ initialEmail, linkError }: { initialEmail: string |
   const locale = useLocale();
   const [email, setEmail] = useState(initialEmail);
   const [previous, setPrevious] = useState<string | undefined>(undefined);
+
+  // iOS Safari scrolls the page to keep the focused field above the keyboard and leaves it there
+  // when the keyboard closes, so the card stays pushed up. The page fits the screen, so its resting
+  // place is the top.
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    let keyboardOpen = false;
+    const onResize = () => {
+      const open = viewport.height < window.innerHeight * 0.85;
+      if (keyboardOpen && !open) {
+        const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+      }
+      keyboardOpen = open;
+    };
+    viewport.addEventListener("resize", onResize);
+    return () => viewport.removeEventListener("resize", onResize);
+  }, []);
 
   const onSent = useCallback((address: string) => {
     window.history.replaceState(null, "", `/login?email=${encodeURIComponent(address)}`);
