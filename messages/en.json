@@ -318,6 +318,7 @@
     "categoriaNoExiste": "🤔 I don't have that category. Yours are: {categorias}.",
     "consultaMes": "📊 You've spent {total} this month.{lineas}\n\nDetails: {link}",
     "consultaLinea": "• {categoria}: {monto}",
+    "consultaResto": "• {cantidad, plural, one {# more category} other {# more categories}}: {monto}",
     "consultaLibre": "💸 Your free margin this month is {monto}.\n\nDetails: {link}",
     "categoriaCreada": "🆕 Created the category {nombre}.",
     "categoriaCreadaConPresupuesto": "🆕 Created the category {nombre}, with a budget of {monto} per month.",

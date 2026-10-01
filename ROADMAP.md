@@ -101,17 +101,20 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [x] 🤖 Carga de transacciones reusando `lib/data/supabase/*` con cliente admin; idempotencia; lo que no matchea va a `otros`
 - [x] 🤖 Tipos `gasto` / `ingreso` / `ahorro` (incluido retiro en negativo)
 - [x] 🤖 Dato faltante ("gasté 50") → repregunta en texto
-- [ ] 🤖 Confirmación progresiva: `cargas_confirmadas`, `modo_confirmacion`, texto + Deshacer las primeras 15, reacción después
-- [ ] 🤖 Correcciones por texto sobre la última carga: "borrá eso", "no, era 40"
-- [ ] 🤖 Consultas cortas: "¿cómo vengo?", total del mes + top 5, link a la web
-- [ ] 🤖 Crear categoría por chat, solo a pedido explícito ("creá la categoría Mascotas"); avisa si hay una parecida (ARCHITECTURE.md §3)
-- [ ] 🤖 Historial solo para VIP: `usuarios.vip` + tabla `mensajes`; guardar entrantes y salientes; el parser recibe los últimos 10 de 24 h (ARCHITECTURE.md §3)
-- [ ] 👤 Marcarte VIP por SQL
+- [x] 🤖 Confirmación progresiva: `cargas_confirmadas`, `modo_confirmacion`, texto + Deshacer las primeras 15, reacción después. La respuesta a una pregunta de categoría y un fijo con otro monto van siempre en texto
+- [x] 🤖 Correcciones por texto sobre la última carga del chat: "borrá eso", "no, era 40", "eran comida". Deshacer borra la carga de su confirmación
+- [x] 🤖 Consultas cortas: "¿cómo vengo?" (total del mes, top 5 y una línea con el resto, para que sume) y "libre" (margen libre), con link a la web
+- [x] 🤖 Crear categoría por chat, solo a pedido explícito ("creá la categoría Mascotas"); avisa si hay una parecida (ARCHITECTURE.md §3)
+- [x] 🤖 Historial solo para VIP: `usuarios.vip` + tabla `mensajes`; guardar entrantes y salientes; el parser recibe los últimos 20 de 24 h (ARCHITECTURE.md §3)
+- [x] 👤 Marcarte VIP por SQL → 1/10, por el MCP
 - [x] 👤 Decidir cuánto tiempo se guardan los mensajes → 30 días, los borra el cron diario (ARCHITECTURE.md §3)
-- [ ] 🤖 El cron diario del bloque 6 borra los `mensajes` de más de 30 días (pasado acá desde el bloque 6: la tabla nace en este bloque)
+- [x] 🤖 El cron diario del bloque 6 borra los `mensajes` de más de 30 días (pasado acá desde el bloque 6: la tabla nace en este bloque)
 - [x] 👤 Ronda de prueba con los mensajes del bloque 3 y lista de fallos
+- [x] 👤 Ronda por WhatsApp de `add-bot-conversation` (1/10): todo pasó; "¿cómo vengo?" no sumaba el total y se le agregó la línea del resto. La charla quedó en `docs/bot-conversacion-ejemplo.md`
 
-**→ Con los bloques 0–7 cerrados, Fase 1 terminada: uso personal real.**
+> **Estado (1/10), change `add-bot-conversation`:** correcciones, Deshacer, consultas, crear categoría, confirmación progresiva e historial VIP, con `0028` aplicada en la base real. Un fijo con otro monto cambia solo ese mes (decisión del 30/9): el bot no pregunta si es permanente. `npm run test:parser` dio 22/22 dos veces seguidas.
+
+**→ Bloques 0–7 cerrados (1/10/2026): Fase 1 terminada, uso personal real.**
 
 ---
 

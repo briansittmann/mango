@@ -501,9 +501,11 @@ async function query(turn: Turn, consulta: 'margen_libre' | 'mes'): Promise<BotR
 
   if (consulta === 'margen_libre') return { kind: 'text', text: t('consultaLibre', { monto: money(summary.freeMargin), link }) }
 
-  const lineas = topCategories(summary.expenses.groups)
-    .map((group) => `\n${t('consultaLinea', { categoria: group.name, monto: money(group.total) })}`)
-    .join('')
+  const { top, rest } = topCategories(summary.expenses.groups)
+  const lines = top.map((group) => t('consultaLinea', { categoria: group.name, monto: money(group.total) }))
+  // The categories left out go in one line that says how many, so the lines add up to the total.
+  if (rest.count > 0) lines.push(t('consultaResto', { cantidad: rest.count, monto: money(rest.total) }))
+  const lineas = lines.map((line) => `\n${line}`).join('')
   return { kind: 'text', text: t('consultaMes', { total: money(summary.expenses.total), lineas, link }) }
 }
 

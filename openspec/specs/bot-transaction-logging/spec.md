@@ -46,7 +46,7 @@ The parsed category SHALL be matched against the account's categories by name, i
 
 ### Requirement: An expense that names a recurring expense completes its pending charge
 
-When a `cargar` of type `gasto` names one of the account's active recurring expenses, the bot SHALL complete that definition's charge for the cycle that contains the movement's local date, at the loaded amount, confirmed, instead of writing a second row; the completed row SHALL record the channel and message id. When the loaded amount equals the definition's expected amount, the reply SHALL be the ordinary confirmation. When it differs, the charge SHALL still be completed at the loaded amount, and the logic SHALL report the discrepancy (definition, expected amount, loaded amount) together with the confirmation text, without asking anything and without changing the definition (`recurring-expenses` → *The bot asks whether a change is permanent, and the adapter owns the answer*). When that cycle's charge is already confirmed or deleted, nothing SHALL be written and the reply SHALL say the charge is already logged this cycle. When the definition has ended or is inactive, the movement SHALL be written as an ordinary expense in the definition's category with the definition's name as description. An `ingreso` SHALL never complete a recurring definition.
+When a `cargar` of type `gasto` names one of the account's active recurring expenses, the bot SHALL complete that definition's charge for the cycle that contains the movement's local date. The charge SHALL take the loaded amount and be confirmed, and no second row SHALL be written. The completed row SHALL record the channel and message id. When the loaded amount equals the definition's expected amount, the reply SHALL be the ordinary confirmation. When it differs, the charge SHALL still be completed at the loaded amount, and the definition SHALL NOT change. The reply SHALL be the ordinary confirmation followed by a note that only this cycle changed and the definition keeps its expected amount. The bot SHALL ask nothing about it (`recurring-expenses` → *A differing amount from the bot changes only this cycle*). When that cycle's charge is already confirmed or deleted, nothing SHALL be written and the reply SHALL say the charge is already logged this cycle. When the definition has ended or is inactive, the movement SHALL be written as an ordinary expense in the definition's category with the definition's name as description. An `ingreso` SHALL never complete a recurring definition.
 
 #### Scenario: Pending charge at the expected amount
 - **WHEN** the October cycle holds a pending "Netflix" charge of 13 and the account sends "netflix 13" on 5 October 2026
@@ -54,7 +54,7 @@ When a `cargar` of type `gasto` names one of the account's active recurring expe
 
 #### Scenario: Pending charge at another amount
 - **WHEN** the October cycle holds a pending "Luz" charge of 60 and the account sends "luz 72"
-- **THEN** that row is confirmed at 72, the definition still expects 60, the reply confirms 72 in the charge's category, and the discrepancy is reported to the adapter
+- **THEN** that row is confirmed at 72, the definition still expects 60, and the reply confirms 72 in the charge's category and says Luz stays at 60 from next cycle on
 
 #### Scenario: Already confirmed this cycle
 - **WHEN** October's "Netflix" charge is already confirmed and the account sends "netflix 13" again
@@ -90,27 +90,47 @@ When the action is `repreguntar` (or the category cannot be resolved and there i
 
 ### Requirement: Replies are plain text in the account's language
 
-Every reply SHALL be plain text taken from the translation files, in the account's language (`es` | `en`), never a literal in the code. A confirmation SHALL state the amount in the account's currency, the category (for an expense) or the movement type (income, savings), and the day as "today", "yesterday" or a short date. The bot SHALL send no button and no reaction in this change.
+Every reply text SHALL be taken from the translation files, in the account's language (`es` | `en`), never a literal in the code. This covers the Undo button label. Spanish texts SHALL use voseo. A confirmation SHALL read "Anotado", its icon, the name of what was loaded and the amount in the account's currency. For an expense the name SHALL be its description, or the recurring definition's name, or the category when there is neither, and the category SHALL follow the amount when it differs from the name. For an income the name SHALL be its description, or "Ingreso" without one. For savings it SHALL be the movement type (savings, withdrawal). The day SHALL be omitted when it is today and shown as "yesterday" or a short date otherwise. When an expense falls in the cycle in progress and its category has a budget in that cycle, the confirmation SHALL add the category's spent and budget for the cycle, the same figures as the dashboard's budget bar after the write, and a light for the dashboard's budget level: green below 80 %, yellow from 80 %, red from 100 %. An income, a savings movement, an expense in another cycle or an expense in a category without a budget SHALL get no such line. When those figures cannot be read, the confirmation SHALL go out without the line. A successful load SHALL be reported to the adapter with its confirmation text, the icon that text starts with and the row it wrote or completed. The adapter then decides between text and reaction (`bot-progressive-confirmation`) and remembers the channel's last load (`messaging-channels`).
 
 #### Scenario: Spanish confirmation
-- **WHEN** an account with language `es` and currency EUR loads "nafta 45 ayer"
-- **THEN** the reply names 45 €, Transporte and "ayer"
+- **WHEN** an account with language `es` and currency EUR loads "nafta 45 ayer", and Transporte has no budget
+- **THEN** the reply is "Anotado ✅ Nafta · 45 € en Transporte, ayer." with no budget line
 
 #### Scenario: English confirmation
 - **WHEN** an account with language `en` loads the same expense
-- **THEN** the reply is in English and names the same amount, category and "yesterday"
+- **THEN** the reply is in English and names Nafta, the same amount, Transporte and "yesterday", and the button reads "Undo"
+
+#### Scenario: Expense in a budgeted category
+- **WHEN** Comida has a budget of 300 in the cycle in progress with 33 spent, and the account loads "súper 15" today
+- **THEN** the reply is "Anotado ✅ Súper · 15 € en Comida. Llevás 48 € de 300 € este mes 🟢"
+
+#### Scenario: Close to the budget
+- **WHEN** Suplementos has a budget of 100 with 70 spent, and the account loads "proteína 15"
+- **THEN** the budget line reads 85 € of 100 € with 🟡
+
+#### Scenario: Over the budget
+- **WHEN** Suplementos has a budget of 100 with 95 spent, and the account loads "creatina 20"
+- **THEN** the budget line reads 115 € of 100 € with 🔴
+
+#### Scenario: Income names itself
+- **WHEN** the account loads "propina 500"
+- **THEN** the reply is "Anotado 💰 Propina · 500 €." with no totals line
+
+#### Scenario: Expense in the previous cycle
+- **WHEN** the account loads an expense in a budgeted category dated before the cycle in progress started
+- **THEN** the reply has no budget line
 
 #### Scenario: Older date
 - **WHEN** the account loads an expense with `dias_atras` 3
 - **THEN** the reply shows the calendar day, not a relative word
 
-### Requirement: Recognised but unsupported actions get a fixed answer
+#### Scenario: A load reports its row
+- **WHEN** the account loads "nafta 45"
+- **THEN** the adapter receives the confirmation text, the ✅ icon and the id of the 45 expense
 
-`consultar`, `corregir`, `borrar` and `crear_categoria` SHALL write nothing and SHALL reply with a text saying the bot cannot do that yet and that it can be done on the web. `no_entendido` SHALL write nothing and SHALL reply with a text saying the message was not understood and showing one example of the expected format. `no_disponible` SHALL write nothing, SHALL reply with a text saying the message could not be processed now and asking to send it again later, and SHALL keep the channel's pending question, so the resend can still answer it.
+### Requirement: Unparsed messages get a fixed answer
 
-#### Scenario: Correction not yet supported
-- **WHEN** the account sends "no, era 40"
-- **THEN** nothing changes and the reply says corrections are not available yet
+`no_entendido` SHALL write nothing and SHALL reply with a text saying the message was not understood and showing one example of the expected format. `no_disponible` SHALL write nothing, SHALL reply with a text saying the message could not be processed now and asking to send it again later, and SHALL keep the channel's pending question, so the resend can still answer it. `consultar`, `corregir`, `borrar` and `crear_categoria` SHALL be executed as `bot-conversation` defines.
 
 #### Scenario: Not understood
 - **WHEN** the account sends "asdasda"
@@ -119,6 +139,10 @@ Every reply SHALL be plain text taken from the translation files, in the account
 #### Scenario: Model down
 - **WHEN** the account answers a pending category question with "comida" and both model requests fail
 - **THEN** nothing is written, the reply asks to send the message again later, and the pending question is still on the channel
+
+#### Scenario: Corrections are executed
+- **WHEN** the account sends "no, era 40" after loading 50
+- **THEN** the load is 40 and the reply is not the "not yet" text
 
 ### Requirement: Retries never write twice
 

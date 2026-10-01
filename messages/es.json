@@ -318,6 +318,7 @@
     "categoriaNoExiste": "🤔 No tengo esa categoría. Las tuyas son: {categorias}.",
     "consultaMes": "📊 Este mes llevás {total} gastados.{lineas}\n\nEl detalle: {link}",
     "consultaLinea": "• {categoria}: {monto}",
+    "consultaResto": "• {cantidad, plural, one {# categoría más} other {# categorías más}}: {monto}",
     "consultaLibre": "💸 Tu margen libre este mes es de {monto}.\n\nEl detalle: {link}",
     "categoriaCreada": "🆕 Creé la categoría {nombre}.",
     "categoriaCreadaConPresupuesto": "🆕 Creé la categoría {nombre}, con {monto} de presupuesto por mes.",

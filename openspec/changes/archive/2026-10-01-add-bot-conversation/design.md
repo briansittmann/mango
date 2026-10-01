@@ -87,7 +87,7 @@ It then sets `cargas_confirmadas = count + 1`. A read-then-write is enough, beca
 
 ### D7. Queries reuse `resumenMensual`; creation reuses `crear_categoria`
 
-- **`mes`**: `data.expenses.total` and the top 5 `expenses.groups` by `spent` (> 0), each `formatBotAmount`-ed.
+- **`mes`**: `data.expenses.total` and the top 5 `expenses.groups` by `spent` (> 0), each `formatBotAmount`-ed, plus one `bot.consultaResto` line with the count and sum of the spent categories left out, so the lines add up to the total (decision of 2026-10-01, after "¿cómo vengo?" in the round showed five lines that did not add up).
 - **`margen_libre`**: `data.freeMargin`.
 - **Link**: `${SITE_URL}/dashboard`. `SITE_URL` is a constant in `lib/metadata.ts` (today inline in `app/layout.tsx` as `metadataBase`), used by both.
 

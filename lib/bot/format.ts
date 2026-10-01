@@ -61,12 +61,17 @@ export function confirmationText({ locale, currency, today, t }: BotFormat, load
   })}`
 }
 
-/** The month query's categories (design D7): spent > 0, largest first, at most `limit`. */
-export function topCategories<T extends { total: number }>(groups: T[], limit = 5): T[] {
-  return groups
-    .filter((group) => group.total > 0)
-    .sort((a, b) => b.total - a.total)
-    .slice(0, limit)
+/**
+ * The month query's categories (design D7): spent > 0, largest first, at most `limit` in `top`;
+ * `rest` counts and sums the spent categories left out, so the lines add up to the total.
+ */
+export function topCategories<T extends { total: number }>(
+  groups: T[],
+  limit = 5,
+): { top: T[]; rest: { count: number; total: number } } {
+  const spent = groups.filter((group) => group.total > 0).sort((a, b) => b.total - a.total)
+  const left = spent.slice(limit)
+  return { top: spent.slice(0, limit), rest: { count: left.length, total: left.reduce((sum, group) => sum + group.total, 0) } }
 }
 
 /** An amount as the web shows it: "45 €" in `es`, "€45.50" in `en`. */

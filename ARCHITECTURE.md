@@ -227,8 +227,8 @@ La respuesta y el log solo dicen ciclos generados, filas insertadas y filas cerr
 6. Se guarda con el **`mensaje_id_externo`** y el tipo de canal (antes `wa_message_id`, sección 8) para evitar duplicados.
 
 *(Implementado, `add-bot-parser-and-logging`, sept 2026.)* El parser se evalúa contra Gemini real con `npm run test:parser` (los mensajes del bloque 3 más casos propios). Tres piezas que el flujo de arriba no cuenta:
-- **Pregunta pendiente en el canal.** Si al mensaje le falta la descripción (*"gasté 50"*), el bot pregunta la categoría y el adaptador guarda la pregunta (`tipo`, `monto`, `diasAtras`) en `canales.pregunta_pendiente` con vencimiento a los **30 minutos** (`pregunta_vence_en`, migración `0023`). El mensaje siguiente del mismo canal se parsea con esa pregunta en el prompt (*"comida"* → 50 en Comida). Cualquier otra respuesta la borra. Vive en `canales` porque una función de Vercel no guarda nada entre dos llamadas del webhook. No es el historial VIP de abajo.
-- **Rama de recurrentes.** Si el parser reconoce el nombre de un gasto fijo activo (*"netflix 13"*), la lógica no inserta una fila nueva: completa el cargo pendiente de ese ciclo con `completar_cargo_recurrente`, que lo confirma con el monto real y le escribe `canal` y `mensaje_id_externo`. Si el monto difiere del esperado, la respuesta es la confirmación de siempre y el adaptador registra la diferencia; la pregunta de si el cambio es permanente queda para `add-bot-conversation`. Si el plan terminó o la definición ya no existe, se carga como gasto común en su categoría.
+- **Pregunta pendiente en el canal.** Si al mensaje le falta la descripción (*"gasté 50"*), el bot pregunta la categoría y el adaptador guarda la pregunta (`pregunta: 'categoria'`, `tipo`, `monto`, `diasAtras`) en `canales.pregunta_pendiente` con vencimiento a los **30 minutos** (`pregunta_vence_en`, migración `0023`). El mensaje siguiente del mismo canal se parsea con esa pregunta en el prompt (*"comida"* → 50 en Comida). Cualquier otra respuesta la borra. Desde `add-bot-conversation` (1/10/2026) hay un segundo tipo, la confirmación de crear una categoría con nombre parecido (`pregunta: 'crear_categoria'`, `nombre`, `presupuesto`, `parecida`); una pregunta nueva de cualquier tipo reemplaza a la anterior. Vive en `canales` porque una función de Vercel no guarda nada entre dos llamadas del webhook. No es el historial VIP de abajo.
+- **Rama de recurrentes.** Si el parser reconoce el nombre de un gasto fijo activo (*"netflix 13"*), la lógica no inserta una fila nueva: completa el cargo pendiente de ese ciclo con `completar_cargo_recurrente`, que lo confirma con el monto real y le escribe `canal` y `mensaje_id_externo`. Si el monto difiere del esperado, el cargo de ese ciclo queda con el monto real y la definición no cambia: la confirmación agrega *"Solo cambia este mes: Luz sigue en 60 €"* y va siempre en texto. **Decisión (30/9/2026):** el bot no pregunta si el cambio es permanente; cambiar el monto fijo de ahí en adelante se hace desde la web con "Desde este mes en adelante". Si el plan terminó o la definición ya no existe, se carga como gasto común en su categoría.
 - **Cargo ya confirmado.** Si ese cargo ya estaba confirmado (`already-confirmed`), no se escribe nada y el bot contesta que ya estaba cargado. Un segundo pago real del mismo fijo es raro y se carga desde la web; un duplicado silencioso de un fijo cuesta más.
 #### Sin repregunta de categoría
  
@@ -238,7 +238,7 @@ El motivo es el volumen: con 200+ cargas al mes, una repregunta cada tanto es fr
  
 El control es **a posteriori**: si `otros` empieza a pesar en la torta, eso mismo es la señal de que falta una categoría. Se crea desde el dashboard y se reasignan las transacciones. Mejor una revisión mensual de 2 minutos que 200 interrupciones.
 
-**Decisión (sept 2026): crear categoría por chat, solo a pedido.** El bot crea una categoría únicamente cuando el usuario lo pide explícitamente (*"creá la categoría Mascotas"*, *"nueva categoría Viajes, presupuesto 200"*). El parser nunca crea una a partir de un gasto: la regla de arriba sigue igual. Si ya existe una con nombre parecido, avisa en vez de duplicarla. El color es el siguiente libre de la paleta. Lo que ya cayó en `otros` no se mueve solo; se reasigna desde la web.
+**Decisión (sept 2026): crear categoría por chat, solo a pedido.** El bot crea una categoría únicamente cuando el usuario lo pide explícitamente (*"creá la categoría Mascotas"*, *"nueva categoría Viajes, presupuesto 200"*). El parser nunca crea una a partir de un gasto: la regla de arriba sigue igual. Si ya existe una con el mismo nombre (sin mirar mayúsculas ni tildes), avisa y no crea nada. Si hay una parecida (una contiene a la otra, o difieren en dos letras o menos), pregunta *"Ya tenés Mascotas. ¿Creo Mascota igual?"*, guarda la pregunta en el canal y un *"sí"* dentro de los 30 minutos la crea. Vive desde el ciclo en curso. El color es el siguiente libre de la paleta. Lo que ya cayó en `otros` no se mueve solo; se reasigna desde la web.
  
 > **Nota sobre botones:** WhatsApp permite **máximo 3 reply buttons** por mensaje. Al eliminar la repregunta, el único botón que se usa en la confirmación es **Deshacer** (sección 4), así que no hay conflicto.
  
@@ -252,9 +252,11 @@ El cupo del número de prueba es de **1000 mensajes/mes** y cada gasto cuesta do
  
 **Por qué las primeras 15 no:** al principio el usuario no sabe si el bot entendió bien, y un emoji no dice *cuánto* ni *en qué categoría* anotó. El texto es lo que enseña el formato y genera confianza. Una vez que la persona ya vio quince veces que el parseo acierta, deja de leer la confirmación y el mensaje pasa a ser puro coste.
  
-**Excepción, independiente del contador:** si al parser le falta un dato (*"gasté 50"*), la confirmación va **siempre en texto**. La reacción es para el camino feliz.
+**Excepción, independiente del contador:** si al parser le falta un dato (*"gasté 50"*), la confirmación de la respuesta va **siempre en texto** con *Deshacer*. Lo mismo un fijo cargado con otro monto, para que se lea que solo cambió ese mes. La reacción es para el camino feliz.
  
-**Deshacer pasa a ser por texto.** La reacción es solo un emoji: no admite botones. A partir de la carga 16, corregir se hace escribiendo *"borrá eso"* o *"no, era 40"*, que ya está previsto en la sección 4 y sigue apuntando siempre a la última transacción. Cuesta un mensaje, pero solo cuando hubo un error — que es lo poco frecuente.
+**Deshacer pasa a ser por texto.** La reacción es solo un emoji: no admite botones. A partir de la carga 16, corregir se hace escribiendo *"borrá eso"* o *"no, era 40"*, que ya está previsto en la sección 4 y apunta siempre a la última carga de ese chat (`canales.ultima_carga_id`). Cuesta un mensaje, pero solo cuando hubo un error — que es lo poco frecuente.
+
+*(Implementado, `add-bot-conversation`, 1/10/2026.)* El adaptador lee `cargas_confirmadas` y `modo_confirmacion`, elige texto con botón o reacción con el ícono de la confirmación (✅ 💰 🐷 🏦) y suma uno al contador en los dos casos. La confirmación en texto dice qué se anotó y, si la categoría tiene presupuesto en el ciclo en curso, cómo viene: *"Anotado ✅ Súper · 15 € en Comida. Llevás 48 € de 300 € este mes 🟢"* (🟢 menos del 80 %, 🟡 desde el 80 %, 🔴 desde el 100 %, los mismos números que la barra del dashboard).
  
 **Dónde vive:** en la capa que decide *cómo* responde el bot, no en la lógica. El adaptador de WhatsApp recibe el resultado de la carga y elige formato; la lógica del bot sigue sin saber nada de WhatsApp.
  
@@ -274,7 +276,7 @@ El umbral (15) es una constante del código, no un campo: si hay que moverlo, se
 
 **Cómo se marca:** `usuarios.vip`, a mano por SQL. No hay UI, ni para el usuario ni de administración.
 
-**Qué recibe el parser:** los últimos 10 mensajes de las últimas 24 horas, en orden. Tiene dos topes porque un mensaje de hace tres días confunde más de lo que ayuda. Los dos son constantes del código, igual que el umbral de 15.
+**Qué recibe el parser:** los últimos 20 mensajes de las últimas 24 horas, en orden (`HISTORY_LIMIT` y `HISTORY_WINDOW_MS` en `lib/data/messages.ts`; 20 desde `add-bot-conversation`). Tiene dos topes porque un mensaje de hace tres días confunde más de lo que ayuda. Los dos son constantes del código, igual que el umbral de 15.
 
 **Dónde vive:** la lógica del bot lee y escribe `mensajes` (sección 8) con el `usuarioId` que le pasa el adaptador. No sabe de qué canal vino, solo lo registra. Un mensaje duplicado, que corta la idempotencia, no se guarda dos veces.
 
@@ -417,9 +419,9 @@ Cargar rápido implica equivocarse. La corrección tiene que ser tan barata como
  
 Cada carga se confirma con un mensaje que incluye un botón **Deshacer**:
  
-> *"Anotado: 30 en ocio — disco."*  ·  `[Deshacer]`
+> *"Anotado ✅ Disco · 30 € en Ocio."*  ·  `[Deshacer]`
  
-Como se refiere siempre a **la última transacción del usuario**, no hay ambigüedad sobre cuál se borra: no hay que identificar nada ni listar opciones. También funciona escribiendo *"borrá eso"* o *"no, era 40"* — en el segundo caso se corrige el monto en vez de borrar.
+El botón borra **la carga de esa confirmación** (su id viaja en el botón), aunque después haya cargas más nuevas. Escribir *"borrá eso"* o *"no, era 40"* actúa sobre **la última carga de ese chat** (`canales.ultima_carga_id`), nunca sobre algo cargado desde la web: no hay ambigüedad sobre cuál se toca. *"No, era 40"* corrige el monto (un retiro de ahorro sigue siendo retiro) y *"eran comida"* la categoría (solo en gastos). Si la carga completó un gasto fijo, borrarla lo devuelve a pendiente en vez de sacarlo del mes, y corregirla toca solo el cargo de ese ciclo, nunca la definición. *(Implementado, `add-bot-conversation`, 1/10/2026.)*
  
 **Alcance deliberadamente corto:** por chat solo se toca la última carga. Borrar algo de hace tres días requiere ver la lista y elegir, y eso en un chat es un desastre.
  
@@ -451,7 +453,9 @@ Ejemplos: *"¿qué presupuesto semanal tengo?"*, *"¿cómo vengo este mes?"*
  
 ### Consultas de gastos del mes
  
-El bot responde el **total del mes + desglose por categoría (top 5)**. Nada más: la lista completa en chat es ilegible. Para el detalle transacción por transacción, devuelve un link a la web.
+El bot responde el **total del mes + desglose por categoría (top 5)** y una línea con cuántas categorías quedaron afuera y cuánto suman, para que las líneas den el total. Nada más: la lista completa en chat es ilegible. Para el detalle transacción por transacción, devuelve un link a la web. *"Libre"* o *"¿cuánto me queda?"* responde el margen libre.
+
+*(Implementado, `add-bot-conversation`, 1/10/2026.)* Las dos consultas salen de `resumenMensual`, la misma función del dashboard, sin llamar al modelo: los números coinciden con la pantalla. El modo asesor con Gemini (arriba) sigue pendiente, bloque 13 de `ROADMAP.md`.
  
 > El chat es para lo rápido. La web es para lo profundo.
  
@@ -586,6 +590,8 @@ Deliberadamente no modela principal, interés ni una tabla de amortización — 
 - `usuario_id`
 - `tipo` (`whatsapp` | `telegram`)
 - `identificador_externo` (en WhatsApp, el teléfono en E.164)
+- `pregunta_pendiente` (jsonb, nullable) y `pregunta_vence_en` — la pregunta abierta del bot en ese chat, de categoría o de crear categoría, 30 minutos (sección 3, `0023`)
+- `ultima_carga_id` (uuid, nullable — la última carga hecha por ese chat, la única que *"borrá eso"* y *"no, era 40"* tocan; FK compuesta `(ultima_carga_id, usuario_id) → transacciones (id, usuario_id)`, `on delete set null`, así nunca apunta a una fila de otra cuenta. `0028`)
 Único por `tipo` + `identificador_externo`: un mismo número no puede quedar vinculado a dos cuentas. Es lo que lee el adaptador para saber quién escribe (sección 3). RLS encendido y sin políticas: solo lo toca el bot con el cliente admin; la web no lo lee todavía, hasta que exista la pantalla de ajustes (sección 4).
 
 > **Decisión (sept 2026):** una cuenta puede tener WhatsApp y Telegram a la vez, con un canal de cada tipo como máximo (`unique (usuario_id, tipo)`). Las cargas de los dos canales caen en la misma cuenta.
@@ -595,10 +601,11 @@ Deliberadamente no modela principal, interés ni una tabla de amortización — 
 - `usuario_id`
 - `canal` (`whatsapp` | `telegram`)
 - `direccion` (`entrante` | `saliente`)
-- `texto`
+- `texto` (una presión de *Deshacer* se guarda como `↩︎ Deshacer`; si el bot confirmó con una reacción, el saliente guarda el texto de la confirmación)
+- `mensaje_id_externo` (nullable — el id del mensaje en el canal, solo en los entrantes)
 - `transaccion_id` (nullable — la carga que produjo el mensaje entrante; FK compuesta con `usuario_id`, igual que en `0019`)
 - `creado_en`
-Índice por `usuario_id` + `creado_en`. RLS encendido y sin políticas: solo lo toca el bot con el cliente admin; la web no lo lee.
+Índice por `usuario_id` + `creado_en`, y único parcial `(usuario_id, canal, mensaje_id_externo)` sobre los entrantes: un reintento de Meta no se guarda dos veces. Creada en la `0028`. RLS encendido y sin políticas: solo lo toca el bot con el cliente admin; la web no lo lee.
 
 **`invitaciones`**
 - `id`

@@ -259,34 +259,21 @@ When a charge's amount differs from its definition's expected amount, the "Próx
 - **WHEN** a row is showing the caption
 - **THEN** the footer total is unchanged in form and still states only the committed total, and no badge or count of differences is rendered anywhere on the page
 
-### Requirement: The bot asks whether a change is permanent, and the adapter owns the answer
+### Requirement: A differing amount from the bot changes only this cycle
 
-When a message loads an amount for a recurring expense that differs from its definition's expected amount, the conversation SHALL offer to make the change permanent, and the decision to ask SHALL live outside the bot's message logic.
-
-- **The message logic** SHALL complete and confirm this cycle's pending charge with the loaded amount, and SHALL report the discrepancy — which definition, its expected amount, the loaded amount — without asking anything and without changing the definition.
-- **The adapter** SHALL turn that report into the follow-up question, hold the pending decision across turns, and on an affirmative answer SHALL update the definition's expected amount.
-- **No answer SHALL be a stored state.** If the user does not answer, this cycle's charge keeps the loaded amount and the definition keeps its expected amount — the exception of that cycle, reached by doing nothing.
-- A negative answer SHALL have the same effect as no answer, and SHALL clear the pending decision.
-- The message logic SHALL remain free of anything specific to WhatsApp, so a second messaging platform SHALL require no change to it.
+When a message loads an amount for a recurring expense that differs from its definition's expected amount, this cycle's charge SHALL be completed and confirmed at the loaded amount, and the definition's expected amount SHALL NOT change. The bot SHALL ask nothing about it and SHALL hold no state for it. The reply SHALL say that only this cycle changed and the expected amount stays. The following cycles SHALL be generated and projected at the definition's expected amount.
 
 #### Scenario: Loading an amount that differs
 - **WHEN** a user whose "Alquiler" definition expects 600 sends "alquiler 630"
-- **THEN** this cycle's pending "Alquiler" charge is completed at 630 and marked confirmed
-- **AND** the reply asks whether 630 is the amount from now on
+- **THEN** this cycle's "Alquiler" charge is 630 and confirmed, the definition still expects 600, and the reply says Alquiler stays at 600
 
-#### Scenario: Yes makes it permanent
-- **WHEN** the user answers affirmatively
-- **THEN** the definition's expected amount becomes 630
-- **AND** this cycle's charge stays at 630
+#### Scenario: Next cycle
+- **WHEN** the next cycle is generated after that
+- **THEN** its "Alquiler" charge is pending at 600
 
-#### Scenario: Silence leaves an exception
-- **WHEN** the user does not answer and sends an unrelated expense instead
-- **THEN** the definition's expected amount is still 600, this cycle's charge is still 630, and nothing further is asked about it
-
-#### Scenario: The decision is not in the message logic
-- **WHEN** the message logic processes "alquiler 630"
-- **THEN** it returns a reply reporting the discrepancy and the definition it belongs to
-- **AND** it performs no definition update and holds no state about the pending question
+#### Scenario: Nothing asked
+- **WHEN** the user's next message is "sí"
+- **THEN** no definition changes
 
 ### Requirement: Every change to a recurring row asks how far it reaches
 

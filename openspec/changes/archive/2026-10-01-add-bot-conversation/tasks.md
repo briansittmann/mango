@@ -75,7 +75,7 @@
   - `lastLoad` null after a delete or undo of the pointed row.
 
   Verify `npx tsc --noEmit` and `npm run lint` pass.
-- [x] 4.3 Queries (design D7): `consultar` calls `resumenMensual(client, usuario)` and builds `bot.consultaMes` (total plus up to 5 lines, spent > 0, largest first) or `bot.consultaLibre`, both ending with `${SITE_URL}/dashboard`. Verify `npx tsc --noEmit` passes, and a unit test of the pure line-builder covers ordering, the cap of 5 and skipping 0.
+- [x] 4.3 Queries (design D7): `consultar` calls `resumenMensual(client, usuario)` and builds `bot.consultaMes` (total plus up to 5 lines, spent > 0, largest first, then one `bot.consultaResto` line with how many were left out and their sum) or `bot.consultaLibre`, both ending with `${SITE_URL}/dashboard`. Verify `npx tsc --noEmit` passes, and a unit test of the pure line-builder covers ordering, the cap of 5, skipping 0 and the rest's count and sum.
 - [x] 4.4 Category creation (design D7):
   - same name → `bot.categoriaExiste`;
   - similar name without a matching pending confirmation → `ask` with the `crear_categoria` question and `bot.categoriaParecida`;
@@ -117,8 +117,10 @@
 
 ## 7. Production (after `0028` and the deploy)
 
-- [ ] 7.1 👤 Deploy. Then, with Brian's confirmation, mark him VIP through the MCP: `update usuarios set vip = true where email = 'brianrebadj@gmail.com'`. Verify with a read-only query.
-- [ ] 7.2 👤 Round by WhatsApp. Check each of these and record anything that fails here:
+- [x] 7.1 👤 Deploy. Then, with Brian's confirmation, mark him VIP through the MCP: `update usuarios set vip = true where email = 'brianrebadj@gmail.com'`. Verify with a read-only query.
+
+  Done 2026-10-01 after Brian's deploy: `vip` true, `cargas_confirmadas` 0, `modo_confirmacion` `auto`.
+- [x] 7.2 👤 Round by WhatsApp. Check each of these and record anything that fails here:
   - "café 3" arrives as text with Undo, and Undo deletes it;
   - "súper 15" names Súper and Comida and shows "Llevás X de 300 € este mes" with the same figures and color as the dashboard bar;
   - "nafta 45" then "no, era 40" then "borrá eso";
@@ -127,11 +129,23 @@
   - "creá la categoría Mascota" (ask) then "sí", and it shows on the web;
   - a fixed charge with another amount says "solo este mes";
   - after the round, `mensajes` holds the exchange and `cargas_confirmadas` rose.
-- [ ] 7.3 Through the MCP and with Brian's confirmation, clean up the test rows of 7.2 (the category and any leftover expenses). Verify with a read-only query.
+
+  Findings (2026-10-01):
+  - "¿cómo vengo?" listed 2.878 € and five categories adding up to 2.556 €: the other 322 € were the categories past the top 5. Fixed in code with a `consultaResto` line ("3 categorías más: 322 €"); spec, design and 4.3 updated. Needs a redeploy.
+  - Passed: café with Undo; súper with the budget line (91,02 € de 300 € 🟢); "como vengo" and "y el margen libre"; nafta 45 → "no, era 40" → "borra eso"; "gaste 50 en comida" → "ósea era ocio" → "bórralo". `mensajes` holds 14 incoming and 14 outgoing; `cargas_confirmadas` went 0 → 4.
+  - "crea categoría mascota" created Mascota without asking: correct, since the account had no similar category (the checklist assumed a Mascotas). The "sí" that followed was `no_entendido`, as specified. The similar-name question was not exercised.
+  - "Prime 9€" (definition 7 €, due day 2) → "Anotado ✅ Prime · 9 € en Suscripciones.\n📌 Solo cambia este mes: Prime sigue en 7 €.", sent as text. The definition stayed at 7. At Brian's request the test was undone through the MCP: the charge is back to pending at 7 € on 2/10, without `canal` / `mensaje_id_externo`, and the channel's last load cleared.
+  - "Elimina categoría mascota" → `noEntendi`: deleting a category by chat is out of scope.
+  - "Gaste 50" → category question → "Comida" → "Anotado ✅ Comida · 50 €. Llevás 126,02 € de 300 € este mes 🟢"; the pending question was cleared, the channel's last load is that row and `cargas_confirmadas` reached 6. The category list included Valencia, which ends in the cycle in progress: correct.
+  - "Que me recomendas hacer con mi dinero ?" → `noEntendi`: advisor mode is block 13.
+  - The exchange is written up in `docs/bot-conversacion-ejemplo.md` for the website.
+- [x] 7.3 Through the MCP and with Brian's confirmation, clean up the test rows of 7.2 (the category and any leftover expenses). Verify with a read-only query.
+
+  Done 2026-10-01: "Super 15" soft-deleted; Mascota (no rows, definitions or budgets) deleted. Café, Nafta and Comida 50 were already deleted from the chat. Read back: no Mascota; the only active chat load since 30/9 is "Supermercado 20,38", which is not from this round and was left alone.
 
 ## 8. Documentation
 
-- [ ] 8.1 Update:
+- [x] 8.1 Update:
   - `ROADMAP.md`: tick the block 5 items and close Fase 1;
   - `ARCHITECTURE.md` §3 (discrepancy decision, Undo by row, last load per channel) and §8 (`canales.ultima_carga_id`, `mensajes.mensaje_id_externo`);
   - `CLAUDE.md` *Estado actual*;
