@@ -12,6 +12,7 @@ import { LandingFeatures } from '@/components/organisms/landing-features'
 import { LandingPace } from '@/components/organisms/landing-pace'
 import { LandingStory } from '@/components/organisms/landing-story'
 import { useDarkTheme } from '@/components/theme/dynamic-background'
+import { BlurTitle } from '@/components/ui/blur-title'
 import { DotField } from '@/components/ui/dot-field'
 import { RevealText } from '@/components/ui/reveal-text'
 import { RevealTitle } from '@/components/ui/reveal-title'
@@ -293,9 +294,10 @@ function Examples() {
 function Closing() {
   const t = useTranslations('inicio')
   return (
-    <section className="flex flex-col items-center px-gutter py-28 text-center md:py-40">
-      <RevealTitle
+    <section className="flex flex-col items-center overflow-x-clip px-gutter py-28 text-center md:py-40">
+      <BlurTitle
         text={t('cierreTitulo')}
+        scatter={t('cierreTituloEscapa')}
         className="max-w-3xl text-balance font-display text-[36px] font-extrabold leading-[1.02] tracking-[-0.04em] text-foreground md:text-[64px]"
       />
       <RevealText text={t('cierreTexto')} delay={0.4} className="mx-auto mt-5 max-w-md text-pretty text-body-lg text-muted-foreground" />

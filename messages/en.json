@@ -268,7 +268,8 @@
     "presupuestoTexto": "Cap food or going out and see how much you have left per week.",
     "presupuestoComida": "Food",
     "presupuestoOcio": "Leisure",
-    "cierreTitulo": "Start seeing your month clearly.",
+    "cierreTitulo": "Take back control\nof your spending.",
+    "cierreTituloEscapa": "spending",
     "cierreTexto": "Create your account with your e-mail.",
     "pie": "Made by <nombre>Brian Sittmann</nombre>"
   },

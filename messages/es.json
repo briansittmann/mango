@@ -268,7 +268,8 @@
     "presupuestoTexto": "Ponle un tope a comida u ocio y mira cuánto te queda por semana.",
     "presupuestoComida": "Comida",
     "presupuestoOcio": "Ocio",
-    "cierreTitulo": "Empieza a ver tu mes con claridad.",
+    "cierreTitulo": "Recupera el control\nde tus gastos.",
+    "cierreTituloEscapa": "gastos",
     "cierreTexto": "Crea tu cuenta con tu correo.",
     "pie": "Hecho por <nombre>Brian Sittmann</nombre>"
   },
