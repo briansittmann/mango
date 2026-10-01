@@ -109,6 +109,7 @@ function FixedVisual() {
 }
 
 function ProjectionVisual() {
+  const t = useTranslations('inicio')
   const locale = useLocale()
   const [ref, inView] = useInView<HTMLDivElement>()
   const month = new Intl.DateTimeFormat(locale, { month: 'short', timeZone: 'UTC' })
@@ -116,7 +117,9 @@ function ProjectionVisual() {
   // From a floor below the smallest value, so the months' differences show.
   const floor = Math.min(...PROJECTION) * 0.6
   return (
-    <div ref={ref} className="flex h-44 items-end gap-2.5">
+    <div ref={ref}>
+      <p className="mb-3 text-label-ui text-muted-foreground">{t('proyeccionLeyenda')}</p>
+      <div className="flex h-44 items-end gap-2.5">
       {PROJECTION.map((value, index) => {
         const date = new Date(PROJECTION_START)
         date.setUTCMonth(date.getUTCMonth() + index)
@@ -137,6 +140,7 @@ function ProjectionVisual() {
           </div>
         )
       })}
+      </div>
     </div>
   )
 }

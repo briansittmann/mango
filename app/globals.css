@@ -601,6 +601,41 @@ body {
   --landing-pulse: color-mix(in oklab, var(--brand) 55%, transparent);
 }
 
+/* A still of the glow, in the server's HTML: the first frame already has the stage instead of a
+   flat black shell. It crossfades out as the live bands mount and fade in over it. Sized `100lvh`
+   like the canvases, so a phone's toolbar collapsing doesn't resize it mid-scroll. */
+.landing::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto;
+  height: 100lvh;
+  z-index: -11;
+  pointer-events: none;
+  background:
+    radial-gradient(70% 55% at 50% 118%, rgba(132, 204, 22, 0.14), transparent 70%),
+    linear-gradient(112deg, transparent 40%, rgba(132, 204, 22, 0.05) 48%, rgba(132, 204, 22, 0.13) 53%, rgba(132, 204, 22, 0.05) 58%, transparent 66%);
+  transition: opacity 1000ms ease-out;
+}
+:root:has([data-dynamic-background]) .landing::before {
+  opacity: 0;
+}
+
+/* Until the page hydrates, the pieces GSAP will fly in wait hidden (as in `login-form.tsx`): the
+   server's HTML would otherwise paint them still, and they'd vanish to enter again. `data-entered`
+   is set after the children have created their tweens, which already hold the start values. */
+@media (prefers-reduced-motion: no-preference) {
+  .landing:not([data-entered]) :is(.nav-logo, .nav-wordmark, .nav-locales, .nav-entrar, .hero-word, .hero-copy, [data-hero-actions] > *) {
+    opacity: 0;
+  }
+  /* The story's first caption peeks under the hero on a wide screen: it waits until the hero has
+     landed (`HERO_SETTLED_MS`), then arrives with its usual motion. */
+  .landing:not([data-hero-settled]) .landing-caption {
+    opacity: 0;
+    translate: 0 14px;
+    filter: blur(8px);
+  }
+}
+
 .landing-dots {
   mask-image: radial-gradient(130% 95% at 50% 0%, black 35%, transparent 100%);
 }
@@ -621,6 +656,60 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* Nav: past the hero the same slot reads "Empezar" in the primary colour. The two labels share one
+   grid cell, so the pill is as wide as the longer one and never reflows; the leaving label rises
+   out and the arriving one rises in. */
+.nav-entrar {
+  transition: background-color 300ms var(--ease-out), color 300ms var(--ease-out), scale 200ms var(--ease-spring);
+  > span {
+    transition: opacity 250ms var(--ease-out), translate 350ms var(--ease-out);
+  }
+  .nav-cta {
+    opacity: 0;
+    translate: 0 0.7em;
+  }
+  &[data-cta] {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+    .nav-shine {
+      opacity: 0;
+      translate: 0 -0.7em;
+    }
+    .nav-cta {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+}
+
+/* Between the stage sections the glow fades down to the plain shell and back up, so the examples,
+   the chart and the questions read on a calm ground while the hero, the bento and the closing keep
+   the green. */
+.landing-calm {
+  position: relative;
+  background: linear-gradient(to bottom, transparent, var(--background) 12rem calc(100% - 12rem), transparent);
+}
+
+/* FAQ: the answer unfolds from its question (height is the one property an accordion has to
+   animate) and comes into focus as it does. */
+.faq-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 250ms var(--ease-out);
+  p {
+    opacity: 0;
+    translate: 0 -4px;
+    transition: opacity 200ms var(--ease-out), translate 250ms var(--ease-out);
+  }
+  &[data-open='true'] {
+    grid-template-rows: 1fr;
+    p {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
 }
 
 .landing-cta {
@@ -993,7 +1082,11 @@ body {
   .landing-wire,
   .landing-bar,
   .landing-entry,
-  .landing-cta {
+  .landing-cta,
+  .nav-entrar,
+  .nav-entrar > span,
+  .faq-panel,
+  .faq-panel p {
     transition: none !important;
   }
 }

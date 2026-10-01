@@ -215,7 +215,8 @@
     "altImagen": "Logo de Mango con la frase «Tus finanzas, a un mensaje de distancia»",
     "tituloDemo": "Demo",
     "tituloLogin": "Entrar",
-    "tituloDashboard": "Tu mes"
+    "tituloDashboard": "Tu mes",
+    "tituloPrivacidad": "Privacidad"
   },
   "inicio": {
     "titulo": "Mango",
@@ -235,12 +236,12 @@
     "historiaDescripcion": "Vista previa del panel de Mango con datos de ejemplo. Tres mensajes de WhatsApp anotan gastos y el margen libre baja de 864 € a 783,20 €.",
     "historiaMensajes": [
       { "texto": "zapatillas 59,90", "descripcion": "Zapatillas", "categoria": "compras", "monto": 59.9, "respuesta": "Anotado ✅ Zapatillas · 59,90 € en Compras." },
-      { "texto": "taxi 12,50", "descripcion": "Taxi", "categoria": "transporte", "monto": 12.5, "respuesta": "Anotado ✅ Taxi · 12,50 € en Transporte. Llevás 85 € de 100 € este mes 🟡" },
+      { "texto": "taxi 12,50", "descripcion": "Taxi", "categoria": "transporte", "monto": 12.5, "respuesta": "Anotado ✅ Taxi · 12,50 € en Transporte. Llevas 85 € de 100 € este mes 🟡" },
       { "texto": "farmacia 8,40", "descripcion": "Farmacia", "categoria": "salud", "monto": 8.4, "respuesta": "Anotado ✅ Farmacia · 8,40 € en Salud." }
     ],
     "escribeTitulo": "Escribe como hablas.",
     "escribeTexto": "El importe y en qué fue. Mango se encarga del resto: la categoría, el día y si era un fijo que ya esperaba.",
-    "ejemplos": ["súper 50 lucas", "café 3,5 ayer", "alquiler 820", "cobré 2100", "birra con los pibes 24€", "gasolina 60", "netflix 13,99", "farmacia 8,40", "ahorré 150", "taxi 12,50", "regalo mamá 35", "gimnasio 40"],
+    "ejemplos": ["súper 50", "café 3,5 ayer", "alquiler 820", "cobré 2100", "cena con amigos 24", "gasolina 60", "netflix 13,99", "farmacia 8,40", "ahorré 150", "taxi 12,50", "regalo mamá 35", "gimnasio 40"],
     "ritmoTitulo": "Ves el ritmo antes de pasarte.",
     "ritmoTexto": "Cada categoría con presupuesto te dice cuánto te queda por semana. Te enteras el día 10, no cuando llega el extracto.",
     "ritmoGrafico": "Gasto en comida durante el mes, en euros",
@@ -263,6 +264,7 @@
     "fijosDia": "Día {dia}",
     "fijosCuota": "{hechas} de {total}",
     "proyeccionTitulo": "Seis meses por delante",
+    "proyeccionLeyenda": "Margen libre por mes",
     "proyeccionTexto": "Mira cómo quedan los próximos meses con tus fijos y presupuestos, y planifica hoy.",
     "presupuestoTitulo": "Presupuestos por categoría",
     "presupuestoTexto": "Ponle un tope a comida u ocio y mira cuánto te queda por semana.",
@@ -270,8 +272,33 @@
     "presupuestoOcio": "Ocio",
     "cierreTitulo": "Recupera el control\nde tus gastos.",
     "cierreTituloEscapa": "gastos",
-    "cierreTexto": "Crea tu cuenta con tu correo.",
+    "cierreTexto": "Gratis. Solo necesitas tu correo.",
+    "faqTitulo": "Preguntas frecuentes",
+    "faq": [
+      { "pregunta": "¿Mango se conecta a mi banco?", "respuesta": "No. Tú anotas lo que gastas, por WhatsApp o desde la web. Mango no pide claves ni ve tus cuentas." },
+      { "pregunta": "¿Quién lee mis mensajes?", "respuesta": "Nadie. Un modelo de lenguaje interpreta cada mensaje para sacar el importe y la categoría, y el gasto queda en tu cuenta. Solo tú lo ves." },
+      { "pregunta": "¿Necesito WhatsApp?", "respuesta": "No. Puedes cargar y editar todo desde la web. WhatsApp es la forma rápida de anotar sobre la marcha." },
+      { "pregunta": "¿Cuánto cuesta?", "respuesta": "Nada. Mango es gratis; si algún día hay un plan de pago, te avisaremos antes." },
+      { "pregunta": "¿Funciona en mi país?", "respuesta": "Sí. Mango está en español e inglés y funciona desde cualquier país. Hoy los importes se muestran en euros o en pesos argentinos; más monedas están en camino." }
+    ],
+    "pieDerechos": "© 2026 Mango",
+    "pieEnlaces": "Enlaces",
+    "piePrivacidad": "Privacidad",
     "pie": "Hecho por <nombre>Brian Sittmann</nombre>"
+  },
+  "privacidad": {
+    "titulo": "Privacidad",
+    "intro": "Mango guarda lo mínimo para funcionar y no vende ni comparte tus datos con fines publicitarios.",
+    "actualizado": "Última actualización: 1 de octubre de 2026",
+    "volver": "Volver al inicio",
+    "secciones": [
+      { "titulo": "Qué guardamos", "texto": "Tu correo, para que entres a tu cuenta. Si vinculas WhatsApp, tu número de teléfono. Y lo que cargas: gastos, ingresos, ahorro, categorías, presupuestos y gastos fijos." },
+      { "titulo": "Tus mensajes", "texto": "Cuando escribes al bot, el texto del mensaje se envía a un modelo de lenguaje (Gemini, de Google, en una cuenta de pago cuyo contenido Google no usa para entrenar) para extraer el importe, la descripción y la categoría. Mango guarda el movimiento que resulta. El texto del mensaje no se guarda, salvo en cuentas con historial de conversación activado, donde se conserva 30 días para que el bot recuerde el contexto reciente." },
+      { "titulo": "Sin acceso a tu banco", "texto": "Mango no se conecta a tu banco ni pide claves. Solo sabe lo que tú anotas." },
+      { "titulo": "Dónde viven los datos", "texto": "La base de datos está en Supabase y la web en Vercel. Los correos con el código de acceso salen por Resend y los mensajes de WhatsApp pasan por la API oficial de Meta. Ninguno recibe tus datos para otra cosa que prestar ese servicio." },
+      { "titulo": "Cookies", "texto": "Solo las necesarias: la de tu sesión y la que recuerda tu idioma. Sin cookies de publicidad ni de seguimiento." },
+      { "titulo": "Tus derechos", "texto": "Puedes pedir una copia de tus datos o que se borre tu cuenta con todo lo que contiene. Escribe a {correo} y se hace en pocos días." }
+    ]
   },
   "acceso": {
     "titulo": "Entrar a Mango",

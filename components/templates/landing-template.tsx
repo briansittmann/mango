@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState, useTransition, type CSSProperties, type PointerEvent } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, useTransition, type CSSProperties, type PointerEvent } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { SplitText } from 'gsap/SplitText'
-import { ArrowRight, CheckCheck } from 'lucide-react'
+import { ArrowRight, CheckCheck, ChevronDown } from 'lucide-react'
 import { LandingFeatures } from '@/components/organisms/landing-features'
 import { LandingPace } from '@/components/organisms/landing-pace'
 import { LandingStory } from '@/components/organisms/landing-story'
@@ -26,6 +26,8 @@ type LandingTemplateProps = {
 }
 
 const NBSP = '\u00A0'
+// When the hero's buttons have sprung in (`Actions` delay plus duration): what follows waits for it.
+const HERO_SETTLED_MS = 2000
 
 const LOCALES = [
   { value: 'es', label: 'ES' },
@@ -89,7 +91,8 @@ function spotlight(event: PointerEvent<HTMLElement>) {
   event.currentTarget.style.setProperty('--y', `${event.clientY - top}px`)
 }
 
-function Actions({ delay = 0, className }: { delay?: number; className?: string }) {
+// `hero` marks the hero's pair: once it scrolls out, the nav's "Entrar" turns into "Empezar".
+function Actions({ delay = 0, className, hero }: { delay?: number; className?: string; hero?: boolean }) {
   const t = useTranslations('inicio')
   const root = useRef<HTMLDivElement>(null)
   const demo = t('verDemo')
@@ -113,7 +116,7 @@ function Actions({ delay = 0, className }: { delay?: number; className?: string 
   }, [delay])
 
   return (
-    <div ref={root} className={cn('flex flex-wrap items-center justify-center gap-3', className)}>
+    <div ref={root} data-hero-actions={hero || undefined} className={cn('flex flex-wrap items-center justify-center gap-3', className)}>
       <Link
         href="/login"
         onPointerDown={ripple}
@@ -146,6 +149,7 @@ function Nav({ changeLanguage }: LandingTemplateProps) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [scrolled, setScrolled] = useState(false)
+  const [pastHero, setPastHero] = useState(false)
   const header = useRef<HTMLElement>(null)
 
   // Each piece arrives its own way: the mango rolls in, the wordmark rises letter by letter, the
@@ -172,6 +176,15 @@ function Nav({ changeLanguage }: LandingTemplateProps) {
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // While the hero's buttons are above the viewport, the bar carries the primary action itself.
+  useEffect(() => {
+    const actions = document.querySelector('[data-hero-actions]')
+    if (!actions) return
+    const observer = new IntersectionObserver(([entry]) => setPastHero(!entry.isIntersecting && entry.boundingClientRect.top < 0))
+    observer.observe(actions)
+    return () => observer.disconnect()
   }, [])
 
   function pick(next: 'es' | 'en') {
@@ -215,8 +228,18 @@ function Nav({ changeLanguage }: LandingTemplateProps) {
               </button>
             ))}
           </div>
-          <Link href="/login" onPointerDown={ripple} className="nav-entrar pressable relative overflow-hidden rounded-full px-3 py-2 text-body-md font-medium text-foreground">
-            <span className="nav-shine">{t('entrar')}</span>
+          <Link
+            href="/login"
+            onPointerDown={ripple}
+            data-cta={pastHero || undefined}
+            className="nav-entrar pressable relative grid overflow-hidden rounded-full px-3.5 py-2 text-center text-body-md font-medium text-foreground"
+          >
+            <span className="nav-shine col-start-1 row-start-1" aria-hidden={pastHero}>
+              {t('entrar')}
+            </span>
+            <span className="nav-cta col-start-1 row-start-1" aria-hidden={!pastHero}>
+              {t('empezar')}
+            </span>
           </Link>
         </div>
       </nav>
@@ -250,13 +273,15 @@ function Hero() {
   }, [])
 
   return (
-    <section ref={root} className="relative flex min-h-[calc(100svh-4rem)] flex-col items-center justify-center px-gutter pb-10 pt-28 text-center">
+    // On a wide screen the hero stops short of the fold, so the story's caption and the top of the
+    // phone show under it: the product is in view before anyone scrolls.
+    <section ref={root} className="relative flex min-h-[calc(100svh-4rem)] flex-col items-center justify-center px-gutter pb-10 pt-28 text-center lg:min-h-[78svh]">
       <h1 className="max-w-6xl font-display text-[44px] font-extrabold leading-[0.98] tracking-[-0.045em] text-foreground sm:text-[64px] lg:text-[80px]">
         <SplitWords text={t('heroTitulo1')} />
         <SplitWords text={t('heroTitulo2')} />
       </h1>
-      <RevealText text={t('heroTexto')} delay={0.55} className="mx-auto mt-7 max-w-xl text-pretty text-body-lg text-muted-foreground md:text-[18px] md:leading-7" />
-      <Actions delay={0.9} className="mt-9" />
+      <RevealText text={t('heroTexto')} delay={0.55} className="hero-copy mx-auto mt-7 max-w-xl text-pretty text-body-lg text-muted-foreground md:text-[18px] md:leading-7" />
+      <Actions delay={0.9} className="mt-9" hero />
     </section>
   )
 }
@@ -291,6 +316,49 @@ function Examples() {
   )
 }
 
+function FaqItem({ question, answer }: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
+  return (
+    <li className="border-t border-border/70 first:border-t-0">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between gap-4 py-5 text-start focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+      >
+        <span className="text-body-lg font-medium text-foreground">{question}</span>
+        <ChevronDown className={cn('size-5 shrink-0 text-muted-foreground transition-transform duration-300 ease-out', open && 'rotate-180')} aria-hidden />
+      </button>
+      <div id={id} className="faq-panel" data-open={open}>
+        <div className="min-h-0 overflow-hidden">
+          <p className="max-w-xl pb-5 text-pretty text-body-md text-muted-foreground">{answer}</p>
+        </div>
+      </div>
+    </li>
+  )
+}
+
+function Faq() {
+  const t = useTranslations('inicio')
+  const items = t.raw('faq') as { pregunta: string; respuesta: string }[]
+  return (
+    <section aria-labelledby="landing-faq" className="mx-auto w-full max-w-2xl px-gutter py-24 md:py-32">
+      <RevealTitle
+        id="landing-faq"
+        text={t('faqTitulo')}
+        className="text-balance text-center font-display text-[32px] font-bold leading-[1.05] tracking-[-0.035em] text-foreground md:text-[52px]"
+      />
+      <ul className="liquid-glass mt-10 rounded-[28px] px-6 md:mt-12 md:px-8">
+        {items.map((item) => (
+          <FaqItem key={item.pregunta} question={item.pregunta} answer={item.respuesta} />
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 function Closing() {
   const t = useTranslations('inicio')
   return (
@@ -311,6 +379,17 @@ export function LandingTemplate({ changeLanguage }: LandingTemplateProps) {
   const locale = useLocale()
   const dark = useDarkTheme()
   const dots = dark ? DOTS.dark : DOTS.light
+  const root = useRef<HTMLDivElement>(null)
+
+  // Runs after the nav's and the hero's own layout effects, so their tweens already hold every
+  // piece at its start when the CSS stops hiding them (`.landing:not([data-entered])`). What sits
+  // under the hero waits until its buttons have settled.
+  useLayoutEffect(() => {
+    const node = root.current
+    node?.setAttribute('data-entered', '')
+    const timer = window.setTimeout(() => node?.setAttribute('data-hero-settled', ''), HERO_SETTLED_MS)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   // Another language re-wraps every heading: the pins below them start somewhere else now.
   useEffect(() => {
@@ -318,7 +397,7 @@ export function LandingTemplate({ changeLanguage }: LandingTemplateProps) {
   }, [locale])
 
   return (
-    <div className="landing vivid-background relative flex-1">
+    <div ref={root} className="landing vivid-background relative flex-1">
       <DotField
         gradientFrom={dots.from}
         gradientTo={dots.to}
@@ -329,22 +408,41 @@ export function LandingTemplate({ changeLanguage }: LandingTemplateProps) {
       <main>
         <Hero />
         <LandingStory />
-        <Examples />
-        <LandingPace />
+        {/* The glow dims between the stage sections, so the examples and the chart sit on a calm ground. */}
+        <div className="landing-calm">
+          <Examples />
+          <LandingPace />
+        </div>
         <LandingFeatures />
+        <div className="landing-calm">
+          <Faq />
+        </div>
         <Closing />
       </main>
-      <footer className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-gutter pb-10 text-center text-body-sm text-muted-foreground">
-        <p>{t('descripcion')}</p>
-        <p>
-          {t.rich('pie', {
-            nombre: (chunks) => (
-              <a href="https://briansittmann.dev" target="_blank" rel="noopener" className="rounded-sm transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                <ScrambledText text={String(chunks)} scrambleChars="01" duration={3.8} speed={1.2} />
-              </a>
-            ),
-          })}
-        </p>
+      <footer className="mx-auto w-full max-w-6xl px-gutter pb-10">
+        <div className="flex flex-col items-center gap-5 border-t border-border/60 pt-8 text-body-sm text-muted-foreground md:flex-row md:justify-between">
+          <p>{t('pieDerechos')}</p>
+          <nav aria-label={t('pieEnlaces')} className="flex items-center gap-6">
+            {[
+              { href: '/demo', label: t('demo') },
+              { href: '/login', label: t('entrar') },
+              { href: '/privacidad', label: t('piePrivacidad') },
+            ].map(({ href, label }) => (
+              <Link key={href} href={href} className="rounded-sm transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                {label}
+              </Link>
+            ))}
+          </nav>
+          <p>
+            {t.rich('pie', {
+              nombre: (chunks) => (
+                <a href="https://briansittmann.dev" target="_blank" rel="noopener" className="rounded-sm transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                  <ScrambledText text={String(chunks)} duration={1.6} speed={0.8} />
+                </a>
+              ),
+            })}
+          </p>
+        </div>
       </footer>
     </div>
   )

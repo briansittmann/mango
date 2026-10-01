@@ -7,6 +7,8 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 
 **Cambio de modelo (24/9):** Mango deja de tener una sola puerta de entrada. El dashboard ya permite cargar todo a mano, así que **cualquiera puede registrarse por la web** y usarlo sin bot. WhatsApp pasa a ser un canal opcional, por invitación, limitado por el cupo de Meta. Hay **dos onboardings** que terminan en la misma cuenta y el mismo dashboard.
 
+**Decisión (1/10):** WhatsApp va a estar **abierto a todas las cuentas**. La invitación es solo el freno técnico mientras se use el número de prueba de Meta (bloque 10 lo apaga con el número propio); la landing promete el bot para todos y no menciona invitaciones.
+
 ---
 
 # Fase 1 — uso personal

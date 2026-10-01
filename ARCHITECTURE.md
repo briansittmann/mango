@@ -318,6 +318,8 @@ Mango tiene **dos entradas**: el **registro web, abierto a cualquiera**, y **Wha
 
 **Hoy** (número de prueba, invitación obligatoria): WhatsApp es para **cinco personas** (justo el tope del número de prueba de Meta), y pueden llegar por cualquiera de las dos puertas: arrancando por chat, o registrándose en la web e ingresando su código en el onboarding. **Todos los demás** hacen el onboarding web, siguen sin WhatsApp y manejan sus finanzas por la web.
 
+> **Decisión (1/10/2026):** el destino es **WhatsApp abierto a todas las cuentas**. La invitación es un freno técnico del número de prueba, no parte del producto: la landing promete el bot para todos y no la menciona, y el bloque 10 de `ROADMAP.md` la apaga con el número propio.
+
 > **Decisión (sept 2026):** reemplaza a "El bot es la puerta de entrada", que decía: la cuenta se crea **desde WhatsApp**, no desde la web; al primer mensaje, el bot da de alta al usuario **solo con el número de teléfono** — sin mail, sin contraseña, sin formulario —, porque es el momento que vende el producto: mandás un mensaje y ya quedó registrado el gasto. Ese momento sigue existiendo en el onboarding de WhatsApp; lo que cambia es que deja de ser la única puerta. Motivo: el dashboard ya permite cargar todo a mano, y el techo de 5 destinatarios es de Meta, no de Mango. Con el bot como única entrada, la app no podía crecer hasta tener número propio.
 
 #### Onboarding web (registro abierto)

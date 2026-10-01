@@ -24,20 +24,11 @@ function throwChar(char: Element, angle: number, distance: number, spin: number)
     .to(char, { x: 0, y: 0, rotation: 0, scale: 1, duration: SCATTER.duration, ease: 'back.out(1.6)' }, `+=${SCATTER.returnAfter}`)
 }
 
-// Every letter flies off in its own direction at once.
-function scatter(chars: Element[]) {
-  chars.forEach((char, index) =>
-    throwChar(char, Math.random() * Math.PI * 2, reach() * gsap.utils.random(0.45, 1), gsap.utils.random(-SCATTER.rotation, SCATTER.rotation)).delay(
-      index * 0.03,
-    ),
-  )
-}
-
 // Adapted from React Bits' Blur Text: a title drops in word by word from above, coming into focus
-// as it lands, the first time it scrolls into view. With `scatter`, that word's letters then break
-// loose and come back (React Bits Pro's Text Scatter); from then on, a letter the mouse hits flies
-// the way the mouse was moving, as far as it was going fast, and comes back. A line break in `text`
-// breaks the title there.
+// as it lands, the first time it scrolls into view. With `scatter`, once the title has landed a
+// letter of that word the mouse hits flies the way the mouse was moving, as far as it was going
+// fast, and comes back (React Bits Pro's Text Scatter). Only on hover: flying on its own, the word
+// broke apart right over the call to action. A line break in `text` breaks the title there.
 export function BlurTitle({ text, scatter: word, id, className }: { text: string; scatter?: string; id?: string; className?: string }) {
   const root = useRef<HTMLHeadingElement>(null)
 
@@ -50,10 +41,6 @@ export function BlurTitle({ text, scatter: word, id, className }: { text: string
       let last = { x: 0, y: 0, t: 0 }
       let velocity = { x: 0, y: 0 }
 
-      const play = () => {
-        entered = true
-        scatter(chars)
-      }
       const onPointerMove = (event: PointerEvent) => {
         const dt = Math.max(1, event.timeStamp - last.t)
         // Smoothed, so one jittery event doesn't decide the direction.
@@ -88,7 +75,9 @@ export function BlurTitle({ text, scatter: word, id, className }: { text: string
             ],
             stagger: 0.2,
             clearProps: 'filter',
-            onComplete: () => void gsap.delayedCall(0.8, play),
+            onComplete: () => {
+              entered = true
+            },
             // Measured after the story and pace pins, whose spacers push this title down.
             scrollTrigger: { trigger: root.current, start: 'top 85%', once: true, refreshPriority: -1 },
           })

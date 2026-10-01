@@ -215,7 +215,8 @@
     "altImagen": "Mango logo with the line “Your finances, one message away”",
     "tituloDemo": "Demo",
     "tituloLogin": "Log in",
-    "tituloDashboard": "Your month"
+    "tituloDashboard": "Your month",
+    "tituloPrivacidad": "Privacy"
   },
   "inicio": {
     "titulo": "Mango",
@@ -263,6 +264,7 @@
     "fijosDia": "Day {dia}",
     "fijosCuota": "{hechas} of {total}",
     "proyeccionTitulo": "Six months ahead",
+    "proyeccionLeyenda": "Free margin per month",
     "proyeccionTexto": "See how the coming months look with your fixed costs and budgets, and plan today.",
     "presupuestoTitulo": "Budgets per category",
     "presupuestoTexto": "Cap food or going out and see how much you have left per week.",
@@ -270,8 +272,33 @@
     "presupuestoOcio": "Leisure",
     "cierreTitulo": "Take back control\nof your spending.",
     "cierreTituloEscapa": "spending",
-    "cierreTexto": "Create your account with your e-mail.",
+    "cierreTexto": "Free. All you need is your e-mail.",
+    "faqTitulo": "Questions",
+    "faq": [
+      { "pregunta": "Does Mango connect to my bank?", "respuesta": "No. You log what you spend, on WhatsApp or on the web. Mango never asks for bank credentials or sees your accounts." },
+      { "pregunta": "Who reads my messages?", "respuesta": "No one. A language model reads each message to pull out the amount and the category, and the expense lands in your account. Only you can see it." },
+      { "pregunta": "Do I need WhatsApp?", "respuesta": "No. You can log and edit everything on the web. WhatsApp is the quick way to jot things down on the go." },
+      { "pregunta": "How much does it cost?", "respuesta": "Nothing. Mango is free; if a paid plan ever comes, you'll hear about it first." },
+      { "pregunta": "Does it work in my country?", "respuesta": "Yes. Mango is in Spanish and English and works from anywhere. Amounts are shown in euros or Argentine pesos for now; more currencies are on the way." }
+    ],
+    "pieDerechos": "© 2026 Mango",
+    "pieEnlaces": "Links",
+    "piePrivacidad": "Privacy",
     "pie": "Made by <nombre>Brian Sittmann</nombre>"
+  },
+  "privacidad": {
+    "titulo": "Privacy",
+    "intro": "Mango stores the minimum it needs to work and never sells or shares your data for advertising.",
+    "actualizado": "Last updated: October 1, 2026",
+    "volver": "Back to home",
+    "secciones": [
+      { "titulo": "What we store", "texto": "Your e-mail, so you can sign in. If you link WhatsApp, your phone number. And what you log: expenses, income, savings, categories, budgets and fixed costs." },
+      { "titulo": "Your messages", "texto": "When you text the bot, the message is sent to a language model (Google's Gemini, on a paid account whose content Google does not use for training) to extract the amount, the description and the category. Mango stores the resulting entry. The message text is not kept, except on accounts with conversation history enabled, where it is kept for 30 days so the bot remembers recent context." },
+      { "titulo": "No access to your bank", "texto": "Mango does not connect to your bank or ask for credentials. It only knows what you log." },
+      { "titulo": "Where the data lives", "texto": "The database runs on Supabase and the website on Vercel. Sign-in codes are sent through Resend and WhatsApp messages go through Meta's official API. None of them receive your data for anything other than providing that service." },
+      { "titulo": "Cookies", "texto": "Only the necessary ones: your session and the one that remembers your language. No advertising or tracking cookies." },
+      { "titulo": "Your rights", "texto": "You can ask for a copy of your data or have your account deleted with everything in it. Write to {correo} and it is done within a few days." }
+    ]
   },
   "acceso": {
     "titulo": "Log in to Mango",
