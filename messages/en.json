@@ -53,7 +53,25 @@
     "espanol": "Spanish",
     "ingles": "English",
     "cerrarSesion": "Log out",
-    "cuenta": "Account"
+    "cuenta": "Account",
+    "descargarCsv": "Download month as CSV",
+    "csvListo": "Downloaded",
+    "csvSigla": "CSV",
+    "csv": {
+      "fecha": "Date",
+      "tipo": "Type",
+      "categoria": "Category",
+      "descripcion": "Description",
+      "monto": "Amount",
+      "moneda": "Currency",
+      "estado": "Status",
+      "gasto": "Expense",
+      "ingreso": "Income",
+      "ahorro": "Savings",
+      "cobrado": "Charged",
+      "pendiente": "Pending",
+      "proyectado": "Projected"
+    }
   },
   "graficos": {
     "total": "Total",

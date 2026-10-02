@@ -1,7 +1,7 @@
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ChevronRight, Loader2, LogOut, Moon, Sun, SunMoon, UserRound, X } from 'lucide-react'
+import { Check, ChevronRight, Download, Loader2, LogOut, Moon, Sun, SunMoon, UserRound, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/atoms/avatar'
 import { useThemeChoice } from '@/components/theme/use-theme-choice'
@@ -14,6 +14,8 @@ type AccountMenuProps = {
   onClose: () => void
   /** Opens the account sheet (D16); absent when the page supplies no profile operations, so the row is disabled. */
   onOpenAccount?: () => void
+  /** Downloads the displayed cycle as CSV; absent when the page has nothing to export. */
+  onDownloadCsv?: () => void
 }
 
 type BackgroundChoice = 'dynamic' | 'solid'
@@ -45,7 +47,7 @@ const thumbClassName =
 const segmentClassName =
   'relative flex items-center justify-center rounded-[18px] transition-[color,scale] duration-200 active:scale-95 focus-visible:outline-2 focus-visible:-outline-offset-2 disabled:pointer-events-none'
 
-export function AccountMenu({ user, actions, open, onClose, onOpenAccount }: AccountMenuProps) {
+export function AccountMenu({ user, actions, open, onClose, onOpenAccount, onDownloadCsv }: AccountMenuProps) {
   const t = useTranslations('menuCuenta')
   const locale = useLocale()
   const router = useRouter()
@@ -53,6 +55,19 @@ export function AccountMenu({ user, actions, open, onClose, onOpenAccount }: Acc
   const [mounted, setMounted] = useState(open)
   const [pendingLocale, setPendingLocale] = useState<string | null>(null)
   const [signingOut, setSigningOut] = useState(false)
+  const [downloaded, setDownloaded] = useState(false)
+
+  useEffect(() => {
+    if (!downloaded) return
+    const timeout = setTimeout(() => setDownloaded(false), 1800)
+    return () => clearTimeout(timeout)
+  }, [downloaded])
+
+  function handleDownload() {
+    if (downloaded || !onDownloadCsv) return
+    onDownloadCsv()
+    setDownloaded(true)
+  }
   // One implementation with the onboarding's floating pill (add-web-onboarding D13); dark when nothing is stored.
   const { theme, applyTheme } = useThemeChoice('dark')
   const [background, setBackground] = useState<BackgroundChoice>(() => {
@@ -186,6 +201,57 @@ export function AccountMenu({ user, actions, open, onClose, onOpenAccount }: Acc
             <UserRound aria-hidden className="size-5 text-muted-foreground" />
             <span className="flex-1">{t('cuenta')}</span>
             <ChevronRight aria-hidden className="size-4 text-muted-foreground" />
+          </button>
+          {/* The displayed cycle as CSV: the row tints brand and the arrow drops into a check once the file is out. */}
+          <button
+            type="button"
+            disabled={!onDownloadCsv}
+            aria-live="polite"
+            onClick={handleDownload}
+            className={cn(
+              'pressable group mt-2 flex min-h-row w-full items-center gap-3 overflow-hidden rounded-[18px] px-4 text-left text-body-lg transition-[background-color,color,box-shadow] duration-300 ease-out disabled:opacity-40 motion-reduce:transition-none',
+              downloaded
+                ? 'bg-brand/[0.14] text-brand-ink shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--brand)_35%,transparent)]'
+                : 'bg-foreground/[0.04] text-foreground hover:bg-foreground/[0.07]',
+            )}
+          >
+            <span className="relative grid size-5 shrink-0 place-items-center">
+              <Download
+                aria-hidden
+                className={cn(
+                  'absolute size-5 text-muted-foreground transition-[translate,opacity,scale] duration-300 ease-spring group-hover:translate-y-0.5 motion-reduce:transition-none',
+                  downloaded && 'translate-y-3 scale-50 opacity-0',
+                )}
+              />
+              <Check
+                aria-hidden
+                className={cn(
+                  'absolute size-5 text-brand-ink transition-[translate,opacity,scale] duration-500 ease-bounce motion-reduce:transition-none',
+                  downloaded ? 'translate-y-0 scale-100 opacity-100 delay-100' : '-translate-y-3 scale-50 opacity-0',
+                )}
+              />
+            </span>
+            <span className="relative flex-1">
+              <span className={cn('block transition-[translate,opacity] duration-300 ease-out motion-reduce:transition-none', downloaded && '-translate-y-2 opacity-0')}>
+                {t('descargarCsv')}
+              </span>
+              <span
+                className={cn(
+                  'absolute inset-0 block font-semibold transition-[translate,opacity] duration-300 ease-out motion-reduce:transition-none',
+                  downloaded ? 'translate-y-0 opacity-100 delay-75' : 'translate-y-2 opacity-0',
+                )}
+              >
+                {t('csvListo')}
+              </span>
+            </span>
+            <span
+              className={cn(
+                'rounded-full px-2 py-0.5 text-label-ui font-semibold uppercase tracking-wide transition-colors duration-300 motion-reduce:transition-none',
+                downloaded ? 'bg-brand/[0.18] text-brand-ink' : 'bg-foreground/[0.06] text-muted-foreground',
+              )}
+            >
+              {t('csvSigla')}
+            </span>
           </button>
         </div>
 

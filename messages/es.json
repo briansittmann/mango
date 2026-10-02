@@ -53,7 +53,25 @@
     "espanol": "Español",
     "ingles": "Inglés",
     "cerrarSesion": "Cerrar sesión",
-    "cuenta": "Cuenta"
+    "cuenta": "Cuenta",
+    "descargarCsv": "Descargar CSV del mes",
+    "csvListo": "Descargado",
+    "csvSigla": "CSV",
+    "csv": {
+      "fecha": "Fecha",
+      "tipo": "Tipo",
+      "categoria": "Categoría",
+      "descripcion": "Descripción",
+      "monto": "Monto",
+      "moneda": "Moneda",
+      "estado": "Estado",
+      "gasto": "Gasto",
+      "ingreso": "Ingreso",
+      "ahorro": "Ahorro",
+      "cobrado": "Cobrado",
+      "pendiente": "Pendiente",
+      "proyectado": "Proyectado"
+    }
   },
   "graficos": {
     "total": "Total",

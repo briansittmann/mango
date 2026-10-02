@@ -15,7 +15,7 @@ import { gsap } from 'gsap'
 import { Flip } from 'gsap/Flip'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
-import { useFormatter, useTranslations } from 'next-intl'
+import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { AmountFormatProvider, useAmountFormatter } from '@/components/atoms/amount-format'
 import { Avatar } from '@/components/atoms/avatar'
@@ -42,6 +42,7 @@ import { SummaryGroup } from '@/components/organisms/summary-group'
 import { UpcomingChargesCard } from '@/components/organisms/upcoming-charges-card'
 import { AnimatedAmount } from '@/components/ui/counter/animated-amount'
 import { AnimatedContent } from '@/components/ui/animated-content'
+import { buildCycleCsv, downloadCsv } from '@/lib/csv'
 import type { DashboardActions, DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
 import type { CategoryDraft, CategoryUpdateTarget } from '@/lib/data/categories'
 
@@ -150,6 +151,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
   const tCuenta = useTranslations('cuenta')
   const tResumen = useTranslations('resumen')
   const tMenu = useTranslations('menuCuenta')
+  const locale = useLocale()
   const tHojaGasto = useTranslations('hojaGasto')
   const tHojaCategoria = useTranslations('hojaCategoria')
   const tRecurrente = useTranslations('gastoRecurrente')
@@ -1527,6 +1529,26 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
         actions={actions}
         open={accountMenuOpen}
         onClose={() => setAccountMenuOpen(false)}
+        onDownloadCsv={() => {
+          const csv = buildCycleCsv(
+            data,
+            {
+              headers: {
+                date: tMenu('csv.fecha'),
+                kind: tMenu('csv.tipo'),
+                category: tMenu('csv.categoria'),
+                description: tMenu('csv.descripcion'),
+                amount: tMenu('csv.monto'),
+                currency: tMenu('csv.moneda'),
+                status: tMenu('csv.estado'),
+              },
+              kinds: { expense: tMenu('csv.gasto'), income: tMenu('csv.ingreso'), savings: tMenu('csv.ahorro') },
+              statuses: { charged: tMenu('csv.cobrado'), pending: tMenu('csv.pendiente'), projected: tMenu('csv.proyectado') },
+            },
+            locale,
+          )
+          downloadCsv(`mango-${data.cycle.month}.csv`, csv)
+        }}
         onOpenAccount={
           actions.profile
             ? () => {
