@@ -28,6 +28,7 @@ export function SupabaseOnboarding({ data }: { data: OnboardingData }) {
         create: (draft, cycle, scope) => unwrap(actions.createCategory(draft, cycle, scope)),
         update: (categoryId, draft, target) => unwrap(actions.updateCategory(categoryId, draft, target)),
         delete: (categoryId, reassignTo, target) => unwrap(actions.deleteCategory(categoryId, reassignTo, target)),
+        reorder: (categoryIds) => unwrap(actions.reorderCategories(categoryIds)),
       },
       recurring: {
         create: (target, draft) => unwrap(actions.createRecurring(target, draft)),

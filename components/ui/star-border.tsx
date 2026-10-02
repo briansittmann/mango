@@ -8,13 +8,16 @@ export function StarBorder({
   className,
   speed = '6s',
   thickness = 1,
+  color = 'var(--brand)',
 }: {
   children: ReactNode
   className?: string
   speed?: string
   thickness?: number
+  /** The glow's colour, any CSS colour value; the brand green by default. */
+  color?: string
 }) {
-  const glow = { background: 'radial-gradient(circle, var(--brand), transparent 10%)', animationDuration: speed }
+  const glow = { background: `radial-gradient(circle, ${color}, transparent 10%)`, animationDuration: speed }
   return (
     <div className={cn('relative overflow-hidden rounded-card', className)} style={{ padding: `${thickness}px 0` }}>
       <div aria-hidden style={glow} className="absolute -right-[250%] -bottom-[11px] h-6 w-[300%] animate-star-bottom rounded-full opacity-70 motion-reduce:hidden" />

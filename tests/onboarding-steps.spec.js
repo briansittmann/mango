@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test'
-import { body, expectStep, fillBasics, primary, progress } from './onboarding-helpers.js'
+import { body, expectStep, fillBasics, primary, progress, takeChip } from './onboarding-helpers.js'
 
 test.use({ viewport: { width: 390, height: 844 }, timezoneId: 'Europe/Dublin' })
 
@@ -36,7 +36,7 @@ test('seven steps forward, the progress line counts them and names them', async 
 
 test('back keeps what was stored', async ({ page }) => {
   await page.goto('/demo/onboarding?paso=3')
-  await page.getByRole('button', { name: 'Comida', exact: true }).click()
+  await takeChip(page, 'Comida')
   await expect(page.getByRole('list', { name: 'Categorías' })).toContainText('Comida')
 
   await primary(page).click()

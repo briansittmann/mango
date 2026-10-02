@@ -45,7 +45,7 @@ export type OnboardingData = {
  */
 export type OnboardingActions = {
   profile: ProfileMutations
-  categories: Pick<CategoryMutations, 'create' | 'update' | 'delete'>
+  categories: Pick<CategoryMutations, 'create' | 'update' | 'delete' | 'reorder'>
   recurring: Pick<RecurringMutations, 'create' | 'update' | 'stop' | 'delete'>
   materializeCurrentCycle(): Promise<void>
   /** Stores the pending charges, marks the onboarding complete and leads to the dashboard. */

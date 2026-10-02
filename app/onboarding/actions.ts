@@ -79,6 +79,9 @@ export async function updateCategory(categoryId: string, draft: CategoryDraft, t
 export async function deleteCategory(categoryId: string, reassignTo: string | null, target: CategoryDeleteTarget) {
   return run((ctx) => createSupabaseCategoryMutations(ctx).delete(categoryId, reassignTo, target));
 }
+export async function reorderCategories(categoryIds: string[]) {
+  return run((ctx) => createSupabaseCategoryMutations(ctx).reorder(categoryIds));
+}
 
 export async function createRecurring(target: RecurringTarget, draft: RecurringDraft) {
   return run((ctx) => createSupabaseRecurringMutations(ctx).create(target, draft));

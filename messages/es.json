@@ -414,18 +414,20 @@
       "sinCategorias": "Para cargar fijos, primero añade una categoría.",
       "irACategorias": "Ir a categorías",
       "anadido": "Añadido",
-      "errorAnadir": "No se pudo añadir. Inténtalo de nuevo."
+      "errorAnadir": "No se pudo añadir. Inténtalo de nuevo.",
+      "eliminado": "Se eliminó {nombre}"
     },
     "presupuestos": {
       "titulo": "Presupuestos",
       "margenLibre": "Margen libre",
-      "explicacion": "Lo que te queda después de tus fijos y tus sobres.",
+      "explicacion": "Lo que te queda después de tus gastos fijos y tus presupuestos.",
       "fijos": "Fijos: {monto}",
       "presupuestoDe": "Presupuesto de {categoria}",
       "sinIngresos": "Añade tus ingresos para ver el margen",
       "irAIngresos": "Ir a ingresos",
-      "reparto": "Reparto de tus ingresos",
-      "sinCategorias": "Sin categorías no hay sobres. Puedes añadirlas desde tu mes."
+      "reparto": "Reparto de tus gastos por categoría",
+      "sinCategorias": "Sin categorías no hay presupuestos. Puedes añadirlas desde tu mes.",
+      "opcional": "Ponle presupuesto solo a lo que quieras vigilar, como la comida o las salidas. El resto puede quedar vacío."
     },
     "ahorro": {
       "titulo": "Meta de ahorro",

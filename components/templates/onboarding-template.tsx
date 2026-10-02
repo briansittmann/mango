@@ -14,20 +14,18 @@ import { GlassBackButton, ThemePill } from '@/components/molecules/theme-pill'
 import { UndoToast } from '@/components/molecules/undo-toast'
 import { BasicsStep } from '@/components/organisms/onboarding/basics-step'
 import { BudgetsStep, type Envelope } from '@/components/organisms/onboarding/budgets-step'
-import { CategoriesStep } from '@/components/organisms/onboarding/categories-step'
+import { CategoriesStep, isNewCategory, type DraftCategory } from '@/components/organisms/onboarding/categories-step'
 import { FixedStep } from '@/components/organisms/onboarding/fixed-step'
 import { SavingsStep } from '@/components/organisms/onboarding/savings-step'
 import { WelcomeStep } from '@/components/organisms/onboarding/welcome-step'
 import { WhatsAppStep } from '@/components/organisms/onboarding/whatsapp-step'
-import { RecurringSheet } from '@/components/organisms/recurring-sheet'
 import { ensureStoredChoice } from '@/components/theme/use-theme-choice'
 import { LiveAmount } from '@/components/ui/counter/live-amount'
 import type { OnboardingActions, OnboardingData } from '@/lib/data/onboarding'
-import type { RecurringDefinition } from '@/lib/data/recurring'
 // Pure functions over the typed values, not data access: the margin formula the dashboard uses
 // (D10) and the country table (D4, D11). The atoms' amount-format module takes the same exception.
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
-import { getFreeMargin } from '@/lib/data/budget'
+import { getBudgetStatus, getFreeMargin } from '@/lib/data/budget'
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
 import { countryForTimezone, countryOf, normalizePhone, timezoneForCountry } from '@/lib/data/countries'
 import type { AmountFormat } from '@/lib/data/amount-format'
@@ -57,6 +55,18 @@ function formatAmountForEdit(amount: number, locale: string): string {
   return new Intl.NumberFormat(locale, { minimumFractionDigits: 2, trailingZeroDisplay: 'stripIfInteger', useGrouping: false }).format(amount)
 }
 
+const DAY_MS = 86_400_000
+
+/** Today's day of the cycle and the cycle's length, as `resumenMensual` computes them for a budget's pace. */
+function cyclePosition(start: string, today: string): { currentDay: number; cycleDays: number } {
+  const [year, month, day] = start.split('-').map(Number)
+  const nextStart = Date.UTC(year, month, day)
+  const from = Date.parse(start)
+  const cycleDays = Math.round((nextStart - from) / DAY_MS)
+  const currentDay = Math.min(cycleDays, Math.max(1, Math.round((Date.parse(today) - from) / DAY_MS) + 1))
+  return { currentDay, cycleDays }
+}
+
 function initialBasics(profile: OnboardingData['profile']): BasicsDraft {
   // No country yet: the one whose zones hold the stored timezone, with its currency (D4).
   const country = profile.country ?? countryForTimezone(profile.timezone)
@@ -83,7 +93,6 @@ export function OnboardingTemplate(props: OnboardingTemplateProps) {
 
 function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplateProps) {
   const t = useTranslations('onboarding')
-  const tRecurrente = useTranslations('gastoRecurrente')
   const locale = useLocale()
   const { money } = useAmountFormatter()
   const toasts = useMemo(() => Toast.createToastManager(), [])
@@ -94,6 +103,8 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
   // The welcome plays its entrance once, on the first mount; "Empezar" follows it after 200 ms.
   const [welcomeEntrance, setWelcomeEntrance] = useState(data.step === 1)
   const [basics, setBasics] = useState<BasicsDraft>(() => initialBasics(data.profile))
+  // Step 3 edits a local list and writes it on "Continuar" (D8): null = the stored categories.
+  const [categoryDraft, setCategoryDraft] = useState<DraftCategory[] | null>(null)
   const [budgetDrafts, setBudgetDrafts] = useState<Record<string, string>>({})
   const [savingsText, setSavingsText] = useState(() => (data.profile.savingsTarget == null ? '' : String(data.profile.savingsTarget)))
   const [phone, setPhone] = useState(data.profile.phone ?? '')
@@ -103,7 +114,6 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
   const [whatsAppError, setWhatsAppError] = useState<'taken' | 'invalid' | 'save' | null>(null)
   const [phoneSaved, setPhoneSaved] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
-  const [recurringSheet, setRecurringSheet] = useState<{ open: boolean; definition: RecurringDefinition | null }>({ open: false, definition: null })
 
   // A browser with no stored choice follows the OS from the first frame and keeps it (D13).
   useLayoutEffect(() => {
@@ -132,23 +142,56 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
 
   // ── The envelope model (D10): the same formula and inputs the dashboard will have ───────────
   const cycleStart = data.cycle.start
+
+  /**
+   * Writes the step-3 draft through the dashboard's own operations, in an order that never trips
+   * the duplicate-name check: removals, then renames and recolours, then the new ones (each one
+   * takes its stored id in the draft as soon as it exists, so a retry after a failure resumes),
+   * then the order when it differs from what the writes left behind.
+   */
+  async function syncCategories() {
+    const draft = categoryDraft
+    if (!draft) return
+    const stored = data.categories
+    for (const category of stored) {
+      if (!draft.some((row) => row.id === category.id)) await actions.categories.delete(category.id, null, { cycle: cycleStart, scope: 'onward' })
+    }
+    const ids: string[] = []
+    for (const row of draft) {
+      if (isNewCategory(row)) {
+        const id = await actions.categories.create({ name: row.name, color: row.color, budget: null }, cycleStart, 'onward')
+        setCategoryDraft((prev) => prev?.map((r) => (r.id === row.id ? { ...r, id } : r)) ?? null)
+        ids.push(id)
+        continue
+      }
+      const before = stored.find((category) => category.id === row.id)
+      if (before && (before.name !== row.name || before.color !== row.color)) {
+        await actions.categories.update(row.id, { name: row.name, color: row.color, budget: data.budgets[row.id] ?? null }, { cycle: cycleStart, scope: null })
+      }
+      ids.push(row.id)
+    }
+    const kept = stored.map((category) => category.id).filter((id) => ids.includes(id))
+    const written = [...kept, ...ids.filter((id) => !kept.includes(id))]
+    if (ids.length > 1 && ids.some((id, index) => id !== written[index])) await actions.categories.reorder(ids)
+    setCategoryDraft(null)
+  }
   const envelope: Envelope = useMemo(() => {
     const active = data.definitions.filter((definition) => definition.active)
     const income = active.filter((d) => d.tipo === 'ingreso').reduce((sum, d) => sum + d.expectedAmount, 0)
+    const position = cyclePosition(data.cycle.start, data.cycle.today)
     const rows = data.categories.map((category) => {
       const stored = data.budgets[category.id]
       const draft = budgetDrafts[category.id]
       // A field never touched reads the stored budget; a typed one, what it holds (invalid = empty).
       const budget = draft == null ? (stored ?? null) : parseAmount(draft)
-      return {
-        ...category,
-        fixed: active.filter((d) => d.tipo === 'gasto' && d.categoryId === category.id).reduce((sum, d) => sum + d.expectedAmount, 0),
-        budget,
-      }
+      const fixed = active.filter((d) => d.tipo === 'gasto' && d.categoryId === category.id).reduce((sum, d) => sum + d.expectedAmount, 0)
+      // The dashboard card's own figures: its fixed charges are what the category has spent so far.
+      const status = budget != null ? getBudgetStatus({ amount: budget, spent: fixed, ...position }) : null
+      return { ...category, fixed, budget, status }
     })
     const margin = getFreeMargin({ income, savings: 0, categories: rows.map((row) => ({ budget: row.budget, spent: row.fixed })) })
     return { income, rows, margin }
-  }, [data.definitions, data.categories, data.budgets, budgetDrafts])
+  }, [data.definitions, data.categories, data.budgets, data.cycle.start, data.cycle.today, budgetDrafts])
 
   const drafts = useMemo(() => {
     const result: Record<string, string> = {}
@@ -223,6 +266,12 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
           break
         }
         case 3:
+          try {
+            await syncCategories()
+          } catch {
+            toasts.add({ title: t('errorGuardar'), priority: 'high' })
+            return
+          }
           go(4)
           break
         case 4:
@@ -284,8 +333,6 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
   const listStep = step === 3 || step === 4 || step === 5
   const currency = basics.country ? basics.currency : data.profile.currency
   const callingCode = country ? (countryOf(country)?.callingCode ?? null) : null
-  const sheetDefinition = recurringSheet.definition
-  const sheetCategory = sheetDefinition ? data.categories.find((c) => c.id === sheetDefinition.categoryId) : undefined
 
   function renderStep(current: number) {
     switch (current) {
@@ -309,11 +356,10 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
       case 3:
         return (
           <CategoriesStep
-            categories={data.categories}
+            categories={categoryDraft ?? data.categories}
             definitions={data.definitions}
-            budgets={data.budgets}
-            cycleStart={cycleStart}
-            actions={actions.categories}
+            onChange={setCategoryDraft}
+            disabled={pending}
             onStatus={setStatusMessage}
           />
         )
@@ -324,7 +370,6 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
             definitions={data.definitions}
             currency={currency}
             actions={actions.recurring}
-            onOpenDefinition={(definition) => setRecurringSheet({ open: true, definition })}
             onCategoriesStep={() => go(3)}
             onStatus={setStatusMessage}
           />
@@ -432,8 +477,13 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
             <div
               className={cn(
                 'mx-auto flex w-full max-w-[440px] flex-col items-center gap-2 px-gutter',
-                step === 1 && welcomeEntrance && 'onboarding-fade-in [animation-delay:200ms]',
+                step === 1 && welcomeEntrance && 'onboarding-fade-in',
+                // Step 2: "Continuar" appears once the fields have landed (their 200 ms delay + 300 ms).
+                step === 2 && 'onboarding-slot-in',
               )}
+              // Inline, as the welcome's lines do: the classes' `animation` shorthand is unlayered CSS
+              // and would reset a Tailwind `[animation-delay:…]` utility back to 0.
+              style={step === 1 && welcomeEntrance ? { animationDelay: '200ms' } : step === 2 ? { animationDelay: '500ms' } : undefined}
             >
               <button
                 type="button"
@@ -469,30 +519,6 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
             </div>
           </div>
 
-          {sheetDefinition ? (
-            <RecurringSheet
-              open={recurringSheet.open}
-              onOpenChange={(open) => setRecurringSheet((prev) => ({ ...prev, open }))}
-              target={sheetDefinition}
-              categoryName={sheetCategory?.name ?? ''}
-              categoryColor={sheetCategory?.color ?? 'gris_calido'}
-              currency={currency}
-              currentAmount={sheetDefinition.expectedAmount}
-              onSave={async (definitionId, draft) => {
-                await actions.recurring.update(definitionId, draft)
-                setRecurringSheet((prev) => ({ ...prev, open: false }))
-                setStatusMessage(tRecurrente('cambiosGuardados', { nombre: draft.name, monto: money(draft.expectedAmount, currency) }))
-              }}
-              onStop={async (definitionId) => {
-                await actions.recurring.stop(definitionId)
-                setRecurringSheet((prev) => ({ ...prev, open: false }))
-              }}
-              onDelete={async (definitionId) => {
-                await actions.recurring.delete(definitionId)
-                setRecurringSheet((prev) => ({ ...prev, open: false }))
-              }}
-            />
-          ) : null}
           <UndoToast />
           <div role="status" className="sr-only">
             {statusMessage}

@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useAmountFormatter } from '@/components/atoms/amount-format'
 import { CategoryDot } from '@/components/atoms/category-dot'
+import { Collapsible } from '@/components/atoms/collapsible'
 import { parseAmount } from '@/components/molecules/amount-field'
+import { BudgetProgress } from '@/components/molecules/budget-progress'
 import { cn } from '@/lib/utils'
-import type { CategoryColor } from '@/lib/data/dashboard'
+import type { BudgetStatus, CategoryColor } from '@/lib/data/dashboard'
 
 /** One category of the envelope model, as the template computes it from the drafts (D10). */
 export type EnvelopeRow = {
@@ -15,6 +17,8 @@ export type EnvelopeRow = {
   fixed: number
   /** The budget as typed, parsed; null for empty or invalid. */
   budget: number | null
+  /** The dashboard card's budget figures for this budget (spent = the fixed charges); null without one. */
+  status: BudgetStatus | null
 }
 
 export type Envelope = {
@@ -33,21 +37,20 @@ type BudgetsStepProps = {
   onIncomeStep: () => void
 }
 
-/** The envelope bar's segments: each category's reserve as a share of the income, the margin last. */
+/**
+ * The bar's segments: each category's share of the total spending, in its colour. A category spends
+ * what the margin reserves for it, `max(budget, fixed)`; one with neither has no segment.
+ */
 export function envelopeSegments(envelope: Envelope): { id: string; color: string; share: number; offset: number }[] {
-  if (envelope.income <= 0) return []
-  const segments: { id: string; color: string; share: number; offset: number }[] = []
+  const reserved = envelope.rows.map((row) => ({ row, amount: Math.max(row.budget ?? 0, row.fixed) })).filter((entry) => entry.amount > 0)
+  const total = reserved.reduce((sum, entry) => sum + entry.amount, 0)
+  if (total <= 0) return []
   let offset = 0
-  for (const row of envelope.rows) {
-    const reserved = Math.max(row.budget ?? 0, row.fixed)
-    if (reserved <= 0) continue
-    const share = Math.min(reserved / envelope.income, 1 - offset)
-    if (share <= 0) break
-    segments.push({ id: row.id, color: `var(--cat-${row.color})`, share, offset })
-    offset += share
-  }
-  if (offset < 1) segments.push({ id: 'margin', color: 'var(--brand-ink)', share: 1 - offset, offset })
-  return segments
+  return reserved.map(({ row, amount }) => {
+    const segment = { id: row.id, color: `var(--cat-${row.color})`, share: amount / total, offset }
+    offset += segment.share
+    return segment
+  })
 }
 
 /**
@@ -58,6 +61,7 @@ export function envelopeSegments(envelope: Envelope): { id: string; color: strin
 export function BudgetsStep({ envelope, currency, drafts, onDraftChange, onCommit, onIncomeStep }: BudgetsStepProps) {
   const t = useTranslations('onboarding')
   const tCategory = useTranslations('hojaCategoria')
+  const tCategoria = useTranslations('categoria')
   const { money, parts } = useAmountFormatter()
   const [errors, setErrors] = useState<Record<string, 'invalid' | 'failed'>>({})
   const [busy, setBusy] = useState<Record<string, boolean>>({})
@@ -83,7 +87,7 @@ export function BudgetsStep({ envelope, currency, drafts, onDraftChange, onCommi
 
   return (
     <div className="flex flex-col gap-4">
-      {envelope.income > 0 ? (
+      {segments.length > 0 ? (
         <div
           role="img"
           aria-label={t('presupuestos.reparto')}
@@ -99,18 +103,24 @@ export function BudgetsStep({ envelope, currency, drafts, onDraftChange, onCommi
             />
           ))}
         </div>
-      ) : (
+      ) : null}
+      {envelope.income <= 0 ? (
         <p className="flex flex-wrap items-center gap-x-2 text-body-md text-muted-foreground">
           <span>{t('presupuestos.sinIngresos')}</span>
           <button type="button" onClick={onIncomeStep} className="onboarding-button font-medium text-brand-ink outline-none focus-visible:outline-2">
             {t('presupuestos.irAIngresos')}
           </button>
         </p>
-      )}
+      ) : null}
 
       {envelope.rows.length === 0 ? (
         <p className="text-body-md text-muted-foreground">{t('presupuestos.sinCategorias')}</p>
       ) : (
+        <>
+        {/* Right above the fields, so a column of empty boxes does not read as a form to fill. */}
+        <p data-budgets-hint className="text-body-md text-muted-foreground">
+          {t('presupuestos.opcional')}
+        </p>
         <div className="rounded-card border bg-card">
           {envelope.rows.map((row, index) => {
             const fieldId = `budget-${row.id}`
@@ -164,10 +174,31 @@ export function BudgetsStep({ envelope, currency, drafts, onDraftChange, onCommi
                     {tCategory(invalid ? 'presupuestoInvalido' : 'errorGuardar')}
                   </p>
                 ) : null}
+                {/* A budget shows the dashboard card's bar right away: "820 € de 900 €" and the
+                    weekly allowance, so the person sees what a budget will look like in their month.
+                    It opens with the switch-reveal of the basics step's format control. */}
+                <Collapsible open={row.status != null}>
+                  <div className="px-inset pb-3" data-budget-progress={row.id}>
+                    {row.status ? (
+                      <>
+                        <p className="mb-2 text-tabular-numeric-md font-semibold text-foreground">
+                          {tCategoria.rich('gastadoDePresupuesto', {
+                            gastado: money(row.status.spent, currency),
+                            presupuesto: money(row.status.amount, currency),
+                            montoGastado: (chunks) => <>{chunks}</>,
+                            muted: (chunks) => <span className="font-normal text-muted-foreground">{chunks}</span>,
+                          })}
+                        </p>
+                        <BudgetProgress budget={row.status} currency={currency} />
+                      </>
+                    ) : null}
+                  </div>
+                </Collapsible>
               </div>
             )
           })}
         </div>
+        </>
       )}
     </div>
   )

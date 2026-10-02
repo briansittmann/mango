@@ -32,15 +32,32 @@ export async function expectStep(page, n) {
   await expect(step(page, n)).toBeVisible()
 }
 
-/** A swipe from the right edge of the list surface to its left edge, at the row's height. */
+/** Takes a suggestion chip. The chips drift continuously, so the click skips the stability wait. */
+export async function takeChip(page, name) {
+  await page.getByRole('group', { name: 'Sugerencias' }).getByRole('button', { name, exact: true }).click({ force: true })
+}
+
+/** A swipe from the right of the list surface to its left edge, at the row's height, starting left of any trailing handle. */
 export async function longSwipe(page, row) {
+  // The step's layer slides in on load and on a step change: measure the row once it is at rest.
+  await expect
+    .poll(() =>
+      page
+        .locator('section[data-step]:not([data-leaving])')
+        .evaluate((el) => getComputedStyle(el).transform === 'none' && getComputedStyle(el).opacity === '1'),
+    )
+    .toBe(true)
+  // A row below the fold (or under the pinned "Continuar") is brought to the middle of the viewport.
+  await row.evaluate((el) => el.scrollIntoView({ block: 'center' }))
   const box = await row.boundingBox()
   if (!box) throw new Error('row not visible')
-  const surface = await row.locator('xpath=ancestor::*[contains(@class,"rounded-card")][1]').boundingBox()
+  // A row inside a grouped surface swipes across the surface; a row that is its own surface, across itself.
+  const ancestor = row.locator('xpath=ancestor::*[contains(@class,"rounded-card")][1]')
+  const surface = (await ancestor.count()) > 0 ? await ancestor.boundingBox() : null
   const left = surface ? surface.x : box.x
   const right = surface ? surface.x + surface.width : box.x + box.width
   const y = box.y + box.height / 2
-  await page.mouse.move(right - 10, y)
+  await page.mouse.move(right - 56, y)
   await page.mouse.down()
   await page.mouse.move(left + 10, y, { steps: 12 })
   await page.mouse.up()

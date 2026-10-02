@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test'
-import { primary } from './onboarding-helpers.js'
+import { primary, takeChip } from './onboarding-helpers.js'
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -54,7 +54,7 @@ test('the sandbox writes nothing over the network', async ({ page }) => {
     if (new URL(request.url()).hostname.includes('supabase')) supabase.push(request.url())
   })
   await page.goto('/demo/onboarding?paso=3')
-  await page.getByRole('button', { name: 'Comida', exact: true }).click()
+  await takeChip(page, 'Comida')
   await expect(page.getByRole('list', { name: 'Categorías' })).toContainText('Comida')
   await page.reload()
   await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '3')

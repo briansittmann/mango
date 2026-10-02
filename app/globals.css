@@ -1154,20 +1154,57 @@ body {
   }
 }
 
-/* A suggestion chip: the press recipe, a fade when taken, hover only on a fine pointer. */
+/* Step 3's reorder mode: a neighbour of the lifted row slides out of its way on --ease-in-out
+   (movement on screen), the dashboard's own value; the lifted row itself tracks the pointer. */
+.onboarding-reorder-row {
+  transition: transform 200ms var(--ease-in-out);
+}
+
+/* A suggestion chip wears its colour on the border and a tint of it behind, and drifts a few
+   pixels up and down on its own period (the onboarding is the rare / first-time tier, where the
+   delight budget lives — AUDIT.md §1). The drift is `translate`, the press recipe is `scale` and
+   the take grows and dissolves, so the three never override each other. Hover on a fine pointer only. */
+@keyframes onboarding-float {
+  from {
+    translate: 0 -2px;
+  }
+  to {
+    translate: 0 2px;
+  }
+}
 .onboarding-chip {
-  transition: transform 160ms var(--ease-out), opacity 150ms var(--ease-out), background-color 150ms var(--ease-out);
+  transition: scale 160ms var(--ease-out), opacity 150ms var(--ease-out), background-color 150ms var(--ease-out);
 }
 .onboarding-chip:active {
-  transform: scale(0.97);
+  scale: 0.97;
 }
 .onboarding-chip[data-leaving] {
+  scale: 1.1;
   opacity: 0;
   pointer-events: none;
+  transition: scale 300ms var(--ease-out), opacity 150ms var(--ease-out) 100ms;
 }
 @media (hover: hover) and (pointer: fine) {
   .onboarding-chip:hover {
     background-color: color-mix(in oklab, var(--foreground) 10%, transparent);
+  }
+}
+/* A chip wearing a category's colour: the border in it and a tint of it behind (the chosen category
+   of the fixed step's expense composer). */
+.onboarding-chip-tinted {
+  border-color: var(--chip-color);
+  background-color: color-mix(in oklab, var(--chip-color) 18%, transparent);
+}
+
+/* Step 3's suggestions only: the colour and the drift. The fixed step's category chips stay still. */
+.onboarding-suggestion {
+  border-color: var(--chip-color);
+  background-color: color-mix(in oklab, var(--chip-color) 12%, transparent);
+  animation: onboarding-float var(--float-duration, 3000ms) ease-in-out var(--float-delay, 0ms) infinite alternate;
+}
+@media (hover: hover) and (pointer: fine) {
+  .onboarding-suggestion:hover {
+    background-color: color-mix(in oklab, var(--chip-color) 22%, transparent);
   }
 }
 
@@ -1190,30 +1227,78 @@ body {
   animation: onboarding-fade-in 300ms var(--ease-out) both;
 }
 
+/* Step 2's entrance: the stagger recipe (300ms --ease-out, 50 ms apart), turned horizontal at the
+   step change's own 24 px. The layer fades without sliding there, so the title's "from the left"
+   is not cancelled by the layer arriving from the right; the 100 ms first delay is the layer's own,
+   so nothing moves under the outgoing step. "Continuar" rises in once the fields have landed; its
+   keyframe has its own name so it restarts after the welcome's `onboarding-fade-in` on the slot. */
+@keyframes onboarding-enter-left {
+  from {
+    opacity: 0;
+    translate: -24px 0;
+  }
+}
+@keyframes onboarding-enter-right {
+  from {
+    opacity: 0;
+    translate: 24px 0;
+  }
+}
+@keyframes onboarding-slot-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+.onboarding-enter-left {
+  animation: onboarding-enter-left 300ms var(--ease-out) 100ms both;
+}
+.onboarding-enter-right {
+  animation: onboarding-enter-right 300ms var(--ease-out) 200ms both;
+}
+.onboarding-slot-in {
+  animation: onboarding-slot-in 300ms var(--ease-out) both;
+}
+@starting-style {
+  .onboarding-layer[data-step="2"]:not([data-leaving]) {
+    transform: none;
+  }
+}
+
 /* The envelope bar's segments resize with transforms only: no layout per keystroke. */
 .onboarding-envelope {
   transform-origin: left;
   transition: transform 300ms var(--ease-in-out);
 }
 
-/* The free margin outside a hero card: the same value colour, negative through hero-card--negative. */
-.onboarding-hero {
+/* The free margin outside a hero card: the same value colour, negative through hero-card--negative.
+   `:not()` because this rule comes after `.hero-card--negative` with the same specificity and
+   would otherwise keep the number green below zero (only its glow turned red). */
+.onboarding-hero:not(.hero-card--negative) {
   --hero-value-color: var(--brand-ink);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .onboarding-progress,
   .onboarding-row,
+  .onboarding-reorder-row,
   .onboarding-chip,
   .onboarding-button,
   .onboarding-envelope {
     transition: none;
   }
   .onboarding-chip:active,
+  .onboarding-chip[data-leaving] {
+    scale: none;
+  }
   .onboarding-button:active:not(:disabled) {
     transform: none;
   }
-  .onboarding-fade-in {
+  .onboarding-suggestion,
+  .onboarding-fade-in,
+  .onboarding-enter-left,
+  .onboarding-enter-right,
+  .onboarding-slot-in {
     animation: none;
   }
   @starting-style {

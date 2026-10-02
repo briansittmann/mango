@@ -414,18 +414,20 @@
       "sinCategorias": "To add fixed expenses, first add a category.",
       "irACategorias": "Go to categories",
       "anadido": "Added",
-      "errorAnadir": "Couldn't add. Try again."
+      "errorAnadir": "Couldn't add. Try again.",
+      "eliminado": "{nombre} deleted"
     },
     "presupuestos": {
       "titulo": "Budgets",
       "margenLibre": "Free margin",
-      "explicacion": "What's left after your fixed expenses and your envelopes.",
+      "explicacion": "What's left after your fixed expenses and your budgets.",
       "fijos": "Fixed: {monto}",
       "presupuestoDe": "Budget for {categoria}",
       "sinIngresos": "Add your income to see the margin",
       "irAIngresos": "Go to income",
-      "reparto": "How your income is split",
-      "sinCategorias": "No categories, no envelopes. You can add them from your month."
+      "reparto": "How your spending splits by category",
+      "sinCategorias": "No categories, no budgets. You can add them from your month.",
+      "opcional": "Only budget what you want to keep an eye on, like food or going out. The rest can stay empty."
     },
     "ahorro": {
       "titulo": "Savings target",

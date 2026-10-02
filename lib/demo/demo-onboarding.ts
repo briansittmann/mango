@@ -219,6 +219,15 @@ export function createDemoOnboardingActions(store: DemoOnboardingStore): Onboard
         })
         return settle(undefined)
       },
+      reorder(categoryIds) {
+        setState((s) => {
+          const byId = new Map(s.categories.map((category) => [category.id, category]))
+          const ordered = categoryIds.flatMap((id) => byId.get(id) ?? [])
+          const missing = s.categories.filter((category) => !categoryIds.includes(category.id))
+          return { ...s, categories: [...ordered, ...missing] }
+        })
+        return settle(undefined)
+      },
     },
     recurring: {
       create(target, draft) {
