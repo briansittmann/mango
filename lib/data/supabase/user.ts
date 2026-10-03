@@ -21,8 +21,10 @@ export type Usuario = {
   onboarding_paso: number
   /** The stored amount format; in effect only for Argentina (`effectiveAmountFormat`, 0029). */
   formato_montos: AmountFormat
-  /** When the closing step asked to link WhatsApp; null when it never did (0029). */
+  /** When the current linking code was requested; the code is live 7 days from here (0029, 0031). */
   whatsapp_solicitado_en: string | null
+  /** The code of `vincular <código>`; null when none was requested or it was consumed (0031, `whatsapp-linking`). */
+  codigo_vinculacion: string | null
   /** The bot keeps this account's conversation (0028, `bot-conversation-history`). */
   vip: boolean
   /** Loads confirmed on WhatsApp so far (progressive confirmation, 0002). */
@@ -31,7 +33,7 @@ export type Usuario = {
 }
 
 export const USUARIO_COLUMNS =
-  'id, nombre, telefono, foto_url, pais, moneda_default, timezone, dia_inicio_ciclo, meta_ahorro_mensual, ciclo_generado_hasta, idioma, onboarding_completo, onboarding_paso, formato_montos, whatsapp_solicitado_en, vip, cargas_confirmadas, modo_confirmacion'
+  'id, nombre, telefono, foto_url, pais, moneda_default, timezone, dia_inicio_ciclo, meta_ahorro_mensual, ciclo_generado_hasta, idioma, onboarding_completo, onboarding_paso, formato_montos, whatsapp_solicitado_en, codigo_vinculacion, vip, cargas_confirmadas, modo_confirmacion'
 
 /**
  * The `usuarios` row linked to the session's auth user, or null when none is linked. RLS

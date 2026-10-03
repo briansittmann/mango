@@ -2,7 +2,7 @@ import type { AmountFormat } from './amount-format'
 import type { CategoryMutations } from './categories'
 import type { CategoryColor } from './dashboard'
 import type { LocalDate } from './expenses'
-import type { ProfileMutations } from './profile'
+import type { ProfileMutations, WhatsAppState } from './profile'
 import type { RecurringDefinition, RecurringMutations } from './recurring'
 
 /** The seven steps of `/onboarding`, in order (`onboarding` capability). */
@@ -35,6 +35,8 @@ export type OnboardingData = {
   definitions: RecurringDefinition[]
   budgets: Record<string, number | null>
   hasData: boolean
+  /** The channel's state for the closing step (`whatsapp-linking` → *The web shows the channel's state*). */
+  whatsapp: WhatsAppState
 }
 
 /**
@@ -48,4 +50,6 @@ export type OnboardingActions = {
   materializeCurrentCycle(): Promise<void>
   /** Stores the pending charges, marks the onboarding complete and leads to the dashboard. */
   finish(): Promise<void>
+  /** Re-reads the account, so a link made in the chat shows while the closing step waits (D7). */
+  refresh(): Promise<void>
 }

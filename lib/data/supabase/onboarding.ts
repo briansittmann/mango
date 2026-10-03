@@ -7,29 +7,31 @@ import { proyectarCiclo } from '@/lib/data/projection'
 import type { DataContext } from './context'
 import { cycleRange, localDateOf } from './cycle'
 import { DEFINITION_COLUMNS, futureCycles, toDefinition } from './future-cycles'
-import { hasData } from './profile'
+import { hasData, linkCodeIsLive, linkedChannel } from './profile'
 import type { Usuario } from './user'
 
 type CategoriaRow = { id: string; nombre: string; color: CategoryColor; desde_ciclo: LocalDate | null; hasta_ciclo: LocalDate | null }
 
 /**
  * What `/onboarding` renders from (D2), read as `usuario`: the profile, the cycle in progress, the
- * categories alive in it, the definitions, the cycle's budget rows and whether anything is keyed
- * to the cycle yet (D6).
+ * categories alive in it, the definitions, the cycle's budget rows, whether anything is keyed
+ * to the cycle yet (D6) and the WhatsApp channel's state; `whatsAppNumber` is the number people
+ * write to, read from the environment by the page (`add-whatsapp-linking` D6).
  */
-export async function loadOnboardingData(client: SupabaseClient, usuario: Usuario): Promise<OnboardingData> {
+export async function loadOnboardingData(client: SupabaseClient, usuario: Usuario, whatsAppNumber: string | null): Promise<OnboardingData> {
   const ctx: DataContext = { client, usuarioId: usuario.id, currency: usuario.moneda_default, timezone: usuario.timezone }
   const now = new Date()
   const range = await cycleRange(client, { diaInicio: usuario.dia_inicio_ciclo, timezone: usuario.timezone, ref: now })
   const start = localDateOf(range.inicio, usuario.timezone)
   const today = localDateOf(now, usuario.timezone)
 
-  const [categorias, ocultas, definiciones, presupuestos, keyed] = await Promise.all([
+  const [categorias, ocultas, definiciones, presupuestos, keyed, linked] = await Promise.all([
     client.from('categorias').select('id, nombre, color, desde_ciclo, hasta_ciclo').eq('usuario_id', usuario.id).order('orden').order('nombre'),
     client.from('categorias_ocultas').select('categoria_id').eq('usuario_id', usuario.id).eq('periodo', start),
     client.from('movimientos_recurrentes').select(DEFINITION_COLUMNS).eq('usuario_id', usuario.id).in('tipo', ['gasto', 'ingreso']).order('orden').order('nombre'),
     client.from('presupuestos').select('categoria_id, monto').eq('usuario_id', usuario.id).eq('periodo', start),
     hasData(ctx),
+    linkedChannel(client, 'whatsapp'),
   ])
   for (const result of [categorias, ocultas, definiciones, presupuestos]) if (result.error) throw new Error(result.error.message)
 
@@ -59,6 +61,11 @@ export async function loadOnboardingData(client: SupabaseClient, usuario: Usuari
     definitions: (definiciones.data ?? []).map(toDefinition),
     budgets,
     hasData: keyed,
+    whatsapp: {
+      number: whatsAppNumber,
+      code: linkCodeIsLive(usuario.codigo_vinculacion, usuario.whatsapp_solicitado_en) ? usuario.codigo_vinculacion : null,
+      linked,
+    },
   }
 }
 

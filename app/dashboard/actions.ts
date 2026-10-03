@@ -135,8 +135,27 @@ export async function restoreRecurringInCycle(definitionId: string, cycle: Local
 export async function updateProfileBasics(
   basics: ProfileBasics,
 ): Promise<{ ok: true } | { ok: false; error: (typeof PROFILE_ERRORS)[number] }> {
+  return knownRejections(() => run((ctx) => createSupabaseProfileMutations(ctx).updateBasics(validateBasics(basics))));
+}
+
+/** The account sheet's "Vincular WhatsApp" (`whatsapp-linking`): the live code, or a new one. */
+export async function requestWhatsAppLink(): Promise<{ code: string }> {
+  return run((ctx) => createSupabaseProfileMutations(ctx).requestWhatsAppLink());
+}
+
+/** The account sheet's phone, converted by the chosen country's rules on the server (D8); `INVALID_PHONE` / `PHONE_TAKEN` as values. */
+export async function requestWhatsApp(
+  phone: string,
+  country: string,
+): Promise<{ ok: true } | { ok: false; error: (typeof PROFILE_ERRORS)[number] }> {
+  return knownRejections(() => run((ctx) => createSupabaseProfileMutations(ctx).requestWhatsApp(phone, country)));
+}
+
+async function knownRejections(
+  operation: () => Promise<void>,
+): Promise<{ ok: true } | { ok: false; error: (typeof PROFILE_ERRORS)[number] }> {
   try {
-    await run((ctx) => createSupabaseProfileMutations(ctx).updateBasics(validateBasics(basics)));
+    await operation();
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && (PROFILE_ERRORS as readonly string[]).includes(error.message)) {

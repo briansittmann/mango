@@ -10,16 +10,18 @@ import { AmountFormatProvider, useAmountFormatter } from '@/components/atoms/amo
 import { parseAmount } from '@/components/molecules/amount-field'
 import { basicsValid, looksLikeName, type BasicsDraft } from '@/components/molecules/basics-fields'
 import { parseInteger } from '@/components/molecules/integer-field'
+import type { PhoneDraft } from '@/components/molecules/phone-field'
 import { SwipeRestoreContext } from '@/components/molecules/swipe-to-delete'
 import { GlassBackButton, ThemePill } from '@/components/molecules/theme-pill'
 import { UndoToast } from '@/components/molecules/undo-toast'
+import { WhatsAppLinkAction } from '@/components/molecules/whatsapp-link'
 import { BasicsStep } from '@/components/organisms/onboarding/basics-step'
 import { BudgetsStep, type Envelope } from '@/components/organisms/onboarding/budgets-step'
 import { CategoriesStep, isNewCategory, type DraftCategory } from '@/components/organisms/onboarding/categories-step'
 import { FixedStep } from '@/components/organisms/onboarding/fixed-step'
 import { SavingsStep } from '@/components/organisms/onboarding/savings-step'
 import { WelcomeStep } from '@/components/organisms/onboarding/welcome-step'
-import { WhatsAppStep } from '@/components/organisms/onboarding/whatsapp-step'
+import { WhatsAppStep, type LinkPhase } from '@/components/organisms/onboarding/whatsapp-step'
 import { ensureStoredChoice } from '@/components/theme/use-theme-choice'
 import { LiveAmount } from '@/components/ui/counter/live-amount'
 import type { OnboardingActions, OnboardingData } from '@/lib/data/onboarding'
@@ -28,7 +30,7 @@ import type { OnboardingActions, OnboardingData } from '@/lib/data/onboarding'
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
 import { getBudgetStatus, getFreeMargin } from '@/lib/data/budget'
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
-import { countryForTimezone, countryOf, normalizePhone, timezoneForCountry } from '@/lib/data/countries'
+import { countryForTimezone, countryOf, timezoneForCountry } from '@/lib/data/countries'
 import type { AmountFormat } from '@/lib/data/amount-format'
 
 const STEPS = 7
@@ -111,12 +113,21 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
   const [categoryDraft, setCategoryDraft] = useState<DraftCategory[] | null>(null)
   const [budgetDrafts, setBudgetDrafts] = useState<Record<string, string>>({})
   const [savingsText, setSavingsText] = useState(() => (data.profile.savingsTarget == null ? '' : String(data.profile.savingsTarget)))
-  const [phone, setPhone] = useState(data.profile.phone ?? '')
   const [pending, setPending] = useState(false)
   const [basicsError, setBasicsError] = useState<string | null>(null)
-  const [whatsAppError, setWhatsAppError] = useState<'taken' | 'invalid' | 'save' | null>(null)
-  const [phoneSaved, setPhoneSaved] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
+  // The closing step (D7): the code arrives with the step or is requested on a resume; the phase
+  // moves to "waiting" when the link is activated and to "linked" when the account shows a channel.
+  const [linkCode, setLinkCode] = useState<string | null>(data.whatsapp.code)
+  const [opened, setOpened] = useState(false)
+  const [phoneDraft, setPhoneDraft] = useState<PhoneDraft>({ country: data.profile.country, local: '' })
+  const [phoneError, setPhoneError] = useState<'taken' | 'invalid' | 'save' | null>(null)
+  const [phoneSaved, setPhoneSaved] = useState(false)
+  const [savingPhone, setSavingPhone] = useState(false)
+  const requestingCode = useRef(false)
+  const linked = data.whatsapp.linked
+  // Without a configured number there is no link to activate: the step starts waiting (D7).
+  const phase: LinkPhase = linked ? 'linked' : opened || !data.whatsapp.number ? 'waiting' : 'idle'
 
   // A browser with no stored choice follows the OS from the first frame and keeps it (D13).
   useLayoutEffect(() => {
@@ -129,6 +140,34 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
     const timeout = setTimeout(() => setLayers((prev) => prev.filter((layer) => !layer.leaving)), LEAVE_MS)
     return () => clearTimeout(timeout)
   }, [layers])
+
+  // A resume at step 7 (or a failed request on the way in) asks for the code once the step shows.
+  useEffect(() => {
+    if (step !== 7 || linkCode != null || linked || requestingCode.current) return
+    requestingCode.current = true
+    actions.profile
+      .requestWhatsAppLink()
+      .then((result) => setLinkCode(result.code))
+      .catch(() => {})
+      .finally(() => {
+        requestingCode.current = false
+      })
+  }, [step, linkCode, linked, actions.profile])
+
+  // While waiting, a return to the tab re-reads the account: a link made in the chat shows up.
+  useEffect(() => {
+    if (step !== 7 || phase !== 'waiting') return
+    function refresh() {
+      if (document.visibilityState === 'hidden') return
+      void actions.refresh()
+    }
+    document.addEventListener('visibilitychange', refresh)
+    window.addEventListener('focus', refresh)
+    return () => {
+      document.removeEventListener('visibilitychange', refresh)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [step, phase, actions])
 
   function go(next: number) {
     if (next === step || next < 1 || next > STEPS) return
@@ -229,13 +268,27 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
   const savingsValue = parseAmount(savingsText)
   const savingsInvalid = savingsText.trim() !== '' && savingsValue == null
 
-  // ── The closing step (D11) ──────────────────────────────────────────────────────────────────
-  const country = basics.country ?? data.profile.country
-  const canLink = country != null && normalizePhone(phone, country) != null
-
+  // ── The closing step (D7) ───────────────────────────────────────────────────────────────────
   async function finish() {
     await actions.finish()
     onFinished()
+  }
+
+  /** "Guardar número": stores the typed number for its country and stays on the step. */
+  async function savePhone() {
+    if (savingPhone || !phoneDraft.country) return
+    setSavingPhone(true)
+    setPhoneError(null)
+    setPhoneSaved(false)
+    try {
+      await actions.profile.requestWhatsApp(phoneDraft.local, phoneDraft.country)
+      setPhoneSaved(true)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : ''
+      setPhoneError(message === PHONE_TAKEN ? 'taken' : message === INVALID_PHONE ? 'invalid' : 'save')
+    } finally {
+      setSavingPhone(false)
+    }
   }
 
   // ── The primary action of each step (D7) ────────────────────────────────────────────────────
@@ -296,21 +349,19 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
             toasts.add({ title: t('errorGuardar'), priority: 'high' })
             return
           }
+          // The code travels with the step, so the bubble shows it from the first frame; a failed
+          // request is retried by the step's own effect.
+          if (linkCode == null && !linked) {
+            try {
+              setLinkCode((await actions.profile.requestWhatsAppLink()).code)
+            } catch {}
+          }
           go(7)
           break
-        case 7: {
-          setWhatsAppError(null)
-          try {
-            await actions.profile.requestWhatsApp(phone)
-          } catch (error) {
-            const message = error instanceof Error ? error.message : ''
-            setWhatsAppError(message === PHONE_TAKEN ? 'taken' : message === INVALID_PHONE ? 'invalid' : 'save')
-            return
-          }
-          setPhoneSaved(true)
+        case 7:
+          // "Ir a mi mes": the primary once the link was activated or none is offered.
           await finish()
           break
-        }
       }
     } finally {
       setPending(false)
@@ -328,13 +379,13 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
     }
   }
 
-  const primaryDisabled =
-    (step === 2 && !basicsValid(basics)) || (step === 6 && savingsInvalid) || (step === 7 && !canLink)
-  const primaryLabel = step === 1 ? t('empezar') : step === 7 ? t('whatsapp.vincular') : t('continuar')
+  const primaryDisabled = (step === 2 && !basicsValid(basics)) || (step === 6 && savingsInvalid)
+  const primaryLabel = step === 1 ? t('empezar') : step === 7 ? t('whatsapp.irAMiMes') : t('continuar')
+  // Step 7 in `idle` puts the `wa.me` anchor in the primary's slot instead of the button (D7).
+  const primaryIsLink = step === 7 && phase === 'idle'
   const showsHero = step === 5 || step === 6
   const listStep = step === 3 || step === 4 || step === 5
   const currency = basics.country ? basics.currency : data.profile.currency
-  const callingCode = country ? (countryOf(country)?.callingCode ?? null) : null
 
   function renderStep(current: number) {
     switch (current) {
@@ -392,14 +443,20 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
       case 7:
         return (
           <WhatsAppStep
-            phone={phone}
+            number={data.whatsapp.number}
+            code={linkCode}
+            linked={linked}
+            phase={phase}
+            phone={phoneDraft}
             onPhoneChange={(next) => {
-              setPhone(next)
-              setWhatsAppError(null)
+              setPhoneDraft(next)
+              setPhoneError(null)
+              setPhoneSaved(false)
             }}
-            callingCode={callingCode}
-            error={whatsAppError}
-            saved={phoneSaved}
+            onSavePhone={() => void savePhone()}
+            savingPhone={savingPhone}
+            phoneError={phoneError}
+            phoneSaved={phoneSaved}
             disabled={pending}
           />
         )
@@ -496,28 +553,39 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
               // and would reset a Tailwind `[animation-delay:…]` utility back to 0.
               style={step === 2 ? { animationDelay: '500ms' } : undefined}
             >
-              <button
-                type="button"
-                data-primary
-                onClick={() => void runPrimary()}
-                disabled={primaryDisabled}
-                aria-disabled={pending || undefined}
-                aria-busy={pending || undefined}
-                className={cn(
-                  'onboarding-button relative flex h-12 items-center justify-center overflow-hidden whitespace-nowrap bg-primary text-body-lg font-semibold text-primary-foreground outline-none transition-[width,border-radius] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 motion-reduce:transition-none',
-                  pending ? 'w-12 rounded-full' : 'w-full rounded-[18px]',
-                )}
-              >
-                <span className={cn('transition-opacity duration-150 motion-reduce:transition-none', pending && 'opacity-0')}>{primaryLabel}</span>
-                {/* Mounted only while pending: a hidden spinner would still be an endless animation. */}
-                {pending ? (
-                  <Loader2
-                    aria-hidden
-                    className="absolute inset-0 m-auto size-5 animate-spin transition-opacity delay-150 duration-200 starting:opacity-0 motion-reduce:transition-none"
-                  />
-                ) : null}
-              </button>
-              {step === 7 ? (
+              {primaryIsLink ? (
+                <WhatsAppLinkAction
+                  number={data.whatsapp.number}
+                  code={linkCode}
+                  onRequestCode={actions.profile.requestWhatsAppLink}
+                  onCodeReady={setLinkCode}
+                  onOpened={() => setOpened(true)}
+                  label={t('whatsapp.vincular')}
+                />
+              ) : (
+                <button
+                  type="button"
+                  data-primary
+                  onClick={() => void runPrimary()}
+                  disabled={primaryDisabled}
+                  aria-disabled={pending || undefined}
+                  aria-busy={pending || undefined}
+                  className={cn(
+                    'onboarding-button relative flex h-12 items-center justify-center overflow-hidden whitespace-nowrap bg-primary text-body-lg font-semibold text-primary-foreground outline-none transition-[width,border-radius] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 motion-reduce:transition-none',
+                    pending ? 'w-12 rounded-full' : 'w-full rounded-[18px]',
+                  )}
+                >
+                  <span className={cn('transition-opacity duration-150 motion-reduce:transition-none', pending && 'opacity-0')}>{primaryLabel}</span>
+                  {/* Mounted only while pending: a hidden spinner would still be an endless animation. */}
+                  {pending ? (
+                    <Loader2
+                      aria-hidden
+                      className="absolute inset-0 m-auto size-5 animate-spin transition-opacity delay-150 duration-200 starting:opacity-0 motion-reduce:transition-none"
+                    />
+                  ) : null}
+                </button>
+              )}
+              {step === 7 && phase !== 'linked' ? (
                 <button
                   type="button"
                   onClick={() => void skipWhatsApp()}

@@ -6,6 +6,9 @@ import type { Channel } from './users'
 /** How long a pending question waits for its answer (design D7). */
 export const PENDING_QUESTION_TTL_MS = 30 * 60_000
 
+/** Remembered unknown numbers older than this are purged by the daily cron (`whatsapp-linking`). */
+export const UNKNOWN_CONTACT_RETENTION_DAYS = 90
+
 export type ChannelState = { pending: PendingQuestion | null; lastLoadId: string | null }
 
 /**
@@ -65,4 +68,45 @@ async function updateChannel(channel: Channel, externalId: string, values: Recor
     .eq('identificador_externo', externalId)
 
   if (error) throw error
+}
+
+/** Why `vincular_canal` refused (`whatsapp-linking` → *A linking message that cannot link is answered with its reason*). */
+export const LINK_ERRORS = ['codigo-invalido', 'cuenta-ya-vinculada', 'numero-en-otra-cuenta'] as const
+export type LinkError = (typeof LINK_ERRORS)[number]
+export type LinkResult = { ok: true; userId: string } | { ok: false; error: LinkError }
+
+/**
+ * Links `externalId` as the `channel` of the account holding the live `code`, atomically
+ * (`vincular_canal`, 0031, design D2): the channel row, the account's phone and the consumed
+ * code in one transaction. A refusal comes back as a value; anything else throws.
+ */
+export async function linkChannel(channel: Channel, code: string, externalId: string): Promise<LinkResult> {
+  const { data, error } = await supabaseAdmin().rpc('vincular_canal', { p_tipo: channel, p_codigo: code, p_identificador: externalId })
+  if (error) {
+    const known = LINK_ERRORS.find((message) => message === error.message)
+    if (known) return { ok: false, error: known }
+    throw error
+  }
+  return { ok: true, userId: data as string }
+}
+
+/**
+ * Remembers a message from a number with no channel (`registrar_contacto_desconocido`, 0031,
+ * design D4) and returns whether this call is the one that answers it: true once per number.
+ */
+export async function registerUnknownContact(channel: Channel, externalId: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin().rpc('registrar_contacto_desconocido', { p_tipo: channel, p_identificador: externalId })
+  if (error) throw error
+  return data === true
+}
+
+/** Deletes the unknown numbers whose last message is older than `UNKNOWN_CONTACT_RETENTION_DAYS`; returns how many. */
+export async function purgeUnknownContacts(): Promise<number> {
+  const { count, error } = await supabaseAdmin()
+    .from('contactos_desconocidos')
+    .delete({ count: 'exact' })
+    .lt('ultimo_mensaje_en', new Date(Date.now() - UNKNOWN_CONTACT_RETENTION_DAYS * 24 * 60 * 60_000).toISOString())
+
+  if (error) throw error
+  return count ?? 0
 }

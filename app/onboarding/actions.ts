@@ -2,9 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { DUPLICATE_CATEGORY_NAME, type CategoryDeleteTarget, type CategoryDraft, type CategoryUpdateTarget } from "@/lib/data/categories";
-import { normalizePhone } from "@/lib/data/countries";
 import type { LocalDate } from "@/lib/data/expenses";
-import { INVALID_PHONE, PROFILE_ERRORS, validateBasics, type ProfileBasics } from "@/lib/data/profile";
+import { PROFILE_ERRORS, validateBasics, type ProfileBasics } from "@/lib/data/profile";
 import type { RecurringDraft, RecurringTarget } from "@/lib/data/recurring";
 import { createSupabaseCategoryMutations } from "@/lib/data/supabase/categories";
 import type { DataContext } from "@/lib/data/supabase/context";
@@ -13,7 +12,6 @@ import { createSupabaseProfileMutations } from "@/lib/data/supabase/profile";
 import { createSupabaseRecurringMutations } from "@/lib/data/supabase/recurring";
 import { findCurrentUsuario, type Usuario } from "@/lib/data/supabase/user";
 import { supabaseServer } from "@/lib/supabase/server";
-import { requestChannelLink } from "@/lib/whatsapp/link-request";
 
 // One action per `OnboardingActions` operation (D2): each runs as the signed-in user through RLS,
 // with the same `DataContext` as `/dashboard`, and revalidates the page so it re-renders from the
@@ -54,14 +52,13 @@ export async function updateProfileBasics(basics: ProfileBasics) {
 export async function setSavingsTarget(amount: number | null) {
   return run((ctx) => createSupabaseProfileMutations(ctx).setSavingsTarget(amount));
 }
-export async function requestWhatsApp(phone: string) {
-  return run(async (ctx, usuario) => {
-    const normalized = normalizePhone(phone, usuario.pais ?? "");
-    if (!normalized) throw new Error(INVALID_PHONE);
-    await createSupabaseProfileMutations(ctx).requestWhatsApp(normalized);
-    // The stub sends nothing today (block 10); its answer is not what the screen reports.
-    await requestChannelLink(usuario.id);
-  });
+/** The closing step's linking code (`whatsapp-linking`): the live one, or a new one. Sends nothing. */
+export async function requestWhatsAppLink() {
+  return run((ctx) => createSupabaseProfileMutations(ctx).requestWhatsAppLink());
+}
+/** The optional phone, converted by the chosen country's rules on the server (D8). */
+export async function requestWhatsApp(phone: string, country: string) {
+  return run((ctx) => createSupabaseProfileMutations(ctx).requestWhatsApp(phone, country));
 }
 export async function setOnboardingStep(step: number) {
   return run((ctx) => createSupabaseProfileMutations(ctx).setStep(step));

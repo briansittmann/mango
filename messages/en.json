@@ -356,7 +356,23 @@
     "eliminarDetalle": "Your categories, movements, recurring charges, budgets and WhatsApp number are erased. This can't be undone.",
     "eliminarConfirmar": "Yes, delete my account",
     "eliminarCancelar": "Keep it",
-    "errorEliminar": "Couldn't delete the account. Try again."
+    "errorEliminar": "Couldn't delete the account. Try again.",
+    "whatsapp": {
+      "titulo": "WhatsApp",
+      "vincular": "Link WhatsApp",
+      "codigo": "Your code",
+      "sinNumero": "Send *vincular {codigo}* to Mango on WhatsApp.",
+      "estadoSinVincular": "Not linked",
+      "estadoSinVincularLinea": "Log expenses by messaging Mango.",
+      "estadoEsperando": "Waiting for your message",
+      "estadoEsperandoLinea": "When it arrives, the chat replies “Done”.",
+      "estadoVinculado": "Linked",
+      "paraQue": "While Mango uses WhatsApp's test number, the bot reaches few people: Meta limits who it can write to. Your number is how you get added there.",
+      "pais": "Country",
+      "numeroLocal": "Number",
+      "numeroInvalido": "Check the number for that country",
+      "numeroEnOtraCuenta": "That number is already on another account"
+    }
   },
   "onboarding": {
     "sandbox": "This is a sandbox: nothing is saved",
@@ -463,13 +479,26 @@
     },
     "whatsapp": {
       "titulo": "Want to log through WhatsApp?",
-      "explicacion": "It's optional: with the bot you log expenses by sending a message.",
-      "telefono": "Your number",
-      "vincular": "Link",
+      "explicacion": "It's optional: with the bot you log expenses by sending a message. Linking is sending Mango this message.",
+      "vincular": "Link WhatsApp",
+      "irAMiMes": "Go to my month",
       "seguirSin": "Continue without WhatsApp",
-      "numeroEnOtraCuenta": "That number is already on another account",
-      "numeroInvalido": "Check the number: it has to be an international number",
-      "guardado": "We saved your number. When the bot is ready for you, you'll get a message from Mango."
+      "codigo": "Your code",
+      "sinNumero": "Send *vincular {codigo}* to Mango on WhatsApp.",
+      "previewTu": "You",
+      "previewMango": "✅ Done, this chat is now linked to your account.",
+      "estadoSinVincular": "Not linked",
+      "estadoEsperando": "Waiting for your message",
+      "estadoEsperandoLinea": "When it arrives, the chat replies “Done”.",
+      "estadoVinculado": "Linked",
+      "dejarNumero": "Leave my number",
+      "guardarNumero": "Save number",
+      "numeroGuardado": "Number saved",
+      "paraQue": "While Mango uses WhatsApp's test number, the bot reaches few people: Meta limits who it can write to. Your number is how you get added there.",
+      "pais": "Country",
+      "numeroLocal": "Number",
+      "numeroInvalido": "Check the number for that country",
+      "numeroEnOtraCuenta": "That number is already on another account"
     }
   },
   "bot": {
@@ -501,6 +530,12 @@
     "categoriaExiste": "📌 You already have the category {nombre}.",
     "categoriaParecida": "🤔 You already have {parecida}. Create {nombre} anyway?",
     "noEntendi": "😅 I didn't get that. Send me the amount and what it was for, for example: \"groceries 30\" or \"coffee 3.5 yesterday\".",
-    "noDisponible": "⏳ I couldn't process your message right now. Send it again in a bit."
+    "noDisponible": "⏳ I couldn't process your message right now. Send it again in a bit.",
+    "vinculado": "✅ Done, this chat is now linked to your account.",
+    "yaVinculado": "📌 This chat is already linked to your account.",
+    "codigoInvalido": "🤔 That code isn't valid or has expired. Get a new one from your account on the web.",
+    "numeroEnOtraCuenta": "📌 This number is already linked to another account.",
+    "cuentaYaVinculada": "📌 That account already has a linked WhatsApp.",
+    "desconocido": "👋 Hi. Mango is used from the web: create your account at {url} and link WhatsApp from your account."
   }
 }

@@ -23,7 +23,9 @@ function readNull() {
 
 /**
  * `/demo/onboarding`'s mount of the template (D2): in-memory state that starts empty and is
- * discarded on reload. Test seams: `?paso=N`, `?e2eSeed=1`, `?pais=`, `?formato=`, `?nombre=`. The state reads the browser's timezone, so the template mounts on the client only.
+ * discarded on reload. Test seams: `?paso=N`, `?e2eSeed=1`, `?pais=`, `?formato=`, `?nombre=`,
+ * `?e2eSinNumero=1` (no WhatsApp number configured) and `?e2eVinculado=1` (the next re-read finds
+ * the chat linked). The state reads the browser's timezone, so the template mounts on the client only.
  */
 export function DemoOnboarding() {
   const t = useTranslations('onboarding')
@@ -45,6 +47,8 @@ export function DemoOnboarding() {
           format: searchParams.get('formato') === 'abreviado' ? 'abreviado' : 'completo',
           name: searchParams.get('nombre') ?? '',
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          withoutNumber: searchParams.get('e2eSinNumero') === '1',
+          linkOnRefresh: searchParams.get('e2eVinculado') === '1',
         }),
       ),
     )

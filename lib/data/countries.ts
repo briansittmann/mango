@@ -153,27 +153,7 @@ export function timezoneForCountry(code: string, stored: string | null | undefin
   return stored && country.timezones.some((zone) => sameZone(zone, stored)) ? stored : country.timezones[0]
 }
 
-/** The `usuarios.telefono` check (migration 0002): E.164 with a leading `+`. */
-export const PHONE_PATTERN = /^\+[1-9]\d{6,14}$/
-
-/**
- * A typed phone as E.164 (`onboarding` → *Closing step*, D11): digits only, a leading `00` becomes
- * `+`, a number typed without a prefix takes the country's calling code. Null when the result is
- * not a valid international number or the country is unknown.
- */
-export function normalizePhone(input: string, countryCode: string): string | null {
-  const trimmed = input.trim()
-  const digits = trimmed.replace(/\D/g, '')
-  if (!digits) return null
-
-  let phone: string
-  if (trimmed.startsWith('+')) phone = `+${digits}`
-  else if (digits.startsWith('00')) phone = `+${digits.slice(2)}`
-  else {
-    const country = countryOf(countryCode)
-    if (!country) return null
-    phone = `${country.callingCode}${digits}`
-  }
-
-  return PHONE_PATTERN.test(phone) ? phone : null
+/** The flag emoji of an ISO alpha-2 code (two regional-indicator code points, no assets). */
+export function flagOf(code: string): string {
+  return String.fromCodePoint(...[...code.toUpperCase()].map((letter) => 0x1f1e6 + letter.charCodeAt(0) - 65))
 }

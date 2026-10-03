@@ -4,7 +4,14 @@ import type { CategoryDraft } from '@/lib/data/categories'
 import type { CategoryColor } from '@/lib/data/dashboard'
 import type { LocalDate } from '@/lib/data/expenses'
 import type { OnboardingActions, OnboardingData, OnboardingProfile } from '@/lib/data/onboarding'
+import { toE164 } from '@/lib/data/phone'
+import type { WhatsAppState } from '@/lib/data/profile'
 import type { RecurringDefinition } from '@/lib/data/recurring'
+
+/** The sandbox's linking code and the identifier `?e2eVinculado=1` links on the next refresh. */
+export const DEMO_LINK_CODE = 'DEMO42'
+export const DEMO_LINKED_NUMBER = '+5491155551234'
+export const DEMO_WHATSAPP_NUMBER = '15551234567'
 
 /**
  * The sandbox's state (`onboarding` → *An in-memory sandbox of the onboarding*, D2): plain
@@ -16,6 +23,9 @@ export type DemoOnboardingState = {
   categories: { id: string; name: string; color: CategoryColor }[]
   definitions: RecurringDefinition[]
   budgets: Record<string, number | null>
+  whatsapp: WhatsAppState
+  /** `?e2eVinculado=1`: the next `refresh` finds the channel linked, as a chat message would have done. */
+  linkOnRefresh: boolean
 }
 
 export type DemoOnboardingParams = {
@@ -25,6 +35,9 @@ export type DemoOnboardingParams = {
   format: 'completo' | 'abreviado'
   name: string
   timezone: string
+  /** `?e2eSinNumero=1`: no number to write to, so the step shows the manual line. */
+  withoutNumber: boolean
+  linkOnRefresh: boolean
 }
 
 let counter = 0
@@ -46,8 +59,9 @@ const COUNTRY_DEFAULTS: Record<string, { currency: string; timezone: string }> =
 }
 
 /** `?e2eSeed=1`: Vivienda and Comida, Sueldo 2 000 on day 1, Alquiler 820 on day 1 in Vivienda. */
-export function initialDemoOnboardingState({ step, seed, country, format, name, timezone }: DemoOnboardingParams): DemoOnboardingState {
+export function initialDemoOnboardingState({ step, seed, country, format, name, timezone, withoutNumber, linkOnRefresh }: DemoOnboardingParams): DemoOnboardingState {
   const defaults = country ? COUNTRY_DEFAULTS[country] : undefined
+  const whatsapp: WhatsAppState = { number: withoutNumber ? null : DEMO_WHATSAPP_NUMBER, code: null, linked: null }
   const profile: OnboardingProfile = {
     name,
     country: country && defaults ? country : null,
@@ -58,7 +72,7 @@ export function initialDemoOnboardingState({ step, seed, country, format, name, 
     savingsTarget: null,
     phone: null,
   }
-  if (!seed) return { step, profile, categories: [], definitions: [], budgets: {} }
+  if (!seed) return { step, profile, categories: [], definitions: [], budgets: {}, whatsapp, linkOnRefresh }
 
   const vivienda = nextId('category')
   const comida = nextId('category')
@@ -74,6 +88,8 @@ export function initialDemoOnboardingState({ step, seed, country, format, name, 
       { id: nextId('recurring'), name: 'Alquiler', expectedAmount: 820, tipo: 'gasto', categoryId: vivienda, day: 1, active: true, reminder: { active: false, daysBefore: 0 }, repetitions: null },
     ],
     budgets: {},
+    whatsapp,
+    linkOnRefresh,
   }
 }
 
@@ -96,6 +112,7 @@ export function deriveDemoOnboardingData(state: DemoOnboardingState): Onboarding
     definitions: state.definitions,
     budgets: state.budgets,
     hasData: state.categories.length > 0 || state.definitions.length > 0 || Object.keys(state.budgets).length > 0,
+    whatsapp: state.whatsapp,
   }
 }
 
@@ -160,10 +177,14 @@ export function createDemoOnboardingActions(store: DemoOnboardingStore): Onboard
         setState((s) => ({ ...s, profile: { ...s.profile, savingsTarget: amount } }))
         return settle(undefined)
       },
-      requestWhatsApp(phone) {
-        const digits = phone.replace(/\D/g, '')
-        if (digits.length < 7) return Promise.reject(new Error('invalid-phone'))
-        setState((s) => ({ ...s, profile: { ...s.profile, phone } }))
+      requestWhatsAppLink() {
+        setState((s) => ({ ...s, whatsapp: { ...s.whatsapp, code: DEMO_LINK_CODE } }))
+        return settle({ code: DEMO_LINK_CODE })
+      },
+      requestWhatsApp(phone, country) {
+        const normalized = toE164(phone, country)
+        if (!normalized) return Promise.reject(new Error('invalid-phone'))
+        setState((s) => ({ ...s, profile: { ...s.profile, phone: normalized } }))
         return settle(undefined)
       },
       setStep(step) {
@@ -270,6 +291,15 @@ export function createDemoOnboardingActions(store: DemoOnboardingStore): Onboard
       return settle(undefined)
     },
     finish() {
+      return settle(undefined)
+    },
+    refresh() {
+      // What a re-read finds after the chat linked: only with `?e2eVinculado=1`, and only with a code out.
+      setState((s) =>
+        s.linkOnRefresh && s.whatsapp.code != null
+          ? { ...s, profile: { ...s.profile, phone: DEMO_LINKED_NUMBER }, whatsapp: { ...s.whatsapp, code: null, linked: DEMO_LINKED_NUMBER } }
+          : s,
+      )
       return settle(undefined)
     },
   }

@@ -5,11 +5,12 @@ import {
   processUnknownNumber,
   type BotReply,
 } from '@/lib/bot/logic'
-import { clearPendingQuestion, readChannelState, setLastLoad, writePendingQuestion } from '@/lib/data/channels'
+import { clearPendingQuestion, linkChannel, readChannelState, registerUnknownContact, setLastLoad, writePendingQuestion } from '@/lib/data/channels'
 import { messageAlreadyProcessed } from '@/lib/data/transactions'
 import { findUserIdByPhone, readConfirmationState, setConfirmedLoads } from '@/lib/data/users'
 import es from '@/messages/es.json'
 import en from '@/messages/en.json'
+import { handleIncoming, type LinkingTexts } from './handle-message'
 import { maskPhone, sendReaction, sendText, sendUndoButton } from './send'
 
 import type { WhatsAppMessage } from './payload'
@@ -25,18 +26,35 @@ const UNDO_ID = /^undo:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]
 
 const MESSAGES = { es, en }
 
+/** The replies the adapter sends on its own: the linking ones (`whatsapp-linking`), per language. */
+const LINKING_TEXTS: LinkingTexts = {
+  es: { vinculado: es.bot.vinculado, yaVinculado: es.bot.yaVinculado, codigoInvalido: es.bot.codigoInvalido, numeroEnOtraCuenta: es.bot.numeroEnOtraCuenta, cuentaYaVinculada: es.bot.cuentaYaVinculada },
+  en: { vinculado: en.bot.vinculado, yaVinculado: en.bot.yaVinculado, codigoInvalido: en.bot.codigoInvalido, numeroEnOtraCuenta: en.bot.numeroEnOtraCuenta, cuentaYaVinculada: en.bot.cuentaYaVinculada },
+}
+
 /**
- * Adapter: resolves the number against the linked `whatsapp` channels, discards retries and
+ * Adapter: resolves the number against the linked `whatsapp` channels, links a chat that sends
+ * `vincular <código>` (`whatsapp-linking`, D5), answers a stranger once, discards retries and
  * calls the bot logic with the internal format `{ userId, text, messageId, channel, pending,
  * lastLoadId, undoId }` (ARCHITECTURE.md §3). It owns the channel's state (design D1, D7, D12):
  * reads the pending question and the last load before the logic, writes the question on an `ask`
  * and clears it on any other reply, and applies the reply's `lastLoad`. It also decides how a load
- * is confirmed (D6).
+ * is confirmed (D6). The order of decisions lives in `handle-message.ts`, with the side effects
+ * injected here.
  */
 export async function handleMessages(messages: WhatsAppMessage[]): Promise<void> {
   for (const message of messages) {
     try {
-      await handleMessage(message)
+      await handleIncoming(message, {
+        findUserIdByPhone,
+        linkChannel,
+        registerUnknownContact,
+        localeOf: async (userId) => (await readConfirmationState(userId)).idioma,
+        processUnknownNumber,
+        handleKnown,
+        sendText,
+        texts: LINKING_TEXTS,
+      })
     } catch (error) {
       // A message that fails doesn't take the rest of the batch down with it.
       console.error(`[whatsapp] error processing ${message.messageId}:`, error)
@@ -44,19 +62,7 @@ export async function handleMessages(messages: WhatsAppMessage[]): Promise<void>
   }
 }
 
-async function handleMessage(message: WhatsAppMessage): Promise<void> {
-  const userId = await findUserIdByPhone(message.phone)
-
-  if (!userId) {
-    const reply = await processUnknownNumber({
-      channel: 'whatsapp',
-      externalId: message.phone,
-      text: message.text,
-    })
-    await sendReply(message.phone, reply)
-    return
-  }
-
+async function handleKnown(userId: string, message: WhatsAppMessage): Promise<void> {
   if (await messageAlreadyProcessed(userId, 'whatsapp', message.messageId)) {
     console.info(`[whatsapp] retry discarded: ${message.messageId}`)
     return

@@ -23,17 +23,37 @@ export type ProfileBasics = {
  *   movement (D6), and `INVALID_COUNTRY` / `INVALID_CURRENCY` / `INVALID_TIMEZONE` / `INVALID_NAME`
  *   / `INVALID_CYCLE_DAY` on a value outside `validateBasics`
  * - `setSavingsTarget` writes `meta_ahorro_mensual`, null to clear it
- * - `requestWhatsApp` stores the phone (E.164) and the time of the request; rejects `PHONE_TAKEN`
- *   when another account holds the phone and `INVALID_PHONE` otherwise
+ * - `requestWhatsAppLink` returns the account's linking code (`whatsapp-linking` → *Each account
+ *   can hold one live linking code*): the stored one while it is live (7 days from its request
+ *   time, `LINK_CODE_TTL_MS`), otherwise a new code with a new request time. Sends nothing.
+ * - `requestWhatsApp` stores the phone typed for `country` (ISO code), converted to E.164 by that
+ *   country's rules (`toE164`), and nothing else — no code, no channel, no request time; rejects
+ *   `PHONE_TAKEN` when another account holds the phone and `INVALID_PHONE` when it is not valid
+ *   for the country
  * - `setStep` stores the pending onboarding step (1–7)
  * - `complete` marks the onboarding complete
  */
 export type ProfileMutations = {
   updateBasics(basics: ProfileBasics): Promise<void>
   setSavingsTarget(amount: number | null): Promise<void>
-  requestWhatsApp(phone: string): Promise<void>
+  requestWhatsAppLink(): Promise<{ code: string }>
+  requestWhatsApp(phone: string, country: string): Promise<void>
   setStep(step: number): Promise<void>
   complete(): Promise<void>
+}
+
+/** How long a linking code is live from its request time (`whatsapp-linking`). */
+export const LINK_CODE_TTL_MS = 7 * 24 * 60 * 60_000
+
+/**
+ * The WhatsApp channel as the web shows it (`add-whatsapp-linking` D6): the number people write
+ * to (digits only, null when the deployment has none), the account's live code (null when none
+ * or expired) and the linked identifier (null while no channel exists).
+ */
+export type WhatsAppState = {
+  number: string | null
+  code: string | null
+  linked: string | null
 }
 
 export const CYCLE_LOCKED = 'cycle-locked'

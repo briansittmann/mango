@@ -31,7 +31,7 @@ const categories: CategoryMutations = {
   reorder: actions.reorderCategories,
 }
 
-/** Only `updateBasics` is reachable from the dashboard (the account sheet); the rest belongs to `/onboarding`. */
+/** The account sheet reaches the basics and the WhatsApp operations; the rest belongs to `/onboarding`. */
 async function unsupported(): Promise<never> {
   throw new Error('unsupported')
 }
@@ -42,7 +42,11 @@ const profile: ProfileMutations = {
     if (!result.ok) throw new Error(result.error)
   },
   setSavingsTarget: unsupported,
-  requestWhatsApp: unsupported,
+  requestWhatsAppLink: actions.requestWhatsAppLink,
+  async requestWhatsApp(phone, country) {
+    const result = await actions.requestWhatsApp(phone, country)
+    if (!result.ok) throw new Error(result.error)
+  },
   setStep: unsupported,
   complete: unsupported,
 }

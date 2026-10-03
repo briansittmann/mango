@@ -17,6 +17,7 @@ import {
   shiftMonth,
   type CycleRange,
 } from './cycle'
+import { linkCodeIsLive, linkedChannel } from './profile'
 import type { Usuario } from './user'
 
 type CategoriaRow = {
@@ -92,6 +93,8 @@ export async function resumenMensual(
   client: SupabaseClient,
   usuario: Usuario,
   month?: string | string[],
+  /** The page passes the number people write to (`add-whatsapp-linking` D6); the bot passes nothing and reads no channel state. */
+  whatsApp?: { number: string | null },
 ): Promise<{ data: DashboardData; definitions: RecurringDefinition[] }> {
   const timezone = usuario.timezone
   const now = new Date()
@@ -133,7 +136,7 @@ export async function resumenMensual(
   }
 
   const presupuestosQuery = client.from('presupuestos').select('categoria_id, monto, periodo').eq('usuario_id', usuario.id)
-  const [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores, movimientos] = await Promise.all([
+  const [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores, movimientos, linked] = await Promise.all([
     client
       .from('categorias')
       .select('id, nombre, color, desde_ciclo, hasta_ciclo, mostrar_progreso')
@@ -185,6 +188,7 @@ export async function resumenMensual(
       .gte('fecha', shownRange.fin.toISOString()),
     // One existence check: whether the user holds any movement at all (the account sheet's warning).
     client.from('transacciones').select('usuario_id', { count: 'exact', head: true }).eq('usuario_id', usuario.id).is('borrado_en', null),
+    whatsApp ? linkedChannel(client, 'whatsapp') : Promise.resolve(null),
   ])
   for (const result of [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores, movimientos]) {
     if (result?.error) throw result.error
@@ -358,6 +362,15 @@ export async function resumenMensual(
         amountFormat: effectiveAmountFormat(usuario),
         cycleDay: usuario.dia_inicio_ciclo,
         hasMovements: (movimientos.count ?? 0) > 0,
+        ...(whatsApp
+          ? {
+              whatsapp: {
+                number: whatsApp.number,
+                code: linkCodeIsLive(usuario.codigo_vinculacion, usuario.whatsapp_solicitado_en) ? usuario.codigo_vinculacion : null,
+                linked,
+              },
+            }
+          : {}),
       },
       cycle: {
         start,

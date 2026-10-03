@@ -199,10 +199,12 @@ export function buildDemoData(locale: Locale): DashboardData {
   const sample: DashboardData = {
     user: {
       name: 'Ana García',
-      phone: '+34 611 222 333',
+      phone: '+34611222333',
       photoUrl: null,
       currency: 'EUR',
       timezone: TIMEZONE,
+      // The demo's channel state: never linked, no code, no number to write to (`whatsapp-linking`).
+      whatsapp: { number: null, code: null, linked: null },
     },
     // The sample is the demo's last generated cycle; the controls reach six projections past it.
     cycle: {

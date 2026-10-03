@@ -6,6 +6,9 @@ import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/atoms/avatar'
 import { useThemeChoice } from '@/components/theme/use-theme-choice'
 import type { DashboardActions } from '@/lib/data/dashboard'
+// A pure formatter over the stored number, not data access (add-whatsapp-linking D8).
+// eslint-disable-next-line @typescript-eslint/no-restricted-imports
+import { formatPhone } from '@/lib/data/phone'
 
 type AccountMenuProps = {
   user: { name: string; phone: string | null; photoUrl: string | null }
@@ -176,7 +179,7 @@ export function AccountMenu({ user, actions, open, onClose, onOpenAccount, onDow
           />
           <div className="min-w-0 flex-1">
             <p className="truncate font-display text-headline-sm text-foreground">{user.name}</p>
-            {user.phone && <p className="truncate text-body-sm text-muted-foreground">{user.phone}</p>}
+            {user.phone && <p className="truncate text-body-sm text-muted-foreground">{formatPhone(user.phone)}</p>}
           </div>
           <button
             type="button"

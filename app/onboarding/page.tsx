@@ -35,7 +35,9 @@ export default async function OnboardingPage() {
   }
   if (usuario.onboarding_completo) redirect("/dashboard");
 
-  const data = await loadOnboardingData(client, usuario);
+  // The number people write to, digits only (`add-whatsapp-linking` D6); without it the closing
+  // step shows the code with the line to send it by hand.
+  const data = await loadOnboardingData(client, usuario, process.env.WHATSAPP_PHONE_NUMBER || null);
 
   return (
     <main className="flex flex-1 flex-col">

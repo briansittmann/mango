@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server'
 
+import { purgeUnknownContacts } from '@/lib/data/channels'
 import type { LocalDate } from '@/lib/data/expenses'
 import { purgeOldMessages } from '@/lib/data/messages'
 import { proyectarCiclo } from '@/lib/data/projection'
@@ -70,17 +71,23 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Conversation messages past their retention (`bot-conversation-history`), after the charges: a
-  // failure here is reported and blocks nothing.
+  // Conversation messages past their retention (`bot-conversation-history`) and unknown numbers
+  // past theirs (`whatsapp-linking`), after the charges: a failure here is reported and blocks nothing.
   let purge: { purged: number } | { purgeError: string }
   try {
     purge = { purged: await purgeOldMessages() }
   } catch (err) {
     purge = { purgeError: err instanceof Error ? err.message : String(err) }
   }
+  let contacts: { purgedContacts: number } | { purgeContactsError: string }
+  try {
+    contacts = { purgedContacts: await purgeUnknownContacts() }
+  } catch (err) {
+    contacts = { purgeContactsError: err instanceof Error ? err.message : String(err) }
+  }
 
-  console.log('[cron] recurrentes', JSON.stringify({ users, ...purge }))
-  return Response.json({ users, ...purge })
+  console.log('[cron] recurrentes', JSON.stringify({ users, ...purge, ...contacts }))
+  return Response.json({ users, ...purge, ...contacts })
 }
 
 async function runForUser(client: ReturnType<typeof supabaseAdmin>, usuario: UsuarioRow): Promise<UserReport> {

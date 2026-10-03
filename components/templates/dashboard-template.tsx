@@ -16,6 +16,7 @@ import { Flip } from 'gsap/Flip'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { AmountFormatProvider, useAmountFormatter } from '@/components/atoms/amount-format'
 import { Avatar } from '@/components/atoms/avatar'
@@ -152,6 +153,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
   const tResumen = useTranslations('resumen')
   const tMenu = useTranslations('menuCuenta')
   const locale = useLocale()
+  const router = useRouter()
   const tHojaGasto = useTranslations('hojaGasto')
   const tHojaCategoria = useTranslations('hojaCategoria')
   const tRecurrente = useTranslations('gastoRecurrente')
@@ -1563,10 +1565,13 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
           open={accountSheetOpen}
           onOpenChange={setAccountSheetOpen}
           user={data.user}
-          onSave={async (basics) => {
+          onSave={async (basics, phone) => {
             await actions.profile!.updateBasics(basics)
+            if (phone?.country) await actions.profile!.requestWhatsApp(phone.local, phone.country)
             setStatusMessage(tCuenta('guardado'))
           }}
+          onRequestLink={actions.profile.requestWhatsAppLink}
+          onRefresh={() => router.refresh()}
           onDelete={actions.deleteAccount}
         />
       ) : null}

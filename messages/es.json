@@ -356,7 +356,23 @@
     "eliminarDetalle": "Se borran tus categorías, movimientos, fijos, presupuestos y tu número de WhatsApp. No se puede deshacer.",
     "eliminarConfirmar": "Sí, eliminar mi cuenta",
     "eliminarCancelar": "Mejor no",
-    "errorEliminar": "No se pudo eliminar la cuenta. Inténtalo de nuevo."
+    "errorEliminar": "No se pudo eliminar la cuenta. Inténtalo de nuevo.",
+    "whatsapp": {
+      "titulo": "WhatsApp",
+      "vincular": "Vincular WhatsApp",
+      "codigo": "Tu código",
+      "sinNumero": "Envía *vincular {codigo}* a Mango por WhatsApp.",
+      "estadoSinVincular": "Sin vincular",
+      "estadoSinVincularLinea": "Carga gastos escribiéndole a Mango.",
+      "estadoEsperando": "Esperando tu mensaje",
+      "estadoEsperandoLinea": "Cuando llegue, el chat te responde «Listo».",
+      "estadoVinculado": "Vinculado",
+      "paraQue": "Mientras Mango use el número de prueba de WhatsApp, el bot llega a pocas personas: Meta limita a quién puede escribirle. Tu número sirve para darte de alta ahí.",
+      "pais": "País",
+      "numeroLocal": "Número",
+      "numeroInvalido": "Revisa el número para ese país",
+      "numeroEnOtraCuenta": "Ese número ya está en otra cuenta"
+    }
   },
   "onboarding": {
     "sandbox": "Esto es una prueba: nada se guarda",
@@ -463,13 +479,26 @@
     },
     "whatsapp": {
       "titulo": "¿Quieres cargar por WhatsApp?",
-      "explicacion": "Es opcional: con el bot cargas gastos escribiendo un mensaje.",
-      "telefono": "Tu número",
-      "vincular": "Vincular",
+      "explicacion": "Es opcional: con el bot cargas gastos escribiendo un mensaje. Vincular es mandarle este mensaje a Mango.",
+      "vincular": "Vincular WhatsApp",
+      "irAMiMes": "Ir a mi mes",
       "seguirSin": "Seguir sin WhatsApp",
-      "numeroEnOtraCuenta": "Ese número ya está en otra cuenta",
-      "numeroInvalido": "Revisa el número: tiene que ser un número internacional",
-      "guardado": "Guardamos tu número. Cuando el bot esté listo para ti, te llega un mensaje de Mango."
+      "codigo": "Tu código",
+      "sinNumero": "Envía *vincular {codigo}* a Mango por WhatsApp.",
+      "previewTu": "Tú",
+      "previewMango": "✅ Listo, este chat ya está vinculado a tu cuenta.",
+      "estadoSinVincular": "Sin vincular",
+      "estadoEsperando": "Esperando tu mensaje",
+      "estadoEsperandoLinea": "Cuando llegue, el chat te responde «Listo».",
+      "estadoVinculado": "Vinculado",
+      "dejarNumero": "Dejar mi número",
+      "guardarNumero": "Guardar número",
+      "numeroGuardado": "Número guardado",
+      "paraQue": "Mientras Mango use el número de prueba de WhatsApp, el bot llega a pocas personas: Meta limita a quién puede escribirle. Tu número sirve para darte de alta ahí.",
+      "pais": "País",
+      "numeroLocal": "Número",
+      "numeroInvalido": "Revisa el número para ese país",
+      "numeroEnOtraCuenta": "Ese número ya está en otra cuenta"
     }
   },
   "bot": {
@@ -501,6 +530,12 @@
     "categoriaExiste": "📌 Ya tenés la categoría {nombre}.",
     "categoriaParecida": "🤔 Ya tenés {parecida}. ¿Creo {nombre} igual?",
     "noEntendi": "😅 No te entendí. Escribime el importe y en qué fue, por ejemplo: «súper 30» o «café 3,5 ayer».",
-    "noDisponible": "⏳ No pude procesar tu mensaje ahora. Volvé a mandarlo en un rato."
+    "noDisponible": "⏳ No pude procesar tu mensaje ahora. Volvé a mandarlo en un rato.",
+    "vinculado": "✅ Listo, este chat ya está vinculado a tu cuenta.",
+    "yaVinculado": "📌 Este chat ya está vinculado a tu cuenta.",
+    "codigoInvalido": "🤔 Ese código no es válido o venció. Pedí uno nuevo desde tu cuenta en la web.",
+    "numeroEnOtraCuenta": "📌 Este número ya está vinculado a otra cuenta.",
+    "cuentaYaVinculada": "📌 Esa cuenta ya tiene un WhatsApp vinculado.",
+    "desconocido": "👋 Hola. Mango se usa desde la web: creá tu cuenta en {url} y vinculá WhatsApp desde tu cuenta."
   }
 }

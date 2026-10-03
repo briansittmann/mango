@@ -20,7 +20,8 @@ export function SupabaseOnboarding({ data }: { data: OnboardingData }) {
       profile: {
         updateBasics: (basics) => unwrap(actions.updateProfileBasics(basics)),
         setSavingsTarget: (amount) => unwrap(actions.setSavingsTarget(amount)),
-        requestWhatsApp: (phone) => unwrap(actions.requestWhatsApp(phone)),
+        requestWhatsAppLink: () => unwrap(actions.requestWhatsAppLink()),
+        requestWhatsApp: (phone, country) => unwrap(actions.requestWhatsApp(phone, country)),
         setStep: (step) => unwrap(actions.setOnboardingStep(step)),
         complete: () => unwrap(actions.finishOnboarding()),
       },
@@ -38,8 +39,10 @@ export function SupabaseOnboarding({ data }: { data: OnboardingData }) {
       },
       materializeCurrentCycle: () => unwrap(actions.materializeCurrentCycle()),
       finish: () => unwrap(actions.finishOnboarding()),
+      // The page re-renders from the stored rows: a channel linked in the chat shows up (D7).
+      refresh: async () => router.refresh(),
     }),
-    [],
+    [router],
   )
 
   return <OnboardingTemplate data={data} actions={bound} onFinished={() => router.replace('/dashboard')} />

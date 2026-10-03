@@ -37,7 +37,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   if (!usuario.onboarding_completo) redirect("/onboarding");
 
   const { mes } = await searchParams;
-  const { data, definitions } = await resumenMensual(client, usuario, mes);
+  // The number people write to, digits only (`add-whatsapp-linking` D6); without it the account
+  // sheet shows the code with the line to send it by hand.
+  const { data, definitions } = await resumenMensual(client, usuario, mes, { number: process.env.WHATSAPP_PHONE_NUMBER || null });
 
   return <SupabaseDashboard data={data} definitions={definitions} />;
 }

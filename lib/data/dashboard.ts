@@ -1,7 +1,7 @@
 import type { AmountFormat } from './amount-format'
 import type { LocalDate, ExpenseMutations } from './expenses'
 import type { CategoryMutations } from './categories'
-import type { ProfileMutations } from './profile'
+import type { ProfileMutations, WhatsAppState } from './profile'
 import type { RecurringMutations } from './recurring'
 import type { IncomeEntry, IncomeMutations } from './income'
 import type { SavingsMutations } from './savings'
@@ -85,6 +85,8 @@ export type DashboardData = {
     cycleDay?: number
     /** Whether the user holds any movement: the account sheet then warns that currencies are summed unconverted. */
     hasMovements?: boolean
+    /** The WhatsApp channel's state for the account sheet (`whatsapp-linking`); absent on a mount with no profile. */
+    whatsapp?: WhatsAppState
   }
   cycle: {
     start: string

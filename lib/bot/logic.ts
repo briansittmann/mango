@@ -566,20 +566,29 @@ function findByName<T extends { nombre: string }>(rows: T[], name: string): T | 
  * reply, when it exists, is one line that sends the person to the web and to the account's
  * settings to link the number. Today it replies nothing (decision of 2026-10-03, block 10).
  */
+/**
+ * A message from a number with no channel that is not a linking message (`whatsapp-linking` →
+ * *An unknown number is answered once*): one reply, in Spanish and English because the language
+ * is unknown, that sends the person to the web; nothing when the number was answered before. No
+ * account and no channel are created from the chat. Rate limiting (block 10) goes in front of this.
+ */
 export async function processUnknownNumber({
   channel,
   externalId,
   text,
+  answered,
 }: {
   channel: Channel
   externalId: string
   text: string
-}): Promise<BotReply> {
-  // TODO (block 10 of ROADMAP.md): rate limit per number first (§10), since every stranger's
-  // message would spend quota, then reply once with the text from the translation files (§2)
-  // pointing to the web. No code, no onboarding by chat.
+  answered: boolean
+}): Promise<Extract<BotReply, { kind: 'text' | 'none' }>> {
   void channel
   void externalId
   void text
-  return { kind: 'none' }
+  if (answered) return { kind: 'none' }
+  const lines = (['es', 'en'] as const).map((locale) =>
+    createTranslator({ locale, messages: MESSAGES[locale], namespace: 'bot' })('desconocido', { url: SITE_URL }),
+  )
+  return { kind: 'text', text: lines.join('\n\n') }
 }

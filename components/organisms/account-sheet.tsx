@@ -1,20 +1,38 @@
-import { useRef, useState, type FormEvent } from 'react'
-import { Loader2, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Check, Clock, Loader2, MessageCircle, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Collapsible } from '@/components/atoms/collapsible'
 import { BasicsFields, basicsValid, type BasicsDraft } from '@/components/molecules/basics-fields'
+import { PhoneField, phoneValid, type PhoneDraft } from '@/components/molecules/phone-field'
+import { LinkCode, WhatsAppLinkAction } from '@/components/molecules/whatsapp-link'
 import { SheetShell } from '@/components/organisms/sheet-shell'
 import { cn } from '@/lib/utils'
 import type { DashboardData } from '@/lib/data/dashboard'
 import type { ProfileBasics } from '@/lib/data/profile'
+// A pure formatter over the stored number, not data access (add-whatsapp-linking D8).
+// eslint-disable-next-line @typescript-eslint/no-restricted-imports
+import { formatPhone } from '@/lib/data/phone'
 
 type AccountSheetProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   user: DashboardData['user']
-  onSave: (basics: ProfileBasics) => Promise<void>
+  /** Saves the basics and, when the person changed it, the typed phone for its country (D9). */
+  onSave: (basics: ProfileBasics, phone: PhoneDraft | null) => Promise<void>
+  /** "Vincular WhatsApp" with no live code: requests one (D9); absent on the demo (the action is disabled). */
+  onRequestLink?: () => Promise<{ code: string }>
+  /** The page re-reads the account while the sheet waits for the chat's message. */
+  onRefresh?: () => void
   /** Deletes the account for good; absent when the page cannot (the row is then hidden). */
   onDelete?: () => Promise<void>
+}
+
+/** Mirrors the profile contract's rejection messages (`lib/data/profile.ts`) without a runtime import. */
+const PHONE_TAKEN = 'phone-taken'
+const INVALID_PHONE = 'invalid-phone'
+
+function phoneOf(user: DashboardData['user']): PhoneDraft {
+  return { country: user.country ?? null, local: user.phone ? formatPhone(user.phone) : '' }
 }
 
 function draftOf(user: DashboardData['user']): BasicsDraft {
@@ -35,12 +53,19 @@ function draftOf(user: DashboardData['user']): BasicsDraft {
  * minus the cycle day, shown as a line, with the mixed-currency note when the account holds
  * movements. Saving goes through the profile operations with the onboarding's validation.
  */
-export function AccountSheet({ open, onOpenChange, user, onSave, onDelete }: AccountSheetProps) {
+export function AccountSheet({ open, onOpenChange, user, onSave, onRequestLink, onRefresh, onDelete }: AccountSheetProps) {
   const t = useTranslations('cuenta')
   const nameRef = useRef<HTMLInputElement>(null)
   const [wasOpen, setWasOpen] = useState(open)
   const [draft, setDraft] = useState<BasicsDraft>(() => draftOf(user))
   const [snapshot, setSnapshot] = useState(draft)
+  const [phone, setPhone] = useState<PhoneDraft>(() => phoneOf(user))
+  const [phoneSnapshot, setPhoneSnapshot] = useState(phone)
+  const [phoneError, setPhoneError] = useState<'invalid' | 'taken' | null>(null)
+  // The WhatsApp section (D9): the code the page loaded or the one just requested, and whether
+  // the person opened the chat from here (then the sheet reads "Esperando tu mensaje").
+  const [linkCode, setLinkCode] = useState<string | null>(user.whatsapp?.code ?? null)
+  const [opened, setOpened] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -53,6 +78,12 @@ export function AccountSheet({ open, onOpenChange, user, onSave, onDelete }: Acc
       const next = draftOf(user)
       setDraft(next)
       setSnapshot(next)
+      const nextPhone = phoneOf(user)
+      setPhone(nextPhone)
+      setPhoneSnapshot(nextPhone)
+      setPhoneError(null)
+      setLinkCode(user.whatsapp?.code ?? null)
+      setOpened(false)
       setSaving(false)
       setError(false)
       setConfirmingDelete(false)
@@ -61,8 +92,27 @@ export function AccountSheet({ open, onOpenChange, user, onSave, onDelete }: Acc
     }
   }
 
-  const isDirty = JSON.stringify(draft) !== JSON.stringify(snapshot)
-  const valid = basicsValid(draft)
+  const whatsapp = user.whatsapp ?? { number: null, code: null, linked: null }
+  const linkPhase: 'idle' | 'waiting' | 'linked' = whatsapp.linked ? 'linked' : opened || (linkCode != null && !whatsapp.number) ? 'waiting' : 'idle'
+
+  // While the sheet waits for the chat's message, a return to the tab re-reads the account.
+  useEffect(() => {
+    if (!open || linkPhase !== 'waiting' || !onRefresh) return
+    const refresh = () => {
+      if (document.visibilityState !== 'hidden') onRefresh()
+    }
+    document.addEventListener('visibilitychange', refresh)
+    window.addEventListener('focus', refresh)
+    return () => {
+      document.removeEventListener('visibilitychange', refresh)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [open, linkPhase, onRefresh])
+
+  const phoneChanged = phone.local.trim() !== phoneSnapshot.local.trim() || phone.country !== phoneSnapshot.country
+  const phoneDirty = phoneChanged && phone.local.trim() !== ''
+  const isDirty = JSON.stringify(draft) !== JSON.stringify(snapshot) || phoneDirty
+  const valid = basicsValid(draft) && (!phoneDirty || phoneValid(phone))
   const busy = saving || deleting
 
   // The redirect replaces the page on success, so the spinner only clears on a failure.
@@ -83,18 +133,25 @@ export function AccountSheet({ open, onOpenChange, user, onSave, onDelete }: Acc
     if (saving || !valid || !draft.country) return
     setSaving(true)
     setError(false)
+    setPhoneError(null)
     try {
-      await onSave({
-        name: draft.name.trim(),
-        country: draft.country,
-        currency: draft.currency,
-        timezone: draft.timezone,
-        cycleDay: user.cycleDay ?? 1,
-        amountFormat: draft.amountFormat,
-      })
+      await onSave(
+        {
+          name: draft.name.trim(),
+          country: draft.country,
+          currency: draft.currency,
+          timezone: draft.timezone,
+          cycleDay: user.cycleDay ?? 1,
+          amountFormat: draft.amountFormat,
+        },
+        phoneDirty ? phone : null,
+      )
       onOpenChange(false)
-    } catch {
-      setError(true)
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : ''
+      if (message === PHONE_TAKEN) setPhoneError('taken')
+      else if (message === INVALID_PHONE) setPhoneError('invalid')
+      else setError(true)
     } finally {
       setSaving(false)
     }
@@ -148,6 +205,72 @@ export function AccountSheet({ open, onOpenChange, user, onSave, onDelete }: Acc
         <p data-cycle-day className="relative flex min-h-row items-center px-inset text-body-lg text-foreground before:absolute before:left-4 before:right-0 before:top-0 before:h-px before:bg-border">
           {t('diaInicio', { dia: user.cycleDay ?? 1 })}
         </p>
+
+        {/* The WhatsApp section (`dashboard-ui` → *Account avatar and menu*, D9): the channel's
+            state, the link, the code and the optional number for Meta's recipient list. */}
+        <section data-whatsapp-section aria-labelledby="account-whatsapp-title" className="mx-inset mt-6 flex flex-col gap-3">
+          <h3 id="account-whatsapp-title" className="px-1 text-body-sm text-muted-foreground">
+            {t('whatsapp.titulo')}
+          </h3>
+          <div data-link-state={linkPhase} className="flex items-start gap-3 rounded-[18px] bg-foreground/[0.04] px-4 py-3">
+            <span
+              className={cn(
+                'grid size-9 shrink-0 place-items-center rounded-full',
+                linkPhase === 'linked' ? 'bg-brand/[0.16] text-brand-ink' : 'bg-foreground/[0.06] text-muted-foreground',
+              )}
+            >
+              {linkPhase === 'linked' ? (
+                <Check aria-hidden className="size-5 animate-segment-pop motion-reduce:animate-none" />
+              ) : linkPhase === 'waiting' ? (
+                <Clock aria-hidden className="size-5" />
+              ) : (
+                <MessageCircle aria-hidden className="size-5" />
+              )}
+            </span>
+            <div key={linkPhase} className="min-w-0 flex-1 transition-opacity duration-200 ease-[ease] starting:opacity-0 motion-reduce:transition-none">
+              <p role="status" className="text-body-lg font-semibold text-foreground">
+                {linkPhase === 'linked' ? t('whatsapp.estadoVinculado') : linkPhase === 'waiting' ? t('whatsapp.estadoEsperando') : t('whatsapp.estadoSinVincular')}
+              </p>
+              <p className="text-body-sm text-muted-foreground">
+                {linkPhase === 'linked' && whatsapp.linked
+                  ? formatPhone(whatsapp.linked)
+                  : linkPhase === 'waiting'
+                    ? t('whatsapp.estadoEsperandoLinea')
+                    : t('whatsapp.estadoSinVincularLinea')}
+              </p>
+            </div>
+          </div>
+          {linkPhase !== 'linked' ? (
+            <>
+              <WhatsAppLinkAction
+                number={whatsapp.number}
+                code={linkCode}
+                onRequestCode={onRequestLink}
+                onCodeReady={setLinkCode}
+                onOpened={() => setOpened(true)}
+                label={t('whatsapp.vincular')}
+                disabled={busy || !onRequestLink}
+              />
+              {linkCode != null || !whatsapp.number ? (
+                <LinkCode number={whatsapp.number} code={linkCode} labels={{ codigo: t('whatsapp.codigo'), sinNumero: t('whatsapp.sinNumero', { codigo: linkCode ?? '······' }) }} className="px-1" />
+              ) : null}
+            </>
+          ) : null}
+          <div className="rounded-[18px] bg-foreground/[0.04] px-4 py-3">
+            <PhoneField
+              idPrefix="account"
+              value={phone}
+              onChange={(next) => {
+                setPhone(next)
+                setPhoneError(null)
+              }}
+              labels={{ country: t('whatsapp.pais'), local: t('whatsapp.numeroLocal'), invalid: t('whatsapp.numeroInvalido'), taken: t('whatsapp.numeroEnOtraCuenta') }}
+              error={phoneError}
+              disabled={busy}
+            />
+            <p className="mt-3 text-body-sm text-muted-foreground">{t('whatsapp.paraQue')}</p>
+          </div>
+        </section>
         {onDelete ? (
           <div className="mx-inset mt-6">
             {/* The row opens the confirmation in place; the sheet stays, so a slip is one tap from "Mejor no". */}

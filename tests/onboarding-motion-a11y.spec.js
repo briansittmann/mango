@@ -170,6 +170,78 @@ test('under reduced motion the free margin reads its target in the first frame',
   expect(text).toBe('880')
 })
 
+/** Per frame: each bubble's y translation and opacity, with a timestamp (the closing step's preview). */
+async function sampleBubbles(page, ms = 1500) {
+  await page.evaluate((ms) => {
+    const series = []
+    window.__bubbles = series
+    const start = performance.now()
+    const read = (el) => {
+      if (!el) return null
+      const transform = getComputedStyle(el).transform
+      // `matrix(a, b, c, d, tx, ty)`: the sixth value, with its closing parenthesis.
+      return { y: transform === 'none' ? 0 : parseFloat(transform.split(',')[5]) || 0, opacity: Number(getComputedStyle(el).opacity) }
+    }
+    const tick = () => {
+      series.push({
+        t: performance.now() - start,
+        person: read(document.querySelector('[data-bubble="person"]')),
+        mango: read(document.querySelector('[data-bubble="mango"]')),
+      })
+      if (performance.now() - start < ms) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  }, ms)
+}
+
+test('the chat preview enters bubble by bubble, Mango\'s after the person\'s, and nothing runs endlessly', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/demo/onboarding?paso=6')
+  await sampleBubbles(page, 2200)
+  await page.locator('[data-primary]').click()
+  await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '7')
+  await page.waitForTimeout(2300)
+  const series = (await page.evaluate(() => window.__bubbles)).filter((s) => s.person && s.mango)
+  expect(series.length).toBeGreaterThan(5)
+  // Both travel from below and fade in over frames, then settle.
+  expect(Math.max(...series.map((s) => s.person.y))).toBeGreaterThan(2)
+  expect(Math.max(...series.map((s) => s.mango.y))).toBeGreaterThan(2)
+  expect(distinct(series.map((s) => s.person.opacity))).toBeGreaterThan(2)
+  const last = series[series.length - 1]
+  expect(last.person.y).toBe(0)
+  expect(last.mango.y).toBe(0)
+  expect(last.person.opacity).toBe(1)
+  expect(last.mango.opacity).toBe(1)
+  // The person's bubble is in place before Mango's starts moving.
+  const personLanded = series.find((s) => s.person.y === 0 && s.person.opacity === 1)
+  const mangoStarted = series.find((s) => s.mango.opacity > 0.05)
+  expect(personLanded && mangoStarted && mangoStarted.t >= personLanded.t - 20).toBe(true)
+  // Both settled within a second of the step showing (the first sample with the bubbles mounted).
+  const shown = series[0].t
+  expect(series.find((s) => s.t > shown + 1000 && (s.mango.y !== 0 || s.mango.opacity < 1))).toBeUndefined()
+
+  await page.waitForTimeout(2000)
+  const endless = await page.evaluate(() =>
+    document.getAnimations().filter((animation) => {
+      const effect = /** @type {KeyframeEffect} */ (animation.effect)
+      return effect?.getTiming().iterations === Infinity && animation.playState === 'running'
+    }).length,
+  )
+  expect(endless).toBe(0)
+})
+
+test('under reduced motion both bubbles are in place in the first frame', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/demo/onboarding?paso=6')
+  await sampleBubbles(page, 400)
+  await page.locator('[data-primary]').click()
+  await expect(page.locator('[data-bubble="mango"]')).toBeAttached()
+  await page.waitForTimeout(500)
+  const series = (await page.evaluate(() => window.__bubbles)).filter((s) => s.person && s.mango)
+  expect(series.length).toBeGreaterThan(0)
+  expect(series.every((s) => s.person.y === 0 && s.mango.y === 0 && s.person.opacity === 1 && s.mango.opacity === 1)).toBe(true)
+})
+
 test('the welcome enters once without blocking "Empezar", and nothing runs endlessly', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/demo/onboarding')

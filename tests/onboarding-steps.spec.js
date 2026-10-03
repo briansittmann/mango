@@ -30,7 +30,7 @@ test('seven steps forward, the progress line counts them and names them', async 
     await expect(progress(page)).toHaveAttribute('aria-valuetext', TITLES[n - 1])
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(HEADINGS[n - 1])
   }
-  await expect(primary(page)).toHaveText('Vincular')
+  await expect(primary(page)).toHaveText('Vincular WhatsApp')
   expect(await body(page)).not.toMatch(/\b\d de 7\b/)
 })
 

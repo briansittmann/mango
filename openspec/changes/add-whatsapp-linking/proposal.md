@@ -1,0 +1,38 @@
+## Why
+
+Since 2026-10-03 the account is born only on the web and WhatsApp is a channel the person links from it (ARCHITECTURE.md §4, ROADMAP.md block 10), but nothing links anything yet: the closing step stores a typed number, `lib/whatsapp/link-request.ts` sends nothing, an unknown number gets silence, and `canales` rows are created by hand. The decision is already written — the person writes first, from a `wa.me` link that carries a short code, and the adapter creates the channel with the `wa_id` Meta sends — so this change builds it end to end, with the same number of taps whether the test number or an owned number is in use.
+
+## What Changes
+
+- **A linking code per account.** `usuarios.codigo_vinculacion` (unique, six characters from an unambiguous alphabet) is generated when the person reaches the closing step or taps "Vincular WhatsApp" in the account sheet, lives 7 days from `whatsapp_solicitado_en`, and is consumed when the channel is created. A live code is reused, not replaced.
+- **"Vincular WhatsApp" opens the chat.** The button is a link to `https://wa.me/<WHATSAPP_PHONE_NUMBER>?text=vincular%20ABC123`: on a phone it opens the WhatsApp app, on a desktop WhatsApp Web, with the message already written. The screen shows the code beside it (for copying by hand), a chat preview of what will happen, and a "waiting" state that turns into "vinculado" when the page re-reads the account after the tab regains focus.
+- **The adapter links on the first message.** An unknown number whose text is `vincular <código>` becomes a `whatsapp` channel for that account, atomically in the database (`vincular_canal`): the `wa_id` as Meta sends it is the identifier, `usuarios.telefono` is overwritten with it (and cleared from any other account that only typed it), the code is consumed, and the chat gets "✅ Listo, este chat ya está vinculado a tu cuenta". An invalid or expired code, a number already linked to another account, or an account that already has a WhatsApp channel each get their own one-line reply.
+- **An unknown number is answered once.** Any other text from a number with no channel gets one reply, in Spanish and English, that sends the person to register on the web and link WhatsApp from the account, with the link. A new table `contactos_desconocidos` remembers the number, its message count and when it was answered, so the second message spends nothing; the cron purges rows older than 90 days. This is also the seed the rate limiting of block 10 will read.
+- **The typed number is optional and correct.** The phone field (closing step and account sheet) becomes a country select with the flag emoji and prefix on the left and the local number on the right, the account's country preselected, converted to E.164 with `libphonenumber-js` (which resolves the Argentine 9 and 15 and the trunk zero of Ireland, the UK, Germany or Italy). It no longer sets `whatsapp_solicitado_en` and is never used to link: it exists only so the number can be loaded in Meta's recipient list while the test number lasts, and the screen says so.
+- **A "WhatsApp" section in the account sheet.** The channel's state (sin vincular / esperando tu mensaje / vinculado with the number), the same "Vincular WhatsApp" link, the phone field for whoever skipped it, and the honest line about the test number.
+- **The web can read whether it is linked.** A `security definer` function (`canal_vinculado`) returns the current user's own channel identifier; `canales` keeps RLS without policies, so the pending question and the last load stay unreadable with the public key.
+- The closing step's primary action changes meaning: "Vincular WhatsApp" opens the chat and the step then offers "Ir a mi mes"; "Seguir sin WhatsApp" stays. The stub `lib/whatsapp/link-request.ts` is deleted. `normalizePhone` is replaced by the library-backed `toE164`.
+
+## Capabilities
+
+### New Capabilities
+
+- `whatsapp-linking`: the linking code (generation, reuse, expiry, consumption), the `wa.me` link and its message, the adapter's handling of `vincular <código>` from an unknown or a known number, the single reply to an unknown number and the memory behind it, the database function that links atomically, and what the web reads to show the state.
+
+### Modified Capabilities
+
+- `messaging-channels`: *The bot logic does not know the channel's mechanics* — for an unknown sender the adapter resolves a linking message before the logic, and the logic receives whether the number was already answered; *An account exists without a phone* — the stored phone is overwritten by the linked identifier.
+- `onboarding` (delta of `add-web-onboarding`, as `remove-whatsapp-invitations` already modifies it): *Closing step stores a WhatsApp request and sends nothing* is replaced by the link-based closing step; *Motion of the onboarding* gains the chat preview's entrance and the waiting → linked state change.
+- `dashboard-ui`: *Account avatar and menu* — the account sheet gains the "WhatsApp" section.
+
+A known chat that sends `vincular <código>` is told it is already linked instead of "no entendí"; that lives in `whatsapp-linking`, before the parser, so `bot-conversation` and `bot-message-parsing` do not change.
+
+## Impact
+
+- **Database**: migration `0031_vinculacion_whatsapp.sql` — `usuarios.codigo_vinculacion`, new comment on `whatsapp_solicitado_en`, `vincular_canal(p_tipo, p_codigo, p_identificador)` (service role only), `canal_vinculado(p_tipo)` (`security definer`, callable by `authenticated`), table `contactos_desconocidos` (RLS, no policies). Applied through the MCP before the deploy: everything is additive and the running code ignores it.
+- **Bot**: `lib/whatsapp/adapter.ts` (linking branch before `findUserIdByPhone` resolves, unknown-number memory), `lib/bot/logic.ts` (`processUnknownNumber` replies once; known `vincular` reply), `lib/whatsapp/link.ts` (new: link builder and message parser, replaces `link-request.ts`), `lib/data/channels.ts` (`linkChannel`, `rememberUnknownContact`), `messages/*.json` (`bot.vinculado`, `bot.codigoInvalido`, `bot.numeroEnOtraCuenta`, `bot.yaVinculado`, `bot.desconocido`).
+- **Web**: `lib/data/profile.ts` (`requestWhatsAppLink`, `requestWhatsApp` without the timestamp), `lib/data/supabase/profile.ts`, `lib/data/onboarding.ts` and `lib/data/dashboard.ts` (`whatsapp` state), `lib/data/supabase/onboarding.ts` and `dashboard.ts` (read the state), `app/onboarding/actions.ts`, `app/dashboard/actions.ts`, `components/organisms/onboarding/whatsapp-step.tsx` (rebuilt), `components/templates/onboarding-template.tsx` (step 7 flow), `components/organisms/account-sheet.tsx` (section), new `components/molecules/phone-field.tsx` and `components/molecules/whatsapp-link.tsx`, `lib/data/countries.ts` (`toE164` over `libphonenumber-js`), `lib/demo/demo-onboarding.ts` and the demo dashboard (sandbox state), `tests/onboarding-close.spec.js` and a new `tests/account-whatsapp.spec.js`.
+- **Dependencies**: `libphonenumber-js` (the `/min` build, ~65 KB gzipped, loaded only by the phone field's module and the server action).
+- **Environment**: `WHATSAPP_PHONE_NUMBER` in Vercel (the number people write to, digits only, distinct from `WHATSAPP_PHONE_NUMBER_ID`) and in `.env.local`. Without it the web shows the code with "copiá y mandáselo a Mango" and no link.
+- **Docs**: ARCHITECTURE.md §4 and §8 (what was "pending" becomes built), ROADMAP.md block 9 (settings section) and block 10 (unknown number, linking, phone field), CLAUDE.md.
+- **Open changes**: `add-web-onboarding` and `remove-whatsapp-invitations` are still open; this change's `onboarding` delta is written over the closing step as `remove-whatsapp-invitations` leaves it, and archives after both.
