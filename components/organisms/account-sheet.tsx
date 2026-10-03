@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Check, Clock, Loader2, MessageCircle, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Collapsible } from '@/components/atoms/collapsible'
@@ -55,7 +55,6 @@ function draftOf(user: DashboardData['user']): BasicsDraft {
  */
 export function AccountSheet({ open, onOpenChange, user, onSave, onRequestLink, onRefresh, onDelete }: AccountSheetProps) {
   const t = useTranslations('cuenta')
-  const nameRef = useRef<HTMLInputElement>(null)
   const [wasOpen, setWasOpen] = useState(open)
   const [draft, setDraft] = useState<BasicsDraft>(() => draftOf(user))
   const [snapshot, setSnapshot] = useState(draft)
@@ -94,6 +93,21 @@ export function AccountSheet({ open, onOpenChange, user, onSave, onRequestLink, 
 
   const whatsapp = user.whatsapp ?? { number: null, code: null, linked: null }
   const linkPhase: 'idle' | 'waiting' | 'linked' = whatsapp.linked ? 'linked' : opened || (linkCode != null && !whatsapp.number) ? 'waiting' : 'idle'
+
+  // The code is requested as the sheet opens, so "Vincular WhatsApp" is the `wa.me` link from the
+  // first tap: iOS only opens the app on the gesture itself, not after a round trip.
+  useEffect(() => {
+    if (!open || whatsapp.linked || !whatsapp.number || linkCode != null || !onRequestLink) return
+    let cancelled = false
+    onRequestLink()
+      .then((result) => {
+        if (!cancelled) setLinkCode(result.code)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [open, whatsapp.linked, whatsapp.number, linkCode, onRequestLink])
 
   // While the sheet waits for the chat's message, a return to the tab re-reads the account.
   useEffect(() => {
@@ -163,7 +177,9 @@ export function AccountSheet({ open, onOpenChange, user, onSave, onRequestLink, 
       onOpenChange={onOpenChange}
       busy={busy}
       isDirty={isDirty}
-      initialFocus={nameRef}
+      // No field takes focus on open, as the edit sheets do: a focused name would raise the
+      // keyboard on a phone, and an unattached ref lands focus (and its ring) on "Cancelar".
+      initialFocus={false}
       anchored
       title={t('titulo')}
       leading={
