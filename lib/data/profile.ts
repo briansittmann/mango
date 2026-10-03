@@ -23,15 +23,15 @@ export type ProfileBasics = {
  *   movement (D6), and `INVALID_COUNTRY` / `INVALID_CURRENCY` / `INVALID_TIMEZONE` / `INVALID_NAME`
  *   / `INVALID_CYCLE_DAY` on a value outside `validateBasics`
  * - `setSavingsTarget` writes `meta_ahorro_mensual`, null to clear it
- * - `requestWhatsApp` stores the phone (E.164), the code uppercased and the time of the request;
- *   rejects `PHONE_TAKEN` when another account holds the phone and `INVALID_PHONE` otherwise
+ * - `requestWhatsApp` stores the phone (E.164) and the time of the request; rejects `PHONE_TAKEN`
+ *   when another account holds the phone and `INVALID_PHONE` otherwise
  * - `setStep` stores the pending onboarding step (1–7)
  * - `complete` marks the onboarding complete
  */
 export type ProfileMutations = {
   updateBasics(basics: ProfileBasics): Promise<void>
   setSavingsTarget(amount: number | null): Promise<void>
-  requestWhatsApp(phone: string, inviteCode: string | null): Promise<void>
+  requestWhatsApp(phone: string): Promise<void>
   setStep(step: number): Promise<void>
   complete(): Promise<void>
 }

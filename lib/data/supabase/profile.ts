@@ -46,10 +46,10 @@ export function createSupabaseProfileMutations(ctx: DataContext): ProfileMutatio
     async setSavingsTarget(amount) {
       await update({ meta_ahorro_mensual: amount })
     },
-    async requestWhatsApp(phone, inviteCode) {
+    async requestWhatsApp(phone) {
       const result = await client
         .from('usuarios')
-        .update({ telefono: phone, codigo_invitacion: inviteCode, whatsapp_solicitado_en: new Date().toISOString() })
+        .update({ telefono: phone, whatsapp_solicitado_en: new Date().toISOString() })
         .eq('id', usuarioId)
         .select('id')
       if (result.error?.code === UNIQUE_VIOLATION) throw new Error(PHONE_TAKEN)

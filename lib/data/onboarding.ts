@@ -19,14 +19,13 @@ export type OnboardingProfile = {
   amountFormat: AmountFormat
   savingsTarget: number | null
   phone: string | null
-  inviteCode: string | null
 }
 
 /**
  * What the onboarding template renders from (`add-web-onboarding` D2), loaded by the page the way
  * `DashboardData` is: the pending step, the profile, the cycle in progress, the categories alive in
- * it, the definitions, the cycle's budget rows as a map (null = "no budget" marker), whether
- * anything is keyed to the cycle yet (D6), and whether the closing step asks for an invitation code.
+ * it, the definitions, the cycle's budget rows as a map (null = "no budget" marker), and whether
+ * anything is keyed to the cycle yet (D6).
  */
 export type OnboardingData = {
   step: number
@@ -36,7 +35,6 @@ export type OnboardingData = {
   definitions: RecurringDefinition[]
   budgets: Record<string, number | null>
   hasData: boolean
-  inviteRequired: boolean
 }
 
 /**

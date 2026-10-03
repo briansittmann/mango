@@ -23,8 +23,7 @@ function readNull() {
 
 /**
  * `/demo/onboarding`'s mount of the template (D2): in-memory state that starts empty and is
- * discarded on reload. Test seams: `?paso=N`, `?e2eSeed=1`, `?e2eInvite=0`, `?pais=`, `?formato=`,
- * `?nombre=`. The state reads the browser's timezone, so the template mounts on the client only.
+ * discarded on reload. Test seams: `?paso=N`, `?e2eSeed=1`, `?pais=`, `?formato=`, `?nombre=`. The state reads the browser's timezone, so the template mounts on the client only.
  */
 export function DemoOnboarding() {
   const t = useTranslations('onboarding')
@@ -34,7 +33,6 @@ export function DemoOnboarding() {
   const [store, setStore] = useState<DemoOnboardingStore | null>(null)
   const state = useSyncExternalStore(store?.subscribe ?? subscribeNever, store?.get ?? readNull, readNull)
   const actions = useMemo(() => (store ? createDemoOnboardingActions(store) : null), [store])
-  const inviteRequired = searchParams.get('e2eInvite') !== '0'
 
   if (!mounted) return null
   if (!store) {
@@ -56,7 +54,7 @@ export function DemoOnboarding() {
 
   return (
     <OnboardingTemplate
-      data={deriveDemoOnboardingData(state, inviteRequired)}
+      data={deriveDemoOnboardingData(state)}
       actions={actions}
       onFinished={() => router.replace('/demo')}
       notice={

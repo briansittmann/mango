@@ -20,7 +20,7 @@ export function SupabaseOnboarding({ data }: { data: OnboardingData }) {
       profile: {
         updateBasics: (basics) => unwrap(actions.updateProfileBasics(basics)),
         setSavingsTarget: (amount) => unwrap(actions.setSavingsTarget(amount)),
-        requestWhatsApp: (phone, inviteCode) => unwrap(actions.requestWhatsApp(phone, inviteCode)),
+        requestWhatsApp: (phone) => unwrap(actions.requestWhatsApp(phone)),
         setStep: (step) => unwrap(actions.setOnboardingStep(step)),
         complete: () => unwrap(actions.finishOnboarding()),
       },

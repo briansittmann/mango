@@ -83,7 +83,7 @@ ARCHITECTURE.md
 
 # ARCHITECTURE.md — Mango
  
-**Mango** — app de finanzas personales con dos interfaces: una **web** donde uno se registra, carga, ve gráficos y edita en profundidad, y un bot de **WhatsApp** opcional, por invitación, para cargar y consultar rápido.
+**Mango** — app de finanzas personales con dos interfaces: una **web** donde uno se registra, carga, ve gráficos y edita en profundidad, y un bot de **WhatsApp** opcional, que se vincula desde la web, para cargar y consultar rápido.
  
 ---
  
@@ -94,11 +94,12 @@ Registrar gastos e ingresos con la menor fricción posible (un mensaje de texto)
 Dos modos de uso:
  
 - **Web** → puerta de entrada y uso completo: registro, dashboard, gráficos, carga y edición a mano, gestión de fijos y categorías. Mango se puede usar entero sin el bot.
-- **WhatsApp** → carga rápida y consultas cortas. Canal opcional, por invitación.
-> **Decisión (sept 2026):** la web deja de ser solo "ver y editar". Antes el bot era la única puerta de entrada (WhatsApp → carga rápida, consultas cortas, **alta de usuario**; web → dashboard, gráficos, edición, gestión de fijos y categorías) y la cuenta nacía con el teléfono. Ahora el dashboard ya permite cargar todo a mano, así que cualquiera puede registrarse por la web y usar Mango sin bot; WhatsApp queda como canal opcional, por invitación, limitado por el cupo del número de prueba de Meta. Motivo: el techo de 5 destinatarios es de Meta, no de Mango; sin registro web, la app no puede crecer hasta que haya número propio. Dos onboardings, una cuenta: ver sección 4.
+- **WhatsApp** → carga rápida y consultas cortas. Canal opcional: se vincula desde la web (sección 4).
+> **Decisión (3/10/2026):** se saca la invitación. La cuenta nace solo por la web, y WhatsApp es un canal que la persona vincula desde su cuenta. No hay alta por chat, ni códigos de invitación, ni interruptor. Motivo: con el registro web abierto y el onboarding web hecho, la invitación solo servía para dejar entrar a gente por el chat, y ese camino cuesta mantener un segundo onboarding, una tabla y un interruptor para una puerta que nadie necesita. Lo que queda del número de prueba de Meta (5 destinatarios) se maneja a mano en el panel de Meta hasta el número propio.
+> **Decisión (sept 2026):** la web deja de ser solo "ver y editar". Antes el bot era la única puerta de entrada (WhatsApp → carga rápida, consultas cortas, **alta de usuario**; web → dashboard, gráficos, edición, gestión de fijos y categorías) y la cuenta nacía con el teléfono. Ahora el dashboard ya permite cargar todo a mano, así que cualquiera puede registrarse por la web y usar Mango sin bot; WhatsApp queda como canal opcional, limitado por el cupo del número de prueba de Meta. Motivo: el techo de 5 destinatarios es de Meta, no de Mango; sin registro web, la app no puede crecer hasta que haya número propio. (Esta decisión todavía dejaba un onboarding por chat con invitación; el 3/10 se sacó, ver arriba.)
 
 - **Mensajería** → WhatsApp Business API (Cloud API de Meta). Se arranca con el **número de prueba** de Meta: gratis, hasta 5 destinatarios y 1000 mensajes/mes, sin verificación de negocio. Alcanza para los 3 usuarios previstos.
-> **Decisión (sept 2026):** el sistema se diseña **como si ya hubiera número propio**. El número de prueba (5 destinatarios, 1000 mensajes/mes) es una restricción temporal de hoy, no una premisa de diseño: nada en el código asume el tope de 5 ni el cupo de 1000, y el número emisor sale de `WHATSAPP_PHONE_NUMBER_ID` (sección 2). Lo único que hoy depende del número de prueba, la invitación obligatoria, es un **interruptor de configuración** (sección 4). Por qué: si el diseño se ata al número de prueba, el día que llegue el número propio hay que desarmarlo; así, pasar es cambiar credenciales y apagar un interruptor.
+> **Decisión (sept 2026):** el sistema se diseña **como si ya hubiera número propio**. El número de prueba (5 destinatarios, 1000 mensajes/mes) es una restricción temporal de hoy, no una premisa de diseño: nada en el código asume el tope de 5 ni el cupo de 1000, y el número emisor sale de `WHATSAPP_PHONE_NUMBER_ID` (sección 2). Lo único que hoy depende del número de prueba es la lista de 5 destinatarios, que se carga a mano en el panel de Meta y no vive en el código. Por qué: si el diseño se ata al número de prueba, el día que llegue el número propio hay que desarmarlo; así, pasar es cambiar credenciales.
 
 > **Decisión (sept 2026):** se cambió de Telegram a WhatsApp. Motivo: Brian y sus dos amigos usan WhatsApp y ninguno usa Telegram. Telegram era técnicamente más cómodo (API más simple, botones sin límite, sin ventana de 24 h), pero la fricción de instalar otra app mataba la adopción.
  
@@ -149,7 +150,6 @@ Los **nombres** viven acá; los **valores** nunca — van a `.env.local` (ignora
 | `WHATSAPP_PHONE_NUMBER_ID` | Identificador del número emisor; va en la URL de envío | **Solo servidor** |
 | `WHATSAPP_VERIFY_TOKEN` | String arbitrario; se compara contra `hub.verify_token` en el GET de alta del webhook | **Solo servidor** |
 | `WHATSAPP_APP_SECRET` | App Secret de Meta; valida el HMAC SHA-256 de `X-Hub-Signature-256` en cada POST | **Solo servidor** |
-| `WHATSAPP_REQUIRE_INVITE` | Interruptor de invitación obligatoria (sección 4); solo `false` lo apaga | **Solo servidor** |
  
 **El prefijo `NEXT_PUBLIC_` no es cosmético:** sin él la variable no llega al navegador, y con él **se embebe en el bundle público**. Por eso la `anon key` lo lleva (es pública por diseño, la protege RLS) y la `service_role` no puede llevarlo bajo ninguna circunstancia: expuesta al cliente, cualquiera lee y escribe los gastos de todos.
  
@@ -294,134 +294,60 @@ El umbral (15) es una constante del código, no un campo: si hay que moverlo, se
  
 ## 4. Onboarding y cuentas
  
-### Alta por código de invitación
- 
-**Reemplaza la whitelist de teléfonos de la sección 10.** La whitelist obliga a cargar cada número a mano en la base; con cinco o diez usuarios deja de escalar, y dejar el bot abierto a cualquier número significa comerse mensajes del cupo con gente random.
- 
-**Flujo:** Brian genera un código desde el dashboard y se lo pasa a la persona. Esa persona le escribe al bot, el bot le pide el código, y si valida arranca el onboarding normal. Brian no toca nada, pero nadie entra sin invitación.
- 
-**Un solo uso.** Al validarse, el código se quema. No sirve para dos personas ni para el mismo número dos veces.
- 
-**Vence a los 7 días.** Cubre el otro caso: un código generado y nunca usado, que si no queda vivo indefinidamente.
- 
-**Un número desconocido no se ignora en silencio** — se le pide el código. Y los tres errores se distinguen en el mensaje: **no existe**, **ya fue usado**, **venció**. Si el bot contesta lo mismo en los tres casos, la persona no sabe si el problema es el código o su número, y termina escribiéndole a Brian.
- 
-**Trazabilidad:** `creada_por` guarda quién invitó a quién. Con cinco usuarios no cambia nada; si esto llega a crecer, saber por qué rama entró cada uno es la única señal real de cómo se propaga.
- 
-**Rate limiting sobre los intentos de código**, por número: sin eso, un desconocido puede probar códigos por fuerza bruta. Va junto al rate limiting de la sección 10.
- 
-**Lo que la invitación no saltea:** el número de prueba de Meta admite **5 destinatarios**, y ese límite es de Meta, no de la app. El sexto número no se puede dar de alta aunque tenga un código válido. El código empieza a rendir de verdad con número propio, donde el tope desaparece y pasa a pagarse por mensaje.
+### Una puerta de entrada: la web
 
-**Una invitación sirve para dos cosas:** crear la cuenta por chat (el flujo de arriba), o **vincular WhatsApp a una cuenta web que ya existe**. Con registro abierto, el código deja de ser la llave de la cuenta y pasa a ser la llave del canal.
+La cuenta nace **solo por la web**, con el registro abierto (código por mail; Google en el bloque 13). WhatsApp es un **canal** que la persona vincula desde su cuenta, no una forma de crearla. Un solo onboarding, el web, y un solo dashboard.
 
-**Exigir el código es un interruptor, no una regla fija.** Mientras se use el número de prueba está **encendido**: sin código no hay WhatsApp, porque el tope de 5 es de Meta. Con número propio se **apaga**, sin tocar código: cualquier cuenta vincula su número desde la web, y un número desconocido que le escribe al bot arranca el onboarding por chat sin que se le pida código. Los códigos siguen existiendo; dejan de ser obligatorios.
+> **Decisión (3/10/2026):** reemplaza a *Alta por código de invitación* y a *Dos puertas de entrada, una cuenta*. Antes había dos entradas: el registro web y WhatsApp por invitación, con una tabla `invitaciones` (código de un solo uso, 7 días, `creada_por`), un onboarding por chat (código → nombre → país → ciclo → gasto de prueba → link con código de un solo uso que abría sesión), el *setup partido* (lo mínimo en el chat, categorías y fijos en la web), un botón "Invitar a alguien" en el menú y el interruptor `WHATSAPP_REQUIRE_INVITE` para apagar la invitación con el número propio. Se saca todo. Motivo: la invitación existía para dejar entrar gente por el chat sin abrir el bot a cualquier número; con el registro web abierto y el onboarding web hecho, ese camino duplica el onboarding, suma una tabla y un interruptor, y la gente igual se registra por la web. El tope de 5 destinatarios del número de prueba es de Meta y se maneja en su panel, no con códigos. Lo que queda en el código y en la base (`lib/whatsapp/invite.ts`, `usuarios.codigo_invitacion`, la tabla `invitaciones` de la `0003`, el campo de código del cierre del onboarding) se quita en el bloque 10 de `ROADMAP.md`.
 
-> **Decisión (sept 2026):** el interruptor es la variable de entorno `WHATSAPP_REQUIRE_INVITE` (sección 2). Solo el valor `false` lo apaga; si la variable falta o tiene otro valor, el código es obligatorio. Por qué variable y no base: cambia una sola vez, al pasar al número propio, y ahí un redeploy no molesta. Los códigos sí viven en la base (`invitaciones`, sección 8).
- 
-> No confundir con el **código de acceso a la web** (más abajo): ese es para entrar al dashboard de una cuenta que ya existe. Este es para crear la cuenta.
- 
-### Dos puertas de entrada, una cuenta
+**Vincular WhatsApp.** La persona escribe primero. En el cierre del onboarding o en la sección "WhatsApp" de ajustes, Mango le muestra un botón que abre WhatsApp contra el número de Mango con el mensaje ya escrito: `https://wa.me/<número de Mango>?text=vincular%20ABC123`, donde `ABC123` es un **código de vinculación** corto, por cuenta y con vencimiento (`usuarios.codigo_vinculacion`, `whatsapp_solicitado_en`, sección 8). Cuando ese mensaje llega desde un número que no está en `canales`, el adaptador busca el código, crea la fila en `canales` con el `wa_id` **tal como lo manda Meta** y responde ahí mismo ("✅ Listo, este chat ya está vinculado a tu cuenta"), dentro de la ventana de 24 h y sin plantilla. El código se consume al vincular. La web refleja el estado: "sin vincular" (botón), "pedido, escribile a Mango" (botón otra vez, el código sigue vivo) y "vinculado" (fila en `canales`).
 
-Mango tiene **dos entradas**: el **registro web, abierto a cualquiera**, y **WhatsApp, por invitación**. Cada una tiene su onboarding, y los dos terminan en la misma cuenta y el mismo dashboard. La diferencia es de dónde viene la persona y qué datos ya se tienen.
+> **Decisión (3/10/2026):** se vincula por código en el primer mensaje, no por plantilla ni por número. Motivos: (1) el número correcto lo pone WhatsApp, no la persona: Meta manda el `wa_id` canónico (en Argentina `549 11 …`, con el 9 de celular y sin el 0 ni el 15 que se marcan desde adentro; en otros países sin el cero troncal), y un número tipeado a mano rara vez coincide con eso; (2) no depende de una plantilla aprobada por Meta ni de la ventana de 24 h, porque el mensaje lo inicia la persona, así que la respuesta es gratis; (3) sirve igual con el número de prueba y con el propio: solo cambia el número del link. Cuesta un toque más que recibir un mensaje. Reemplaza al plan anterior (Mango manda una plantilla al número guardado y el adaptador vincula cuando la persona responde) y a la alternativa de casar el número desconocido con `usuarios.telefono`.
 
-**Hoy** (número de prueba, invitación obligatoria): WhatsApp es para **cinco personas** (justo el tope del número de prueba de Meta), y pueden llegar por cualquiera de las dos puertas: arrancando por chat, o registrándose en la web e ingresando su código en el onboarding. **Todos los demás** hacen el onboarding web, siguen sin WhatsApp y manejan sus finanzas por la web.
+**El número tipeado es opcional.** El campo de teléfono queda en el cierre y en ajustes solo para que, mientras dure el número de prueba, Brian cargue ese número entre los 5 destinatarios del panel de Meta (sin eso, el bot no puede responderle). Se elige el país con bandera y prefijo (emoji de bandera derivado del código ISO de `lib/data/countries.ts`, sin assets) y el número local al lado; `libphonenumber-js` lo lleva a E.164 y resuelve lo que `normalizePhone` hoy no (el 9 y el 15 argentinos, el cero troncal de Irlanda, Reino Unido, Alemania o Italia). No se usa para vincular: cuando llega el primer mensaje, `usuarios.telefono` se pisa con el `wa_id` de Meta. Con el número propio el campo desaparece.
 
-> **Decisión (1/10/2026):** el destino es **WhatsApp abierto a todas las cuentas**. La invitación es un freno técnico del número de prueba, no parte del producto: la landing promete el bot para todos y no la menciona, y el bloque 10 de `ROADMAP.md` la apaga con el número propio.
+Hoy nada de esto existe: `lib/whatsapp/link-request.ts` es un stub documentado que no manda nada, el cierre guarda el número tal cual y la web dice "Guardamos tu número. Cuando el bot esté listo para ti, te llega un mensaje de Mango". El bloque 10 de `ROADMAP.md` lo construye: código, link, vinculación en el adaptador, campo con banderas.
 
-> **Decisión (sept 2026):** reemplaza a "El bot es la puerta de entrada", que decía: la cuenta se crea **desde WhatsApp**, no desde la web; al primer mensaje, el bot da de alta al usuario **solo con el número de teléfono** — sin mail, sin contraseña, sin formulario —, porque es el momento que vende el producto: mandás un mensaje y ya quedó registrado el gasto. Ese momento sigue existiendo en el onboarding de WhatsApp; lo que cambia es que deja de ser la única puerta. Motivo: el dashboard ya permite cargar todo a mano, y el techo de 5 destinatarios es de Meta, no de Mango. Con el bot como única entrada, la app no podía crecer hasta tener número propio.
+**Un número desconocido no se ignora en silencio.** Si no coincide con ningún canal, el bot responde una sola vez con una línea que manda a registrarse en la web y a vincular el número desde ajustes, con el link. Sin onboarding por chat y sin pedir ningún código. Sigue siendo un mensaje del cupo, y por eso va junto al rate limiting de la sección 10.
 
-#### Onboarding web (registro abierto)
+> **Decisión (sept 2026):** reemplaza a "El bot es la puerta de entrada", que decía: la cuenta se crea **desde WhatsApp**, no desde la web; al primer mensaje, el bot da de alta al usuario **solo con el número de teléfono** — sin mail, sin contraseña, sin formulario —, porque es el momento que vende el producto: mandás un mensaje y ya quedó registrado el gasto. Motivo del cambio: el dashboard ya permite cargar todo a mano, y el techo de 5 destinatarios es de Meta, no de Mango. Con el bot como única entrada, la app no podía crecer hasta tener número propio. El "momento que vende" lo da ahora la `/demo` (sección 12) y el margen libre en vivo del onboarding web.
+
+#### Onboarding web
 
 *Construido en `add-web-onboarding` (octubre 2026): la ruta `/onboarding`, detrás de la sesión, con `components/templates/onboarding-template.tsx` y contratos inyectados como el dashboard — montada contra Supabase en `app/onboarding/` (server actions) y en memoria en `/demo/onboarding` (sin link, `noindex`), donde corren los specs de Playwright.*
 
 1. **Registro** con código por mail (sección 2; Google llega en el bloque 13). La fila de `usuarios` la crea un trigger sobre `auth.users` cuando la persona escribe su primer código (sección 8), con EUR, la zona del navegador y ciclo desde el día 1 como valores provisorios que nadie ve: `/dashboard` redirige a `/onboarding` mientras `onboarding_completo` sea false, y `/onboarding` a `/dashboard` cuando es true. El paso pendiente queda en `usuarios.onboarding_paso` (cada avance o retroceso lo escribe), así cerrar la pestaña en el paso 4 vuelve al paso 4, con lo guardado hasta ahí. La URL no cambia entre pasos: el "Volver" de la pantalla es el control, no el del navegador. Una línea de progreso arriba, sin "paso 3 de 7".
-2. **Bienvenida sin gasto cargado.** No reusa la pantalla 1 de WhatsApp ("Ya cargaste tu primer gasto"): acá todavía no se cargó nada, y felicitar por algo que no pasó confunde. Tampoco muestra el nombre (es la parte local del mail).
-3. **Datos básicos:** nombre (prellenado solo si el guardado parece un nombre; un handle como `brian+alta1` queda de placeholder), país de una tabla fija (`lib/data/countries.ts`, nombres por `Intl.DisplayNames`, preseleccionado por la zona horaria del navegador) → moneda y timezone, los dos editables, con una línea que dice el resultado ("Peso argentino · hora de Buenos Aires"); para Argentina, el formato de montos (sección 2); y el día de inicio de ciclo, editable solo mientras la cuenta no tenga nada atado al ciclo (categoría, fijo, presupuesto o movimiento): después queda fijo, porque cambiarlo re-indexaría `presupuestos.periodo`. Sin eso no hay ciclo (sección 6) ni moneda contra la que sumar.
+2. **Bienvenida sin gasto cargado.** No felicita por algo que no pasó. Tampoco muestra el nombre (es la parte local del mail).
+3. **Datos básicos:** nombre (prellenado solo si el guardado parece un nombre; un handle como `brian+alta1` queda de placeholder), país de una tabla fija (`lib/data/countries.ts`, nombres por `Intl.DisplayNames`, preseleccionado por la zona horaria del navegador) → moneda y timezone, los dos editables, con una línea que dice el resultado ("Peso argentino · hora de Buenos Aires"); para Argentina, el formato de montos (sección 2); y el día de inicio de ciclo, editable solo mientras la cuenta no tenga nada atado al ciclo (categoría, fijo, presupuesto o movimiento): después queda fijo, porque cambiarlo re-indexaría `presupuestos.periodo`. Sin eso no hay ciclo (sección 6) ni moneda contra la que sumar. El país y la moneda quedan **editables**: hay gente que vive en un país y gasta en otra moneda.
 4. **Categorías:** chips sugeridos (Comida, Vivienda, …) más un compositor, sin hoja: cada toque crea la categoría con las operaciones del dashboard, viva desde el ciclo en curso y con el primer color libre de la paleta; renombrar en línea, color bajo la fila, deslizar para borrar con deshacer.
 5. **Ingresos y fijos:** dos listas con un compositor cada una (nombre, monto, día; categoría en los gastos); una fila abre la hoja de definición del dashboard. Al continuar, `insertar_cargos_pendientes` (sección 8) le da a cada definición su cargo **pendiente** del ciclo en curso, la misma fila que el cron habría insertado, así el margen del paso siguiente es el del dashboard desde el primer día y no depende de la corrida de las 05:00.
 6. **Presupuestos**, con el **margen libre en vivo**: es la pregunta que la app contesta (sección 9), y verla moverse mientras se cargan los sobres explica el modelo sin tutorial. Misma `getFreeMargin`, mismos datos (los fijos a su monto esperado); cada campo escribe al salir el presupuesto del ciclo en curso. Una barra reparte el ingreso en sobres y resto.
 7. **Meta de ahorro.** La primera UI de `meta_ahorro_mensual`; el margen sigue en pantalla y una línea anticipa lo que queda con la meta.
-8. **WhatsApp**, opcional. La persona ingresa **su número de WhatsApp** y, mientras la invitación sea obligatoria (hoy), también **su código de invitación**; quedan en `usuarios.telefono`, `codigo_invitacion` y `whatsapp_solicitado_en`, sin fila en `canales`. Quien no tiene código, o no quiere el bot, toca **"Seguir sin WhatsApp"** y termina el onboarding. Va al final, después de que todo lo demás ya funciona, para que nadie sienta que la app queda a medias sin el bot.
-   El mensaje de vinculación **todavía no se manda**: `lib/whatsapp/link-request.ts` es un stub documentado. Ese primer mensaje lo inicia Mango, no la persona: cae fuera de la ventana de 24 h y necesita una plantilla aprobada por Meta (sección 14), y con el número de prueba el número tiene que estar entre los 5 destinatarios cargados en Meta. El bloque 10 lo reemplaza (validar el código contra `invitaciones`, mandar la plantilla, crear el canal). Por eso el texto es honesto: "Guardamos tu número. Cuando el bot esté listo para ti, te llega un mensaje de Mango".
+8. **WhatsApp**, opcional. La persona toca **"Vincular WhatsApp"**, que abre el chat con Mango con el código de vinculación ya escrito (ver *Vincular WhatsApp*, arriba), o **"Seguir sin WhatsApp"** y termina el onboarding; en los dos casos puede vincular después desde ajustes. Mientras dure el número de prueba, la pantalla también pide el número con bandera y prefijo, para cargarlo en el panel de Meta. Va al final, después de que todo lo demás ya funciona, para que nadie sienta que la app queda a medias sin el bot. Hoy la pantalla pide el número y un código de invitación y no abre nada; el código se quita en `remove-whatsapp-invitations` y el link lo construye el bloque 10.
 
 **"Cuenta"**, en el menú del dashboard, es la misma pantalla de datos básicos (nombre, país, moneda, formato para Argentina) para cambiarlos después; el día de inicio se muestra y no se edita (deuda `presupuestos.periodo` en `CLAUDE.md`), y con movimientos cargados avisa que las sumas no convierten entre monedas.
 
-#### Onboarding WhatsApp (por invitación)
-
-El guion de abajo (*Primera interacción*) queda como está: código → nombre → país → ciclo → gasto de prueba → link. El link lleva un **código de un solo uso que abre sesión y vincula el teléfono a la cuenta**. En la web siguen las pantallas de `mango-stitch-onboarding.md`, con la pantalla 1 **"Ya cargaste tu primer gasto"** y **saltando lo que el chat ya preguntó** (nombre, país, ciclo): preguntar dos veces lo mismo es la forma más rápida de que alguien abandone.
+El onboarding **no se repite**. La web expone después la pantalla "Cuenta" y la sección "WhatsApp" de ajustes para tocar lo mismo más adelante.
 
 #### Comunes
 
 - **`onboarding_completo`** y redirección al paso pendiente si alguien abandona a mitad. Sin eso, quien cierra la pestaña en el paso 4 vuelve a un dashboard a medio configurar y no sabe por qué los números no cierran.
-- **Una invitación sirve para dos cosas:** crear la cuenta por chat, o vincular WhatsApp a una cuenta web existente (ver *Alta por código de invitación*, arriba).
-- **Sección "WhatsApp" en ajustes:** estado del canal, una explicación clara de que hoy es por invitación y por qué (el cupo de Meta), y vinculación del número (con código mientras la invitación sea obligatoria). Existe para que un usuario web no descubra el límite recién cuando quiere usar el bot (sección 11).
+- **Sección "WhatsApp" en ajustes:** estado del canal (sin vincular / número guardado, esperando el mensaje / vinculado), el campo del número para quien lo saltó en el onboarding, y una línea honesta mientras se use el número de prueba: que el bot llega de a pocos y por qué (el cupo de Meta). Existe para que un usuario web no descubra el límite recién cuando quiere usar el bot (sección 11).
 - **`/login` no puede fallar en silencio** con un mail que no existe. Con registro abierto, el mismo formulario sirve para entrar y para crearse la cuenta: una dirección nueva recibe su código de verdad, y una línea bajo el campo avisa que la primera vez se crea la cuenta.
 - **La fila de `usuarios` nace con el primer código confirmado**, sea cual sea el camino (el código hoy, Google en el bloque 13): la crea la base, no la web, así ninguna ruta necesita la service key ni una política de insert. Quien pidió un código y no lo escribió no tiene fila. "Cuenta sin vincular" queda solo para lo que el trigger saltea (una dirección que ya usa otra fila, un error).
-- **La home explica qué es Mango** y que el bot es por invitación, junto a "Demo" y "Entrar".
+- **La home explica qué es Mango** y promete el bot para todos, junto a "Demo" y "Entrar". No menciona invitaciones.
 
-### Setup partido: lo mínimo en el chat, la carga pesada en la web
-
-*Aplica al onboarding de WhatsApp. En la web, todo el setup se hace en pantalla (arriba).*
- 
-Sin moneda ni categorías cargadas, Gemini no tiene contra qué mapear. Pero **el setup completo no se hace por chat**: cargar una lista de categorías y de gastos fijos a ciegas, sin ver lo que ya escribiste, es incómodo. En pantalla es una tabla y se resuelve en dos minutos.
- 
-El reparto:
- 
-| Paso | Dónde | Por qué |
-|---|---|---|
-| Código de invitación | **Chat** | Un mensaje, una sola vez |
-| Nombre | **Chat** | Abre la conversación y el bot ya puede tratarte por el nombre |
-| País → timezone + moneda | **Chat** | Una pregunta, una respuesta |
-| Día de inicio de ciclo | **Chat** | Una pregunta con default (el 1) |
-| Gasto de prueba | **Chat** | Es el momento que vende el producto |
-| Categorías | **Web** | Lista larga, se edita mejor viéndola entera |
-| Gastos fijos | **Web** | Nombre + monto + día por fila: es un formulario |
- 
-El país y la moneda quedan **editables**: hay gente que vive en un país y gasta en otra moneda.
- 
-**Por qué no todo en la web:** el usuario tiene que ver que el bot funciona *antes* de que lo mandemos a llenar un formulario. Si el primer contacto es un link, el producto todavía no demostró nada.
- 
-### Primera interacción — guion de referencia
- 
-> **Usuario:** hola
-> **Mango:** Hola, soy Mango. Para empezar necesito tu código de invitación.
-> **Usuario:** MNG-7K2QX4
-> **Mango:** Listo. ¿Cómo te llamás?
-> **Usuario:** Brian
-> **Mango:** Un gusto, Brian. ¿En qué país vivís?
-> **Usuario:** Irlanda
-> **Mango:** Anotado: euros y hora de Dublín. ¿Qué día del mes cobrás? Si no aplica, poné 1.
-> **Usuario:** 25
-> **Mango:** Perfecto, tu mes va del 26 al 25. Ahora probá cargar un gasto: escribime algo como *café 3,50*.
-> **Usuario:** café 3,50
-> **Mango:** Anotado, 3,50 en café. Así de fácil va a ser siempre.
-> **Mango:** Para terminar de configurar tus categorías y gastos fijos, entrá acá 👉 *(link con código de un solo uso)*
-
-*Nota:* con comida presupuestada, ese café mueve la barra de comida, no el margen libre: la plata ya estaba reservada en el sobre de comida. El margen solo baja si el gasto pasa el presupuesto, y solo por lo que lo pasa (sección 9).
- 
-Siete mensajes del bot, cinco del usuario. Sin bombardeo: una pregunta por mensaje, y la siguiente no sale hasta que la anterior está respondida.
- 
-**El nombre se pregunta primero por dos motivos:** es la forma natural de abrir una conversación, y el avatar de la web usa la **inicial del nombre** como respaldo mientras no haya foto (sección 9). Sin ese dato queda un hueco gris desde el día uno.
- 
-El wizard **no se repite**. La web expone después una pantalla de ajustes para tocar lo mismo más adelante.
- 
 ### Acceso a la web
- 
-Se entra con **código por mail** (sección 2; Google, en el bloque 13). Depende de por dónde llegó la persona:
 
-- **Registro web:** el mail está desde el primer paso, porque es con lo que se registra.
-- **WhatsApp:** la primera vez entra con el link de **código de un solo uso** que manda el bot al final del chat, que abre sesión y vincula el teléfono. Ahí deja su mail (o conecta Google, cuando llegue en el bloque 13), y de ahí en adelante entra como cualquiera.
-El teléfono queda vinculado a la cuenta web. Un solo usuario, dos puertas.
+Se entra con **código por mail** (sección 2; Google, en el bloque 13). El mail está desde el primer paso, porque es con lo que se registra. El teléfono, cuando se vincula, queda atado a esa cuenta: un solo usuario, una puerta, dos canales.
 
-> **Decisión (sept 2026):** antes el mail aparecía recién cuando la persona quería entrar al dashboard: le pedía el acceso al bot, el bot le mandaba el link con código de un solo uso, entraba, dejaba su mail y de ahí en adelante usaba magic link. Con registro abierto la web ya no depende del bot para entrar, y el login suma Google. El 2026-09-28 el magic link pasó a código por mail (sección 2).
+> **Decisión (sept 2026):** antes el mail aparecía recién cuando la persona quería entrar al dashboard: le pedía el acceso al bot, el bot le mandaba el link con código de un solo uso, entraba, dejaba su mail y de ahí en adelante usaba magic link. Con registro abierto la web ya no depende del bot para entrar. El 2026-09-28 el magic link pasó a código por mail (sección 2), y el 3/10 se sacó el link de un solo uso junto con el onboarding por chat.
  
 ### Cómo presentarlo a alguien nuevo
- 
-**Con invitación a WhatsApp:** por el chat. Se le muestra la web **después**, cuando ya tiene 3–4 gastos cargados y los gráficos dicen algo. Un dashboard vacío no convence a nadie.
 
-**Sin invitación:** la `/demo` primero (sección 12), que ya tiene los gráficos poblados, y después el registro web. El onboarding web existe justamente para que el dashboard no arranque vacío: con categorías, fijos y presupuestos cargados, el margen libre dice algo desde el primer día.
+La `/demo` primero (sección 12), que ya tiene los gráficos poblados, y después el registro web. El onboarding web existe justamente para que el dashboard no arranque vacío: con categorías, fijos y presupuestos cargados, el margen libre dice algo desde el primer día. WhatsApp se ofrece al final del onboarding, cuando la app ya demostró algo.
 
-> **Decisión (sept 2026):** antes era "siempre por el chat". Con registro abierto, alguien sin invitación también es un usuario, y el chat no es un camino que tenga.
+> **Decisión (sept 2026, revisada el 3/10):** antes era "siempre por el chat", y después "por el chat si tiene invitación, por la demo si no". Con una sola puerta, es siempre la demo y el registro.
  
 ---
  
@@ -596,8 +522,9 @@ Deliberadamente no modela principal, interés ni una tabla de amortización — 
 - `ciclo_generado_hasta` (`date`, nullable — primer día del último ciclo cuyos fijos insertó el cron; `null` es "nunca generó". La `0021` la llenó con el `max(ciclo_mes)` de cada usuario. Ver secciones 3 y 7)
 - `onboarding_paso` (int 1–7, default `1` — el paso pendiente del onboarding web; `/onboarding` abre ahí y cada avance o retroceso lo escribe. No se lee con `onboarding_completo = true`. `0029`, sección 4)
 - `formato_montos` (`completo` | `abreviado`, default `completo` — cómo se leen los montos; rige solo con `pais = 'AR'`, sección 2. `0029`)
-- `codigo_invitacion` (text, nullable — el código escrito en el cierre del onboarding, recortado y en mayúsculas; se guarda sin validar hasta el bloque 10. `0029`)
-- `whatsapp_solicitado_en` (timestamptz, nullable — cuándo pidió vincular WhatsApp desde el onboarding; `null` es "no lo pidió". `0029`)
+- `whatsapp_solicitado_en` (timestamptz, nullable — cuándo pidió vincular WhatsApp desde el onboarding o desde ajustes; `null` es "no lo pidió". `0029`, sección 4)
+- `codigo_vinculacion` (text, nullable, único — el código corto que viaja en el mensaje `vincular ABC123` con el que la persona vincula su WhatsApp; nace al tocar "Vincular WhatsApp", vence a los 7 días de `whatsapp_solicitado_en` y se borra al crear el canal. Migración pendiente del bloque 10, sección 4)
+- Historia: `codigo_invitacion` (`0029`) y la tabla `invitaciones` (`0003`, políticas de la `0011`) existieron para la invitación que se sacó el 3/10 (sección 4); la `0030_sin_invitaciones.sql` (`remove-whatsapp-invitations`) las borra, sin datos que restaurar.
 
 > **Cargos desde el onboarding (`0029`):** `insertar_cargos_pendientes(p_usuario_id, p_periodo, p_cargos)` es el tercer escritor de cargos, junto a `generar_ciclo` (cron) y `completar_cargo_recurrente` (bot). `security invoker`, lo llama el usuario logueado para el ciclo en curso o uno posterior con los cargos que calculó `proyectarCiclo`; inserta filas **pendientes** con las mismas columnas y el mismo filtro que `generar_ciclo`, `on conflict (movimiento_recurrente_id, ciclo_mes) do nothing`, cuenta con `sumar_repeticion` (solo si el ciclo ya se generó; si no, lo cuenta `generar_ciclo` al generarlo) y nunca mueve `ciclo_generado_hasta`. Idempotente, y el cron después no inserta ni cuenta dos veces. Existe porque el ciclo en curso muestra solo filas reales: sin ella, quien termina el onboarding vería un margen distinto al del paso de presupuestos hasta las 05:00 UTC, o nunca en ese ciclo si el cron ya lo había generado.
 
@@ -627,15 +554,6 @@ Deliberadamente no modela principal, interés ni una tabla de amortización — 
 - `creado_en`
 Índice por `usuario_id` + `creado_en`, y único parcial `(usuario_id, canal, mensaje_id_externo)` sobre los entrantes: un reintento de Meta no se guarda dos veces. Creada en la `0028`. RLS encendido y sin políticas: solo lo toca el bot con el cliente admin; la web no lo lee.
 
-**`invitaciones`**
-- `id`
-- `codigo` (único, aleatorio, 8+ caracteres)
-- `creada_por` (usuario_id)
-- `usada_por` (usuario_id, nullable)
-- `usada_en` (timestamp, nullable)
-- `vence_en` (timestamp — creación + 7 días)
-Un código está disponible si `usada_en IS NULL AND vence_en > now()`. No hace falta un booleano `activa`: sería estado duplicado que se puede desincronizar de los otros dos campos.
- 
 **`categorias`**
 - `id`
 - `usuario_id`
@@ -844,8 +762,7 @@ En el código: **deslizamiento largo elimina directo** sin soltar en el botón, 
 **Menú global** — se abre tocando el **avatar**, arriba a la derecha:
 - Bloque de cuenta: avatar grande, nombre y teléfono. Insignia de cámara en la esquina del avatar para cambiar la foto — no hace falta pantalla de perfil aparte.
 - APLICACIÓN: tema (claro/oscuro/automático), idioma, moneda
-- BOT DE WHATSAPP: recordatorios (toggle), gastos fijos, **modo de confirmación** (automático / siempre texto / siempre reacción, ver sección 3). **Se adapta a quien no tiene el canal:** en vez de esas opciones, lleva a la sección "WhatsApp" de ajustes (sección 4), con el estado, por qué hoy es por invitación y la vinculación con código. Con registro abierto, el teléfono del bloque de cuenta tampoco está siempre.
-- **Invitar a alguien** — genera un código de un solo uso y lo deja listo para compartir (ver sección 4)
+- BOT DE WHATSAPP: recordatorios (toggle), gastos fijos, **modo de confirmación** (automático / siempre texto / siempre reacción, ver sección 3). **Se adapta a quien no tiene el canal:** en vez de esas opciones, lleva a la sección "WhatsApp" de ajustes (sección 4), con el estado del canal y el campo del número. Con registro abierto, el teléfono del bloque de cuenta tampoco está siempre.
 - *(divisor)* Cerrar sesión
 No lleva nada de la vista del mes.
  
@@ -1132,13 +1049,13 @@ Los presupuestos de un ciclo futuro se pueden editar; las reglas de escritura es
  
 Son **3 usuarios en total**: Brian y dos amigos. Cada usuario se identifica por `user_id` + `telefono`.
 
-> **Decisión (sept 2026):** el **registro web es abierto**: cualquiera puede crearse una cuenta y usar Mango sin bot. El techo de 5 destinatarios del número de prueba **aplica solo al bot**, y WhatsApp sigue por invitación. Cada usuario se identifica por `usuarios.id`; el teléfono pasa a ser un canal (sección 8), y la cantidad de usuarios web deja de estar atada al cupo de Meta. Hoy son **cinco personas por WhatsApp**, justo el tope; el resto usa solo la web. El tope es del número de prueba, no del diseño: con número propio se apaga la invitación obligatoria (sección 4) y el bot queda abierto a cualquier cuenta.
+> **Decisión (sept 2026):** el **registro web es abierto**: cualquiera puede crearse una cuenta y usar Mango sin bot. El techo de 5 destinatarios del número de prueba **aplica solo al bot**. Cada usuario se identifica por `usuarios.id`; el teléfono pasa a ser un canal (sección 8), y la cantidad de usuarios web deja de estar atada al cupo de Meta. Hoy son **cinco personas por WhatsApp**, justo el tope, elegidas a mano en el panel de Meta; el resto usa solo la web. El tope es del número de prueba, no del diseño: con número propio cualquier cuenta vincula su número desde la web (sección 4).
  
 Medidas:
  
 - **Registro web abierto**, sin invitación (sección 4). Abre **sin rate limiting propio** (`open-web-signup`): cualquiera puede hacer que Mango le mande un código a cualquier dirección. Lo acotan los topes de Supabase (60 s por dirección, 30 mails por hora para todo el proyecto, compartidos por entradas y registros) y el tope diario del plan de Resend (100 mails por día en el plan gratis: el techo real, poco más de tres horas del tope por hora). Esos 30 por hora son también el riesgo: quien los gaste deja a todos sin código hasta que cambie la hora. El freno es apagar *Allow new users to sign up* en el panel: la app sigue igual para las cuentas existentes y una dirección nueva vuelve a la respuesta silenciosa. El rate limiting del registro y un CAPTCHA (Turnstile o hCaptcha sobre `signInWithOtp`) van con el bloque 10.
-- **WhatsApp por código de invitación** (sección 4), mientras el interruptor esté encendido — un número desconocido no puede darse de alta solo. Reemplaza a la whitelist de teléfonos, que obligaba a cargar cada número a mano. Además, el número de prueba de Meta ya limita a 5 destinatarios.
-- **Rate limiting** — en base o con Upstash Redis. Cubre tres cosas: **mensajes** al bot, **intentos de código de invitación** por número (para cortar la fuerza bruta) y **registro** web (para que el sign-up abierto no se llene de cuentas basura).
+- **WhatsApp solo para cuentas que ya existen** (sección 4): un número desconocido no puede darse de alta por chat; recibe una sola respuesta que lo manda a la web, y nada más. Con el número de prueba, además, solo los 5 destinatarios cargados en el panel de Meta reciben mensajes.
+- **Rate limiting** — en base o con Upstash Redis. Cubre dos cosas: **mensajes** al bot (incluida la respuesta a números desconocidos, que también gasta cupo) y **registro** web (para que el sign-up abierto no se llene de cuentas basura).
   - **Código de acceso por mail**: Supabase ya cubre parte. La verificación (`/auth/v1/verify`) tiene 360 intentos por hora por IP, no configurable; el envío, uno cada 60 s por dirección y 30 mails por hora con el SMTP propio; y el código vence a los 600 s. Lo que falta: un **contador de intentos fallidos por dirección** (Supabase no lo tiene: un intento errado no quema el código y no hay bloqueo) y **reenviar la IP real** a Supabase. Como el pedido sale desde Vercel, la IP que ve Supabase es la de la función, no la de la persona, y todos los usuarios comparten el mismo balde de 360 por hora. Reenviar la IP (`Sb-Forwarded-For`) pide una clave secreta que el cliente del servidor, con la anon key, no usa. Las dos cosas van con este mismo ítem.
 - **Validación de firma del webhook** — HMAC SHA-256 con el App Secret; sin eso, cualquiera puede pegarle al endpoint.
 - **Verify token** — solo para el handshake inicial de suscripción del webhook (Meta manda un GET con `hub.challenge`).
@@ -1162,15 +1079,14 @@ Todo este cálculo es del número de prueba. Con número propio el cupo desapare
 | Mensajes ambiguos (*"gasté 50"*) | El bot repregunta antes de guardar (esto sí se pregunta: falta el dato, no la categoría) |
 | Meta reintenta el webhook y duplica el gasto | Guardar `mensaje_id_externo` (antes `wa_message_id`) con constraint único por canal y chequear antes de insertar |
 | Se agota el cupo de 1000 mensajes/mes (número de prueba) | Confirmación progresiva (sección 3); medir consumo desde el mes 1 |
-| Pasar a número propio obliga a reescribir el bot | Nada asume el número de prueba: sin tope de 5 ni cupo de 1000 en el código, número emisor por variable de entorno, invitación obligatoria como interruptor (secciones 1 y 4) |
+| Pasar a número propio obliga a reescribir el bot | Nada asume el número de prueba: sin tope de 5 ni cupo de 1000 en el código, número emisor por variable de entorno, la lista de destinatarios vive en el panel de Meta (secciones 1 y 4) |
 | El usuario no ve la reacción y cree que el gasto no se cargó | El umbral de 15 existe para que ya conozca el patrón. Si igual pasa, se fuerza `modo_confirmacion = texto` desde ajustes |
-| Un código de invitación se filtra | Un solo uso + vencimiento a 7 días + rate limiting de intentos por número |
 | Ventana de 24 h de WhatsApp | No afecta: el bot siempre **responde** a un mensaje del usuario. Solo aplicaría a los avisos proactivos de gastos fijos, que necesitarían una *template* aprobada |
-| Usuario sin onboarding manda un gasto | Interceptar y disparar el wizard antes de parsear |
+| Un número desconocido le escribe al bot | Una sola respuesta que manda a la web, sin onboarding por chat; rate limiting para que no gaste cupo (sección 10) |
 | Gasto de fin de mes a las 23:00 cae en el mes equivocado | Agrupar por timezone del usuario, no por UTC |
 | Fijos duplicados si el job corre dos veces | Constraint único por `movimiento_recurrente_id` + `ciclo_mes`, más la marca `ciclo_generado_hasta`: la segunda corrida no inserta ni cuenta nada |
 | Cold starts | Aceptables en Vercel (~100–300 ms) |
-| Un usuario web espera usar WhatsApp y no puede | La sección "WhatsApp" de ajustes lo explica desde el principio: que hoy es por invitación y por qué (sección 4). El onboarding web lo presenta como opcional |
+| Un usuario web espera usar WhatsApp y no puede | La sección "WhatsApp" de ajustes lo explica desde el principio: que con el número de prueba el bot llega de a pocos y por qué (sección 4). El onboarding web lo presenta como opcional |
 | Registros basura con el sign-up abierto | Rate limiting sobre el registro (sección 10) |
 | Registro abierto sin rate limiting (bloqueo del cupo de mails) | Hoy: 60 s por dirección, 30 mails por hora y el tope diario de Resend acotan el daño, pero quien gaste los 30 de la hora deja a todos sin código; el mensaje de "demasiados pedidos" pide esperar, y apagar el sign-up en el panel es el freno. Mails a direcciones que no los pidieron dañan la reputación de `usemango.dev`: mirar rebotes y quejas en Resend. Después: rate limiting del registro y CAPTCHA (bloque 10) |
 | Auth users sin confirmar | Quien pide un código y no lo escribe deja un auth user sin fila en `usuarios` ni datos. Se acumulan hasta que haya una limpieza periódica (deuda técnica) |
@@ -1184,7 +1100,7 @@ Una ruta **`/demo`** abierta, sin login, que monta el dashboard completo con **d
  
 **Para qué sirve, en ese orden:**
  
-1. **Portfolio.** Es el motivo principal (sección 15). Un reclutador no va a pedir un código de invitación ni le va a escribir a un bot: entra treinta segundos desde el link del CV y se va. Sin demo, el proyecto es un repo que nadie abre.
+1. **Portfolio.** Es el motivo principal (sección 15). Un reclutador no va a registrarse ni le va a escribir a un bot: entra treinta segundos desde el link del CV y se va. Sin demo, el proyecto es un repo que nadie abre.
 2. **Vidriera.** Resuelve el problema del dashboard vacío: se le puede mostrar la app a alguien con los gráficos ya poblados, sin darlo de alta ni gastar mensajes del cupo.
 **Consecuencia de arquitectura — y es la parte que importa:** la **capa de datos tiene que ser intercambiable**. Los componentes reciben los datos, nunca consultan Supabase por su cuenta. La ruta real inyecta el cliente de Supabase; `/demo` inyecta un objeto fijo y guarda las ediciones en estado de React.
  
@@ -1207,7 +1123,7 @@ Esto hay que escribirlo así **desde el primer componente**. Hacerlo después si
 **Bot** funcional (carga, confirmación progresiva, correcciones y consultas cortas), con la identidad ya separada del canal (`canales`, sección 8) antes de escribirlo; **cron de gastos fijos**; y **proyección a 6 ciclos** (sección 9). Bloques 0–7 de `ROADMAP.md`.
  
 **Fase 2 — Abrir a otras personas**
-**Registro abierto con código por mail** (Google pasó al bloque 13, fase 3), **dos onboardings** que terminan en la misma cuenta (sección 4), **invitaciones de WhatsApp** con rate limiting y RLS verificado con usuarios reales, **número propio** para la Cloud API (con la invitación obligatoria apagada, sección 4), y **Telegram** como segundo canal (sección 3). Bloques 8–11.
+**Registro abierto con código por mail** (Google pasó al bloque 13, fase 3), **onboarding web** (sección 4), **vinculación de WhatsApp desde la web** con rate limiting y RLS verificado con usuarios reales, **número propio** para la Cloud API, y **Telegram** como segundo canal (sección 3). Bloques 8–11.
  
 > **La señal que se busca en fase 2:** si a los tres meses los cinco siguen cargando gastos, recién ahí tiene sentido gastar en número propio o en una estructura legal. Antes de eso, cualquier inversión es adelantarse a un dato que todavía no se tiene.
 

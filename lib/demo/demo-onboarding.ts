@@ -57,7 +57,6 @@ export function initialDemoOnboardingState({ step, seed, country, format, name, 
     amountFormat: format,
     savingsTarget: null,
     phone: null,
-    inviteCode: null,
   }
   if (!seed) return { step, profile, categories: [], definitions: [], budgets: {} }
 
@@ -88,7 +87,7 @@ export function demoCycle(cycleDay: number, now = new Date()): { start: LocalDat
   return { start: start.toISOString().slice(0, 10), today }
 }
 
-export function deriveDemoOnboardingData(state: DemoOnboardingState, inviteRequired: boolean): OnboardingData {
+export function deriveDemoOnboardingData(state: DemoOnboardingState): OnboardingData {
   return {
     step: state.step,
     profile: state.profile,
@@ -97,7 +96,6 @@ export function deriveDemoOnboardingData(state: DemoOnboardingState, inviteRequi
     definitions: state.definitions,
     budgets: state.budgets,
     hasData: state.categories.length > 0 || state.definitions.length > 0 || Object.keys(state.budgets).length > 0,
-    inviteRequired,
   }
 }
 
@@ -141,7 +139,7 @@ export function createDemoOnboardingActions(store: DemoOnboardingStore): Onboard
     profile: {
       updateBasics(basics) {
         const state = read()
-        if (state && basics.cycleDay !== state.profile.cycleDay && deriveDemoOnboardingData(state, true).hasData) {
+        if (state && basics.cycleDay !== state.profile.cycleDay && deriveDemoOnboardingData(state).hasData) {
           return Promise.reject(new Error('cycle-locked'))
         }
         setState((s) => ({
@@ -162,10 +160,10 @@ export function createDemoOnboardingActions(store: DemoOnboardingStore): Onboard
         setState((s) => ({ ...s, profile: { ...s.profile, savingsTarget: amount } }))
         return settle(undefined)
       },
-      requestWhatsApp(phone, inviteCode) {
+      requestWhatsApp(phone) {
         const digits = phone.replace(/\D/g, '')
         if (digits.length < 7) return Promise.reject(new Error('invalid-phone'))
-        setState((s) => ({ ...s, profile: { ...s.profile, phone, inviteCode: inviteCode?.trim().toUpperCase() || null } }))
+        setState((s) => ({ ...s, profile: { ...s.profile, phone } }))
         return settle(undefined)
       },
       setStep(step) {

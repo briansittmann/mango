@@ -5,9 +5,11 @@
 
 Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `https://www.usemango.dev/demo`, webhook de WhatsApp escrito pero con la lógica del bot en stub.
 
-**Cambio de modelo (24/9):** Mango deja de tener una sola puerta de entrada. El dashboard ya permite cargar todo a mano, así que **cualquiera puede registrarse por la web** y usarlo sin bot. WhatsApp pasa a ser un canal opcional, por invitación, limitado por el cupo de Meta. Hay **dos onboardings** que terminan en la misma cuenta y el mismo dashboard.
+**Cambio de modelo (24/9):** Mango deja de tener una sola puerta de entrada. El dashboard ya permite cargar todo a mano, así que **cualquiera puede registrarse por la web** y usarlo sin bot. WhatsApp pasa a ser un canal opcional, limitado por el cupo de Meta.
 
-**Decisión (1/10):** WhatsApp va a estar **abierto a todas las cuentas**. La invitación es solo el freno técnico mientras se use el número de prueba de Meta (bloque 10 lo apaga con el número propio); la landing promete el bot para todos y no menciona invitaciones.
+**Decisión (1/10):** WhatsApp va a estar **abierto a todas las cuentas**; la landing promete el bot para todos.
+
+**Decisión (3/10):** **se saca la invitación.** La cuenta nace solo por la web; WhatsApp se vincula desde la cuenta (cierre del onboarding o ajustes). Desaparecen el onboarding por chat, la tabla `invitaciones`, el código del cierre y el interruptor `WHATSAPP_REQUIRE_INVITE`. Mientras se use el número de prueba, los 5 destinatarios se cargan a mano en el panel de Meta. Detalle en ARCHITECTURE.md §4.
 
 ---
 
@@ -55,9 +57,9 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [x] 🤖 Migrar el usuario de prueba a una fila de `canales`; `findUserIdByPhone` pasa a buscar en `canales`
 - [x] 🤖 Idempotencia por canal: `wa_message_id` se generaliza a `mensaje_id_externo` + tipo de canal
 - [x] 🤖 Nada asume el número de prueba: sin tope de 5 ni cupo de 1000 en el código; el número emisor sale de `WHATSAPP_PHONE_NUMBER_ID`
-- [x] 🤖 Interruptor de invitación obligatoria: hoy encendido; con número propio se apaga sin tocar código (ARCHITECTURE.md §4)
+- [x] 🤖 Interruptor de invitación obligatoria: hoy encendido; con número propio se apaga sin tocar código (ARCHITECTURE.md §4) — retirado el 3/10: se quita en el bloque 10
 - [x] 👤 Decidir si una cuenta puede tener WhatsApp y Telegram a la vez, o uno solo → las dos, una de cada tipo
-- [x] 👤 Decidir dónde vive el interruptor: variable de entorno o valor en la base → `WHATSAPP_REQUIRE_INVITE`
+- [x] 👤 Decidir dónde vive el interruptor: variable de entorno o valor en la base → `WHATSAPP_REQUIRE_INVITE` (retirado el 3/10)
 
 ## 6 · Cron de gastos fijos
 
@@ -127,48 +129,46 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [x] 👤 Activar sign-ups en Supabase Auth — 29/9, con `open-web-signup` desplegado; el tope real es el diario de Resend (100 mails, plan gratis)
 - [x] 🤖 Al primer login, crear la fila en `usuarios` (hoy sale "cuenta sin vincular") y mandar al onboarding web — `open-web-signup`: un trigger sobre `auth.users` (`0025`) la crea con el primer código confirmado; la persona cae en un dashboard vacío hasta que el bloque 9 sume el onboarding y su redirección
 - [x] 🤖 `/login`: dejar de fallar en silencio con un mail no registrado; con registro abierto, el mismo formulario sirve para entrar y para crear la cuenta — `open-web-signup`: `POST /auth/request-code` con `shouldCreateUser: true`, idioma y zona horaria, y una línea bajo el campo
-- [x] 🤖 Home: "Demo" y "Entrar" con una línea que explique qué es Mango y que el bot de WhatsApp es por invitación — `open-web-signup`
+- [x] 🤖 Home: "Demo" y "Entrar" con una línea que explique qué es Mango — `open-web-signup` (la landing actual promete el bot para todos)
 - [x] 👤 SMTP propio (p. ej. Resend) con remitente del dominio — adelantado al change `replace-magic-link-with-email-otp` (28/9): Resend, remitente `no-reply@usemango.dev`
 - [x] 🤖 Template del código con la marca, es/en (hoy sale solo en español; el idioma por usuario va con esto) — `open-web-signup`: `supabase/templates/codigo.html`, idioma por la metadata del auth user; 👤 pegarlo en *Confirm signup* y *Magic Link* (tareas 7.2 y 7.5)
 
-## 9 · Dos onboardings, una cuenta
+## 9 · Onboarding web
 
-> Los dos terminan en el mismo dashboard. La diferencia es de dónde viene la persona y qué datos ya se tienen.
+> Una sola puerta: la web. WhatsApp se vincula desde la cuenta (3/10).
 
-**Onboarding web** (registro abierto, sin bot)
+**Onboarding web** (registro abierto)
 - [x] 🤖 Pantalla 1 nueva: bienvenida sin gasto cargado (reemplaza "Ya cargaste tu primer gasto") — `add-web-onboarding` (2026-10-01)
 - [x] 🤖 Pantalla de datos básicos: nombre, país → moneda y timezone, día de inicio de ciclo — `add-web-onboarding`: país de una tabla fija, formato de montos abreviado para Argentina, día editable solo hasta la primera categoría
 - [x] 🤖 Pantallas 2–4 de Stitch: categorías, ingresos y fijos, presupuestos (con margen libre en vivo) — `add-web-onboarding`, sin pasar por Stitch: chips y compositores en pantalla, margen en vivo con la misma `getFreeMargin`, cargos pendientes del ciclo en curso vía `insertar_cargos_pendientes` (`0029`)
 - [x] 🤖 Meta de ahorro dentro del onboarding (hoy `meta_ahorro_mensual` no tiene UI) — `add-web-onboarding`
-- [x] 🤖 Cierre: número de WhatsApp (+ código mientras la invitación sea obligatoria) → Mango le manda un mensaje para vincular el canal; si no, "Seguir sin WhatsApp" — `add-web-onboarding` guarda número, código y fecha del pedido; el mensaje de vinculación es un stub (`lib/whatsapp/link-request.ts`) hasta la plantilla de Meta del bloque 10
-
-**Onboarding WhatsApp** (por invitación)
-- [ ] 🤖 Por chat: código → nombre → país → día de ciclo → gasto de prueba → link a la web
-- [ ] 🤖 Link con código de un solo uso que abre sesión y vincula el teléfono a la cuenta
-- [ ] 🤖 En la web: las cuatro pantallas de Stitch tal como están (pantalla 1 con el gasto ya cargado), saltando lo que el chat ya preguntó
+- [x] 🤖 Cierre: número de WhatsApp → Mango le manda un mensaje para vincular el canal; si no, "Seguir sin WhatsApp" — `add-web-onboarding` guarda número y fecha del pedido (y hoy un código de invitación, que el bloque 10 quita); el mensaje de vinculación es un stub (`lib/whatsapp/link-request.ts`) hasta la plantilla de Meta del bloque 10
 
 **Comunes**
 - [x] 🤖 `onboarding_completo` y redirección al paso pendiente si alguien lo abandona a mitad — `add-web-onboarding`: `usuarios.onboarding_paso`, `/dashboard` ↔ `/onboarding`
 - [x] 🤖 Elección de tema (claro / oscuro / sistema, "sistema" por defecto) como control flotante arriba a la derecha con efecto cristal, en todas las pantallas del onboarding. Landing y login son oscuras siempre (`ForceDarkTheme`), así que el onboarding es el primer lugar donde se ve y se elige el tema — `add-web-onboarding` (`theme-pill.tsx`, `use-theme-choice.ts` compartido con el menú de cuenta)
-- [ ] 🤖 Sección "WhatsApp" en ajustes: estado del canal, explicación de que hoy es por invitación y por qué, y vinculación con código si la persona tiene uno
+- [ ] 🤖 Sección "WhatsApp" en ajustes: estado del canal (sin vincular / pedido, escribile a Mango / vinculado), el botón "Vincular WhatsApp" que abre el chat con el código (mismo control que el cierre del onboarding), el campo del número con bandera y prefijo para quien lo saltó, y una línea de que con el número de prueba el bot llega de a pocos y por qué
 - [ ] 👤 Revisar en Stitch la nueva pantalla 1 y la de datos básicos
 
-## 10 · WhatsApp: invitaciones y número propio
+## 10 · WhatsApp: vinculación y número propio
 
-- [ ] 🤖 Tabla `invitaciones` + "Invitar a alguien" en el menú global; tres errores distintos (no existe / usado / vencido)
-- [ ] 🤖 Una invitación sirve tanto para crear la cuenta por chat como para vincular WhatsApp a una cuenta web existente
-- [ ] 🤖 Rate limiting (mensajes e intentos de código)
+- [x] 🤖 Quitar la invitación del código: `lib/whatsapp/invite.ts` y `WHATSAPP_REQUIRE_INVITE` (adaptador, `app/onboarding/page.tsx`, Vercel), `inviteRequired` / `inviteCode` en `OnboardingData`, `ProfileMutations.requestWhatsApp` y el paso de cierre (`whatsapp-step.tsx`, textos `whatsapp.codigo` / `explicacion`), migración que borre `usuarios.codigo_invitacion` y la tabla `invitaciones`; specs `messaging-channels` (interruptor), `web-access` (footer) y `onboarding` (cierre) al día — `remove-whatsapp-invitations` (código y `0030` escritos el 3/10; la `0030` se aplica después del deploy, orden D3)
+- [ ] 🤖 Número desconocido: una sola respuesta que manda a registrarse en la web y vincular desde ajustes, con link (`processUnknownNumber`, hoy stub)
+- [x] 👤 Decidir cómo se vincula → por código en el primer mensaje (3/10): la web abre `wa.me/<Mango>?text=vincular ABC123`, el adaptador crea el canal con el `wa_id` de Meta y responde ahí; sin plantilla y sin depender del número tipeado (ARCHITECTURE.md §4)
+- [ ] 🤖 Vinculación de punta a punta: migración con `usuarios.codigo_vinculacion` (único, vence a los 7 días), generarlo al tocar "Vincular WhatsApp" (reemplaza el stub `link-request.ts`), botón con el link `wa.me` en el cierre y en ajustes, y en el adaptador: número desconocido + `vincular <código>` → fila en `canales` con el `wa_id` de Meta, `usuarios.telefono` pisado con ese número, código consumido, respuesta "✅ Listo, este chat ya está vinculado". El número de Mango sale de una variable de entorno (`WHATSAPP_PHONE_NUMBER`, distinta del `PHONE_NUMBER_ID`)
+- [ ] 🤖 Campo del número con bandera y prefijo: `select` nativo con emoji de bandera (derivado del ISO de `lib/data/countries.ts`) y prefijo a la izquierda, número local a la derecha, país de la cuenta preseleccionado; `libphonenumber-js` a E.164 en lugar de `normalizePhone` (resuelve el 9 y el 15 argentinos y el cero troncal). Solo sirve para cargar el número en el panel de Meta mientras dure el número de prueba
+- [ ] 🤖 Rate limiting (mensajes al bot y registro web)
 - [ ] 👤 Verificar RLS con dos usuarios reales
-- [ ] 👤 Cargar los números en Meta (máx. 5 con el número de prueba; mientras se use ese número)
+- [ ] 👤 Cargar los números en Meta (máx. 5 con el número de prueba; mientras se use ese número, es el único filtro de quién tiene bot)
 - [ ] 👤 Medir consumo del cupo de 1000 mensajes en WhatsApp Manager (número de prueba)
 - [ ] 🤖 Aviso de suscripción por vencer (template de Meta, §14.1)
-- [ ] 👤 Pedir en Meta la plantilla del mensaje de vinculación que se manda desde el onboarding web (lo inicia Mango: fuera de la ventana de 24 h)
+- [x] 👤 Pedir en Meta la plantilla del mensaje de vinculación → no hace falta: la vinculación la inicia la persona (3/10)
 - [ ] 👤 Decidir cuándo se compra el número propio y cuánto gasto se acepta (rompe el "coste cero")
 - [ ] 👤 Número propio para la Cloud API (virtual o fijo, que no esté en WhatsApp) — adelantado desde el bloque 14. Plan: número virtual de EE. UU. en Twilio (~1,15 USD/mes, Voice + SMS), verificado en Meta por llamada de voz; si Meta lo rechaza por VoIP, SIM prepago
 - [ ] 👤 Con el número propio: nombre visible (lo revisa Meta) y foto de perfil; en el número de prueba el nombre no se puede cambiar
 - [ ] 👤 Suscribir la app a la WABA con `subscribed_apps` si el número propio queda en otra WABA (ARCHITECTURE.md §2)
 - [ ] 👤 Cambiar credenciales en Vercel y redeploy
-- [ ] 🤖 Apagar la invitación obligatoria y probar una vinculación sin código
+- [ ] 🤖 Con el número propio: vincular una cuenta nueva desde ajustes sin cargar nada en el panel de Meta; sacar el campo del número y dejar solo el botón
 
 ## 11 · Telegram como segundo canal
 

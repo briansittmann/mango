@@ -112,7 +112,6 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
   const [budgetDrafts, setBudgetDrafts] = useState<Record<string, string>>({})
   const [savingsText, setSavingsText] = useState(() => (data.profile.savingsTarget == null ? '' : String(data.profile.savingsTarget)))
   const [phone, setPhone] = useState(data.profile.phone ?? '')
-  const [code, setCode] = useState(data.profile.inviteCode ?? '')
   const [pending, setPending] = useState(false)
   const [basicsError, setBasicsError] = useState<string | null>(null)
   const [whatsAppError, setWhatsAppError] = useState<'taken' | 'invalid' | 'save' | null>(null)
@@ -232,8 +231,7 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
 
   // ── The closing step (D11) ──────────────────────────────────────────────────────────────────
   const country = basics.country ?? data.profile.country
-  const phoneValid = country != null && normalizePhone(phone, country) != null
-  const canLink = phoneValid && (!data.inviteRequired || code.trim() !== '')
+  const canLink = country != null && normalizePhone(phone, country) != null
 
   async function finish() {
     await actions.finish()
@@ -303,7 +301,7 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
         case 7: {
           setWhatsAppError(null)
           try {
-            await actions.profile.requestWhatsApp(phone, data.inviteRequired ? code : null)
+            await actions.profile.requestWhatsApp(phone)
           } catch (error) {
             const message = error instanceof Error ? error.message : ''
             setWhatsAppError(message === PHONE_TAKEN ? 'taken' : message === INVALID_PHONE ? 'invalid' : 'save')
@@ -395,13 +393,10 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
         return (
           <WhatsAppStep
             phone={phone}
-            code={code}
             onPhoneChange={(next) => {
               setPhone(next)
               setWhatsAppError(null)
             }}
-            onCodeChange={setCode}
-            inviteRequired={data.inviteRequired}
             callingCode={callingCode}
             error={whatsAppError}
             saved={phoneSaved}

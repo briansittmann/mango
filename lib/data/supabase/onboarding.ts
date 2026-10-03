@@ -17,7 +17,7 @@ type CategoriaRow = { id: string; nombre: string; color: CategoryColor; desde_ci
  * categories alive in it, the definitions, the cycle's budget rows and whether anything is keyed
  * to the cycle yet (D6).
  */
-export async function loadOnboardingData(client: SupabaseClient, usuario: Usuario, inviteRequired: boolean): Promise<OnboardingData> {
+export async function loadOnboardingData(client: SupabaseClient, usuario: Usuario): Promise<OnboardingData> {
   const ctx: DataContext = { client, usuarioId: usuario.id, currency: usuario.moneda_default, timezone: usuario.timezone }
   const now = new Date()
   const range = await cycleRange(client, { diaInicio: usuario.dia_inicio_ciclo, timezone: usuario.timezone, ref: now })
@@ -53,14 +53,12 @@ export async function loadOnboardingData(client: SupabaseClient, usuario: Usuari
       amountFormat: usuario.formato_montos,
       savingsTarget: usuario.meta_ahorro_mensual,
       phone: usuario.telefono,
-      inviteCode: usuario.codigo_invitacion,
     },
     cycle: { start, today },
     categories,
     definitions: (definiciones.data ?? []).map(toDefinition),
     budgets,
     hasData: keyed,
-    inviteRequired,
   }
 }
 

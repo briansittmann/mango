@@ -21,8 +21,6 @@ export type Usuario = {
   onboarding_paso: number
   /** The stored amount format; in effect only for Argentina (`effectiveAmountFormat`, 0029). */
   formato_montos: AmountFormat
-  /** The invitation code the closing step stored, uppercased; null when none (0029). */
-  codigo_invitacion: string | null
   /** When the closing step asked to link WhatsApp; null when it never did (0029). */
   whatsapp_solicitado_en: string | null
   /** The bot keeps this account's conversation (0028, `bot-conversation-history`). */
@@ -33,7 +31,7 @@ export type Usuario = {
 }
 
 export const USUARIO_COLUMNS =
-  'id, nombre, telefono, foto_url, pais, moneda_default, timezone, dia_inicio_ciclo, meta_ahorro_mensual, ciclo_generado_hasta, idioma, onboarding_completo, onboarding_paso, formato_montos, codigo_invitacion, whatsapp_solicitado_en, vip, cargas_confirmadas, modo_confirmacion'
+  'id, nombre, telefono, foto_url, pais, moneda_default, timezone, dia_inicio_ciclo, meta_ahorro_mensual, ciclo_generado_hasta, idioma, onboarding_completo, onboarding_paso, formato_montos, whatsapp_solicitado_en, vip, cargas_confirmadas, modo_confirmacion'
 
 /**
  * The `usuarios` row linked to the session's auth user, or null when none is linked. RLS

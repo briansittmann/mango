@@ -54,12 +54,11 @@ export async function updateProfileBasics(basics: ProfileBasics) {
 export async function setSavingsTarget(amount: number | null) {
   return run((ctx) => createSupabaseProfileMutations(ctx).setSavingsTarget(amount));
 }
-export async function requestWhatsApp(phone: string, inviteCode: string | null) {
+export async function requestWhatsApp(phone: string) {
   return run(async (ctx, usuario) => {
     const normalized = normalizePhone(phone, usuario.pais ?? "");
     if (!normalized) throw new Error(INVALID_PHONE);
-    const code = inviteCode?.trim().toUpperCase() || null;
-    await createSupabaseProfileMutations(ctx).requestWhatsApp(normalized, code);
+    await createSupabaseProfileMutations(ctx).requestWhatsApp(normalized);
     // The stub sends nothing today (block 10); its answer is not what the screen reports.
     await requestChannelLink(usuario.id);
   });

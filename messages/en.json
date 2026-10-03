@@ -463,10 +463,8 @@
     },
     "whatsapp": {
       "titulo": "Want to log through WhatsApp?",
-      "explicacion": "It's optional: with the bot you log expenses by sending a message. Today it works by invitation.",
-      "explicacionSinCodigo": "It's optional: with the bot you log expenses by sending a message.",
+      "explicacion": "It's optional: with the bot you log expenses by sending a message.",
       "telefono": "Your number",
-      "codigo": "Invitation code",
       "vincular": "Link",
       "seguirSin": "Continue without WhatsApp",
       "numeroEnOtraCuenta": "That number is already on another account",

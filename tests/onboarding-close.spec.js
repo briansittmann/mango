@@ -6,36 +6,28 @@ test.use({ viewport: { width: 390, height: 844 } })
 
 // `onboarding` → *Closing step stores a WhatsApp request and sends nothing*, on `/demo/onboarding?paso=7`.
 
-test('the code field is shown while the invitation is required, and hidden with ?e2eInvite=0', async ({ page }) => {
+test('the closing step shows the phone and no code field', async ({ page }) => {
   await page.goto('/demo/onboarding?paso=7&pais=AR')
   await expect(page.getByLabel('Tu número')).toBeVisible()
-  await expect(page.getByLabel('Código de invitación')).toBeVisible()
-  await expect(page.getByText('Hoy funciona por invitación.')).toBeVisible()
-
-  await page.goto('/demo/onboarding?paso=7&pais=AR&e2eInvite=0')
-  await expect(page.getByLabel('Tu número')).toBeVisible()
   await expect(page.getByLabel('Código de invitación')).toHaveCount(0)
+  await expect(page.getByText('Es opcional: con el bot cargas gastos escribiendo un mensaje.')).toBeVisible()
   await page.getByLabel('Tu número').fill('11 5555 1234')
   await expect(primary(page)).toBeEnabled()
 })
 
-test('a malformed phone keeps "Vincular" disabled; a code alone is not enough', async ({ page }) => {
+test('a malformed phone keeps "Vincular" disabled', async ({ page }) => {
   await page.goto('/demo/onboarding?paso=7&pais=AR')
   await expect(primary(page)).toHaveText('Vincular')
   await expect(primary(page)).toBeDisabled()
   await page.getByLabel('Tu número').fill('abc')
-  await page.getByLabel('Código de invitación').fill('mng-7k2qx4')
   await expect(primary(page)).toBeDisabled()
   await page.getByLabel('Tu número').fill('11 5555 1234')
   await expect(primary(page)).toBeEnabled()
-  await page.getByLabel('Código de invitación').fill('')
-  await expect(primary(page)).toBeDisabled()
 })
 
 test('"Vincular" stores the number, says so without claiming a message, and reaches the end', async ({ page }) => {
   await page.goto('/demo/onboarding?paso=7&pais=AR')
   await page.getByLabel('Tu número').fill('11 5555 1234')
-  await page.getByLabel('Código de invitación').fill('mng-7k2qx4')
   await primary(page).click()
   await expect(page).toHaveURL(/\/demo$/)
 })

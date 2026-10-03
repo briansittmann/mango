@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { loadOnboardingData } from "@/lib/data/supabase/onboarding";
 import { findCurrentUsuario } from "@/lib/data/supabase/user";
 import { supabaseServer } from "@/lib/supabase/server";
-import { isInviteRequired } from "@/lib/whatsapp/invite";
 import { signOut } from "@/app/dashboard/actions";
 import { SupabaseOnboarding } from "./supabase-onboarding";
 
@@ -36,7 +35,7 @@ export default async function OnboardingPage() {
   }
   if (usuario.onboarding_completo) redirect("/dashboard");
 
-  const data = await loadOnboardingData(client, usuario, isInviteRequired(process.env.WHATSAPP_REQUIRE_INVITE));
+  const data = await loadOnboardingData(client, usuario);
 
   return (
     <main className="flex flex-1 flex-col">

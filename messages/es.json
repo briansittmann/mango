@@ -463,10 +463,8 @@
     },
     "whatsapp": {
       "titulo": "¿Quieres cargar por WhatsApp?",
-      "explicacion": "Es opcional: con el bot cargas gastos escribiendo un mensaje. Hoy funciona por invitación.",
-      "explicacionSinCodigo": "Es opcional: con el bot cargas gastos escribiendo un mensaje.",
+      "explicacion": "Es opcional: con el bot cargas gastos escribiendo un mensaje.",
       "telefono": "Tu número",
-      "codigo": "Código de invitación",
       "vincular": "Vincular",
       "seguirSin": "Seguir sin WhatsApp",
       "numeroEnOtraCuenta": "Ese número ya está en otra cuenta",

@@ -10,7 +10,6 @@ import { messageAlreadyProcessed } from '@/lib/data/transactions'
 import { findUserIdByPhone, readConfirmationState, setConfirmedLoads } from '@/lib/data/users'
 import es from '@/messages/es.json'
 import en from '@/messages/en.json'
-import { isInviteRequired } from './invite'
 import { maskPhone, sendReaction, sendText, sendUndoButton } from './send'
 
 import type { WhatsAppMessage } from './payload'
@@ -53,7 +52,6 @@ async function handleMessage(message: WhatsAppMessage): Promise<void> {
       channel: 'whatsapp',
       externalId: message.phone,
       text: message.text,
-      inviteRequired: isInviteRequired(process.env.WHATSAPP_REQUIRE_INVITE),
     })
     await sendReply(message.phone, reply)
     return
