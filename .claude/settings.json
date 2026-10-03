@@ -153,7 +153,9 @@
       "Skill(openspec-update-change)",
       "Skill(openspec-update-change:*)",
       "mcp__supabase__get_advisors",
-      "WebFetch(domain:pro.reactbits.dev)"
+      "WebFetch(domain:pro.reactbits.dev)",
+      "WebFetch(domain:playbooks.com)",
+      "WebFetch(domain:ui.shadcn.com)"
     ],
     "additionalDirectories": [
       "/Users/brianrebagliati/Documents/Work/mango-finanzas/mango/baseline-shots",

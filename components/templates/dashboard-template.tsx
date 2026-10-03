@@ -39,8 +39,10 @@ import { EntrySheet, expenseEntry, incomeEntry, savingsEntry } from '@/component
 import { FreeMarginCard } from '@/components/organisms/free-margin-card'
 import { MonthlyBarsChart } from '@/components/organisms/monthly-bars-chart'
 import { RecurringSheet } from '@/components/organisms/recurring-sheet'
+import { SpendCalendar } from '@/components/organisms/spend-calendar'
 import { SummaryGroup } from '@/components/organisms/summary-group'
 import { UpcomingChargesCard } from '@/components/organisms/upcoming-charges-card'
+import { WeeklyTopChart } from '@/components/organisms/weekly-top-chart'
 import { AnimatedAmount } from '@/components/ui/counter/animated-amount'
 import { AnimatedContent } from '@/components/ui/animated-content'
 import { buildCycleCsv, downloadCsv } from '@/lib/csv'
@@ -74,6 +76,8 @@ type SheetTarget =
 type CategorySheetTarget = { mode: 'create' } | { mode: 'edit'; group: ExpenseGroup }
 
 const BAR_HEIGHT = 56
+/** The summary tiles' delta + sparkline (`modernize-dashboard-widgets`) are built but hidden for now (2026-10-03). */
+const SHOW_SUMMARY_TRENDS = false
 const UPCOMING_CHARGES_ID = 'proximos-cobros'
 
 function clampDate(date: string, min: string, max: string): string {
@@ -1107,7 +1111,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
           className="glass-bar fixed inset-x-0 top-0 z-40"
           style={{ height: BAR_HEIGHT }}
         >
-          <div className="mx-auto flex h-full w-full max-w-[640px] items-center justify-between gap-3 px-gutter">
+          <div className="mx-auto flex h-full w-full max-w-[640px] items-center justify-between gap-3 px-gutter lg:max-w-[1120px] lg:px-6">
             <span className="font-display text-headline-sm text-foreground">{tReordenar('titulo')}</span>
             <button
               ref={doneRef}
@@ -1130,7 +1134,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
             titleInView ? 'opacity-0' : 'opacity-100',
           )}
         />
-        <div className="relative mx-auto flex h-full w-full max-w-[640px] items-center gap-2.5 px-gutter">
+        <div className="relative mx-auto flex h-full w-full max-w-[640px] items-center gap-2.5 px-gutter lg:max-w-[1120px] lg:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-0.5">
             <button
               type="button"
@@ -1193,8 +1197,11 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
           </button>
         </div>
       </div>
-      <div className="mx-auto w-full max-w-[640px] px-gutter">
-      <div className="relative z-20" aria-hidden={reordering} inert={reordering}>
+      {/* At `lg` the page is two columns (design D5): title, notice and the main stack in the first,
+          the four chart widgets in a sticky second column from the main stack's row. Below `lg`
+          the same DOM is one column in the same order. */}
+      <div className="mx-auto w-full max-w-[640px] px-gutter lg:grid lg:max-w-[1120px] lg:grid-cols-[minmax(0,1fr)_minmax(360px,400px)] lg:gap-x-8 lg:px-6" data-dashboard-page>
+      <div className="relative z-20 lg:col-start-1" aria-hidden={reordering} inert={reordering}>
         {/* Without a notice the hero sits a section away from the title, the same gap the summary
             tiles keep from "Desglose de gastos"; the demo's notice fills that space itself. */}
         <AnimatedContent className={notice ? 'pb-3 pt-3' : 'pb-section pt-3'} distance={20} delay={0.12}>
@@ -1216,10 +1223,11 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
         </AnimatedContent>
       </div>
       {notice ? (
-        <AnimatedContent className="mb-stack" distance={12} delay={0.06} duration={0.6} aria-hidden={reordering} inert={reordering}>
+        <AnimatedContent className="mb-stack lg:col-start-1" distance={12} delay={0.06} duration={0.6} aria-hidden={reordering} inert={reordering}>
           {notice}
         </AnimatedContent>
       ) : null}
+      <div className="min-w-0 lg:col-start-1" data-dashboard-main>
       <AnimatedContent
         distance={32}
         scale={0.97}
@@ -1228,7 +1236,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
         aria-hidden={reordering}
         inert={reordering}
       >
-        <FreeMarginCard amount={data.freeMargin} currency={currency} />
+        <FreeMarginCard amount={data.freeMargin} currency={currency} income={data.income.total} savings={data.savings.cycle} />
       </AnimatedContent>
       <AnimatedContent className="mt-stack" distance={24} delay={0.32} aria-hidden={reordering} inert={reordering}>
         <SummaryGroup
@@ -1240,6 +1248,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
               key: 'income',
               label: tResumen('ingresos'),
               total: data.income.total,
+              ...(SHOW_SUMMARY_TRENDS ? { trend: { points: data.income.history.map((entry) => entry.total), upIsGood: true } } : {}),
               panel: (
                 <>
                   <div className="flex flex-col">
@@ -1274,6 +1283,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
               key: 'expenses',
               label: tResumen('gastos'),
               total: data.expenses.total,
+              ...(SHOW_SUMMARY_TRENDS ? { trend: { points: data.history.map((entry) => entry.total), upIsGood: false } } : {}),
               panel: (
                 <>
                   <div className="flex flex-col">
@@ -1303,6 +1313,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
               key: 'savings',
               label: tResumen('ahorro'),
               total: data.savings.cycle,
+              ...(SHOW_SUMMARY_TRENDS ? { trend: { points: data.savings.history.map((entry) => entry.accumulated), upIsGood: true } } : {}),
               panel: (
                 <>
                   <div className="flex flex-col">
@@ -1515,14 +1526,41 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
           )}
         </div>
       </div>
-      <div className="mt-section flex flex-col gap-stack" aria-hidden={reordering} inert={reordering}>
+      </div>
+      {/* The widget column sticks under the top bar while the cards scroll; taller than the viewport
+          it scrolls on its own (thin bar, stable gutter) rather than pushing the page (D5). */}
+      <div
+        className={cn(
+          'mt-section flex min-w-0 flex-col gap-stack lg:sticky lg:top-[72px] lg:col-start-2 lg:mt-0 lg:max-h-[calc(100dvh-88px)] lg:self-start lg:overflow-y-auto lg:[scrollbar-gutter:stable] lg:[scrollbar-width:thin]',
+          notice ? 'lg:row-start-3' : 'lg:row-start-2',
+        )}
+        aria-hidden={reordering}
+        inert={reordering}
+        data-dashboard-widgets
+      >
         {projected ? null : (
           <AnimatedContent threshold={0.2} distance={24} duration={0.3}>
+            <WeeklyTopChart
+              groups={data.expenses.groups}
+              cycle={data.cycle}
+              timeZone={data.user.timezone}
+              currency={currency}
+              onSelectCategory={scrollToCategory}
+            />
+          </AnimatedContent>
+        )}
+        {projected ? null : (
+          <AnimatedContent threshold={0.2} distance={24} duration={0.3} delay={0.05}>
+            <SpendCalendar groups={data.expenses.groups} cycle={data.cycle} timeZone={data.user.timezone} currency={currency} />
+          </AnimatedContent>
+        )}
+        {projected ? null : (
+          <AnimatedContent threshold={0.2} distance={24} duration={0.3} delay={0.1}>
             <MonthlyBarsChart history={data.history} currentMonth={data.cycle.month} currency={currency} />
           </AnimatedContent>
         )}
-        <AnimatedContent threshold={0.2} distance={24} duration={0.3} delay={0.05}>
-          <CategoryPieChart groups={data.expenses.groups} total={data.expenses.total} currency={currency} />
+        <AnimatedContent threshold={0.2} distance={24} duration={0.3} delay={projected ? 0 : 0.15}>
+          <CategoryPieChart groups={data.expenses.groups} total={data.expenses.total} currency={currency} onSelectCategory={scrollToCategory} />
         </AnimatedContent>
       </div>
       </div>

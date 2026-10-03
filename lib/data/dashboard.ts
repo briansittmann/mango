@@ -102,7 +102,12 @@ export type DashboardData = {
     maxMonth: string
   }
   freeMargin: number
-  income: { total: number; entries: IncomeEntry[] }
+  income: {
+    total: number
+    entries: IncomeEntry[]
+    /** Income total per cycle, most recent last, same six months as `history` below; the last equals `total`. */
+    history: { month: string; total: number }[]
+  }
   savings: {
     cycle: number
     accumulated: number

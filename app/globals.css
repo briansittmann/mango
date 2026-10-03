@@ -80,6 +80,21 @@
   --lift-rim: light-dark(transparent, rgba(255, 255, 255, 0.14));
   --raised-highlight: light-dark(transparent, rgba(255, 255, 255, 0.05));
 
+  /* Charts (modernize-dashboard-widgets D8). The de-emphasis bar tone and the sparkline stroke;
+     the hairline baseline one step off the card; a four-step sequential ramp of the brand hue for
+     the spend calendar, validated with the dataviz script against `--card` in each theme (dark
+     steps are chosen, dim→bright, not flipped); and the opaque tooltip surface. `--heat-ink-high`
+     is the day number's ink on the two darkest steps, where the foreground would fall under 4.5:1. */
+  --chart-muted: light-dark(#AEB8AE, #4A564B);
+  --chart-baseline: var(--border);
+  --heat-1: light-dark(#6FC497, #3B5A1C);
+  --heat-2: light-dark(#3FA872, #4F7A24);
+  --heat-3: light-dark(#1E8150, #6FAD1F);
+  --heat-4: light-dark(#116A3A, #9BE02A);
+  --heat-ink-high: light-dark(#FFFFFF, #0D110E);
+  --tooltip-bg: light-dark(#171A17, #F3F4F6);
+  --tooltip-fg: light-dark(#FFFFFF, #0D110E);
+
   --cat-naranja_calido: light-dark(#D4661A, #E87924);
   --cat-verde_profundo: light-dark(#2F7A4B, #3E8E5A);
   --cat-azul_apagado: light-dark(#3F7AB8, #4C8DCE);
@@ -133,6 +148,15 @@
   --color-scrim: var(--scrim);
   --color-positive: var(--positive);
   --color-handle: var(--handle);
+  --color-chart-muted: var(--chart-muted);
+  --color-chart-baseline: var(--chart-baseline);
+  --color-heat-1: var(--heat-1);
+  --color-heat-2: var(--heat-2);
+  --color-heat-3: var(--heat-3);
+  --color-heat-4: var(--heat-4);
+  --color-heat-ink-high: var(--heat-ink-high);
+  --color-tooltip-bg: var(--tooltip-bg);
+  --color-tooltip-fg: var(--tooltip-fg);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -386,6 +410,134 @@
   }
 }
 
+/* ── Chart widgets (modernize-dashboard-widgets D9) ───────────────────────────────────────────
+   Marks draw once, the first time their widget is revealed (`useFirstReveal` flips `data-revealed`),
+   and after that a changed figure retargets with a short transition (`data-settled`). `clip-path`
+   keeps a bar's rounded tip intact where a scale would squash it. Reduced motion drops every
+   transition: the marks are drawn at rest in their first frame. */
+.chart-bar {
+  clip-path: inset(0 100% 0 0 round 0 4px 4px 0);
+  transition: clip-path 500ms var(--ease-out) var(--bar-delay, 0ms);
+}
+.chart-bar[data-vertical] {
+  clip-path: inset(100% 0 0 0 round 4px 4px 0 0);
+}
+.chart-bar[data-revealed] {
+  clip-path: var(--bar-clip, inset(0 round 0 4px 4px 0));
+}
+.chart-bar[data-settled] {
+  transition: clip-path 250ms var(--ease-out);
+}
+
+.chart-fade {
+  opacity: 0;
+  transition: opacity 300ms var(--ease-out) var(--fade-delay, 0ms);
+}
+.chart-fade[data-revealed] {
+  opacity: 1;
+}
+.chart-fade[data-settled] {
+  transition: opacity 150ms ease, background-color 150ms ease;
+}
+
+.sparkline-stroke {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 600ms var(--ease-out);
+}
+.sparkline-stroke[data-revealed] {
+  stroke-dashoffset: 0;
+}
+.sparkline-dot {
+  opacity: 0;
+  transition: opacity 150ms ease 450ms;
+}
+.sparkline-dot[data-revealed] {
+  opacity: 1;
+}
+
+/* recipies.md → Tooltip: out of the mark it describes, faster on the way out, instant after a neighbour. */
+.chart-tooltip {
+  opacity: 0;
+  transform: scale(0.97);
+  transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out);
+}
+.chart-tooltip[data-open] {
+  opacity: 1;
+  transform: scale(1);
+  transition-duration: 150ms;
+}
+.chart-tooltip[data-instant] {
+  transition-duration: 0ms;
+}
+
+/* React Bits' SpotlightCard (D12): a brand-tinted radial highlight under the pointer, fine pointer
+   only, fading over 150 ms `ease` (the hover tier); the widget keeps its own card surface. */
+.spotlight-card {
+  position: relative;
+  isolation: isolate;
+}
+@media (width >= 64rem) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .spotlight-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: radial-gradient(
+      320px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+      color-mix(in oklab, var(--brand) 14%, transparent),
+      transparent 70%
+    );
+    opacity: 0;
+    transition: opacity 150ms ease;
+    pointer-events: none;
+  }
+  .spotlight-card:hover::before {
+    opacity: 1;
+  }
+}
+
+/* A donut slice at rest beside a highlighted one, and the centre's two faces. */
+.donut-slice {
+  transition: fill-opacity 150ms ease;
+}
+.donut-centre {
+  transition: opacity 150ms var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-bar,
+  .chart-bar[data-settled],
+  .chart-fade,
+  .chart-fade[data-settled],
+  .sparkline-stroke,
+  .sparkline-dot,
+  .donut-slice,
+  .donut-centre {
+    transition: none;
+  }
+  /* At rest from the server's HTML on, without waiting for the reveal hook to hydrate. */
+  .chart-bar,
+  .chart-bar[data-vertical] {
+    clip-path: var(--bar-clip, inset(0 round 0 4px 4px 0));
+  }
+  .chart-fade:not(.donut-centre),
+  .sparkline-dot {
+    opacity: 1;
+  }
+  .sparkline-stroke {
+    stroke-dashoffset: 0;
+  }
+  .chart-tooltip {
+    transform: none;
+    transition: opacity 150ms ease;
+  }
+  .chart-tooltip[data-open] {
+    transform: none;
+  }
+}
+
 @utility no-scrollbar {
   scrollbar-width: none;
   &::-webkit-scrollbar {
@@ -451,6 +603,23 @@ body {
   box-shadow: 0 12px 30px var(--hero-shadow), inset 0 1px 0 var(--hero-highlight);
   clip-path: inset(0 round var(--radius-card));
   transition: border-color 400ms ease-out, background 400ms ease-out, box-shadow 400ms ease-out;
+}
+
+/* Below `lg` the card opens its composition strip (`free-margin-card.tsx`). No indicator, only the
+   press: a slight scale on pointer-down (recipies.md → Button press), kept in this rule because the
+   `pressable` utility's `transition` would lose to `.hero-card`'s. */
+.hero-card[data-toggle] {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 400ms ease-out, background 400ms ease-out, box-shadow 400ms ease-out, scale 160ms var(--ease-out);
+}
+.hero-card[data-toggle]:active {
+  scale: 0.98;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-card[data-toggle]:active {
+    scale: none;
+  }
 }
 
 .hero-card--negative {

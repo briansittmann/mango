@@ -668,12 +668,12 @@ No es la versión reducida del escritorio: si los gastos se cargan por WhatsApp 
 3. **Ingresos · Gastos · Ahorro** — tres tarjetas chicas en fila.
 4. **Próximos cobros** — tira colapsada con el próximo cargo por cobrar; al abrirla, el calendario del ciclo.
 5. **Categorías** — una tarjeta por categoría, con las barras de comida y ocio.
-6. **Gráficos** — torta primero, barras mes contra mes después.
+6. **Gráficos** — desde `modernize-dashboard-widgets` (oct 2026) son cuatro, en este orden: *Top gastos de la semana* (barras horizontales por categoría de la semana del ciclo, con flechas para volver a las semanas anteriores), *Gasto por día* (calendario de calor del ciclo), barras mes contra mes y la torta de distribución. Las semanas son tramos de siete días desde el primer día del ciclo; solo cuentan las filas ya pagadas (un fijo pendiente no es plata que salió). Se calculan en el cliente desde las filas que el dashboard ya recibe (`lib/data/weekly-spend.ts`), sin lectura propia.
 **Regla de orden: lo que decide algo va arriba, lo que explica va abajo.** Los gráficos explican el pasado; el margen libre decide el presente.
  
 **Por qué el selector de mes va arriba** aunque sea la zona más incómoda para el pulgar: sin él, ningún número de abajo significa nada — *"margen libre: 640"* sin saber de qué mes no es información. Y se toca poco: lo normal es entrar a ver el mes actual y no tocarlo nunca. El compromiso es dejarlo arriba pero mínimo.
  
-En **escritorio** es el mismo contenido en dos columnas: números y barras a la izquierda, gráficos a la derecha.
+En **escritorio** es el mismo contenido en dos columnas: números y barras a la izquierda, gráficos a la derecha. Implementado en `modernize-dashboard-widgets`: desde 1024px la página se ensancha a 1120px y los cuatro gráficos pasan a una columna derecha pegajosa bajo la barra; debajo de ese ancho sigue la columna única de 640px en el mismo orden. "Próximos cobros" se queda en la columna principal.
  
 ### La tarjeta «Próximos cobros»: cuándo, no cuánto
  

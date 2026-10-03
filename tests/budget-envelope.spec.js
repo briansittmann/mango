@@ -43,7 +43,12 @@ test.describe('a budget reserves its amount in the free margin', () => {
     await expect.poll(() => body(page)).toMatch(margin('864'))
     await expect.poll(() => body(page)).toMatch(/Transporte\s*130\s?€\s*de\s*100\s?€/)
 
-    await page.getByRole('button', { name: /^Gastos/ }).click()
+    // A click that lands before hydration is lost (seen in WebKit); click again until it opens.
+    const expenses = page.getByRole('button', { name: /^Gastos/ })
+    await expect(async () => {
+      if ((await expenses.getAttribute('aria-expanded')) !== 'true') await expenses.click()
+      await expect(expenses).toHaveAttribute('aria-expanded', 'true', { timeout: 1000 })
+    }).toPass()
     await expect(page.locator('#summary-group-panel')).toContainText(/Transporte\s*130\s?€/)
   })
 

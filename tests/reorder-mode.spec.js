@@ -31,7 +31,8 @@ test.describe('reorder mode', () => {
 
     await expect(page.getByRole('button', { name: /^Mover/ })).toHaveCount(0)
     // Leaving restores the card's own open state and its amount.
-    await expect(page.getByText('310 €', { exact: false })).toBeVisible()
+    // Scoped to the card: the distribution legend shows "310 €" too since modernize-dashboard-widgets.
+    await expect(page.locator('#category-panel-comida').locator('..').getByText('310 €', { exact: false }).first()).toBeVisible()
     await expect(page.getByRole('button', { name: /^Opciones de Comida$/ })).toBeFocused()
   })
 

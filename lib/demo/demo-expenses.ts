@@ -490,6 +490,7 @@ export function deriveDemoData(
   const incomeResolved = resolveIncome(base.income.entries, incomeEdits, base.cycle.month)
   const incomeEntries = withSlot(attachCreatedIncomeDefinition(incomeResolved, recurringEdits.created, sampleStart), sampleStart)
   const incomeTotal = incomeEntries.reduce((sum, entry) => sum + entry.amount, 0)
+  const incomeHistory = base.income.history.map((entry) => (entry.month === base.cycle.month ? { ...entry, total: incomeTotal } : entry))
 
   // 9. Savings: created movements append to the base ones and are stable-sorted by date, so a
   //    same-day addition lands after the existing movement(s); deleted ones count nowhere.
@@ -505,7 +506,7 @@ export function deriveDemoData(
   const sample: DashboardData = {
     ...base,
     expenses: { total, groups },
-    income: { total: incomeTotal, entries: incomeEntries },
+    income: { total: incomeTotal, entries: incomeEntries, history: incomeHistory },
     savings: { ...base.savings, cycle: savingsCycle, accumulated: savingsAccumulated, history: savingsHistory, movements },
     freeMargin: getFreeMargin({
       income: incomeTotal,
@@ -616,7 +617,8 @@ export function deriveDemoData(
         savings: projectedSavings,
         categories: projectedGroups.map((group) => ({ budget: group.budget?.amount ?? null, spent: group.total })),
       }),
-      income: { total: projectedIncome, entries },
+      // The six history entries end at the cycle in progress (`dashboard-data`), as the sample's do.
+      income: { total: projectedIncome, entries, history: sample.income.history },
       savings: { ...sample.savings, cycle: projectedSavings, movements: projectedMovements },
       expenses: { total: projectedGroups.reduce((sum, group) => sum + group.total, 0), groups: projectedGroups },
     },

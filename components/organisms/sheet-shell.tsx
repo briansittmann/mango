@@ -97,7 +97,10 @@ export function SheetShell({
           <Drawer.Viewport className="fixed inset-0 z-50 flex items-end justify-center px-3 pb-[calc(max(0.75rem,env(safe-area-inset-bottom))+var(--drawer-keyboard-inset,0px))]">
             <Drawer.Popup
               ref={popupRef}
-              initialFocus={initialFocus}
+              // `false` lands focus on the popup itself (focusable, `outline-none`) instead of
+              // not moving it: with the opener gone (the account menu closes as the sheet opens)
+              // the focus trap would otherwise pull focus to the first button and ring "Cancelar".
+              initialFocus={initialFocus === false ? () => popupRef.current : initialFocus}
               finalFocus={() => {
                 const opener = openerRef.current
                 if (opener instanceof HTMLElement && document.contains(opener)) return opener

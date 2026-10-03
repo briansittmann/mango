@@ -182,6 +182,15 @@ export function buildDemoData(locale: Locale): DashboardData {
     { month: '2026-09', accumulated: savingsAccumulatedBeforeCycle + savingsCycle },
   ]
 
+  const incomeHistory = [
+    { month: '2026-04', total: 2400 },
+    { month: '2026-05', total: 2650 },
+    { month: '2026-06', total: 2400 },
+    { month: '2026-07', total: 2900 },
+    { month: '2026-08', total: 2400 },
+    { month: '2026-09', total: incomeTotal },
+  ]
+
   const history = [
     { month: '2026-04', total: 1400 },
     { month: '2026-05', total: 1550 },
@@ -227,6 +236,7 @@ export function buildDemoData(locale: Locale): DashboardData {
         date,
         ...(recurring ? { recurring } : {}),
       })),
+      history: incomeHistory,
     },
     savings: {
       cycle: savingsCycle,

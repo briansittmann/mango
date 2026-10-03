@@ -343,6 +343,12 @@ export async function resumenMensual(
       .filter((row) => row.tipo === 'gasto' && inRange(row.fecha, range))
       .reduce((sum, row) => sum + Number(row.monto), 0),
   }))
+  const incomeHistory = ranges.map((range, index) => ({
+    month: months[index],
+    total: rows
+      .filter((row) => row.tipo === 'ingreso' && inRange(row.fecha, range))
+      .reduce((sum, row) => sum + Number(row.monto), 0),
+  }))
   const savingsHistory = ranges.map((range, index) => ({
     month: months[index],
     accumulated: savingsRows
@@ -387,7 +393,7 @@ export async function resumenMensual(
         savings: savingsCycle,
         categories: groups.map((group) => ({ budget: group.budget?.amount ?? null, spent: group.total })),
       }),
-      income: { total: incomeTotal, entries: incomeEntries },
+      income: { total: incomeTotal, entries: incomeEntries, history: incomeHistory },
       savings: {
         cycle: savingsCycle,
         accumulated: savingsHistory[5].accumulated,
