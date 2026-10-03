@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode }
 import { Toast } from '@base-ui/react/toast'
 import { Loader2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { AmountFormatProvider, useAmountFormatter } from '@/components/atoms/amount-format'
 import { parseAmount } from '@/components/molecules/amount-field'
@@ -94,14 +95,17 @@ export function OnboardingTemplate(props: OnboardingTemplateProps) {
 function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplateProps) {
   const t = useTranslations('onboarding')
   const locale = useLocale()
+  const router = useRouter()
   const { money } = useAmountFormatter()
   const toasts = useMemo(() => Toast.createToastManager(), [])
 
   const [step, setStep] = useState(data.step)
   const keyRef = useRef(1)
   const [layers, setLayers] = useState<Layer[]>(() => [{ key: 0, step: data.step, direction: 'forward', leaving: false }])
-  // The welcome plays its entrance once, on the first mount; "Empezar" follows it after 200 ms.
+  // The welcome plays its entrance once, on the first mount; "Empezar" stays out until the welcome
+  // says its last line has landed, and then comes in.
   const [welcomeEntrance, setWelcomeEntrance] = useState(data.step === 1)
+  const [welcomeSettled, setWelcomeSettled] = useState(false)
   const [basics, setBasics] = useState<BasicsDraft>(() => initialBasics(data.profile))
   // Step 3 edits a local list and writes it on "Continuar" (D8): null = the stored categories.
   const [categoryDraft, setCategoryDraft] = useState<DraftCategory[] | null>(null)
@@ -337,7 +341,7 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
   function renderStep(current: number) {
     switch (current) {
       case 1:
-        return <WelcomeStep />
+        return <WelcomeStep onEntranceEnd={() => setWelcomeSettled(true)} />
       case 2:
         return (
           <BasicsStep
@@ -429,7 +433,12 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
           <ThemePill />
 
           <div className={cn('relative mx-auto w-full px-gutter pt-20', listStep ? 'max-w-[440px] sm:max-w-[520px]' : 'max-w-[440px]')}>
-            {step > 1 ? <GlassBackButton label={t('volver')} onClick={() => go(step - 1)} className="sm:absolute sm:left-0 sm:top-4" /> : null}
+            {/* The welcome's back control leaves for the home; from step 2 on it goes one step back. */}
+            {step > 1 ? (
+              <GlassBackButton label={t('volver')} onClick={() => go(step - 1)} className="sm:absolute sm:left-0 sm:top-4" />
+            ) : (
+              <GlassBackButton label={t('volverInicio')} onClick={() => router.push('/')} className="sm:absolute sm:left-0 sm:top-4" />
+            )}
 
             {notice ? <div className="pb-4">{notice}</div> : null}
 
@@ -472,18 +481,25 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
             </div>
           </div>
 
-          {/* The primary action's slot: pinned above the safe area on a phone, at the column's bottom on desktop. */}
-          <div className="fixed inset-x-0 bottom-0 z-20 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:static sm:pb-0 sm:pt-8">
+          {/* The primary action's slot: pinned above the safe area on a phone, at the column's bottom
+              on desktop. The welcome has nothing to scroll, so its "Empezar" sits under the lines
+              on every screen. */}
+          <div
+            className={cn(
+              'z-20',
+              step === 1 ? 'static pb-0 pt-8' : 'fixed inset-x-0 bottom-0 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:static sm:pb-0 sm:pt-8',
+            )}
+          >
             <div
               className={cn(
                 'mx-auto flex w-full max-w-[440px] flex-col items-center gap-2 px-gutter',
-                step === 1 && welcomeEntrance && 'onboarding-fade-in',
+                step === 1 && welcomeEntrance && (welcomeSettled ? 'onboarding-cta-in' : 'opacity-0'),
                 // Step 2: "Continuar" appears once the fields have landed (their 200 ms delay + 300 ms).
                 step === 2 && 'onboarding-slot-in',
               )}
               // Inline, as the welcome's lines do: the classes' `animation` shorthand is unlayered CSS
               // and would reset a Tailwind `[animation-delay:…]` utility back to 0.
-              style={step === 1 && welcomeEntrance ? { animationDelay: '200ms' } : step === 2 ? { animationDelay: '500ms' } : undefined}
+              style={step === 2 ? { animationDelay: '500ms' } : undefined}
             >
               <button
                 type="button"

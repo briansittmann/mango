@@ -21,6 +21,7 @@ import { createSupabaseIncomeMutations } from "@/lib/data/supabase/income";
 import { createSupabaseRecurringMutations } from "@/lib/data/supabase/recurring";
 import { createSupabaseSavingsMutations } from "@/lib/data/supabase/savings";
 import { findCurrentUsuario } from "@/lib/data/supabase/user";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { supabaseServer } from "@/lib/supabase/server";
 
 // One action per contract operation (D2): each runs as the signed-in user through RLS and
@@ -147,6 +148,26 @@ export async function updateProfileBasics(
 
 export async function signOut() {
   const supabase = await supabaseServer();
+  await supabase.auth.signOut();
+  redirect("/");
+}
+
+/**
+ * The account sheet's "Eliminar cuenta": the `usuarios` row goes first (every table cascades from
+ * it: categories, movements, definitions, budgets, channels, messages), then the auth user, with
+ * the admin client because the session cannot delete itself. Ends signed out on the home page.
+ */
+export async function deleteAccount() {
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) throw new Error("unauthenticated");
+
+  const admin = supabaseAdmin();
+  const { error: rowError } = await admin.from("usuarios").delete().eq("auth_user_id", data.user.id);
+  if (rowError) throw rowError;
+  const { error: authError } = await admin.auth.admin.deleteUser(data.user.id);
+  if (authError) throw authError;
+
   await supabase.auth.signOut();
   redirect("/");
 }

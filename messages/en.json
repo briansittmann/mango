@@ -350,12 +350,19 @@
     "diaInicio": "Your month starts on day {dia}",
     "monedasMezcladas": "Movements already loaded keep their currency and are summed without conversion.",
     "errorGuardar": "Couldn't save. Try again.",
-    "guardado": "Changes saved"
+    "guardado": "Changes saved",
+    "eliminarCuenta": "Delete account",
+    "eliminarTitulo": "Delete your account?",
+    "eliminarDetalle": "Your categories, movements, recurring charges, budgets and WhatsApp number are erased. This can't be undone.",
+    "eliminarConfirmar": "Yes, delete my account",
+    "eliminarCancelar": "Keep it",
+    "errorEliminar": "Couldn't delete the account. Try again."
   },
   "onboarding": {
     "sandbox": "This is a sandbox: nothing is saved",
     "progreso": "Progress",
     "volver": "Back",
+    "volverInicio": "Back to home",
     "empezar": "Get started",
     "continuar": "Continue",
     "errorGuardar": "Couldn't save. Try again.",
@@ -369,7 +376,8 @@
       "7": "WhatsApp"
     },
     "bienvenida": {
-      "titulo": "Hi. Let's set up your month.",
+      "hola": "Hi!",
+      "titulo": "Let's set up your month.",
       "linea1": "First, your spending categories.",
       "linea2": "Then what you earn and what you pay every month.",
       "linea3": "And finally, budgets: that's where your free margin shows up."

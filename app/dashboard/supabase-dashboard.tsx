@@ -97,6 +97,7 @@ export function SupabaseDashboard({ data, definitions }: SupabaseDashboardProps)
         nextCycle: () => router.push(`/dashboard?mes=${shiftMonth(month, 1)}`),
         selectCycle: (selected) => router.push(`/dashboard?mes=${selected}`),
         signOut: () => void actions.signOut(),
+        deleteAccount: actions.deleteAccount,
       }}
     />
   )

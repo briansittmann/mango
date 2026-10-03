@@ -19,7 +19,7 @@ import { RevealTitle } from '@/components/ui/reveal-title'
 import { ScrambledText } from '@/components/ui/scrambled-text'
 import { cn } from '@/lib/utils'
 
-gsap.registerPlugin(SplitText)
+gsap.registerPlugin(SplitText, ScrollTrigger)
 
 type LandingTemplateProps = {
   changeLanguage: (locale: 'es' | 'en') => Promise<void>
@@ -343,6 +343,29 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
 function Faq() {
   const t = useTranslations('inicio')
   const items = t.raw('faq') as { pregunta: string; respuesta: string }[]
+  const list = useRef<HTMLUListElement>(null)
+
+  // The glass card rises into place and the questions fall into it one behind the other, each
+  // landing with a small bounce, the first time the list scrolls into view.
+  useLayoutEffect(() => {
+    const media = gsap.matchMedia(list)
+    media.add('(prefers-reduced-motion: no-preference)', () => {
+      const trigger = { trigger: list.current, start: 'top 82%', once: true }
+      gsap.from(list.current, { y: 40, opacity: 0, duration: 0.9, ease: 'power3.out', scrollTrigger: trigger })
+      gsap.from(list.current!.children, {
+        y: -36,
+        opacity: 0,
+        filter: 'blur(8px)',
+        duration: 0.85,
+        ease: 'back.out(1.7)',
+        stagger: 0.11,
+        delay: 0.15,
+        scrollTrigger: trigger,
+      })
+    })
+    return () => media.revert()
+  }, [])
+
   return (
     <section aria-labelledby="landing-faq" className="mx-auto w-full max-w-2xl px-gutter py-24 md:py-32">
       <RevealTitle
@@ -350,7 +373,7 @@ function Faq() {
         text={t('faqTitulo')}
         className="text-balance text-center font-display text-[32px] font-bold leading-[1.05] tracking-[-0.035em] text-foreground md:text-[52px]"
       />
-      <ul className="liquid-glass mt-10 rounded-[28px] px-6 md:mt-12 md:px-8">
+      <ul ref={list} className="liquid-glass mt-10 rounded-[28px] px-6 md:mt-12 md:px-8">
         {items.map((item) => (
           <FaqItem key={item.pregunta} question={item.pregunta} answer={item.respuesta} />
         ))}

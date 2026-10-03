@@ -1216,7 +1216,7 @@ body {
   transform: scale(0.97);
 }
 
-/* The welcome's three lines and "Empezar": the stagger recipe, 300ms --ease-out from 8px below. */
+/* The stagger recipe, 300ms --ease-out from 8px below. */
 @keyframes onboarding-fade-in {
   from {
     opacity: 0;
@@ -1225,6 +1225,22 @@ body {
 }
 .onboarding-fade-in {
   animation: onboarding-fade-in 300ms var(--ease-out) both;
+}
+
+/* The welcome's "Empezar": last in the sequence (the template adds the class when the welcome's
+   lines have landed), it springs up from below, small and out of focus, and settles on --ease-bounce. */
+@keyframes onboarding-cta-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.86);
+    filter: blur(6px);
+  }
+  to {
+    filter: blur(0);
+  }
+}
+.onboarding-cta-in {
+  animation: onboarding-cta-in 700ms var(--ease-bounce) both;
 }
 
 /* Step 2's entrance: the stagger recipe (300ms --ease-out, 50 ms apart), turned horizontal at the
@@ -1296,6 +1312,7 @@ body {
   }
   .onboarding-suggestion,
   .onboarding-fade-in,
+  .onboarding-cta-in,
   .onboarding-enter-left,
   .onboarding-enter-right,
   .onboarding-slot-in {

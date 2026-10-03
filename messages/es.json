@@ -350,12 +350,19 @@
     "diaInicio": "Tu mes empieza el día {dia}",
     "monedasMezcladas": "Los movimientos ya cargados mantienen su moneda y se suman sin convertir.",
     "errorGuardar": "No se pudo guardar. Inténtalo de nuevo.",
-    "guardado": "Cambios guardados"
+    "guardado": "Cambios guardados",
+    "eliminarCuenta": "Eliminar cuenta",
+    "eliminarTitulo": "¿Eliminar tu cuenta?",
+    "eliminarDetalle": "Se borran tus categorías, movimientos, fijos, presupuestos y tu número de WhatsApp. No se puede deshacer.",
+    "eliminarConfirmar": "Sí, eliminar mi cuenta",
+    "eliminarCancelar": "Mejor no",
+    "errorEliminar": "No se pudo eliminar la cuenta. Inténtalo de nuevo."
   },
   "onboarding": {
     "sandbox": "Esto es una prueba: nada se guarda",
     "progreso": "Progreso",
     "volver": "Volver",
+    "volverInicio": "Volver al inicio",
     "empezar": "Empezar",
     "continuar": "Continuar",
     "errorGuardar": "No se pudo guardar. Inténtalo de nuevo.",
@@ -369,7 +376,8 @@
       "7": "WhatsApp"
     },
     "bienvenida": {
-      "titulo": "Hola. Vamos a armar tu mes.",
+      "hola": "¡Hola!",
+      "titulo": "Vamos a armar tu mes.",
       "linea1": "Primero, tus categorías de gasto.",
       "linea2": "Después, lo que cobras y lo que pagas todos los meses.",
       "linea3": "Y al final, presupuestos: ahí aparece tu margen libre."

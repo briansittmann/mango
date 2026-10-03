@@ -127,5 +127,7 @@ export type DashboardActions = Partial<{
   /** The account sheet's operations (`dashboard-ui` → *Account avatar and menu*); the demo supplies none. */
   profile: ProfileMutations
   signOut(): void
+  /** Deletes the account and everything it holds, then signs out; resolves only if it failed before deleting. */
+  deleteAccount(): Promise<void>
   changeLanguage(l: 'es' | 'en'): Promise<void>
 }>

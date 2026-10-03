@@ -1567,6 +1567,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
             await actions.profile!.updateBasics(basics)
             setStatusMessage(tCuenta('guardado'))
           }}
+          onDelete={actions.deleteAccount}
         />
       ) : null}
       <EntrySheet

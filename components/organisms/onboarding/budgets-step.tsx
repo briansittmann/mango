@@ -3,7 +3,7 @@ import { useTranslations } from 'next-intl'
 import { useAmountFormatter } from '@/components/atoms/amount-format'
 import { CategoryDot } from '@/components/atoms/category-dot'
 import { Collapsible } from '@/components/atoms/collapsible'
-import { parseAmount } from '@/components/molecules/amount-field'
+import { AmountInput, parseAmount } from '@/components/molecules/amount-field'
 import { BudgetProgress } from '@/components/molecules/budget-progress'
 import { cn } from '@/lib/utils'
 import type { BudgetStatus, CategoryColor } from '@/lib/data/dashboard'
@@ -141,9 +141,8 @@ export function BudgetsStep({ envelope, currency, drafts, onDraftChange, onCommi
                   </label>
                   <div className="field-focus flex shrink-0 items-center gap-1 rounded-lg bg-muted px-2 py-1.5">
                     {symbol.symbolFirst ? <span className="text-tabular-numeric-lg text-foreground">{symbol.symbol}</span> : null}
-                    <input
+                    <AmountInput
                       id={fieldId}
-                      inputMode="decimal"
                       enterKeyHint="done"
                       autoComplete="off"
                       aria-label={t('presupuestos.presupuestoDe', { categoria: row.name })}
@@ -151,8 +150,8 @@ export function BudgetsStep({ envelope, currency, drafts, onDraftChange, onCommi
                       aria-describedby={error ? `${fieldId}-error` : undefined}
                       readOnly={busy[row.id]}
                       value={drafts[row.id] ?? ''}
-                      onChange={(event) => {
-                        onDraftChange(row.id, event.target.value)
+                      onChange={(text) => {
+                        onDraftChange(row.id, text)
                         setErrors((prev) => {
                           if (!prev[row.id]) return prev
                           const next = { ...prev }

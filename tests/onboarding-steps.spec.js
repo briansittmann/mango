@@ -12,7 +12,7 @@ const HEADINGS = ['', '', 'Tus categorías', 'Ingresos y fijos', 'Presupuestos',
 test('seven steps forward, the progress line counts them and names them', async ({ page }) => {
   await page.goto('/demo/onboarding')
   await expect(page.getByText('Esto es una prueba: nada se guarda')).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Hola. Vamos a armar tu mes.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '¡Hola! Vamos a armar tu mes.' })).toBeVisible()
   await expect(primary(page)).toHaveText('Empezar')
   await expect(progress(page)).toHaveAttribute('aria-valuenow', '1')
   await expect(progress(page)).toHaveAttribute('aria-valuetext', 'Bienvenida')
@@ -51,12 +51,14 @@ test('back keeps what was stored', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Volver' })).toBeVisible()
 })
 
-test('?paso= opens on that step and the welcome has no back control', async ({ page }) => {
+test('?paso= opens on that step and the welcome\'s back control goes to the home', async ({ page }) => {
   await page.goto('/demo/onboarding?paso=5&e2eSeed=1')
   await expectStep(page, 5)
-  await expect(page.getByRole('button', { name: 'Volver' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Volver', exact: true })).toBeVisible()
 
   await page.goto('/demo/onboarding')
   await expectStep(page, 1)
-  await expect(page.getByRole('button', { name: 'Volver' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Volver', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Volver al inicio' }).click()
+  await expect(page).toHaveURL('/')
 })

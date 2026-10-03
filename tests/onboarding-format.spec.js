@@ -14,7 +14,7 @@ test('Argentina with the abbreviated format reads "$ 1,2k" and the fields keep f
   const comida = page.getByLabel('Presupuesto de Comida')
   await expect(comida).toHaveValue('')
   await comida.fill('300000')
-  await expect(comida).toHaveValue('300000')
+  await expect(comida).toHaveValue('300.000')
   await expect.poll(() => body(page)).toMatch(/Margen libre\s*-\$\s?298,8k/)
 })
 
