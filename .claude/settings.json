@@ -155,7 +155,9 @@
       "mcp__supabase__get_advisors",
       "WebFetch(domain:pro.reactbits.dev)",
       "WebFetch(domain:playbooks.com)",
-      "WebFetch(domain:ui.shadcn.com)"
+      "WebFetch(domain:ui.shadcn.com)",
+      "Skill(openspec-explore)",
+      "Skill(openspec-explore:*)"
     ],
     "additionalDirectories": [
       "/Users/brianrebagliati/Documents/Work/mango-finanzas/mango/baseline-shots",

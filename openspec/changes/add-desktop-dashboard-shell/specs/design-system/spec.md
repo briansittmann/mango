@@ -1,122 +1,25 @@
-# Design System Specification
-
-## Purpose
-
-Shared visual foundations every screen of the web app follows: the type hierarchy, the spacing rhythm, touch-target minimums, pressed/focus/selected states that do not rely on colour alone, where translucent materials may appear, and motion that respects the user's preference.
-
-## Requirements
-
-### Requirement: Type scale and hierarchy limits
-Components SHALL set font size, line height and weight only through the named type scale, and SHALL NOT use arbitrary or framework-default font sizes. On the dashboard at a 390px-wide viewport, with every card and panel collapsed, visible text SHALL use no more than six distinct font sizes. No text on the dashboard, in the month picker or in the account sheet SHALL compute below 12px. Values, section titles and card titles SHALL NOT be set in uppercase tracked lettering.
-
-#### Scenario: Six sizes at most
-- **WHEN** `/demo` is rendered at a 390px-wide viewport with every card and panel collapsed, in Spanish and in English
-- **THEN** the set of computed font sizes of all visible text has at most six members
-
-#### Scenario: Minimum text size
-- **WHEN** the month picker is open, and separately when the account sheet is open
-- **THEN** no visible text computes below 12px
-
-#### Scenario: No sizes outside the scale
-- **WHEN** the component sources are searched for arbitrary font-size utilities (for example `text-[13px]`) and framework-default size utilities (`text-xs`, `text-sm`, `text-base`, `text-lg`, `text-xl` and larger)
-- **THEN** no match is found
-
-#### Scenario: Titles in sentence case
-- **WHEN** the expenses section title, the summary labels and the chart titles are rendered
-- **THEN** their computed `text-transform` is `none`
-
-### Requirement: Spacing rhythm
-Layout spacing SHALL come from named spacing values:
-- a page gutter on both sides
-- a section gap between top-level sections
-- a stack gap between sibling surfaces within a section
-- an inset for padding inside a surface
-
-At a 390px-wide viewport the gutter SHALL be 16px, the section gap 32px, the stack gap 12px and the inset 16px.
-
-#### Scenario: Page gutter
-- **WHEN** `/demo` is rendered at a 390px-wide viewport
-- **THEN** the free-margin card, the summary group, every expense card and both chart cards start 16px from the left edge of the viewport and end 16px from the right edge
-
-#### Scenario: Section and stack gaps
-- **WHEN** `/demo` is rendered at a 390px-wide viewport with every card collapsed
-- **THEN** the vertical gap is 32px between the summary group and the expenses section title, and 32px between the last expense card and the first chart card
-- **AND** it is 12px between the free-margin card and the summary group, and 12px between consecutive expense cards
-
-### Requirement: Touch targets
-Every interactive element SHALL have a hit area of at least 44 × 44 CSS pixels at a 390px-wide viewport. Every list row SHALL be at least 48px tall. A control's visible shape can be smaller than its hit area.
-
-A decorative mark inside a row — a colour dot, a direction icon — is not a control. It SHALL NOT be focusable, SHALL NOT respond to a pointer, and its own size SHALL NOT be held to the 44px minimum. Adding one SHALL NOT reduce the row's height below the minimum, and SHALL NOT shrink the hit area of any control in the same row.
-
-#### Scenario: Targets in every state
-- **WHEN** `/demo` is rendered at a 390px-wide viewport in each of these states: all collapsed, scrolled with the compact bar showing, the income panel open, the savings panel open, the "comida" card open, the month picker open, and the account sheet open
-- **THEN** every visible button, link and radio control has a bounding box at least 44px wide and 44px tall
-
-#### Scenario: Row height
-- **WHEN** the "comida" card, the income panel and the savings panel are open
-- **THEN** every expense row, summary row, savings movement row and add row is at least 48px tall
-
-#### Scenario: A direction icon is not a control
-- **WHEN** the savings panel is open and the keyboard is tabbed through it
-- **THEN** no movement's direction icon receives focus
-- **AND** each movement row is still at least 48px tall
-
-### Requirement: Interaction states
-Every tappable surface and button SHALL show pressed feedback while a pointer is held down on it. It SHALL show a focus ring at least 2px wide in the ring colour when it receives keyboard focus, and no ring after a pointer click. An open, selected or current state SHALL be conveyed by at least one cue other than colour: shape, icon orientation, font weight or text. That state SHALL also be exposed to assistive technology as expanded, checked or current.
-
-#### Scenario: Pressed feedback
-- **WHEN** a pointer is held down on an expense card header
-- **THEN** the header's computed scale or background differs from its resting state, and returns to the resting state after release
-
-#### Scenario: Keyboard focus ring
-- **WHEN** the user moves keyboard focus to the income column of the summary group
-- **THEN** a ring at least 2px wide in the ring colour is visible around it
-- **AND** after activating the same column with a pointer click, no ring is visible
-
-#### Scenario: Open state not shown by colour alone
-- **WHEN** the income column is open
-- **THEN** it is exposed to assistive technology as expanded, its chevron points up, and an indicator mark is shown under it that closed columns do not have
-
-### Requirement: A progress bar's colour says what it measures
-The interface has two kinds of progress bar and they measure opposite things. Their colour SHALL be decided by which kind a bar is, never by how full it is alone.
-
-**A consumption bar** measures spending against a ceiling the user is trying not to cross. It SHALL take the three-step ramp: the brand colour while there is room, the warning colour as the ceiling is approached, and the danger colour once it is crossed.
-
-**A progress bar** measures accumulation towards a target the user is trying to reach. It SHALL use the brand colour at every value, including zero and including values above the target. It SHALL NOT use the warning colour or the danger colour at any value.
-
-The warning and danger colours SHALL be reserved to budget state. No bar that is not a consumption bar SHALL use either, because on a bar that measures accumulation a red fill would mark success as failure.
-
-Reaching a target SHALL be shown by a mark, not by a colour change, and SHALL NOT be celebrated with motion that outlives the fill.
-
-#### Scenario: A consumption bar takes the ramp
-- **WHEN** a category's budget is 40 %, 85 % and 110 % spent
-- **THEN** its bar's fill computes the brand colour, the warning colour and the danger colour respectively
-
-#### Scenario: A progress bar stays brand
-- **WHEN** a progress bar is rendered at 0 %, 49 %, 100 % and 140 % of its target, in both themes
-- **THEN** the bar's fill computes the brand colour in every case
-- **AND** it computes neither the warning colour nor the danger colour in any case
-
-#### Scenario: Reaching the target is marked, not recoloured
-- **WHEN** a progress bar reaches its target
-- **THEN** a mark appears at the end of its track and the fill's computed colour is unchanged from the value below the target
+## MODIFIED Requirements
 
 ### Requirement: Translucent materials
 Translucent blurred materials SHALL be used only for navigation and transient controls:
 - the pinned top bar once the page is scrolled
+- at 1024px and wider, the sidebar and the top bar once the page is scrolled (the floating shell of `desktop-shell`), and never while static at the top of the page
 - the month picker
 - the account sheet and the scrim behind it
 - the entry sheet and the scrim behind it
 - the category sheet and the scrim behind it
+- at 1024px and wider, every side panel and the scrim behind it
 - the pushed-back layer of reorder mode, and only while that mode is on
 
 These SHALL sit on opaque surfaces with no background blur:
-- financial content: the free-margin card, the summary group, expense cards and charts
+- financial content: the free-margin card, the summary group and the stat tiles, expense cards and charts
 - notices
 - an expense row being swiped, with its delete panel
 - toasts
 - the options control in a category card header
 - every category card and drag handle while reorder mode is on
+
+**No two translucent materials SHALL overlap**: while a side panel or the reorder mode's layer is open over the floating shell, the shell SHALL drop its blur and keep an opaque-enough surface.
 
 **The pushed-back layer** is the one case where financial content is blurred, and it is a transient mode rather than a resting state. Its blur SHALL be light and its dimming SHALL be the dominant cue, because the background it covers already carries a sheen that a heavy blur turns to mud. Nothing SHALL be drawn on top of it except the reorder bar, the category cards and their handles, all of which stay sharp and fully opaque.
 
@@ -125,6 +28,15 @@ Text on a translucent material SHALL keep at least 4.5:1 contrast against that m
 #### Scenario: Only navigation and controls blur
 - **WHEN** `/demo` is scrolled halfway with the month picker open, separately when the account sheet is open, separately when the entry sheet is open, and separately when the category sheet is open
 - **THEN** every element with a computed `backdrop-filter` other than `none` is one of: the pinned top bar, the month picker, the account sheet or its scrim, the entry sheet or its scrim, the category sheet or its scrim
+
+#### Scenario: Only the shell blurs on a laptop
+- **WHEN** `/demo` at 1280px is scrolled by 200px with nothing open
+- **THEN** every element with a computed `backdrop-filter` other than `none` is the sidebar or the top bar
+- **AND** at the top of the page, with nothing open, no element has a `backdrop-filter` other than `none`
+
+#### Scenario: The shell yields to a side panel
+- **WHEN** `/demo` at 1280px is scrolled by 200px and the entry sheet is opened
+- **THEN** every element with a computed `backdrop-filter` other than `none` is the side panel or its scrim
 
 #### Scenario: Content is opaque
 - **WHEN** `/demo` is rendered in either theme, with an expense row swiped open and the undo toast shown
@@ -156,15 +68,17 @@ Text on a translucent material SHALL keep at least 4.5:1 contrast against that m
 ### Requirement: Motion respects user preference
 When the operating system requests reduced motion:
 - content SHALL appear in its final position without entrance movement
-- disclosures, the month picker, the account sheet, the entry sheet, the category sheet and the definition sheet SHALL open and close without animated movement
+- disclosures, the month picker, the account sheet, the entry sheet, the category sheet and the definition sheet SHALL open and close without animated movement; a side panel SHALL appear at and leave from its resting position
+- the sidebar and the top bar SHALL switch between their static and floating appearance immediately, and the sidebar's current-entry highlight SHALL appear on the new entry rather than travel to it
 - a switch SHALL change state without its thumb travelling, and the fields it reveals or hides SHALL appear and disappear at their final height
 - a row appearing in or leaving the `upcoming-charges` card SHALL do so without animated movement
 - after a drag is released, an expense row SHALL settle, slide out and collapse without animated movement
 - toasts SHALL appear and disappear without movement
 - entering and leaving reorder mode SHALL change the screen without animated movement, and a card moved by a drop, by a keyboard press or by a failed save SHALL appear in its new position rather than travel to it
+- a widget moved by a drop, by a keyboard press or by a failed save SHALL appear in its new position, and the widgets it passes SHALL appear in theirs
 - a progress bar SHALL be drawn at its final width, and the rows of a summary panel SHALL be at full opacity and in place in the first frame after the panel opens
 - every chart mark — a bar, a donut slice, a sparkline, a heatmap cell, the hero's composition strip — SHALL be drawn at its final size and opacity in the first frame it is visible, and a tooltip SHALL appear and leave without movement
-- a held card SHALL still follow the pointer, because that movement is the user's own and not the interface's
+- a held card or widget SHALL still follow the pointer, because that movement is the user's own and not the interface's
 
 Every state change SHALL still happen when motion is reduced; only the movement SHALL be dropped.
 
@@ -175,12 +89,15 @@ Without the reduced-motion request:
 - a progress bar SHALL grow from zero width to its value over successive frames the first time it is revealed, and SHALL NOT replay that growth on later openings of whatever contains it
 - chart marks SHALL draw once, the first time their widget is revealed: bars grow from their baseline, donut slices sweep in, sparklines draw from left to right, heatmap cells and the composition strip fade in. The drawing SHALL finish within 900 ms, SHALL NOT replay on a later scroll, and SHALL NOT replay when a figure changes after an edit — a changed mark SHALL move from its previous size to its new one over at most 400 ms instead
 - the rows of a summary panel SHALL enter one after another rather than all at once, and the whole sequence SHALL finish within the panel's own opening
-- the entry sheet, the category sheet and the definition sheet SHALL move in from below their resting position and leave the same way
+- the entry sheet, the category sheet and the definition sheet SHALL move in from below their resting position and leave the same way; at 1024px and wider every side panel SHALL move in from beyond the right edge over 300 ms to 450 ms and leave faster than it entered
+- the sidebar and the top bar SHALL change between static and floating over 300 ms to 450 ms, changing their material, corners and shadow only — nothing inside them SHALL move — and a scroll reversed mid-way SHALL retarget the change rather than restart it
+- the sidebar's current-entry highlight SHALL travel from the previous entry to the new one over at most 250 ms
 - turning a switch on or off SHALL move its thumb over successive frames on an eased curve rather than a linear one, and its track colour SHALL change over that same movement rather than after it
 - fields revealed or hidden by a switch SHALL animate their height, in place, and SHALL NOT displace anything above them or be overlaid on the content below, in a transition between 150 ms and 250 ms that uses one of the project's easing tokens
 - a released expense row SHALL move to its resting position rather than jump to it
 - a deleted row SHALL slide out and collapse over successive frames
 - in reorder mode, a card displaced by the held one SHALL move aside over successive frames, a released card SHALL travel to its resting position over successive frames, and a card reverted by a failed save SHALL travel back rather than jump
+- a widget displaced by the held one SHALL move aside over successive frames, a released widget SHALL settle into place over successive frames, and a widget reverted by a failed save SHALL travel back rather than jump
 
 #### Scenario: Reduced motion
 - **WHEN** reduced motion is emulated and `/demo` is loaded
@@ -196,6 +113,17 @@ Without the reduced-motion request:
 - **WHEN** reduced motion is emulated and `/demo` is scrolled to the chart widgets
 - **THEN** in the first frame each is visible, every monthly bar, weekly bar, donut slice, sparkline and heatmap cell is at its final size and full opacity
 - **AND** after an expense is added, the changed bar is at its new size in the first frame after the render
+
+#### Scenario: Reduced motion on the shell
+- **WHEN** reduced motion is emulated, `/demo` is at 1280px and the page is scrolled by 200px, then the "ocio" entry is activated
+- **THEN** in the first frame after the scroll the sidebar and top bar are in their floating appearance with no transition running
+- **AND** in the first frame after the activation the highlight is on "ocio"
+- **AND** the category sheet, opened from the "ocio" card, is at its resting position in the first frame
+
+#### Scenario: Reduced motion on the widget list
+- **WHEN** reduced motion is emulated, `/demo` is at 1280px, and the calendar widget is moved down one position with the keyboard
+- **THEN** in the first frame after the key press the calendar and the widget it passed are each in their new position
+- **AND** a widget dragged by its grip still follows the pointer
 
 #### Scenario: Reduced motion while editing
 - **WHEN** reduced motion is emulated, the entry sheet is opened from the "comida" card and closed, and an expense row is then dragged 60px left and released
@@ -244,17 +172,32 @@ Without the reduced-motion request:
 - **AND** every row has finished entering by the time the panel has finished opening
 
 #### Scenario: Animated sheet and swipe
-- **WHEN** motion is not reduced and the entry sheet opens
+- **WHEN** motion is not reduced and the entry sheet opens at a 390px-wide viewport
 - **THEN** the panel's vertical position changes over successive frames, from below its resting position to it
 - **AND** an expense row released after a 60px leftward drag reaches its open position over successive frames
 
+#### Scenario: Animated side panel
+- **WHEN** motion is not reduced and the entry sheet opens at a 1280px-wide viewport
+- **THEN** the panel's horizontal position changes over successive frames, from beyond the right edge to its resting position, settling within 450 ms
+- **AND** closing it takes less time than opening it did
+
+#### Scenario: Animated shell
+- **WHEN** motion is not reduced, `/demo` is at 1280px and the page is scrolled by 200px
+- **THEN** the sidebar's corner radius and shadow change over successive frames and settle within 450 ms, while the month name's position within the top bar is the same in every frame
+- **AND** scrolling back to 0 before the change has settled reverses it from where it was rather than from the floating end state
+
+#### Scenario: Animated widget reorder
+- **WHEN** motion is not reduced, `/demo` is at 1280px, and the donut is dragged by its grip above the first widget and released
+- **THEN** the widgets it passes change position over successive frames while it is held
+- **AND** after release it reaches its resting position over successive frames rather than jumping to it
+
 #### Scenario: Animated category sheet
-- **WHEN** motion is not reduced and the category sheet opens
+- **WHEN** motion is not reduced and the category sheet opens at a 390px-wide viewport
 - **THEN** the panel's vertical position changes over successive frames, from below its resting position to it
 - **AND** swiping it down dismisses it
 
 #### Scenario: Animated definition sheet
-- **WHEN** motion is not reduced and a "Próximos cobros" row is activated
+- **WHEN** motion is not reduced and a "Próximos cobros" row is activated at a 390px-wide viewport
 - **THEN** the panel's vertical position changes over successive frames, from below its resting position to it
 - **AND** swiping it down dismisses it
 
@@ -268,29 +211,3 @@ Without the reduced-motion request:
 - **WHEN** motion is not reduced, reorder mode is on, and "comida" is dragged down over two cards and released
 - **THEN** the cards it passes change position over successive frames while it is held
 - **AND** after release it reaches its resting position over successive frames rather than jumping to it
-
-### Requirement: Active-field tokens
-The appearance of a focused text field, and of the active cell of a code entry, SHALL come from named theme tokens: an active fill (brand tint over the field surface), a halo (the soft glow around the field), a border in the ring colour, a caret in the ring colour, and a neon glow colour for lights drawn in the brand colour (the light around a code cell's frame, the success glow). Components SHALL NOT set these values inline or with literal colours; a component that needs the halo, the fill or the glow SHALL reference the token. The tokens SHALL be defined for both themes: in the light theme the tint and the glow SHALL stay legible on the light surface, and in the dark theme they SHALL read as the neon treatment the amount field already has.
-
-#### Scenario: The amount field and the active cell match
-- **WHEN** the amount field of the entry sheet is focused on `/demo`, and separately the first cell of the code step is active on `/login?email=tu%40mail.com`, in each theme
-- **THEN** the two compute the same border colour, the same background colour and the same box shadow within that theme, and the input's computed caret colour is the ring colour in both
-
-#### Scenario: No literal colours in the code entry
-- **WHEN** the source of the code-entry component and its styles is searched for hex, `rgb(` and `rgba(` literals
-- **THEN** no match is found
-
-#### Scenario: Tokens exist in both themes
-- **WHEN** the active fill, halo and neon glow tokens are read from the root element in the light theme and in the dark theme
-- **THEN** each resolves to a non-empty value in both, and the two themes resolve to different values
-
-### Requirement: Wide viewports
-At a viewport 1024px wide or wider the dashboard SHALL widen to a page column of at most 1120px, centred, with a gutter of at least 24px on both sides. Between 640px and 1023px it SHALL keep the 640px column and the 16px gutter. The top bar's content SHALL span the same column as the page, so the logo, the month controls and the avatar align with the page edges at every width. No bordered surface SHALL exceed the page column.
-
-#### Scenario: Laptop width
-- **WHEN** `/demo` is rendered at a 1280px-wide viewport
-- **THEN** the page column is 1120px wide and centred, and the logo's left edge and the avatar's right edge align with the page column's left and right edges: the free-margin card's left edge and the widget column's right edge respectively
-
-#### Scenario: Tablet width
-- **WHEN** `/demo` is rendered at an 820px-wide viewport
-- **THEN** the page column is 640px wide and centred, with every card inside it
