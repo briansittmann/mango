@@ -139,6 +139,8 @@ type EntrySheetProps<V> = {
    * expense to another category*).
    */
   categories?: { id: string; name: string; color: CategoryColor }[]
+  /** Create mode opened without a card ("Añadir gasto" in the desktop bar, design D7): the header's category control is enabled too. */
+  allowCategoryChange?: boolean
   /**
    * Present only when the page supplies `actions.recurring` — its presence, together with
    * `mode === 'create'`, is what makes the recurrence field render at all. Called after `onSave`
@@ -207,6 +209,7 @@ export function EntrySheet<V>({
   onSaveRecurrence: onSaveRecurrenceProp,
   projected = false,
   categories,
+  allowCategoryChange = false,
 }: EntrySheetProps<V>) {
   const onSaveRecurrence = projected ? undefined : onSaveRecurrenceProp
   const t = useTranslations('hojaGasto')
@@ -309,7 +312,7 @@ export function EntrySheet<V>({
   const disabled = status !== 'idle'
   const asksScope = mode === 'edit' && context.kind !== 'savings' && context.recurring
   const showScope = asksScope && isDirty
-  const movable = mode === 'edit' && context.kind === 'category' && categories != null && categories.length > 1
+  const movable = (mode === 'edit' || allowCategoryChange) && context.kind === 'category' && categories != null && categories.length > 1
   const shownCategory =
     context.kind === 'category' ? (categories?.find((category) => category.id === categoryId) ?? context) : null
 

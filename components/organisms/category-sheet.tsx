@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
+import { useId, useLayoutEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { ArrowUpDown, Eye, EyeOff, Loader2, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { CategoryDot } from '@/components/atoms/category-dot'
@@ -22,6 +22,8 @@ const DUPLICATE_CATEGORY_NAME: typeof DuplicateCategoryNameMessage = 'duplicate-
 type CategorySheetProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** The control that opened it (a card's options control, the create tile): the popover's anchor from `sm` to `lg`. */
+  opener?: RefObject<HTMLElement | null>
   mode: 'create' | 'edit'
   /** Values come from the card that opened the sheet in edit mode; null in create mode. */
   target: ExpenseGroup | null
@@ -74,6 +76,7 @@ function buildFieldState(
 export function CategorySheet({
   open,
   onOpenChange,
+  opener,
   mode,
   target,
   currency,
@@ -219,6 +222,7 @@ export function CategorySheet({
       isDirty={isDirty}
       initialFocus={mode === 'create' ? nameRef : false}
       anchored
+      opener={opener}
       leading={
         <button
           type="button"

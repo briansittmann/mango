@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { useAmountFormatter } from '@/components/atoms/amount-format'
 import { useFirstReveal } from '@/components/hooks/use-first-reveal'
@@ -18,6 +18,8 @@ type SpendCalendarProps = {
   cycle: DashboardData['cycle']
   timeZone: string
   currency: string
+  /** The widget list's grip, at the end of the header. */
+  trailing?: ReactNode
 }
 
 const STAGGER_MS = 15
@@ -37,7 +39,7 @@ const STEP_CLASS: Record<DayTotal['step'], string> = {
  * outlined, future days muted. The grid is HTML (design D7): each cell is a focusable mark with a
  * tooltip, and an sr-only list carries every day's figure.
  */
-export function SpendCalendar({ groups, cycle, timeZone, currency }: SpendCalendarProps) {
+export function SpendCalendar({ groups, cycle, timeZone, currency, trailing }: SpendCalendarProps) {
   const t = useTranslations('graficos')
   const format = useFormatter()
   const { money } = useAmountFormatter()
@@ -68,7 +70,9 @@ export function SpendCalendar({ groups, cycle, timeZone, currency }: SpendCalend
       className="rounded-card border border-border bg-card p-inset"
       data-spend-calendar
     >
-      <WidgetHeader title={t('gastoPorDia')} titleId={titleId} />
+      <WidgetHeader title={t('gastoPorDia')} titleId={titleId}>
+        {trailing}
+      </WidgetHeader>
       {/* Each cell is focusable and named with its date and figure, so the grid is the text too. */}
       <div role="list" className="mt-4 grid grid-cols-7 gap-0.5" data-calendar-grid>
         {days.map((day, index) => (

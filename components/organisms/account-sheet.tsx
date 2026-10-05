@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent, type RefObject } from 'react'
 import { Check, Clock, Loader2, MessageCircle, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Collapsible } from '@/components/atoms/collapsible'
@@ -16,6 +16,8 @@ import { formatPhone } from '@/lib/data/phone'
 type AccountSheetProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** The account menu's own anchor (the avatar or the sidebar card): the menu is gone by the time the sheet opens. */
+  opener?: RefObject<HTMLElement | null>
   user: DashboardData['user']
   /** Saves the basics and, when the person changed it, the typed phone for its country (D9). */
   onSave: (basics: ProfileBasics, phone: PhoneDraft | null) => Promise<void>
@@ -53,7 +55,7 @@ function draftOf(user: DashboardData['user']): BasicsDraft {
  * minus the cycle day, shown as a line, with the mixed-currency note when the account holds
  * movements. Saving goes through the profile operations with the onboarding's validation.
  */
-export function AccountSheet({ open, onOpenChange, user, onSave, onRequestLink, onRefresh, onDelete }: AccountSheetProps) {
+export function AccountSheet({ open, onOpenChange, opener, user, onSave, onRequestLink, onRefresh, onDelete }: AccountSheetProps) {
   const t = useTranslations('cuenta')
   const [wasOpen, setWasOpen] = useState(open)
   const [draft, setDraft] = useState<BasicsDraft>(() => draftOf(user))
@@ -181,6 +183,7 @@ export function AccountSheet({ open, onOpenChange, user, onSave, onRequestLink, 
       // keyboard on a phone, and an unattached ref lands focus (and its ring) on "Cancelar".
       initialFocus={false}
       anchored
+      opener={opener}
       title={t('titulo')}
       leading={
         <button

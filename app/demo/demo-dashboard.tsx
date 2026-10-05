@@ -12,7 +12,7 @@ import { createDemoRecurringMutations, noDemoRecurringEdits } from '@/lib/demo/d
 import { createDemoSavingsMutations, noDemoSavingsEdits } from '@/lib/demo/demo-savings'
 import { selectUpcomingCharges } from '@/lib/data/upcoming-charges'
 import type { BudgetRow } from '@/lib/data/budget'
-import type { DashboardData } from '@/lib/data/dashboard'
+import { DEFAULT_WIDGET_ORDER, type DashboardData, type WidgetId } from '@/lib/data/dashboard'
 import type { RecurringDefinition } from '@/lib/data/recurring'
 
 type DemoDashboardProps = {
@@ -64,6 +64,21 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows, changeLa
     if (!failReorder) return base
     return { ...base, reorder: () => Promise.reject(new Error('e2e-forced-reorder-failure')) }
   }, [view, failReorder])
+  // The desktop widget order lives in memory for the demo (`desktop-shell` → *Widget order is the
+  // user's*, design D6); `?e2e=fail-widget-order` makes the save reject, like `failReorder` above.
+  const [widgetOrder, setWidgetOrderState] = useState<WidgetId[]>(() => [...DEFAULT_WIDGET_ORDER])
+  // `?e2e=no-widget-order` mounts without the operation (*No grips without the operation*).
+  const e2e = searchParams.get('e2e')
+  const setWidgetOrder = useMemo(
+    () =>
+      e2e === 'no-widget-order'
+        ? undefined
+        : e2e === 'fail-widget-order'
+          ? () => Promise.reject(new Error('e2e-forced-widget-order-failure'))
+          : async (order: WidgetId[]) => setWidgetOrderState(order),
+    [e2e],
+  )
+  const viewWithOrder = useMemo(() => ({ ...view, user: { ...view.user, widgetOrder } }), [view, widgetOrder])
 
   useEffect(() => {
     return () => {
@@ -96,11 +111,12 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows, changeLa
   return (
     <>
       <DashboardTemplate
-        data={view}
+        data={viewWithOrder}
         charges={charges}
         definitions={definitions}
         actions={{
           changeLanguage,
+          setWidgetOrder,
           expenses,
           categories: noCategoryActions ? undefined : categories,
           recurring,

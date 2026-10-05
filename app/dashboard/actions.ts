@@ -8,6 +8,7 @@ import {
   type CategoryDraft,
   type CategoryUpdateTarget,
 } from "@/lib/data/categories";
+import type { WidgetId } from "@/lib/data/dashboard";
 import type { ExpenseDraft, LocalDate } from "@/lib/data/expenses";
 import type { IncomeDraft } from "@/lib/data/income";
 import { PROFILE_ERRORS, validateBasics, type ProfileBasics } from "@/lib/data/profile";
@@ -136,6 +137,11 @@ export async function updateProfileBasics(
   basics: ProfileBasics,
 ): Promise<{ ok: true } | { ok: false; error: (typeof PROFILE_ERRORS)[number] }> {
   return knownRejections(() => run((ctx) => createSupabaseProfileMutations(ctx).updateBasics(validateBasics(basics))));
+}
+
+/** The desktop widget order, saved whole on every drop or key move (`desktop-shell` → *Widget order is the user's*). */
+export async function setWidgetOrder(order: WidgetId[]) {
+  await run((ctx) => createSupabaseProfileMutations(ctx).setWidgetOrder!(order));
 }
 
 /** The account sheet's "Vincular WhatsApp" (`whatsapp-linking`): the live code, or a new one. */

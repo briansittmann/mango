@@ -70,6 +70,28 @@ export type ExpenseGroup = {
   showProgress: boolean
 }
 
+/** The chart widgets of the dashboard, by the id the stored order names (`desktop-shell` → *Widget order is the user's*). */
+export type WidgetId = 'weekly' | 'calendar' | 'monthly' | 'distribution'
+
+export const DEFAULT_WIDGET_ORDER: readonly WidgetId[] = ['weekly', 'calendar', 'monthly', 'distribution']
+
+/**
+ * A stored order made valid: unknown ids dropped, duplicates collapsed to their first position,
+ * missing widgets appended in the default order; null or undefined is the default order. Always
+ * returns a fresh array of the four ids.
+ */
+export function normalizeWidgetOrder(stored: readonly string[] | null | undefined): WidgetId[] {
+  const known = new Set<string>(DEFAULT_WIDGET_ORDER)
+  const order: WidgetId[] = []
+  for (const id of stored ?? []) {
+    if (known.has(id) && !order.includes(id as WidgetId)) order.push(id as WidgetId)
+  }
+  for (const id of DEFAULT_WIDGET_ORDER) {
+    if (!order.includes(id)) order.push(id)
+  }
+  return order
+}
+
 export type DashboardData = {
   user: {
     name: string
@@ -77,6 +99,8 @@ export type DashboardData = {
     photoUrl: string | null
     currency: string
     timezone: string
+    /** The chart widgets' order, already normalised (`normalizeWidgetOrder`); the default when the user never saved one. */
+    widgetOrder: WidgetId[]
     /** ISO code (`'AR'`), null until the onboarding asks. Absent on a mount with no profile (the demo). */
     country?: string | null
     /** The format in effect (`localization` → *Amount format preference*); missing means complete. */
@@ -133,6 +157,11 @@ export type DashboardActions = Partial<{
   savings: SavingsMutations
   /** The account sheet's operations (`dashboard-ui` → *Account avatar and menu*); the demo supplies none. */
   profile: ProfileMutations
+  /**
+   * Saves the whole widget order (`desktop-shell` → *Widget order is the user's*): resolves once it
+   * is durable, rejects with nothing changed. Without it the widgets show no grip.
+   */
+  setWidgetOrder(order: WidgetId[]): Promise<void>
   signOut(): void
   /** Deletes the account and everything it holds, then signs out; resolves only if it failed before deleting. */
   deleteAccount(): Promise<void>

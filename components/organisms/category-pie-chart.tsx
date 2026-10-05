@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Pie, PieChart, ResponsiveContainer, Sector } from 'recharts'
 import type { PieSectorShapeProps } from 'recharts'
 import { useFormatter, useTranslations } from 'next-intl'
@@ -19,12 +19,14 @@ type CategoryPieChartProps = {
   currency: string
   /** Scrolls the page to the category's card (`dashboard-ui` → *Category colour placement*). */
   onSelectCategory?: (id: string) => void
+  /** The widget list's grip, at the end of the header. */
+  trailing?: ReactNode
 }
 
 /** How far the highlighted slice grows past the others. */
 const ACTIVE_GROW = 6
 
-export function CategoryPieChart({ groups, total, currency, onSelectCategory }: CategoryPieChartProps) {
+export function CategoryPieChart({ groups, total, currency, onSelectCategory, trailing }: CategoryPieChartProps) {
   const tGraficos = useTranslations('graficos')
   const format = useFormatter()
   const { money } = useAmountFormatter()
@@ -39,9 +41,11 @@ export function CategoryPieChart({ groups, total, currency, onSelectCategory }: 
 
   return (
     <SpotlightCard ref={revealRef} className="rounded-card border border-border bg-card p-inset" data-distribution-chart>
-      <WidgetHeader title={tGraficos('distribution')} />
-      <div className="mt-4 flex flex-col items-center gap-5 sm:flex-row sm:items-center">
-        <div className="relative size-44 shrink-0 sm:size-40" data-donut>
+      <WidgetHeader title={tGraficos('distribution')}>{trailing}</WidgetHeader>
+      {/* The donut on top and the legend under it at every width: the widget column at `lg` is
+          320–360px, where a legend beside the donut had no room for its names. */}
+      <div className="mt-4 flex flex-col items-center gap-5">
+        <div className="relative size-44 shrink-0" data-donut>
           {revealed ? (
             <ResponsiveContainer width="100%" height="100%">
               <PieChart accessibilityLayer={false}>
@@ -102,7 +106,7 @@ export function CategoryPieChart({ groups, total, currency, onSelectCategory }: 
             </div>
           </div>
         </div>
-        <ul className="flex w-full min-w-0 flex-1 flex-col text-body-sm" onPointerLeave={() => setActiveId(null)}>
+        <ul className="flex w-full min-w-0 flex-col text-body-sm" onPointerLeave={() => setActiveId(null)}>
           {slices.map((slice) => {
             const isActive = slice.id === activeId
             return (

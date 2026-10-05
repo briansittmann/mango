@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { useAmountFormatter } from '@/components/atoms/amount-format'
@@ -22,6 +22,8 @@ type WeeklyTopChartProps = {
   timeZone: string
   currency: string
   onSelectCategory?: (id: string) => void
+  /** The widget list's grip, at the end of the header (`desktop-shell` → *Widget order is the user's*). */
+  trailing?: ReactNode
 }
 
 const STAGGER_MS = 40
@@ -33,7 +35,7 @@ const SETTLE_MS = 900
  * week of the cycle, walked back week by week. Horizontal bars are a list, not a plot (design D7):
  * every row is a 44px button with the category before the bar and its amount at the tip.
  */
-export function WeeklyTopChart({ groups, cycle, timeZone, currency, onSelectCategory }: WeeklyTopChartProps) {
+export function WeeklyTopChart({ groups, cycle, timeZone, currency, onSelectCategory, trailing }: WeeklyTopChartProps) {
   const t = useTranslations('graficos')
   const format = useFormatter()
   const { money } = useAmountFormatter()
@@ -118,6 +120,7 @@ export function WeeklyTopChart({ groups, cycle, timeZone, currency, onSelectCate
         >
           <ChevronRight aria-hidden className="size-5" />
         </button>
+        {trailing}
       </WidgetHeader>
       {/* The week's name and total, read when the selection moves. */}
       <p role="status" className="sr-only">

@@ -1,11 +1,12 @@
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { Check, ChevronRight, Download, Loader2, LogOut, Moon, Sun, SunMoon, UserRound, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/atoms/avatar'
 import { useThemeChoice } from '@/components/theme/use-theme-choice'
 import type { DashboardActions } from '@/lib/data/dashboard'
+import { placeAnchored, type AnchorPlacement } from '@/lib/ui/anchor'
 // A pure formatter over the stored number, not data access (add-whatsapp-linking D8).
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
 import { formatPhone } from '@/lib/data/phone'
@@ -19,6 +20,13 @@ type AccountMenuProps = {
   onOpenAccount?: () => void
   /** Downloads the displayed cycle as CSV; absent when the page has nothing to export. */
   onDownloadCsv?: () => void
+  /**
+   * The control the popover is placed from at `sm` and wider (`desktop-shell` → *Anchored popovers
+   * stay on screen*): the avatar below `lg`, the sidebar's account card at `lg`. Without it the
+   * first `[aria-controls="account-menu"]` in the document is used.
+   */
+  opener?: RefObject<HTMLElement | null>
+  placement?: AnchorPlacement
 }
 
 type BackgroundChoice = 'dynamic' | 'solid'
@@ -50,7 +58,7 @@ const thumbClassName =
 const segmentClassName =
   'relative flex items-center justify-center rounded-[18px] transition-[color,scale] duration-200 active:scale-95 focus-visible:outline-2 focus-visible:-outline-offset-2 disabled:pointer-events-none'
 
-export function AccountMenu({ user, actions, open, onClose, onOpenAccount, onDownloadCsv }: AccountMenuProps) {
+export function AccountMenu({ user, actions, open, onClose, onOpenAccount, onDownloadCsv, opener, placement = 'below-end' }: AccountMenuProps) {
   const t = useTranslations('menuCuenta')
   const locale = useLocale()
   const router = useRouter()
@@ -101,13 +109,22 @@ export function AccountMenu({ user, actions, open, onClose, onOpenAccount, onDow
   useLayoutEffect(() => {
     const dialog = dialogRef.current
     if (!open || !dialog) return
-    const anchor = document.querySelector('[aria-controls="account-menu"]')?.getBoundingClientRect()
+    const anchorElement = opener?.current ?? document.querySelector('[aria-controls="account-menu"]')
+    const anchor = anchorElement?.getBoundingClientRect()
     if (anchor) {
-      dialog.style.setProperty('--anchor-top', `${anchor.bottom + 8}px`)
-      dialog.style.setProperty('--anchor-right', `${document.documentElement.clientWidth - anchor.right}px`)
+      // Clamped to the viewport from the opener's rect, scaling from the opener's side (D5).
+      const placed = placeAnchored(
+        anchor,
+        { width: dialog.offsetWidth, height: dialog.offsetHeight },
+        { width: document.documentElement.clientWidth, height: window.innerHeight },
+        placement,
+      )
+      dialog.style.setProperty('--anchor-top', `${placed.top}px`)
+      dialog.style.setProperty('--anchor-left', `${placed.left}px`)
+      dialog.style.setProperty('--anchor-origin', placed.origin)
     }
     dialog.focus({ preventScroll: true })
-  }, [open])
+  }, [open, opener, placement])
 
   function applyBackground(next: BackgroundChoice) {
     if (next === background) return
@@ -160,10 +177,10 @@ export function AccountMenu({ user, actions, open, onClose, onOpenAccount, onDow
         className={cn(
           'liquid-glass fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-50 mx-auto max-h-[calc(100dvh-1.5rem)] max-w-[440px] overflow-y-auto overscroll-contain rounded-[32px] px-5 pb-5 pt-2.5 outline-none transition-[translate,scale,opacity] motion-reduce:transition-none',
           'starting:translate-y-[calc(100%+1.5rem)] starting:opacity-0',
-          'sm:inset-x-auto sm:bottom-auto sm:right-(--anchor-right) sm:top-(--anchor-top) sm:w-[344px] sm:origin-top-right sm:rounded-[28px] sm:p-4 sm:starting:-translate-y-3 sm:starting:scale-90',
+          'sm:inset-x-auto sm:bottom-auto sm:left-(--anchor-left) sm:top-(--anchor-top) sm:w-[344px] sm:origin-(--anchor-origin) sm:rounded-[28px] sm:p-4 sm:starting:translate-y-0 sm:starting:scale-90',
           open
             ? 'duration-500 ease-spring'
-            : 'pointer-events-none translate-y-[calc(100%+1.5rem)] opacity-0 duration-200 ease-in sm:-translate-y-2 sm:scale-95',
+            : 'pointer-events-none translate-y-[calc(100%+1.5rem)] opacity-0 duration-200 ease-out sm:translate-y-0 sm:scale-95',
         )}
       >
         <div aria-hidden className="mx-auto mb-3 h-1 w-9 rounded-full bg-handle sm:hidden" />

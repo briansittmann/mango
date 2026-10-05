@@ -1,70 +1,51 @@
 // @ts-check
 import { test, expect } from '@playwright/test'
-import { BAR_HEIGHT } from './widgets-helpers'
+import { loadDesktop, rect, sideSheet, SIDEBAR_WIDTH } from './desktop-helpers'
 
-// `dashboard-ui` → *Desktop layout* and `design-system` → *Wide viewports*, on `/demo`.
+// `dashboard-ui` → *Desktop columns* and `design-system` → *Wide viewports*, on `/demo`.
 
-const rect = (page, selector) => page.locator(selector).first().evaluate((el) => {
-  const r = el.getBoundingClientRect()
-  return { top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right), width: Math.round(r.width), bottom: Math.round(r.bottom) }
-})
+const WIDGETS = ['data-weekly-top', 'data-spend-calendar', 'data-monthly-chart', 'data-distribution-chart']
+const widgetOrder = (page) =>
+  page.locator('[data-dashboard-widgets] [data-widget]').evaluateAll((nodes, widgets) => nodes.map((n) => widgets.find((a) => n.querySelector(`[${a}]`))), WIDGETS)
 
-async function load(page, width, height = 900) {
-  // Geometry is read at rest: the entrance cascade would otherwise offset the cards mid-flight.
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.setViewportSize({ width, height })
-  await page.goto('/demo')
-  await page.waitForSelector('[data-weekly-top]', { state: 'attached' })
-  await page.waitForTimeout(1200)
-}
-
-test('two columns on a laptop: 1120px page, widgets beside the cards, bar aligned with the page', async ({ page }) => {
-  await load(page, 1280)
+test('two columns on a laptop: the tiles above both, the widgets beside the cards, the content capped at 1120px', async ({ page }) => {
+  await loadDesktop(page, { width: 1280 })
   const column = await rect(page, '[data-dashboard-page]')
-  expect(column.width).toBe(1120)
-  expect(column.left).toBe((1280 - 1120) / 2)
-  const hero = await rect(page, '.hero-card')
-  const weekly = await rect(page, '[data-weekly-top]')
+  expect(column.left).toBeGreaterThanOrEqual(SIDEBAR_WIDTH)
+  expect(column.width).toBeLessThanOrEqual(1120)
+  const tiles = await rect(page, '[data-dashboard-tiles]')
+  const main = await rect(page, '[data-dashboard-main]')
   const widgets = await rect(page, '[data-dashboard-widgets]')
-  expect(Math.abs(weekly.top - hero.top)).toBeLessThanOrEqual(2)
-  expect(widgets.left).toBeGreaterThan(hero.right)
-  expect(widgets.width).toBeGreaterThanOrEqual(360)
-  const order = await page.locator('[data-dashboard-widgets] > div > div').evaluateAll((nodes) =>
-    nodes.map((n) => ['data-weekly-top', 'data-spend-calendar', 'data-monthly-chart', 'data-distribution-chart'].find((a) => n.hasAttribute(a))),
-  )
-  expect(order).toEqual(['data-weekly-top', 'data-spend-calendar', 'data-monthly-chart', 'data-distribution-chart'])
-  // The bar spans the page column: the logo's left edge by the hero's, the avatar's right by the widget column's.
-  const logo = await rect(page, 'button[aria-label="Ir arriba"]')
-  const avatar = await rect(page, '[aria-controls="account-menu"]')
-  expect(Math.abs(logo.left - hero.left)).toBeLessThanOrEqual(14)
-  expect(Math.abs(avatar.right - widgets.right)).toBeLessThanOrEqual(4)
-  // On a laptop the composition strip is always shown and the card is not a control.
-  await expect(page.locator('[data-composition-strip]')).toBeVisible()
+  const firstCard = await rect(page, '[data-dashboard-main] [aria-controls^="category-panel-"]')
+  expect(tiles.bottom).toBeLessThanOrEqual(main.top)
+  expect(tiles.bottom).toBeLessThanOrEqual(widgets.top)
+  expect(tiles.right).toBeGreaterThanOrEqual(widgets.right - 1)
+  expect(widgets.left).toBeGreaterThan(firstCard.right)
+  expect(widgets.width).toBeGreaterThanOrEqual(320)
+  // The first widget starts level with "Próximos cobros", under the breakdown header, never beside it.
+  const header = await rect(page, '[data-breakdown-controls]')
+  const upcoming = await rect(page, '[data-dashboard-main] #category-cascade')
+  expect(widgets.top).toBeGreaterThanOrEqual(header.bottom)
+  expect(Math.abs(widgets.top - upcoming.top)).toBeLessThanOrEqual(1)
+  expect(await widgetOrder(page)).toEqual(WIDGETS)
+  // On a laptop the hero is a tile: no strip and no control; the donut's legend sits under it.
+  await expect(page.locator('.hero-card [data-composition-strip]')).toHaveCount(0)
   await expect(page.locator('.hero-card').getByRole('button')).toHaveCount(0)
-  // The donut's legend sits beside it.
   const donut = await rect(page, '[data-donut]')
   const legend = await rect(page, '[data-distribution-chart] ul')
-  expect(legend.left).toBeGreaterThanOrEqual(donut.right - 1)
-})
-
-test('the widget column sticks under the top bar while the cards scroll', async ({ page }) => {
-  await load(page, 1280)
-  const cards = page.locator('[data-dashboard-main] [aria-controls^="category-panel-"]')
-  for (let i = 0; i < 3; i += 1) await cards.nth(i).click()
-  await page.waitForTimeout(500)
-  await page.evaluate(() => window.scrollTo(0, 0))
-  await page.evaluate(() => window.scrollBy(0, 600))
-  await page.waitForTimeout(500)
-  const hero = await rect(page, '.hero-card')
-  const weekly = await rect(page, '[data-weekly-top]')
-  expect(hero.top).toBeLessThan(0)
-  expect(weekly.top).toBeGreaterThanOrEqual(0)
-  expect(weekly.top).toBeLessThanOrEqual(BAR_HEIGHT + 16)
+  expect(legend.top).toBeGreaterThanOrEqual(donut.bottom - 1)
+  expect(legend.width).toBeGreaterThanOrEqual(donut.width)
+  // At 1024px the content column keeps its 24px gutters and nothing overflows.
+  await loadDesktop(page, { width: 1024, height: 768 })
+  const narrow = await rect(page, '[data-dashboard-page]')
+  expect(narrow.left).toBe(SIDEBAR_WIDTH)
+  expect(narrow.width).toBe(1024 - SIDEBAR_WIDTH)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(1024)
 })
 
 test('one column on a phone and on a tablet, widgets after the last card in order', async ({ page }) => {
   for (const width of [390, 820]) {
-    await load(page, width, 1000)
+    await loadDesktop(page, { width, height: 1000 })
     const column = await rect(page, '[data-dashboard-page]')
     expect(column.width).toBe(width === 820 ? 640 : 390)
     const position = await page.locator('[data-dashboard-widgets]').evaluate((el) => getComputedStyle(el).position)
@@ -72,26 +53,26 @@ test('one column on a phone and on a tablet, widgets after the last card in orde
     const lastCard = await page.locator('[data-dashboard-main] [aria-controls^="category-panel-"]').last().evaluate((el) => el.getBoundingClientRect().bottom)
     const widgets = await rect(page, '[data-dashboard-widgets]')
     expect(widgets.top).toBeGreaterThanOrEqual(lastCard)
-    const order = await page.locator('[data-dashboard-widgets] > div > div').evaluateAll((nodes) =>
-      nodes.map((n) => ['data-weekly-top', 'data-spend-calendar', 'data-monthly-chart', 'data-distribution-chart'].find((a) => n.hasAttribute(a))),
-    )
-    expect(order).toEqual(['data-weekly-top', 'data-spend-calendar', 'data-monthly-chart', 'data-distribution-chart'])
+    expect(await widgetOrder(page)).toEqual(WIDGETS)
     const hero = await rect(page, '.hero-card')
     expect(hero.width).toBeLessThanOrEqual(column.width)
   }
 })
 
-test('reorder mode on a laptop dims the widget column, keeps the handle lane, and "Listo" restores the layout', async ({ page }) => {
-  await load(page, 1280)
+test('reorder mode on a laptop dims the shell and the widget column, keeps the handle lane, and "Listo" restores the layout', async ({ page }) => {
+  await loadDesktop(page, { width: 1280 })
   const before = await rect(page, '[data-dashboard-widgets]')
   await page.locator('[data-category-options="comida"]').click()
-  // The options sheet is anchored to its opener on a wide screen; the row may sit past the fold.
   await page.getByRole('button', { name: /^Reordenar/ }).evaluate((el) => /** @type {HTMLElement} */ (el).click())
   await page.waitForTimeout(600)
   const scrim = await rect(page, '.reorder-scrim')
   expect(scrim.width).toBe(1280)
   await expect(page.locator('[data-dashboard-widgets]')).toHaveAttribute('inert', '')
-  await expect(page.locator('[aria-label^="Mover"]')).toHaveCount(7)
+  await expect(page.locator('[data-desktop-sidebar]')).toHaveAttribute('inert', '')
+  await expect(page.locator('[data-desktop-top-bar]')).toHaveAttribute('inert', '')
+  await expect(page.locator('[data-dashboard-main] [aria-label^="Mover"]')).toHaveCount(7)
+  // The shell sits under the pushed-back layer.
+  expect(await page.locator('[data-desktop-sidebar]').evaluate((el) => Number(getComputedStyle(el).zIndex))).toBeLessThan(35)
   await page.getByRole('button', { name: 'Listo' }).click()
   await page.waitForTimeout(500)
   await expect(page.locator('.reorder-scrim')).toBeHidden()
@@ -100,18 +81,13 @@ test('reorder mode on a laptop dims the widget column, keeps the handle lane, an
   expect(after.width).toBe(before.width)
 })
 
-test('the entry sheet opens centred over the page column at 1280px', async ({ page }) => {
-  // Sheets anchored to their opener (category options) keep their anchor; the modal ones centre.
-  await load(page, 1280)
-  const header = page.locator('[aria-controls="category-panel-comida"]')
-  await header.click()
+test('the entry sheet opens as a side panel at 1280px', async ({ page }) => {
+  await loadDesktop(page, { width: 1280 })
   await page.locator('#category-panel-comida').getByRole('button', { name: 'Añadir gasto' }).click()
-  const dialog = page.locator('div[role="dialog"][data-open]')
+  const dialog = sideSheet(page)
   await expect(dialog).toBeVisible()
-  const box = await dialog.evaluate((el) => {
-    const r = el.getBoundingClientRect()
-    return { left: Math.round(r.left), right: Math.round(r.right), width: Math.round(r.width) }
-  })
-  expect(box.width).toBeLessThanOrEqual(520)
-  expect(Math.abs(box.left - (1280 - box.right))).toBeLessThanOrEqual(2)
+  await expect(dialog).toHaveAttribute('data-presentation', 'side')
+  const box = await rect(page, 'div[role="dialog"][data-open]')
+  expect(1280 - box.right).toBeLessThanOrEqual(16)
+  expect(box.width).toBeGreaterThanOrEqual(400)
 })

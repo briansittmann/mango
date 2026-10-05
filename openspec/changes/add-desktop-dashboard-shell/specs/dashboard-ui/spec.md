@@ -1,6 +1,12 @@
-## MODIFIED Requirements
+## REMOVED Requirements
 
 ### Requirement: Desktop layout
+**Reason**: The sticky, self-scrolling widget column of `modernize-dashboard-widgets` is replaced by two columns that scroll with the page inside the desktop shell; its scenario *Widgets stick while cards scroll* no longer holds, so the requirement is replaced rather than modified.
+**Migration**: *Desktop columns* below carries the two-column layout, the reorder-mode behaviour and the phone/tablet single column; `desktop-shell` carries the shell and the widget order.
+
+## ADDED Requirements
+
+### Requirement: Desktop columns
 At a viewport 1024px wide or wider the dashboard SHALL be framed by the shell of the `desktop-shell` capability and SHALL lay its content out as: a row of four stat tiles across the content width, then a main column holding the expense breakdown and the "Próximos cobros" card, and a widget column at least 320px wide holding the chart widgets in the user's saved order. Both columns SHALL scroll with the page; no column SHALL stick to the viewport or scroll on its own. Below 1024px every widget SHALL follow the expense breakdown in the single column, in the saved order.
 
 Reorder mode SHALL keep working at every width: its pushed-back layer SHALL cover the sidebar, the top bar and both columns, and the handle lane SHALL open beside the cards in the main column. Every sheet SHALL open as a side panel at ≥1024px, as `desktop-shell` → *Sheets open as side panels* describes.
@@ -20,6 +26,8 @@ Reorder mode SHALL keep working at every width: its pushed-back layer SHALL cove
 #### Scenario: Reorder on a laptop
 - **WHEN** reorder mode is entered at 1280px
 - **THEN** the sidebar, the top bar and the widget column are dimmed under the pushed-back layer, the cards of the main column keep their handle lane, and "Listo" leaves the layout as it was
+
+## MODIFIED Requirements
 
 ### Requirement: Cycle header and free margin
 Below 1024px the top of the dashboard SHALL show a bar with the Mango logo and the app name on the left and the account avatar on the right. At 1024px and wider that bar and the title block below SHALL NOT be rendered: the month, its controls, the status label and the month picker live in the shell's top bar (`desktop-shell` → *Desktop shell at wide viewports*), with the same six-cycle limit and the same picker.

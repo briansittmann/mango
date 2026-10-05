@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
+import { useId, useLayoutEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { Ban, Loader2, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useAmountFormatter } from '@/components/atoms/amount-format'
@@ -16,6 +16,8 @@ import type { RecurringDefinition, RecurringDraft } from '@/lib/data/recurring'
 type RecurringSheetProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** The "Próximos cobros" row that opened it: the popover's anchor from `sm` to `lg`. */
+  opener?: RefObject<HTMLElement | null>
   /** Values come from the "Próximos cobros" row that opened it. */
   target: RecurringDefinition
   /** "Categoría" is read-only here (D-note carried from task 4.3): `RecurringDraft` has no
@@ -55,6 +57,7 @@ function buildFieldState(target: RecurringDefinition, locale: string): FieldStat
 export function RecurringSheet({
   open,
   onOpenChange,
+  opener,
   target,
   categoryName,
   categoryColor,
@@ -218,6 +221,7 @@ export function RecurringSheet({
       isDirty={isDirty}
       initialFocus={false}
       anchored
+      opener={opener}
       leading={
         <button
           type="button"

@@ -14,7 +14,7 @@ import { Toast } from '@base-ui/react/toast'
 import { gsap } from 'gsap'
 import { Flip } from 'gsap/Flip'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, Plus } from 'lucide-react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -30,23 +30,30 @@ import { SummaryRow } from '@/components/molecules/summary-row'
 import { SwipeRestoreContext, SwipeToDelete } from '@/components/molecules/swipe-to-delete'
 import { UndoToast } from '@/components/molecules/undo-toast'
 import type { Scope } from '@/components/molecules/scope-choice'
+import { Drawer } from '@base-ui/react/drawer'
+import { useDesktop } from '@/components/hooks/use-desktop'
+import { useScrollSpy } from '@/components/hooks/use-scroll-spy'
 import { AccountMenu } from '@/components/organisms/account-menu'
 import { AccountSheet } from '@/components/organisms/account-sheet'
 import { CategoryCard } from '@/components/organisms/category-card'
 import { CategoryPieChart } from '@/components/organisms/category-pie-chart'
 import { CategorySheet } from '@/components/organisms/category-sheet'
+import { DesktopSidebar, type SidebarEntry } from '@/components/organisms/desktop-sidebar'
+import { DesktopTopBar } from '@/components/organisms/desktop-top-bar'
 import { EntrySheet, expenseEntry, incomeEntry, savingsEntry } from '@/components/organisms/entry-sheet'
 import { FreeMarginCard } from '@/components/organisms/free-margin-card'
 import { MonthlyBarsChart } from '@/components/organisms/monthly-bars-chart'
 import { RecurringSheet } from '@/components/organisms/recurring-sheet'
+import { SheetShell } from '@/components/organisms/sheet-shell'
 import { SpendCalendar } from '@/components/organisms/spend-calendar'
-import { SummaryGroup } from '@/components/organisms/summary-group'
+import { SummaryGroup, type SummaryGroupItem } from '@/components/organisms/summary-group'
 import { UpcomingChargesCard } from '@/components/organisms/upcoming-charges-card'
 import { WeeklyTopChart } from '@/components/organisms/weekly-top-chart'
+import { WidgetList } from '@/components/organisms/widget-list'
 import { AnimatedAmount } from '@/components/ui/counter/animated-amount'
 import { AnimatedContent } from '@/components/ui/animated-content'
 import { buildCycleCsv, downloadCsv } from '@/lib/csv'
-import type { DashboardActions, DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
+import type { DashboardActions, DashboardData, Expense, ExpenseGroup, WidgetId } from '@/lib/data/dashboard'
 import type { CategoryDraft, CategoryUpdateTarget } from '@/lib/data/categories'
 
 gsap.registerPlugin(ScrollTrigger, Flip)
@@ -67,7 +74,8 @@ type DashboardTemplateProps = {
 type SummaryKey = 'income' | 'expenses' | 'savings'
 
 type SheetTarget =
-  | { kind: 'expense'; mode: 'create'; group: ExpenseGroup }
+  /** `pickCategory`: opened from the desktop bar, so the header's category control is live (design D7). */
+  | { kind: 'expense'; mode: 'create'; group: ExpenseGroup; pickCategory?: boolean }
   | { kind: 'expense'; mode: 'edit'; group: ExpenseGroup; expense: Expense }
   | { kind: 'income'; mode: 'create' }
   | { kind: 'income'; mode: 'edit'; entry: IncomeEntry }
@@ -79,6 +87,10 @@ const BAR_HEIGHT = 56
 /** The summary tiles' delta + sparkline (`modernize-dashboard-widgets`) are built but hidden for now (2026-10-03). */
 const SHOW_SUMMARY_TRENDS = false
 const UPCOMING_CHARGES_ID = 'proximos-cobros'
+/** The sidebar's section anchors (design D3): the tile row, each card (`categoria-<id>`) and the widget list. */
+const SECTION_OVERVIEW = 'resumen'
+const SECTION_WIDGETS = 'graficos'
+const categorySection = (id: string) => `categoria-${id}`
 
 function clampDate(date: string, min: string, max: string): string {
   if (date < min) return min
@@ -162,9 +174,38 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
   const tHojaCategoria = useTranslations('hojaCategoria')
   const tRecurrente = useTranslations('gastoRecurrente')
   const tReordenar = useTranslations('modoReordenar')
+  const tEscritorio = useTranslations('escritorio')
+  const tGraficos = useTranslations('graficos')
   const format = useFormatter()
   const { money } = useAmountFormatter()
   const [openIds, setOpenIds] = useState<Set<string>>(new Set())
+  // The desktop shell (design D1): one media-query hook switches every behaviour CSS cannot.
+  const desktop = useDesktop()
+  // Floating once the page's top sentinel has scrolled under the bar (D2).
+  const [floating, setFloating] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const accountCardRef = useRef<HTMLButtonElement>(null)
+  const avatarRef = useRef<HTMLButtonElement>(null)
+  // At `lg` cards start open: this set holds the ones the user closed. The server and the first
+  // client frame render them collapsed; the switch lands in the hydration re-render, before the
+  // cascade reveals the cards (Risks).
+  const [closedIds, setClosedIds] = useState<Set<string>>(new Set())
+  // The category chosen in the bar's entry sheet, for the recurrence that may follow its save (D7).
+  const chosenCategoryRef = useRef<string | null>(null)
+  // What opened the category and definition sheets: their popover anchor from `sm` to `lg` (D5).
+  const categoryOpenerRef = useRef<HTMLElement | null>(null)
+  const recurringOpenerRef = useRef<HTMLElement | null>(null)
+  // The last summary panel opened, kept while the side panel is leaving.
+  const [lastSummaryKey, setLastSummaryKey] = useState<SummaryKey | null>(null)
+  // The widget order shown while a save is in flight or being reverted (D6), like `displayedOrder`.
+  const [displayedWidgetOrder, setDisplayedWidgetOrder] = useState<WidgetId[] | null>(null)
+  // One save in flight; a move that lands meanwhile is queued behind it, as `sendReorder` does
+  // for the categories: two concurrent writes of the whole list can land out of order (8.1).
+  const widgetSaveRef = useRef<{ inFlight: boolean; queued: WidgetId[] | null; committed: WidgetId[] }>({
+    inFlight: false,
+    queued: null,
+    committed: data.user.widgetOrder,
+  })
   // Categories whose budget bar is hidden from the card, toggled in the category options sheet.
   // The stored preference (`group.showProgress`) with the latest toggle on top, so the bar moves at
   // once; a failed save drops the toggle and the stored value shows again.
@@ -220,8 +261,8 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
   // their definition's slot, and real rows, add rows and category creation work as usual.
   const projected = data.cycle.projected
 
-  function openCreateSheet(group: ExpenseGroup) {
-    flushSync(() => setSheet({ open: true, target: { kind: 'expense', mode: 'create', group } }))
+  function openCreateSheet(group: ExpenseGroup, pickCategory = false) {
+    flushSync(() => setSheet({ open: true, target: { kind: 'expense', mode: 'create', group, pickCategory } }))
     initialFocusRef.current?.focus({ preventScroll: true })
   }
 
@@ -248,14 +289,18 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
   }
 
   function openCategorySheet(group: ExpenseGroup) {
+    categoryOpenerRef.current =
+      document.querySelector<HTMLElement>(`[data-category-options="${group.id}"]`) ?? (document.activeElement as HTMLElement | null)
     setCategorySheet({ open: true, target: { mode: 'edit', group } })
   }
 
   function openCreateCategorySheet() {
+    categoryOpenerRef.current = document.activeElement as HTMLElement | null
     setCategorySheet({ open: true, target: { mode: 'create' } })
   }
 
   function openRecurringSheet(charge: UpcomingCharge) {
+    recurringOpenerRef.current = document.activeElement as HTMLElement | null
     setRecurringSheet({ open: true, charge })
   }
 
@@ -836,7 +881,9 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
     }
     if (!actions.expenses) return
     if (sheet.target.mode === 'create') {
-      await actions.expenses.create(sheet.target.group.id, values)
+      const target = categoryId ?? sheet.target.group.id
+      chosenCategoryRef.current = target
+      await actions.expenses.create(target, values)
     } else {
       await actions.expenses.update(sheet.target.expense.id, values, categoryId ?? sheet.target.group.id)
     }
@@ -857,7 +904,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
       await actions.recurring.create({ tipo: 'ingreso' }, draft)
       return
     }
-    await actions.recurring.create({ tipo: 'gasto', categoryId: sheet.target.group.id }, draft)
+    await actions.recurring.create({ tipo: 'gasto', categoryId: chosenCategoryRef.current ?? sheet.target.group.id }, draft)
   }
 
   async function handleSaveDefinition(definitionId: string, draft: RecurringDraft) {
@@ -941,6 +988,16 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
     return () => observer.disconnect()
   }, [])
 
+  // The shell floats once the page's first 16px have scrolled under the bar (D2): a sentinel, not
+  // scroll events, and not the phone's title (which is not rendered at `lg`).
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(([entry]) => setFloating(!entry.isIntersecting), { rootMargin: '-16px 0px 0px 0px' })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   useEffect(() => {
     if (!reordering) return
     function onKeyDown(event: KeyboardEvent) {
@@ -987,10 +1044,85 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
     setOpenSummary((prev) => (prev === key ? null : key))
   }
 
+  // At `lg` a category card is open unless the user closed it; below, closed unless opened (3.2).
+  function isCategoryOpen(id: string) {
+    return desktop ? !closedIds.has(id) : openIds.has(id)
+  }
+
+  function toggleCategory(id: string) {
+    if (!desktop) {
+      toggleCard(id)
+      return
+    }
+    setClosedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const categoryIds = data.expenses.groups.map((group) => group.id)
+  const anyCategoryOpen = desktop ? categoryIds.some((id) => !closedIds.has(id)) : openIds.size > 0
+
+  function collapseAll() {
+    setOpenIds(new Set())
+    if (desktop) setClosedIds(new Set(categoryIds))
+  }
+
+  function expandAll() {
+    setClosedIds(new Set())
+  }
+
+  function scrollToBreakdown() {
+    expensesRef.current?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
+  }
+
+  // The tiles at `lg` (design D4): income and savings open the summary side panel, expenses
+  // scrolls to the breakdown; below `lg` every column toggles the accordion.
+  function activateSummary(key: SummaryKey) {
+    if (desktop && key === 'expenses') {
+      scrollToBreakdown()
+      return
+    }
+    toggleSummary(key)
+  }
+
+  function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+  }
+
+  // A sidebar entry (D3): the page scrolls so the target sits under the bar, a collapsed card
+  // opens, and focus lands on the target.
+  function navigateTo(sectionId: string) {
+    setPinnedSection({ id: sectionId, spiedAtPin: spiedSection })
+    if (sectionId.startsWith('categoria-')) {
+      const id = sectionId.slice('categoria-'.length)
+      scrollToCategory(id)
+      cardNodeRefs.current.get(id)?.focus({ preventScroll: true })
+      return
+    }
+    const node = document.getElementById(sectionId)
+    if (!node) return
+    node.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
+    node.focus({ preventScroll: true })
+  }
+
   function scrollToCategory(id: string) {
     const node = cardNodeRefs.current.get(id)
     if (!node) return
-    const openCard = () => setOpenIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
+    const openCard = () => {
+      if (desktop) {
+        setClosedIds((prev) => {
+          if (!prev.has(id)) return prev
+          const next = new Set(prev)
+          next.delete(id)
+          return next
+        })
+        return
+      }
+      setOpenIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
+    }
     if (prefersReducedMotion()) {
       node.scrollIntoView({ behavior: 'auto', block: 'start' })
       openCard()
@@ -1094,10 +1226,229 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
     return [...ordered, ...missing]
   }, [displayedOrder, data.expenses.groups])
 
+  // The sidebar's sections, in the displayed order; scroll-spy only runs where the sidebar is shown.
+  const sectionIds = useMemo(
+    () => [SECTION_OVERVIEW, ...renderedGroups.map((group) => categorySection(group.id)), SECTION_WIDGETS],
+    [renderedGroups],
+  )
+  const spiedSection = useScrollSpy(sectionIds, desktop && !reordering)
+  // A clicked entry is current at once, before the scroll it starts is observed; the pin lifts
+  // as soon as the scroll-spy moves on from what it said at the click.
+  const [pinnedSection, setPinnedSection] = useState<{ id: string; spiedAtPin: string | null } | null>(null)
+  const activeSection = pinnedSection && spiedSection === pinnedSection.spiedAtPin ? pinnedSection.id : spiedSection
+  if (pinnedSection && spiedSection !== pinnedSection.spiedAtPin) setPinnedSection(null)
+  const sidebarEntries: SidebarEntry[] = [
+    { id: SECTION_OVERVIEW, label: tEscritorio('resumen') },
+    ...renderedGroups.map((group) => ({ id: categorySection(group.id), label: group.name, color: group.color, total: group.total })),
+    { id: SECTION_WIDGETS, label: tEscritorio('graficos') },
+  ]
+
+  // The widgets in the user's order; a projection keeps only the donut, in place (D6).
+  const widgetOrder = displayedWidgetOrder ?? data.user.widgetOrder
+  const visibleWidgets = projected ? widgetOrder.filter((id) => id === 'distribution') : widgetOrder
+  const widgetNames: Record<WidgetId, string> = {
+    weekly: tGraficos('topSemana'),
+    calendar: tGraficos('gastoPorDia'),
+    monthly: tGraficos('monthlySpend'),
+    distribution: tGraficos('distribution'),
+  }
+
+  async function saveWidgetOrder(next: WidgetId[]) {
+    const save = widgetSaveRef.current
+    if (!actions.setWidgetOrder || arraysEqual(next, save.committed)) return
+    if (save.inFlight) {
+      save.queued = next
+      return
+    }
+    save.inFlight = true
+    try {
+      await actions.setWidgetOrder(next)
+      save.committed = next
+    } catch {
+      setDisplayedWidgetOrder(save.committed)
+      setStatusMessage(tEscritorio('ordenNoGuardado'))
+      save.queued = null
+    }
+    save.inFlight = false
+    const queued = save.queued
+    save.queued = null
+    if (queued) void saveWidgetOrder(queued)
+  }
+
+  function handleWidgetOrder(next: WidgetId[], commit: boolean, moved: WidgetId) {
+    setDisplayedWidgetOrder(next)
+    if (!commit) return
+    if (arraysEqual(next, widgetSaveRef.current.committed) && !widgetSaveRef.current.inFlight) return
+    setStatusMessage(tEscritorio('widgetMovido', { nombre: widgetNames[moved], posicion: next.indexOf(moved) + 1, total: next.length }))
+    void saveWidgetOrder(next)
+  }
+
+  function renderWidget(id: WidgetId, grip: ReactNode | null) {
+    switch (id) {
+      case 'weekly':
+        return (
+          <AnimatedContent threshold={0.2} distance={24} duration={0.3}>
+            <WeeklyTopChart groups={data.expenses.groups} cycle={data.cycle} timeZone={data.user.timezone} currency={currency} onSelectCategory={scrollToCategory} trailing={grip} />
+          </AnimatedContent>
+        )
+      case 'calendar':
+        return (
+          <AnimatedContent threshold={0.2} distance={24} duration={0.3} delay={0.05}>
+            <SpendCalendar groups={data.expenses.groups} cycle={data.cycle} timeZone={data.user.timezone} currency={currency} trailing={grip} />
+          </AnimatedContent>
+        )
+      case 'monthly':
+        return (
+          <AnimatedContent threshold={0.2} distance={24} duration={0.3} delay={0.1}>
+            <MonthlyBarsChart history={data.history} currentMonth={data.cycle.month} currency={currency} trailing={grip} />
+          </AnimatedContent>
+        )
+      case 'distribution':
+        return (
+          <AnimatedContent threshold={0.2} distance={24} duration={0.3} delay={projected ? 0 : 0.15}>
+            <CategoryPieChart groups={data.expenses.groups} total={data.expenses.total} currency={currency} onSelectCategory={scrollToCategory} trailing={grip} />
+          </AnimatedContent>
+        )
+    }
+  }
+
+  if (openSummary && openSummary !== lastSummaryKey) setLastSummaryKey(openSummary)
+  const summaryPanelOpen = desktop && openSummary != null && openSummary !== 'expenses'
+  // Under a panel's scrim, the account menu or reorder mode, the floating shell drops its blur so
+  // no two translucent materials overlap (design-system → *Translucent materials*).
+  const pushedBack =
+    reordering || accountMenuOpen || accountSheetOpen || sheet.open || categorySheet.open || recurringSheet.open || summaryPanelOpen
+
+  const summaryItems: SummaryGroupItem[] = [
+    {
+      key: 'income',
+      label: tResumen('ingresos'),
+      total: data.income.total,
+      caption: tEscritorio('entradas', { n: data.income.entries.length }),
+      opens: true,
+      ...(SHOW_SUMMARY_TRENDS ? { trend: { points: data.income.history.map((entry) => entry.total), upIsGood: true } } : {}),
+      panel: (
+        <>
+          <div className="flex flex-col">
+            {sortedIncomeEntries.map((entry, index) => {
+              // A projected fixed income entry is that definition's slot here: it needs the slot operations.
+              const editable = actions.income && (!entry.projected || actions.recurring)
+              const row = (
+                <ExpenseRow
+                  name={entry.name || tHojaGasto('ingreso')}
+                  date={entry.date}
+                  amount={entry.amount}
+                  currency={currency}
+                  timeZone={data.user.timezone}
+                  onActivate={editable ? () => openIncomeEditSheet(entry) : undefined}
+                  first={index === 0}
+                />
+              )
+              return editable ? (
+                <SwipeToDelete key={entry.id} rowId={entry.id} onDelete={() => handleDeleteIncome(entry)}>
+                  {row}
+                </SwipeToDelete>
+              ) : (
+                <div key={entry.id}>{row}</div>
+              )
+            })}
+            <AddRow label={t('anadirIngreso')} onClick={actions.income ? openIncomeCreateSheet : undefined} />
+          </div>
+        </>
+      ),
+    },
+    {
+      key: 'expenses',
+      label: tResumen('gastos'),
+      total: data.expenses.total,
+      caption: tEscritorio('categoriasActivas', { n: data.expenses.groups.length }),
+      opens: false,
+      ...(SHOW_SUMMARY_TRENDS ? { trend: { points: data.history.map((entry) => entry.total), upIsGood: false } } : {}),
+      panel: (
+        <>
+          <div className="flex flex-col">
+            {sortedExpenseGroups.map((group) => (
+              <SummaryRow
+                key={group.id}
+                color={group.color}
+                name={group.name}
+                amount={group.total}
+                currency={currency}
+                onClick={() => scrollToCategory(group.id)}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={scrollToBreakdown}
+            className="flex min-h-12 w-full items-center justify-center gap-2 text-label-ui text-muted-foreground"
+          >
+            {tResumen('verTodosLosGastos')}
+            <ChevronDown className="size-4" aria-hidden />
+          </button>
+        </>
+      ),
+    },
+    {
+      key: 'savings',
+      label: tResumen('ahorro'),
+      total: data.savings.cycle,
+      caption:
+        data.savings.target != null
+          ? tEscritorio('metaMensual', { monto: money(data.savings.target, currency) })
+          : tEscritorio('acumulado', { monto: money(data.savings.accumulated, currency) }),
+      opens: true,
+      ...(SHOW_SUMMARY_TRENDS ? { trend: { points: data.savings.history.map((entry) => entry.accumulated), upIsGood: true } } : {}),
+      panel: (
+        <>
+          <div className="flex flex-col">
+            {projected ? null : (
+              <button
+                type="button"
+                onClick={actions.openSavingsHistory}
+                disabled={!actions.openSavingsHistory}
+                className="pressable flex w-full items-center gap-3 px-inset py-4 text-left [--press-tint:8%] hover:bg-foreground/[0.04] disabled:pointer-events-none"
+              >
+                <span className="min-w-0 flex-1 truncate text-headline-sm text-muted-foreground">{tResumen('acumulado')}</span>
+                <AnimatedAmount amount={data.savings.accumulated} currency={currency} className="shrink-0 text-headline-sm text-foreground" />
+                {actions.openSavingsHistory ? <ChevronRight aria-hidden className="-mr-1 size-4 shrink-0 text-muted-foreground" /> : null}
+              </button>
+            )}
+            {data.savings.movements.map((movement, index) => {
+              const row = (
+                <SavingsMovementRow
+                  name={movement.name}
+                  date={movement.date}
+                  amount={movement.amount}
+                  currency={currency}
+                  timeZone={data.user.timezone}
+                  depositLabel={tResumen('deposito')}
+                  withdrawalLabel={tResumen('retiro')}
+                  index={index}
+                />
+              )
+              return actions.savings ? (
+                <SwipeToDelete key={movement.id} rowId={movement.id} onDelete={() => handleDeleteSavings(movement.id)}>
+                  {row}
+                </SwipeToDelete>
+              ) : (
+                <div key={movement.id}>{row}</div>
+              )
+            })}
+            <AddRow label={t('anadirMovimientoAhorro')} onClick={actions.savings ? openSavingsCreateSheet : undefined} />
+          </div>
+        </>
+      ),
+    },
+  ]
+  const sidePanelItem = summaryItems.find((item) => item.key === lastSummaryKey)
+
   return (
     <Toast.Provider toastManager={toasts} limit={1} timeout={5000}>
       <SwipeRestoreContext.Provider value={restoredRows}>
-    <div className="pb-12">
+    <div className="relative pb-12">
+      {/* 32px tall against a root inset 16px from the top: it stops intersecting once 16px have scrolled. */}
+      <div ref={sentinelRef} aria-hidden className="pointer-events-none absolute left-0 top-0 h-8 w-px" />
       {/* One fixed layer pushes the whole page back; the category list is raised above it (D3). */}
       <div
         aria-hidden
@@ -1124,7 +1475,37 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
           </div>
         </div>
       ) : null}
-      <div className="sticky top-0 z-30" style={{ height: BAR_HEIGHT }} aria-hidden={reordering} inert={reordering}>
+      {/* The desktop shell (add-desktop-dashboard-shell): mounted only from `lg`. The server and the
+          first client frame never have it (the hook's server snapshot is false), so a phone carries
+          none of its DOM and nothing below `lg` can match its text or controls. */}
+      {desktop ? (
+        <>
+      <DesktopSidebar
+        floating={floating}
+        pushedBack={pushedBack}
+        hidden={reordering}
+        entries={sidebarEntries}
+        activeId={activeSection}
+        onNavigate={navigateTo}
+        onScrollTop={scrollToTop}
+        currency={currency}
+        figures={{ income: data.income.total, expenses: data.expenses.total, savings: data.savings.cycle, freeMargin: data.freeMargin }}
+        user={data.user}
+        accountMenuOpen={accountMenuOpen}
+        onOpenAccount={() => setAccountMenuOpen(true)}
+        accountCardRef={accountCardRef}
+      />
+      <DesktopTopBar
+        floating={floating}
+        pushedBack={pushedBack}
+        hidden={reordering}
+        cycle={data.cycle}
+        actions={actions}
+        onAddExpense={actions.expenses && data.expenses.groups.length > 0 ? () => openCreateSheet(data.expenses.groups[0], true) : undefined}
+      />
+        </>
+      ) : null}
+      <div className="sticky top-0 z-30 lg:hidden" style={{ height: BAR_HEIGHT }} aria-hidden={reordering} inert={reordering}>
         <div
           aria-hidden
           // The reorder scrim is the mode's only blurred surface, and the bar sits behind it anyway.
@@ -1183,6 +1564,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
             </div>
           </div>
           <button
+            ref={avatarRef}
             type="button"
             onClick={() => setAccountMenuOpen(true)}
             aria-label={tMenu('abrirMenuDeCuenta')}
@@ -1197,11 +1579,12 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
           </button>
         </div>
       </div>
-      {/* At `lg` the page is two columns (design D5): title, notice and the main stack in the first,
-          the four chart widgets in a sticky second column from the main stack's row. Below `lg`
-          the same DOM is one column in the same order. */}
-      <div className="mx-auto w-full max-w-[640px] px-gutter lg:grid lg:max-w-[1120px] lg:grid-cols-[minmax(0,1fr)_minmax(360px,400px)] lg:gap-x-8 lg:px-6" data-dashboard-page>
-      <div className="relative z-20 lg:col-start-1" aria-hidden={reordering} inert={reordering}>
+      {/* At `lg` the content sits beside the sidebar and under the bar (`desktop-shell`): the stat
+          tiles across both columns, then the breakdown in the first and the widgets in the second,
+          both scrolling with the page. Below `lg` the same DOM is one column in the same order. */}
+      <div className="lg:pl-[272px] lg:pt-[104px]">
+      <div className="mx-auto w-full max-w-[640px] px-gutter lg:grid lg:max-w-[1120px] lg:grid-cols-[minmax(0,1fr)_minmax(320px,360px)] lg:gap-x-8 lg:px-6" data-dashboard-page>
+      <div className="relative z-20 lg:hidden" aria-hidden={reordering} inert={reordering}>
         {/* Without a notice the hero sits a section away from the title, the same gap the summary
             tiles keep from "Desglose de gastos"; the demo's notice fills that space itself. */}
         <AnimatedContent className={notice ? 'pb-3 pt-3' : 'pb-section pt-3'} distance={20} delay={0.12}>
@@ -1223,162 +1606,91 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
         </AnimatedContent>
       </div>
       {notice ? (
-        <AnimatedContent className="mb-stack lg:col-start-1" distance={12} delay={0.06} duration={0.6} aria-hidden={reordering} inert={reordering}>
+        <AnimatedContent className="mb-stack lg:col-span-2" distance={12} delay={0.06} duration={0.6} aria-hidden={reordering} inert={reordering}>
           {notice}
         </AnimatedContent>
       ) : null}
-      <div className="min-w-0 lg:col-start-1" data-dashboard-main>
+      {/* The stat-tile row (`desktop-shell` → *Stat tiles*): the hero and the three summary tiles
+          share one four-column grid at `lg`; below, the hero and the grouped surface as before. */}
+      <div
+        id={SECTION_OVERVIEW}
+        tabIndex={-1}
+        className="outline-none lg:col-span-2 lg:grid lg:grid-cols-4 lg:gap-stack lg:scroll-mt-[104px]"
+        data-dashboard-tiles
+        aria-hidden={reordering}
+        inert={reordering}
+      >
       <AnimatedContent
         distance={32}
         scale={0.97}
         duration={1}
         delay={0.2}
-        aria-hidden={reordering}
-        inert={reordering}
       >
-        <FreeMarginCard amount={data.freeMargin} currency={currency} income={data.income.total} savings={data.savings.cycle} />
+        <FreeMarginCard
+          amount={data.freeMargin}
+          currency={currency}
+          income={data.income.total}
+          savings={data.savings.cycle}
+          presentation={desktop ? 'tile' : 'card'}
+        />
       </AnimatedContent>
-      <AnimatedContent className="mt-stack" distance={24} delay={0.32} aria-hidden={reordering} inert={reordering}>
+      <AnimatedContent className="mt-stack lg:col-span-3 lg:mt-0" distance={24} delay={0.32}>
         <SummaryGroup
           currency={currency}
           openKey={openSummary}
-          onToggle={(key) => toggleSummary(key as SummaryKey)}
-          items={[
-            {
-              key: 'income',
-              label: tResumen('ingresos'),
-              total: data.income.total,
-              ...(SHOW_SUMMARY_TRENDS ? { trend: { points: data.income.history.map((entry) => entry.total), upIsGood: true } } : {}),
-              panel: (
-                <>
-                  <div className="flex flex-col">
-                    {sortedIncomeEntries.map((entry, index) => {
-                      // A projected fixed income entry is that definition's slot here: it needs the slot operations.
-                      const editable = actions.income && (!entry.projected || actions.recurring)
-                      const row = (
-                        <ExpenseRow
-                          name={entry.name || tHojaGasto('ingreso')}
-                          date={entry.date}
-                          amount={entry.amount}
-                          currency={currency}
-                          timeZone={data.user.timezone}
-                          onActivate={editable ? () => openIncomeEditSheet(entry) : undefined}
-                          first={index === 0}
-                        />
-                      )
-                      return editable ? (
-                        <SwipeToDelete key={entry.id} rowId={entry.id} onDelete={() => handleDeleteIncome(entry)}>
-                          {row}
-                        </SwipeToDelete>
-                      ) : (
-                        <div key={entry.id}>{row}</div>
-                      )
-                    })}
-                    <AddRow label={t('anadirIngreso')} onClick={actions.income ? openIncomeCreateSheet : undefined} />
-                  </div>
-                </>
-              ),
-            },
-            {
-              key: 'expenses',
-              label: tResumen('gastos'),
-              total: data.expenses.total,
-              ...(SHOW_SUMMARY_TRENDS ? { trend: { points: data.history.map((entry) => entry.total), upIsGood: false } } : {}),
-              panel: (
-                <>
-                  <div className="flex flex-col">
-                    {sortedExpenseGroups.map((group) => (
-                      <SummaryRow
-                        key={group.id}
-                        color={group.color}
-                        name={group.name}
-                        amount={group.total}
-                        currency={currency}
-                        onClick={() => scrollToCategory(group.id)}
-                      />
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => expensesRef.current?.scrollIntoView({ behavior: 'smooth' })}
-                    className="flex min-h-12 w-full items-center justify-center gap-2 text-label-ui text-muted-foreground"
-                  >
-                    {tResumen('verTodosLosGastos')}
-                    <ChevronDown className="size-4" aria-hidden />
-                  </button>
-                </>
-              ),
-            },
-            {
-              key: 'savings',
-              label: tResumen('ahorro'),
-              total: data.savings.cycle,
-              ...(SHOW_SUMMARY_TRENDS ? { trend: { points: data.savings.history.map((entry) => entry.accumulated), upIsGood: true } } : {}),
-              panel: (
-                <>
-                  <div className="flex flex-col">
-                    {projected ? null : (
-                      <button
-                        type="button"
-                        onClick={actions.openSavingsHistory}
-                        disabled={!actions.openSavingsHistory}
-                        className="pressable flex w-full items-center gap-3 px-inset py-4 text-left [--press-tint:8%] hover:bg-foreground/[0.04] disabled:pointer-events-none"
-                      >
-                        <span className="min-w-0 flex-1 truncate text-headline-sm text-muted-foreground">{tResumen('acumulado')}</span>
-                        <AnimatedAmount amount={data.savings.accumulated} currency={currency} className="shrink-0 text-headline-sm text-foreground" />
-                        {actions.openSavingsHistory ? <ChevronRight aria-hidden className="-mr-1 size-4 shrink-0 text-muted-foreground" /> : null}
-                      </button>
-                    )}
-                    {data.savings.movements.map((movement, index) => {
-                      const row = (
-                        <SavingsMovementRow
-                          name={movement.name}
-                          date={movement.date}
-                          amount={movement.amount}
-                          currency={currency}
-                          timeZone={data.user.timezone}
-                          depositLabel={tResumen('deposito')}
-                          withdrawalLabel={tResumen('retiro')}
-                          index={index}
-                        />
-                      )
-                      return actions.savings ? (
-                        <SwipeToDelete key={movement.id} rowId={movement.id} onDelete={() => handleDeleteSavings(movement.id)}>
-                          {row}
-                        </SwipeToDelete>
-                      ) : (
-                        <div key={movement.id}>{row}</div>
-                      )
-                    })}
-                    <AddRow label={t('anadirMovimientoAhorro')} onClick={actions.savings ? openSavingsCreateSheet : undefined} />
-                  </div>
-                </>
-              ),
-            },
-          ]}
+          onToggle={(key) => activateSummary(key as SummaryKey)}
+          layout={desktop ? 'tiles' : 'accordion'}
+          items={summaryItems}
         />
       </AnimatedContent>
-
+      </div>
+      {/* The breakdown header takes a row of its own in the page grid (a subgrid, so the columns
+          are the page's), and the cards and the widgets share the row under it: the first widget
+          starts level with "Próximos cobros", never beside the header. */}
+      <div className="lg:col-span-2 lg:grid lg:grid-cols-subgrid" data-dashboard-breakdown>
       <AnimatedContent
-        className="mt-section flex items-center justify-between"
+        className="mt-section flex items-center justify-between lg:col-start-1"
         distance={16}
         delay={0.42}
         aria-hidden={reordering}
         inert={reordering}
       >
         <h2 className="font-display text-headline-md text-foreground">{t('expenseBreakdown')}</h2>
-        {openIds.size > 0 ? (
+        {/* Below `lg`: "collapse all" while a card is open. At `lg`: collapse/expand all and "new category" (3.2). */}
+        {!desktop && openIds.size > 0 ? (
           <button
             type="button"
-            onClick={() => setOpenIds(new Set())}
-            className="pressable inline-flex min-h-target items-center gap-2 text-body-lg font-medium text-brand-ink"
+            onClick={collapseAll}
+            className="pressable inline-flex min-h-target items-center gap-2 text-body-lg font-medium text-brand-ink lg:hidden"
           >
             <ChevronUp className="size-4" aria-hidden />
             {t('colapsarTodo')}
           </button>
         ) : null}
+        {desktop ? (
+          <div className="hidden items-center gap-1 lg:flex" data-breakdown-controls>
+            <button
+              type="button"
+              onClick={anyCategoryOpen ? collapseAll : expandAll}
+              className="pressable inline-flex min-h-target items-center gap-1.5 rounded-full px-3 text-body-md font-medium text-muted-foreground hover:text-foreground"
+            >
+              {anyCategoryOpen ? <ChevronUp className="size-4" aria-hidden /> : <ChevronDown className="size-4" aria-hidden />}
+              {anyCategoryOpen ? tEscritorio('contraerTodas') : tEscritorio('expandirTodas')}
+            </button>
+            <button
+              type="button"
+              onClick={openCreateCategorySheet}
+              disabled={!actions.categories}
+              className="pressable inline-flex min-h-target items-center gap-1.5 rounded-full px-3 text-body-md font-medium text-brand-ink disabled:opacity-40"
+            >
+              <Plus className="size-4" aria-hidden />
+              {tEscritorio('nuevaCategoria')}
+            </button>
+          </div>
+        ) : null}
       </AnimatedContent>
-      <div ref={expensesRef} className="mt-4 flex scroll-mt-20 flex-col gap-stack">
+      <div className="min-w-0 lg:col-start-1 lg:row-start-2" data-dashboard-main>
+      <div ref={expensesRef} className="mt-4 flex scroll-mt-20 flex-col gap-stack lg:scroll-mt-[104px]">
         <AnimatedContent
           id="category-cascade"
           threshold={0.2}
@@ -1419,8 +1731,10 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
                   if (node) cardNodeRefs.current.set(group.id, node)
                   else cardNodeRefs.current.delete(group.id)
                 }}
+                id={categorySection(group.id)}
+                tabIndex={-1}
                 className={cn(
-                  'group relative scroll-mt-20',
+                  'group relative scroll-mt-20 outline-none lg:scroll-mt-[104px]',
                   reordering && !isDragging && 'transition-transform duration-200 ease-in-out motion-reduce:transition-none',
                   // The lift's shadows are drawn on this wrapper, not on the card inside it, so it
                   // needs the card's own radius or they trace a square around a rounded card.
@@ -1432,8 +1746,8 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
                   group={group}
                   currency={currency}
                   timeZone={data.user.timezone}
-                  open={openIds.has(group.id)}
-                  onToggle={() => toggleCard(group.id)}
+                  open={isCategoryOpen(group.id)}
+                  onToggle={() => toggleCategory(group.id)}
                   onAddExpense={actions.expenses ? () => openCreateSheet(group) : undefined}
                   onEditExpense={actions.expenses ? (expense) => openEditSheet(group, expense) : undefined}
                   onDeleteExpense={actions.expenses ? (expense) => handleDeleteExpense(expense) : undefined}
@@ -1527,48 +1841,56 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
         </div>
       </div>
       </div>
-      {/* The widget column sticks under the top bar while the cards scroll; taller than the viewport
-          it scrolls on its own (thin bar, stable gutter) rather than pushing the page (D5). */}
+      {/* The widget column scrolls with the page beside the breakdown (`desktop-shell`): no
+          sticking, no scrollbar of its own. Its `mt-4` is the cards' own, so both columns start
+          on one line. */}
       <div
-        className={cn(
-          'mt-section flex min-w-0 flex-col gap-stack lg:sticky lg:top-[72px] lg:col-start-2 lg:mt-0 lg:max-h-[calc(100dvh-88px)] lg:self-start lg:overflow-y-auto lg:[scrollbar-gutter:stable] lg:[scrollbar-width:thin]',
-          notice ? 'lg:row-start-3' : 'lg:row-start-2',
-        )}
+        id={SECTION_WIDGETS}
+        tabIndex={-1}
+        className="mt-section flex min-w-0 flex-col gap-stack outline-none lg:col-start-2 lg:row-start-2 lg:mt-4 lg:scroll-mt-[104px]"
         aria-hidden={reordering}
         inert={reordering}
         data-dashboard-widgets
       >
-        {projected ? null : (
-          <AnimatedContent threshold={0.2} distance={24} duration={0.3}>
-            <WeeklyTopChart
-              groups={data.expenses.groups}
-              cycle={data.cycle}
-              timeZone={data.user.timezone}
-              currency={currency}
-              onSelectCategory={scrollToCategory}
-            />
-          </AnimatedContent>
-        )}
-        {projected ? null : (
-          <AnimatedContent threshold={0.2} distance={24} duration={0.3} delay={0.05}>
-            <SpendCalendar groups={data.expenses.groups} cycle={data.cycle} timeZone={data.user.timezone} currency={currency} />
-          </AnimatedContent>
-        )}
-        {projected ? null : (
-          <AnimatedContent threshold={0.2} distance={24} duration={0.3} delay={0.1}>
-            <MonthlyBarsChart history={data.history} currentMonth={data.cycle.month} currency={currency} />
-          </AnimatedContent>
-        )}
-        <AnimatedContent threshold={0.2} distance={24} duration={0.3} delay={projected ? 0 : 0.15}>
-          <CategoryPieChart groups={data.expenses.groups} total={data.expenses.total} currency={currency} onSelectCategory={scrollToCategory} />
-        </AnimatedContent>
+        <WidgetList
+          order={visibleWidgets}
+          names={widgetNames}
+          render={renderWidget}
+          onOrderChange={desktop && actions.setWidgetOrder ? handleWidgetOrder : undefined}
+          gripLabel={(nombre, posicion, total) => tEscritorio('moverWidget', { nombre, posicion, total })}
+        />
       </div>
       </div>
+      </div>
+      </div>
+      {/* The summary side panel at `lg` (design D4): the accordion's own panel, docked right. */}
+      <SheetShell
+        open={summaryPanelOpen}
+        onOpenChange={(open) => {
+          if (!open) setOpenSummary(null)
+        }}
+        busy={false}
+        isDirty={false}
+        initialFocus={false}
+        leading={
+          <button type="button" onClick={() => setOpenSummary(null)} className="pressable text-body-md text-muted-foreground">
+            {tEscritorio('cerrar')}
+          </button>
+        }
+        title={sidePanelItem?.label ?? ''}
+        trailing={null}
+      >
+        <Drawer.Content className="flex flex-1 flex-col overflow-y-auto overscroll-contain pb-4" data-summary-panel>
+          {sidePanelItem?.panel}
+        </Drawer.Content>
+      </SheetShell>
       <AccountMenu
         user={data.user}
         actions={actions}
         open={accountMenuOpen}
         onClose={() => setAccountMenuOpen(false)}
+        opener={desktop ? accountCardRef : avatarRef}
+        placement={desktop ? 'above-start' : 'below-end'}
         onDownloadCsv={() => {
           const csv = buildCycleCsv(
             data,
@@ -1602,6 +1924,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
         <AccountSheet
           open={accountSheetOpen}
           onOpenChange={setAccountSheetOpen}
+          opener={desktop ? accountCardRef : avatarRef}
           user={data.user}
           onSave={async (basics, phone) => {
             await actions.profile!.updateBasics(basics)
@@ -1627,6 +1950,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
         onSaveRecurrence={actions.recurring ? handleSaveRecurrence : undefined}
         projected={projected}
         categories={data.expenses.groups.map(({ id, name, color }) => ({ id, name, color }))}
+        allowCategoryChange={sheet.target?.kind === 'expense' && sheet.target.mode === 'create' && sheet.target.pickCategory === true}
       />
       <EntrySheet
         config={savingsEntry({ deposit: tResumen('deposito'), withdrawal: tResumen('retiro') })}
@@ -1642,6 +1966,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
       <CategorySheet
         open={categorySheet.open}
         onOpenChange={(open) => setCategorySheet((prev) => ({ ...prev, open }))}
+        opener={categoryOpenerRef}
         mode={categorySheetMode}
         target={categorySheetTargetGroup}
         currency={currency}
@@ -1666,6 +1991,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
         <RecurringSheet
           open={recurringSheet.open}
           onOpenChange={(open) => setRecurringSheet((prev) => ({ ...prev, open }))}
+          opener={recurringOpenerRef}
           target={recurringSheetTarget}
           categoryName={recurringSheetCategory?.name ?? ''}
           categoryColor={recurringSheetCategory?.color ?? 'gris_calido'}

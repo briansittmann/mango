@@ -68,6 +68,12 @@
   --hero-glow-near: light-dark(transparent, rgba(132, 204, 22, 0.36));
   --hero-glow-far: light-dark(transparent, rgba(132, 204, 22, 0.14));
 
+  /* The desktop shell at rest (add-desktop-dashboard-shell D8): the sidebar's and the top bar's
+     opaque surface while the page is at its top, and the hairline between them and the content.
+     Floating, both switch to the dialog tier of `.liquid-glass`. */
+  --shell-rest: var(--card);
+  --shell-divider: var(--border);
+
   --scrim: light-dark(rgba(13, 17, 14, 0.4), rgba(0, 0, 0, 0.65));
   --positive: light-dark(#15803D, #4ADE80);
   --handle: light-dark(#D1D5DB, #374151);
@@ -244,6 +250,8 @@
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --animate-segment-pop: segment-pop 600ms var(--ease-bounce) both;
   --animate-handle-in: handle-in 200ms var(--ease-out) both;
+  /* The sidebar's rotating cycle figure: each face comes in from a few px below. */
+  --animate-stat-in: stat-in 250ms var(--ease-out) both;
   /* Header entrance: `backwards` and not `both`, so the fill releases `scale` when it ends and
      the pressable press-scale keeps working on the logo and the avatar. */
   --animate-header-pop: header-pop 700ms var(--ease-bounce) backwards;
@@ -275,6 +283,13 @@
     from {
       opacity: 0;
       translate: 8px 0;
+    }
+  }
+
+  @keyframes stat-in {
+    from {
+      opacity: 0;
+      translate: 0 6px;
     }
   }
 
@@ -727,6 +742,90 @@ body {
 .glass-bar[data-pushed-back] {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+}
+
+/* The desktop shell (add-desktop-dashboard-shell D2). Each surface is two fixed layers under its
+   content. `.shell-rest` is the opaque resting surface with its hairline: once the page scrolls
+   (`[data-floating]` on the surface's root) its clip shrinks to the floating geometry while it fades
+   out. `.shell-material` already has the floating geometry and fades in with the glass values; its
+   blur only exists while floating, so the resting page has no backdrop-filter anywhere. The blur
+   cannot sit under the clip: WebKit and Firefox drop it there (spike 2.1). Paint-only transitions,
+   none under reduced motion; the controls above both layers never move. */
+.shell-rest {
+  position: absolute;
+  inset: 0;
+  background-color: var(--shell-rest);
+  clip-path: inset(0 round 0);
+  opacity: 1;
+  transition: clip-path 400ms var(--ease-out), opacity 400ms var(--ease-out);
+}
+.shell-rest--sidebar {
+  border-right: 1px solid var(--shell-divider);
+}
+.shell-rest--bar {
+  border-bottom: 1px solid var(--shell-divider);
+}
+.desktop-shell[data-floating] .shell-rest--sidebar {
+  clip-path: inset(16px 0 16px 16px round 24px);
+  opacity: 0;
+}
+.desktop-shell[data-floating] .shell-rest--bar {
+  clip-path: inset(16px 24px 0 8px round 999px);
+  opacity: 0;
+}
+
+.shell-material {
+  position: absolute;
+  background: linear-gradient(
+    160deg,
+    light-dark(rgba(255, 255, 255, 0.88), rgba(34, 42, 36, 0.86)) 0%,
+    light-dark(rgba(255, 255, 255, 0.74), rgba(19, 24, 20, 0.8)) 100%
+  );
+  border: 1px solid light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.09));
+  box-shadow:
+    inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.14)),
+    0 10px 30px -8px light-dark(rgba(28, 40, 25, 0.18), rgba(0, 0, 0, 0.55));
+  opacity: 0;
+  transition: opacity 400ms var(--ease-out);
+}
+.shell-material--sidebar {
+  inset: 16px 0 16px 16px;
+  border-radius: 24px;
+}
+.shell-material--bar {
+  inset: 16px 24px 0 8px;
+  border-radius: 999px;
+}
+.desktop-shell[data-floating] .shell-material {
+  opacity: 1;
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  backdrop-filter: blur(32px) saturate(180%);
+}
+/* Under a side panel's scrim or reorder mode the shell yields its blur and firms up its surface,
+   so no two translucent materials overlap (design-system → Translucent materials). */
+.desktop-shell[data-pushed-back] .shell-material {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: linear-gradient(
+    160deg,
+    light-dark(rgba(255, 255, 255, 0.97), rgba(34, 42, 36, 0.97)) 0%,
+    light-dark(rgba(250, 252, 250, 0.94), rgba(22, 28, 23, 0.95)) 100%
+  );
+}
+/* The sidebar's current-entry highlight travels; its text colour changes over the same time (D3). */
+.shell-nav-pill {
+  transition: transform 250ms var(--ease-in-out), opacity 250ms var(--ease-in-out);
+}
+.shell-nav-link {
+  transition: color 250ms var(--ease-in-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell-rest,
+  .shell-material,
+  .shell-nav-pill,
+  .shell-nav-link {
+    transition: none;
+  }
 }
 
 .segment-track {

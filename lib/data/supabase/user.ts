@@ -30,10 +30,12 @@ export type Usuario = {
   /** Loads confirmed on WhatsApp so far (progressive confirmation, 0002). */
   cargas_confirmadas: number
   modo_confirmacion: 'auto' | 'texto' | 'reaccion'
+  /** The desktop widgets' order as stored (0032); null is the default order, the reader normalises. */
+  orden_widgets: string[] | null
 }
 
 export const USUARIO_COLUMNS =
-  'id, nombre, telefono, foto_url, pais, moneda_default, timezone, dia_inicio_ciclo, meta_ahorro_mensual, ciclo_generado_hasta, idioma, onboarding_completo, onboarding_paso, formato_montos, whatsapp_solicitado_en, codigo_vinculacion, vip, cargas_confirmadas, modo_confirmacion'
+  'id, nombre, telefono, foto_url, pais, moneda_default, timezone, dia_inicio_ciclo, meta_ahorro_mensual, ciclo_generado_hasta, idioma, onboarding_completo, onboarding_paso, formato_montos, whatsapp_solicitado_en, codigo_vinculacion, vip, cargas_confirmadas, modo_confirmacion, orden_widgets'
 
 /**
  * The `usuarios` row linked to the session's auth user, or null when none is linked. RLS

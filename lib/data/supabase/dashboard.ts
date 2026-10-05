@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { effectiveAmountFormat } from '@/lib/data/amount-format'
 import { getBudgetStatus, getFreeMargin } from '@/lib/data/budget'
 import { categoriaViva } from '@/lib/data/categories'
-import type { CategoryColor, DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
+import { normalizeWidgetOrder, type CategoryColor, type DashboardData, type Expense, type ExpenseGroup } from '@/lib/data/dashboard'
 import type { LocalDate } from '@/lib/data/expenses'
 import type { IncomeEntry } from '@/lib/data/income'
 import { mezclarProyeccion, proyectarCiclo } from '@/lib/data/projection'
@@ -364,6 +364,7 @@ export async function resumenMensual(
         photoUrl: usuario.foto_url,
         currency: usuario.moneda_default,
         timezone,
+        widgetOrder: normalizeWidgetOrder(usuario.orden_widgets),
         country: usuario.pais,
         amountFormat: effectiveAmountFormat(usuario),
         cycleDay: usuario.dia_inicio_ciclo,

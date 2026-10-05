@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Bar, BarChart, LabelList, ResponsiveContainer, XAxis } from 'recharts'
 import type { BarShapeProps, LabelProps, XAxisTickContentProps } from 'recharts'
 import { useFormatter, useTranslations } from 'next-intl'
@@ -16,6 +16,8 @@ type MonthlyBarsChartProps = {
   history: { month: string; total: number }[]
   currentMonth: string
   currency: string
+  /** The widget list's grip, at the end of the header. */
+  trailing?: ReactNode
 }
 
 /** The bar's hit area, wider than the bar itself (dataviz → *The hit target is bigger than the mark*). */
@@ -39,7 +41,7 @@ function barPath(x: number, y: number, width: number, height: number): string {
  * category bands (design → Risks: an SVG group never kept keyboard focus across a re-render), so
  * each month has a 44px-wide target with a real focus ring, a tooltip and Enter/Space selection.
  */
-export function MonthlyBarsChart({ history, currentMonth, currency }: MonthlyBarsChartProps) {
+export function MonthlyBarsChart({ history, currentMonth, currency, trailing }: MonthlyBarsChartProps) {
   const t = useTranslations('graficos')
   const format = useFormatter()
   const { money } = useAmountFormatter()
@@ -74,7 +76,9 @@ export function MonthlyBarsChart({ history, currentMonth, currency }: MonthlyBar
             </>
           ) : undefined
         }
-      />
+      >
+        {trailing}
+      </WidgetHeader>
       <div className="relative mt-4 h-44 lg:h-56" onTransitionEnd={() => setSettled(true)}>
         <div aria-hidden className="absolute inset-0">
           <ResponsiveContainer width="100%" height="100%">

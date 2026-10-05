@@ -101,5 +101,8 @@ export function createSupabaseProfileMutations(ctx: DataContext): ProfileMutatio
     async complete() {
       await update({ onboarding_completo: true })
     },
+    async setWidgetOrder(order) {
+      await update({ orden_widgets: order })
+    },
   }
 }

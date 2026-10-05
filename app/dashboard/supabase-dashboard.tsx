@@ -49,10 +49,12 @@ const profile: ProfileMutations = {
   },
   setStep: unsupported,
   complete: unsupported,
+  setWidgetOrder: actions.setWidgetOrder,
 }
 
 const mutations = {
   profile,
+  setWidgetOrder: actions.setWidgetOrder,
   expenses: {
     create: actions.createExpense,
     update: actions.updateExpense,

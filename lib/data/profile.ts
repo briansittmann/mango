@@ -1,4 +1,5 @@
 import type { AmountFormat } from './amount-format.ts'
+import type { WidgetId } from './dashboard.ts'
 import { CURRENCIES, countryOf } from './countries.ts'
 
 /**
@@ -32,6 +33,8 @@ export type ProfileBasics = {
  *   for the country
  * - `setStep` stores the pending onboarding step (1–7)
  * - `complete` marks the onboarding complete
+ * - `setWidgetOrder` writes the whole desktop widget order (`orden_widgets`, 0032); the dashboard's
+ *   page supplies it, the onboarding's does not
  */
 export type ProfileMutations = {
   updateBasics(basics: ProfileBasics): Promise<void>
@@ -40,6 +43,7 @@ export type ProfileMutations = {
   requestWhatsApp(phone: string, country: string): Promise<void>
   setStep(step: number): Promise<void>
   complete(): Promise<void>
+  setWidgetOrder?(order: WidgetId[]): Promise<void>
 }
 
 /** How long a linking code is live from its request time (`whatsapp-linking`). */
