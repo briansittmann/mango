@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps, type RefObject } from 'react'
 import { ChevronUp } from 'lucide-react'
+import { motion, useMotionTemplate, useMotionValue, useSpring, useTransform, type MotionValue } from 'motion/react'
 import { useTranslations } from 'next-intl'
 import { Avatar } from '@/components/atoms/avatar'
 import { CategoryDot } from '@/components/atoms/category-dot'
@@ -43,6 +44,27 @@ type DesktopSidebarProps = {
 }
 
 const ROW_HEIGHT = 40
+/**
+ * React Bits' Dock, ported by hand to the vertical list: each row grows with the pointer's
+ * distance to its centre (full size at `DOCK_DISTANCE`), on the Dock's own spring. Only for a fine
+ * pointer that can hover and never under reduced motion; at rest every row is at scale 1.
+ */
+const DOCK_DISTANCE = 96
+const DOCK_SCALE = 1.07
+const DOCK_SPRING = { mass: 0.1, stiffness: 150, damping: 12 }
+
+function DockRow({ pointerY, style, ...props }: ComponentProps<typeof motion.a> & { pointerY: MotionValue<number> }) {
+  const ref = useRef<HTMLAnchorElement>(null)
+  const distance = useTransform(pointerY, (y) => {
+    const rect = ref.current?.getBoundingClientRect()
+    return rect ? y - rect.top - rect.height / 2 : Infinity
+  })
+  const target = useTransform(distance, [-DOCK_DISTANCE, 0, DOCK_DISTANCE], [1, DOCK_SCALE, 1])
+  const scale = useSpring(target, DOCK_SPRING)
+  const transform = useMotionTemplate`scale(${scale})`
+  return <motion.a ref={ref} style={{ ...style, transform, transformOrigin: 'left center' }} {...props} />
+}
+
 /** How long each figure stays before the next one. */
 const FIGURE_INTERVAL = 5000
 const FIGURE_KEYS = ['income', 'expenses', 'savings', 'freeMargin'] as const
@@ -77,6 +99,9 @@ export function DesktopSidebar({
   // The figures block rotates on its own (5 s a face) and rests while the pointer or the focus is
   // on it; under reduced motion it never rotates by itself and the dots are the only way through.
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+  const finePointer = useMediaQuery('(hover: hover) and (pointer: fine)')
+  const dockEnabled = finePointer && !reducedMotion
+  const pointerY = useMotionValue(Infinity)
   const [figureIndex, setFigureIndex] = useState(0)
   const [figuresHeld, setFiguresHeld] = useState(false)
   useEffect(() => {
@@ -130,18 +155,26 @@ export function DesktopSidebar({
         </button>
 
         <nav aria-label={t('navegacion')} className="mt-5 min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-width:thin]">
-          <ul ref={listRef} className="relative flex flex-col">
+          <ul
+            ref={listRef}
+            className="relative flex flex-col pr-4"
+            onPointerMove={(event) => {
+              if (dockEnabled && event.pointerType === 'mouse') pointerY.set(event.clientY)
+            }}
+            onPointerLeave={() => pointerY.set(Infinity)}
+          >
             <span
               aria-hidden
               data-shell-nav-pill
-              className={cn('shell-nav-pill pointer-events-none absolute inset-x-0 top-0 rounded-xl bg-foreground/[0.06]', pillTop == null && 'opacity-0')}
+              className={cn('shell-nav-pill pointer-events-none absolute left-0 right-4 top-0 rounded-xl bg-foreground/[0.06]', pillTop == null && 'opacity-0')}
               style={{ height: ROW_HEIGHT, transform: `translateY(${pillTop ?? 0}px)` }}
             />
             {entries.map((entry) => {
               const current = entry.id === activeId
               return (
                 <li key={entry.id} className="relative">
-                  <a
+                  <DockRow
+                    pointerY={pointerY}
                     href={`#${entry.id}`}
                     aria-current={current ? 'true' : undefined}
                     data-shell-nav={entry.id}
@@ -150,7 +183,7 @@ export function DesktopSidebar({
                       onNavigate(entry.id)
                     }}
                     className={cn(
-                      'shell-nav-link flex items-center gap-2.5 rounded-xl px-3 text-body-md outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
+                      'shell-nav-link group flex items-center gap-2.5 rounded-xl px-3 text-body-md outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
                       current ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground',
                     )}
                     style={{ height: ROW_HEIGHT }}
@@ -158,9 +191,16 @@ export function DesktopSidebar({
                     {entry.color ? <CategoryDot color={entry.color} className="size-2" /> : null}
                     <span className="min-w-0 flex-1 truncate">{entry.label}</span>
                     {entry.total != null ? (
-                      <AnimatedAmount amount={entry.total} currency={currency} className="shrink-0 text-label-ui tabular-nums text-muted-foreground" />
+                      <AnimatedAmount
+                        amount={entry.total}
+                        currency={currency}
+                        className={cn(
+                          'shell-nav-link shrink-0 text-label-ui tabular-nums',
+                          current ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground',
+                        )}
+                      />
                     ) : null}
-                  </a>
+                  </DockRow>
                 </li>
               )
             })}
