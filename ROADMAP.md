@@ -115,6 +115,10 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [x] 🤖 El cron diario del bloque 6 borra los `mensajes` de más de 30 días (pasado acá desde el bloque 6: la tabla nace en este bloque)
 - [x] 👤 Ronda de prueba con los mensajes del bloque 3 y lista de fallos
 - [x] 👤 Ronda por WhatsApp de `add-bot-conversation` (1/10): todo pasó; "¿cómo vengo?" no sumaba el total y se le agregó la línea del resto. La charla quedó en `docs/bot-conversacion-ejemplo.md`
+- [x] 🤖 Notas de voz (`add-voice-messages`, 8/10): el adaptador descarga el audio de Meta (`lib/whatsapp/media.ts`), la lógica mide la duración desde el contenedor Ogg (30 s máx., `lib/bot/audio.ts`), el parser manda el audio en la misma llamada a Gemini y toda acción trae `transcripcion`; cada respuesta empieza con "🎤 Escuché: «…»", la carga va siempre en texto con Deshacer, otros medios reciben una respuesta fija y del audio no se guarda nada (ARCHITECTURE.md §3)
+- [ ] 👤 `add-voice-messages`: confirmar que la key de Gemini sigue en Tier 1 (1.1); grabar en WhatsApp las notas de `lib/bot/voice-cases/voice-cases.json` y exportarlas como Ogg/Opus a esa carpeta (1.2); `npm run test:parser` dos veces (6.2); deploy y ronda por el chat, con una nota de solo ruido de fondo real (8.1–8.2)
+
+> **Estado (8/10), change `add-voice-messages`:** código, tests y docs escritos; `npm run test:unit` 162/162. Probado con voz sintética contra Gemini real: montos hablados bien ("doce con cuarenta" → 12.4), pero **sobre silencio o ruido blanco el modelo inventa una carga** aunque el prompt lo prohíba; la cita "Escuché" y Deshacer son la red hoy, y el ruido real de la ronda decide si hace falta un umbral de energía antes del modelo (ARCHITECTURE.md §11).
 
 > **Estado (1/10), change `add-bot-conversation`:** correcciones, Deshacer, consultas, crear categoría, confirmación progresiva e historial VIP, con `0028` aplicada en la base real. Un fijo con otro monto cambia solo ese mes (decisión del 30/9): el bot no pregunta si es permanente. `npm run test:parser` dio 22/22 dos veces seguidas.
 
@@ -190,6 +194,7 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [ ] `presupuestos.periodo` si cambia `dia_inicio_ciclo`
 - [ ] Renombrar namespace `hojaGasto`
 - [ ] Tests unitarios de ritmo/presupuesto y Playwright sobre los sheets restantes
+- [ ] Notas de voz (`add-voice-messages`): varios movimientos en una nota (hoy solo el primero); archivos de audio adjuntos (`voice: false`) reciben la respuesta fija; la cita "Escuché" va también en las consultas; Gemini inventa una transcripción sobre silencio o ruido (umbral de energía si el ruido real también falla)
 
 ## 13 · Fase 3 — refinamiento
 

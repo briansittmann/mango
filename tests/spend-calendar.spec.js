@@ -1,4 +1,5 @@
 // @ts-check
+import { readFileSync } from 'node:fs'
 import { test, expect } from '@playwright/test'
 import { reveal, tokenColor } from './widgets-helpers'
 
@@ -115,4 +116,106 @@ test('every day is available as text to assistive technology', async ({ page }) 
   await expect(page.locator('[data-day][data-today]')).toHaveAttribute('aria-label', /\(hoy\)/)
   const labelled = await cells(page).evaluateAll((nodes) => nodes.filter((n) => n.getAttribute('aria-label')).length)
   expect(labelled).toBe(30)
+})
+
+// `spend-insights` → *Day detail*.
+
+const detail = (page) => page.locator('[data-day-sheet]')
+const dayTrigger = (page) => page.locator('[data-day-selector-trigger]')
+const dayTotal = (page) => page.locator('[data-day-total]')
+
+async function openDay(page, date) {
+  await page.locator(`[data-calendar-grid] [data-day="${date}"]`).click()
+  await expect(detail(page)).toBeVisible()
+}
+
+test.describe('day detail', () => {
+  test('a cell opens the day, grouped by category, with the cell\'s total', async ({ page }) => {
+    await openDay(page, '2026-09-03')
+    await expect(page.getByRole('heading', { name: 'Gasto del día' })).toBeVisible()
+    await expect(dayTrigger(page)).toContainText('jueves, 3 sept')
+    const categories = detail(page).locator('[data-day-category]')
+    await expect(categories).toHaveCount(2)
+    await expect(categories.nth(0).locator('h3')).toContainText('Comida')
+    await expect(categories.nth(0).locator('h3')).toContainText('242,40 €')
+    await expect(categories.nth(0)).toContainText('Supermercado')
+    await expect(categories.nth(0)).toContainText('Café')
+    await expect(categories.nth(1)).toContainText('Internet')
+    await expect(dayTotal(page)).toContainText('287,40 €')
+  })
+
+  test('arrows walk the days and stop at the first day and today', async ({ page }) => {
+    await openDay(page, '2026-09-02')
+    const previous = detail(page).getByRole('button', { name: 'Día anterior' })
+    const next = detail(page).getByRole('button', { name: 'Día siguiente' })
+    await next.click()
+    await expect(dayTrigger(page)).toContainText('3 sept')
+    await expect(dayTotal(page)).toContainText('287,40 €')
+    await previous.click()
+    await previous.click()
+    await expect(dayTrigger(page)).toContainText('1 sept')
+    await expect(previous).toBeDisabled()
+    await page.keyboard.press('Escape')
+    await expect(detail(page)).toBeHidden()
+    await openDay(page, '2026-09-30')
+    await expect(next).toBeDisabled()
+  })
+
+  test('the day\'s name unfolds the grid; a day jumps and folds it; Escape folds without closing', async ({ page }) => {
+    await openDay(page, '2026-09-03')
+    await dayTrigger(page).click()
+    await expect(dayTrigger(page)).toHaveAttribute('aria-expanded', 'true')
+    const grid = page.locator('[data-day-grid]')
+    await expect(grid.locator('[data-day-option]')).toHaveCount(30)
+    await expect(grid.locator('[data-day-option="2026-09-03"]')).toHaveAttribute('aria-current', 'date')
+    await grid.locator('[data-day-option="2026-09-01"]').click()
+    await expect(dayTrigger(page)).toHaveAttribute('aria-expanded', 'false')
+    await expect(dayTrigger(page)).toContainText('1 sept')
+    await expect(dayTotal(page)).toContainText('820 €')
+    await dayTrigger(page).click()
+    await page.keyboard.press('Escape')
+    await expect(dayTrigger(page)).toHaveAttribute('aria-expanded', 'false')
+    await expect(detail(page)).toBeVisible()
+  })
+
+  test('an empty day says Sin gastos', async ({ page }) => {
+    await openDay(page, '2026-09-11')
+    await expect(detail(page).locator('[data-day-list]')).toContainText('Sin gastos')
+    await expect(detail(page).locator('[data-day-category]')).toHaveCount(0)
+  })
+
+  test('Enter on a cell opens it, and a row opens the expense sheet', async ({ page }) => {
+    await page.locator('[data-calendar-grid] [data-day="2026-09-03"]').focus()
+    await page.keyboard.press('Enter')
+    await expect(detail(page)).toBeVisible()
+    await detail(page).getByRole('button', { name: /Supermercado/ }).click()
+    await expect(detail(page)).toBeHidden()
+    const sheet = page.locator('div[role="dialog"][data-open]')
+    await expect(sheet.getByRole('button', { name: 'Guardar', exact: true })).toBeVisible()
+    await expect(sheet.locator('input[value="Supermercado"]')).toBeVisible()
+    expect(await sheet.evaluate((el) => el.contains(document.activeElement))).toBe(true)
+  })
+
+  test('no axe violation in the detail in either theme', async ({ page }) => {
+    await page.evaluate(readFileSync('node_modules/axe-core/axe.min.js', 'utf8'))
+    await openDay(page, '2026-09-03')
+    await dayTrigger(page).click()
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate((theme) => document.documentElement.setAttribute('data-theme', theme), theme)
+      await page.waitForTimeout(400)
+      const violations = await page.evaluate(async () => {
+        // @ts-expect-error axe is attached by the evaluated source above
+        const result = await window.axe.run(document.querySelector('[data-day-sheet]'), { runOnly: ['wcag2a', 'wcag2aa', 'wcag21aa'] })
+        return result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)
+      })
+      expect(violations, theme).toEqual([])
+    }
+  })
+
+  test('at 1280px it opens as the right side panel', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await reveal(page, '[data-spend-calendar]')
+    await openDay(page, '2026-09-03')
+    await expect(page.locator('[data-presentation="side"]').filter({ has: detail(page) })).toBeVisible()
+  })
 })

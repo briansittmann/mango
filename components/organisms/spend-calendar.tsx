@@ -11,6 +11,7 @@ import type { DashboardData, ExpenseGroup } from '@/lib/data/dashboard'
 // Pure arithmetic over the rows the dashboard already holds (design D3), not data access.
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
 import { dailyTotals, type DayTotal } from '@/lib/data/weekly-spend'
+import { HEAT_STEP_CLASS } from '@/lib/ui/heat-step'
 import { cn } from '@/lib/utils'
 
 type SpendCalendarProps = {
@@ -18,6 +19,8 @@ type SpendCalendarProps = {
   cycle: DashboardData['cycle']
   timeZone: string
   currency: string
+  /** Opens a day's detail (`spend-insights` → *Day detail*); days after today have no action. */
+  onSelectDay?: (date: string) => void
   /** The widget list's grip, at the end of the header. */
   trailing?: ReactNode
 }
@@ -25,21 +28,15 @@ type SpendCalendarProps = {
 const STAGGER_MS = 15
 const SETTLE_MS = 900
 
-const STEP_CLASS: Record<DayTotal['step'], string> = {
-  0: 'bg-foreground/[0.05] text-muted-foreground',
-  1: 'bg-heat-1 text-foreground',
-  2: 'bg-heat-2 text-foreground',
-  3: 'bg-heat-3 text-heat-ink-high',
-  4: 'bg-heat-4 text-heat-ink-high',
-}
+const STEP_CLASS = HEAT_STEP_CLASS
 
 /**
  * "Gasto por día" (`spend-insights`): one cell per local day of the cycle in rows of seven from the
  * cycle's first day, filled on the brand ramp by quantile of the cycle's spending days; today
- * outlined, future days muted. The grid is HTML (design D7): each cell is a focusable mark with a
- * tooltip, and an sr-only list carries every day's figure.
+ * outlined, future days muted. The grid is HTML (design D7): each cell is a button named with its
+ * date and figure, with a tooltip on hover and focus, that opens the day's detail.
  */
-export function SpendCalendar({ groups, cycle, timeZone, currency, trailing }: SpendCalendarProps) {
+export function SpendCalendar({ groups, cycle, timeZone, currency, onSelectDay, trailing }: SpendCalendarProps) {
   const t = useTranslations('graficos')
   const format = useFormatter()
   const { money } = useAmountFormatter()
@@ -73,13 +70,19 @@ export function SpendCalendar({ groups, cycle, timeZone, currency, trailing }: S
       <WidgetHeader title={t('gastoPorDia')} titleId={titleId}>
         {trailing}
       </WidgetHeader>
-      {/* Each cell is focusable and named with its date and figure, so the grid is the text too. */}
-      <div role="list" className="mt-4 grid grid-cols-7 gap-0.5" data-calendar-grid>
+      {/* Each cell is a button named with its date and figure, so the grid is the text too. */}
+      <div className="mt-4 grid grid-cols-7 gap-0.5" data-calendar-grid>
         {days.map((day, index) => (
-          <div
+          <button
             key={day.date}
-            role="listitem"
-            tabIndex={0}
+            type="button"
+            aria-disabled={day.future || !onSelectDay ? true : undefined}
+            aria-haspopup={day.future || !onSelectDay ? undefined : 'dialog'}
+            onClick={() => {
+              if (day.future || !onSelectDay) return
+              tooltip.hide()
+              onSelectDay(day.date)
+            }}
             aria-label={`${longDate(day.date)}${day.today ? ` (${t('hoy')})` : ''} · ${dayText(day)}`}
             data-day={day.date}
             data-step={day.step}
@@ -90,16 +93,18 @@ export function SpendCalendar({ groups, cycle, timeZone, currency, trailing }: S
               STEP_CLASS[day.step],
               day.future && 'bg-transparent text-muted-foreground/60 ring-1 ring-inset ring-border',
               day.today && 'shadow-[inset_0_0_0_2px_var(--foreground)]',
+              !day.future && onSelectDay && 'cursor-pointer active:scale-[0.92] motion-reduce:active:scale-100',
             )}
             data-revealed={revealed ? '' : undefined}
             data-settled={settled ? '' : undefined}
             style={{ ['--fade-delay' as string]: `${Math.min(index, 30) * STAGGER_MS}ms` }}
+            // A tap opens the day's detail, so it no longer toggles the tooltip.
             {...tooltip.trigger(day.date, <TooltipValue value={day.total > 0 ? money(day.total, currency) : t('sinGastos')} label={`${longDate(day.date)}${day.total > 0 ? ` · ${t('filas', { n: day.rows })}` : ''}`} />, {
-              touchToggle: true,
+              touchToggle: !onSelectDay,
             })}
           >
             <span aria-hidden>{day.day}</span>
-          </div>
+          </button>
         ))}
       </div>
       <div className="mt-3 flex items-center justify-end gap-1.5 text-label-ui text-muted-foreground" aria-label={t('escalaCalor')} role="img" data-heat-legend>

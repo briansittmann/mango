@@ -10,7 +10,8 @@ import { messageAlreadyProcessed } from '@/lib/data/transactions'
 import { findUserIdByPhone, readConfirmationState, setConfirmedLoads } from '@/lib/data/users'
 import es from '@/messages/es.json'
 import en from '@/messages/en.json'
-import { handleIncoming, type LinkingTexts } from './handle-message'
+import { handleIncoming, type AdapterTexts } from './handle-message'
+import { downloadMedia, type MediaResult } from './media'
 import { maskPhone, sendReaction, sendText, sendUndoButton } from './send'
 
 import type { WhatsAppMessage } from './payload'
@@ -26,16 +27,17 @@ const UNDO_ID = /^undo:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]
 
 const MESSAGES = { es, en }
 
-/** The replies the adapter sends on its own: the linking ones (`whatsapp-linking`), per language. */
-const LINKING_TEXTS: LinkingTexts = {
-  es: { vinculado: es.bot.vinculado, yaVinculado: es.bot.yaVinculado, codigoInvalido: es.bot.codigoInvalido, numeroEnOtraCuenta: es.bot.numeroEnOtraCuenta, cuentaYaVinculada: es.bot.cuentaYaVinculada },
-  en: { vinculado: en.bot.vinculado, yaVinculado: en.bot.yaVinculado, codigoInvalido: en.bot.codigoInvalido, numeroEnOtraCuenta: en.bot.numeroEnOtraCuenta, cuentaYaVinculada: en.bot.cuentaYaVinculada },
+/** The replies the adapter sends on its own: the linking ones (`whatsapp-linking`) and the one for other media (`bot-voice-messages`), per language. */
+const ADAPTER_TEXTS: AdapterTexts = {
+  es: { vinculado: es.bot.vinculado, yaVinculado: es.bot.yaVinculado, codigoInvalido: es.bot.codigoInvalido, numeroEnOtraCuenta: es.bot.numeroEnOtraCuenta, cuentaYaVinculada: es.bot.cuentaYaVinculada, soloTextoYAudio: es.bot.soloTextoYAudio },
+  en: { vinculado: en.bot.vinculado, yaVinculado: en.bot.yaVinculado, codigoInvalido: en.bot.codigoInvalido, numeroEnOtraCuenta: en.bot.numeroEnOtraCuenta, cuentaYaVinculada: en.bot.cuentaYaVinculada, soloTextoYAudio: en.bot.soloTextoYAudio },
 }
 
 /**
  * Adapter: resolves the number against the linked `whatsapp` channels, links a chat that sends
- * `vincular <código>` (`whatsapp-linking`, D5), answers a stranger once, discards retries and
- * calls the bot logic with the internal format `{ userId, text, messageId, channel, pending,
+ * `vincular <código>` (`whatsapp-linking`, D5), answers a stranger once, discards retries, answers
+ * other media with one fixed text, downloads a voice note (`add-voice-messages` D2) and calls the
+ * bot logic with the internal format `{ userId, text, audio, messageId, channel, pending,
  * lastLoadId, undoId }` (ARCHITECTURE.md §3). It owns the channel's state (design D1, D7, D12):
  * reads the pending question and the last load before the logic, writes the question on an `ask`
  * and clears it on any other reply, and applies the reply's `lastLoad`. It also decides how a load
@@ -51,9 +53,11 @@ export async function handleMessages(messages: WhatsAppMessage[]): Promise<void>
         registerUnknownContact,
         localeOf: async (userId) => (await readConfirmationState(userId)).idioma,
         processUnknownNumber,
+        messageAlreadyProcessed: (userId, messageId) => messageAlreadyProcessed(userId, 'whatsapp', messageId),
+        downloadMedia,
         handleKnown,
         sendText,
-        texts: LINKING_TEXTS,
+        texts: ADAPTER_TEXTS,
       })
     } catch (error) {
       // A message that fails doesn't take the rest of the batch down with it.
@@ -62,12 +66,8 @@ export async function handleMessages(messages: WhatsAppMessage[]): Promise<void>
   }
 }
 
-async function handleKnown(userId: string, message: WhatsAppMessage): Promise<void> {
-  if (await messageAlreadyProcessed(userId, 'whatsapp', message.messageId)) {
-    console.info(`[whatsapp] retry discarded: ${message.messageId}`)
-    return
-  }
-
+/** The known flow once the retry, media and linking checks passed (`handle-message.ts`). */
+async function handleKnown(userId: string, message: WhatsAppMessage, audio?: MediaResult): Promise<void> {
   const undoId = message.buttonId === undefined ? undefined : UNDO_ID.exec(message.buttonId)?.[1]
   if (message.buttonId !== undefined && !undoId) {
     console.info(`[whatsapp] unknown button discarded: ${message.messageId}`)
@@ -79,6 +79,7 @@ async function handleKnown(userId: string, message: WhatsAppMessage): Promise<vo
   const reply = await processMessage({
     userId,
     text: message.text,
+    audio,
     messageId: message.messageId,
     channel: 'whatsapp',
     pending: pending ?? undefined,

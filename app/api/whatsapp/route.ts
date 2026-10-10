@@ -2,7 +2,7 @@ import { after, type NextRequest } from 'next/server'
 
 import { handleMessages, maskPhone } from '@/lib/whatsapp/adapter'
 import { safeCompare, isValidSignature } from '@/lib/whatsapp/signature'
-import { describeEvents, extractTextMessages } from '@/lib/whatsapp/payload'
+import { describeEvents, extractMessages, messageKind } from '@/lib/whatsapp/payload'
 
 /**
  * WhatsApp Cloud API webhook.
@@ -65,13 +65,13 @@ export async function POST(request: NextRequest) {
     return new Response('Bad Request', { status: 400 })
   }
 
-  const messages = extractTextMessages(payload)
+  const messages = extractMessages(payload)
 
   if (messages.length === 0) {
-    console.log(`[whatsapp] event without text message: ${describeEvents(payload).join(', ') || 'unknown'}`)
+    console.log(`[whatsapp] event without a message to handle: ${describeEvents(payload).join(', ') || 'unknown'}`)
   }
   for (const message of messages) {
-    console.log(`[whatsapp] message ${message.messageId} from ${maskPhone(message.phone)}`)
+    console.log(`[whatsapp] message ${message.messageId} from ${maskPhone(message.phone)} (${messageKind(message)})`)
   }
 
   // Meta retries if the response is slow or fails, and every retry is a

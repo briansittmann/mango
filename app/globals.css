@@ -452,7 +452,8 @@
   opacity: 1;
 }
 .chart-fade[data-settled] {
-  transition: opacity 150ms ease, background-color 150ms ease;
+  /* `scale` for the calendar cells' press (they open the day detail). */
+  transition: opacity 150ms ease, background-color 150ms ease, scale 200ms var(--ease-spring);
 }
 
 .sparkline-stroke {
@@ -510,6 +511,35 @@
   }
   .spotlight-card:hover::before {
     opacity: 1;
+  }
+}
+
+/* The desktop summary tiles (ingresos, gastos, ahorro): on hover the border firms up and a soft
+   neutral shadow lifts the tile (dark adds a faint top edge, since a shadow barely reads there).
+   No brand green: it means "margin" here, and it would tint Gastos as good. Unlayered, so this
+   `transition` replaces the `pressable` one and keeps its press scale and tint. */
+.summary-tile {
+  transition:
+    scale 200ms var(--ease-spring),
+    background-color 150ms ease-out,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .summary-tile:hover {
+    border-color: light-dark(
+      color-mix(in oklab, var(--foreground) 14%, var(--border)),
+      color-mix(in oklab, var(--foreground) 24%, var(--border))
+    );
+    box-shadow:
+      inset 0 1px 0 light-dark(transparent, rgb(255 255 255 / 0.1)),
+      0 1px 2px light-dark(rgb(23 26 23 / 0.04), rgb(0 0 0 / 0.3)),
+      0 12px 28px -14px light-dark(rgb(23 26 23 / 0.18), rgb(0 0 0 / 0.7));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .summary-tile {
+    transition: none;
   }
 }
 

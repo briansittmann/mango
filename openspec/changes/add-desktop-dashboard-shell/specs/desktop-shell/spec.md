@@ -6,7 +6,7 @@ The dashboard at a laptop or desktop width: a sidebar and a top bar that start f
 ### Requirement: Desktop shell at wide viewports
 At a viewport 1024px wide or wider the dashboard SHALL be framed by a **sidebar** on the left and a **top bar** across the remaining width, and SHALL NOT render the phone's top bar or the cycle title block of `dashboard-ui` → *Cycle header and free margin*. Below 1024px neither the sidebar nor the desktop top bar SHALL be rendered or reachable, and the dashboard SHALL be as it is on a phone.
 
-The sidebar SHALL contain, from top to bottom: the Mango logo and app name; a navigation list with "Resumen", one entry per category in the displayed order (colour dot, name, and the category's total for the shown cycle), and "Gráficos"; a savings block with the cycle's net savings and the composition strip described in `dashboard-ui` → *Cycle header and free margin*; and, at the bottom, an account card with the avatar, the user's name, the phone number when the account has one, and a chevron. Activating the account card SHALL open the account menu of `dashboard-ui` → *Account avatar and menu*, anchored to the card.
+The sidebar SHALL contain, from top to bottom: the Mango logo and app name; a navigation list with "Resumen", and one entry per category in the displayed order (colour dot, name, and the category's total for the shown cycle); a savings block with the cycle's net savings and the composition strip described in `dashboard-ui` → *Cycle header and free margin*; and, at the bottom, an account card with the avatar, the user's name, the phone number when the account has one, and a chevron. Activating the account card SHALL open the account menu of `dashboard-ui` → *Account avatar and menu*, anchored to the card.
 
 The top bar SHALL contain the previous/next cycle controls with the month name between them (activating the name opens the month picker), a status pill reading "en curso" while the cycle contains today or "Proyección" while it is a projection and nothing otherwise, and an "Añadir gasto" control. The next-cycle control SHALL follow the same six-cycle limit as the phone's controls.
 
@@ -14,7 +14,7 @@ The content SHALL be laid out as: the stat-tile row across the full content widt
 
 #### Scenario: The shell replaces the phone chrome
 - **WHEN** `/demo` is rendered at a 1280px-wide viewport
-- **THEN** a sidebar is visible on the left with "Resumen", one entry per category, "Gráficos" and the account card, a top bar shows the month name with its controls, the "en curso" pill and "Añadir gasto", and no element shows the phone's title block or a second month name
+- **THEN** a sidebar is visible on the left with "Resumen", one entry per category and the account card, a top bar shows the month name with its controls, the "en curso" pill and "Añadir gasto", and no element shows the phone's title block or a second month name
 
 #### Scenario: Nothing of the shell on a phone or a tablet
 - **WHEN** `/demo` is rendered at 390px and at 820px
@@ -47,7 +47,7 @@ The transition between the two states SHALL change only the surfaces' material, 
 - **THEN** the month name and the "Añadir gasto" label each have at least 4.5:1 contrast
 
 ### Requirement: Sidebar navigation follows the page
-Each navigation entry SHALL be a link to its section: "Resumen" to the stat-tile row, a category entry to that category's card, "Gráficos" to the widget column. Activating an entry SHALL scroll the page so the target's top edge sits below the top bar, SHALL open the target category's card when it is collapsed, and SHALL move keyboard focus to the target. Exactly one entry SHALL be marked as current at any time: the entry whose section is at the reading line below the top bar, or the last entry once the page is scrolled to its end. The current entry SHALL be exposed to assistive technology as current and SHALL be marked visually by one highlight that moves from entry to entry rather than lighting each entry separately.
+Each navigation entry SHALL be a link to its section: "Resumen" to the stat-tile row and a category entry to that category's card; the widget column has no entry. Activating an entry SHALL scroll the page so the target's top edge sits below the top bar, SHALL open the target category's card when it is collapsed, and SHALL move keyboard focus to the target. Exactly one entry SHALL be marked as current at any time: the entry whose section is at the reading line below the top bar, or the last entry once the page is scrolled to its end. The current entry SHALL be exposed to assistive technology as current and SHALL be marked visually by one highlight that moves from entry to entry rather than lighting each entry separately.
 
 The category entries SHALL follow the displayed categories: a created category appears, a renamed one updates, a deleted one leaves, and the reorder mode's new order is reflected when it is left.
 
@@ -56,8 +56,8 @@ The category entries SHALL follow the displayed categories: a created category a
 - **THEN** after scrolling ends the "ocio" card's top edge is below the top bar's bottom edge, the card is open, and the "ocio" entry is marked current
 
 #### Scenario: Scroll moves the current mark
-- **WHEN** at 1280px the page is scrolled until the first widget is at the reading line
-- **THEN** "Gráficos" is the only entry exposed as current
+- **WHEN** at 1280px the page is scrolled from the top until the "ocio" card is at the reading line, and then to its end
+- **THEN** "ocio" is the only entry exposed as current, and at the end the last category's entry is
 
 #### Scenario: The list follows a rename
 - **WHEN** at 1280px "comida" is renamed to "Mercado" from its sheet

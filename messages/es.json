@@ -102,12 +102,16 @@
     "delTotal": "{porcentaje} de la semana",
     "totalSemana": "Total de la semana: {monto}",
     "hoy": "hoy",
-    "irACategoria": "Ir a {categoria}"
+    "irACategoria": "Ir a {categoria}",
+    "gastoDelDia": "Gasto del día",
+    "diaAnterior": "Día anterior",
+    "diaSiguiente": "Día siguiente",
+    "seleccionarDia": "Elegir día",
+    "totalDelDia": "Total del día"
   },
   "escritorio": {
     "navegacion": "Secciones del dashboard",
     "resumen": "Resumen",
-    "graficos": "Gráficos",
     "ahorroDelCiclo": "Ahorro del ciclo",
     "cifrasDelCiclo": "Cifras del ciclo",
     "mostrarCifra": "Mostrar {nombre}",
@@ -586,6 +590,11 @@
     "codigoInvalido": "🤔 Ese código no es válido o venció. Pedí uno nuevo desde tu cuenta en la web.",
     "numeroEnOtraCuenta": "📌 Este número ya está vinculado a otra cuenta.",
     "cuentaYaVinculada": "📌 Esa cuenta ya tiene un WhatsApp vinculado.",
-    "desconocido": "👋 Hola. Mango se usa desde la web: creá tu cuenta en {url} y vinculá WhatsApp desde tu cuenta."
+    "desconocido": "👋 Hola. Mango se usa desde la web: creá tu cuenta en {url} y vinculá WhatsApp desde tu cuenta.",
+    "escuche": "🎤 Escuché: «{texto}»",
+    "audioLargo": "🎤 Ese audio es muy largo. Mandame uno de hasta 30 segundos, o escribímelo.",
+    "audioNoDescargado": "⏳ No pude escuchar tu audio ahora. Volvé a mandarlo en un rato, o escribímelo.",
+    "audioSinVoz": "🎤 No escuché nada en ese audio. Probá de nuevo o escribímelo.",
+    "soloTextoYAudio": "🤷 Solo entiendo texto y notas de voz de hasta 30 segundos."
   }
 }

@@ -14,8 +14,7 @@ test('the shell replaces the phone chrome: sidebar with the sections, bar with t
   await expect(page.locator('[data-desktop-sidebar]')).toBeVisible()
   const names = await page.locator('[data-shell-nav] .truncate').evaluateAll((els) => els.map((e) => e.textContent?.trim()))
   expect(names[0]).toBe('Resumen')
-  expect(names[names.length - 1]).toBe('Gráficos')
-  expect(names.slice(1, -1)).toEqual(CATEGORIES)
+  expect(names.slice(1)).toEqual(CATEGORIES)
   await expect(page.locator('[data-shell-nav="categoria-comida"]')).toContainText(/310\s?€/)
   await expect(page.locator('[data-sidebar-account]')).toContainText('Ana García')
   // The figures block starts on the income and its dots move it; reduced motion is on, so it never rotates by itself.
@@ -152,7 +151,7 @@ test('with motion on, the material changes over successive frames within 450 ms 
   expect(samples.monthMoved).toBe(false)
 })
 
-test('clicking "ocio" lands its card under the bar and marks it current; the widgets mark "Gráficos"; the end of the page too', async ({ page }) => {
+test('clicking "ocio" lands its card under the bar and marks it current; the end of the page marks the last category', async ({ page }) => {
   await loadDesktop(page)
   expect(await activeSection(page)).toBe('resumen')
   await page.locator('[data-shell-nav="categoria-ocio"]').click()
@@ -164,17 +163,13 @@ test('clicking "ocio" lands its card under the bar and marks it current; the wid
   expect(await activeSection(page)).toBe('categoria-ocio')
   await expect(page.locator('[data-shell-nav][aria-current]')).toHaveCount(1)
   expect(await page.evaluate(() => document.activeElement?.id)).toBe('categoria-ocio')
-  await page.locator('[data-shell-nav="graficos"]').click()
-  await page.waitForTimeout(600)
-  expect(await rect(page, '#graficos').then((b) => b.top)).toBeLessThanOrEqual(READING_LINE + 4)
-  expect(await activeSection(page)).toBe('graficos')
   // One highlight that moves: the pill sits on the current link.
   const pill = await page.locator('[data-shell-nav-pill]').evaluate((el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).m42)
-  const link = await page.locator('[data-shell-nav="graficos"]').evaluate((el) => /** @type {HTMLElement} */ (el.parentElement).offsetTop)
+  const link = await page.locator('[data-shell-nav="categoria-ocio"]').evaluate((el) => /** @type {HTMLElement} */ (el.parentElement).offsetTop)
   expect(Math.round(pill)).toBe(link)
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
   await page.waitForTimeout(400)
-  expect(await activeSection(page)).toBe('graficos')
+  expect(await activeSection(page)).toBe('categoria-compras')
   await page.evaluate(() => window.scrollTo(0, 0))
   await page.waitForTimeout(400)
   expect(await activeSection(page)).toBe('resumen')

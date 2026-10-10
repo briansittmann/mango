@@ -46,6 +46,7 @@ import { MonthlyBarsChart } from '@/components/organisms/monthly-bars-chart'
 import { RecurringSheet } from '@/components/organisms/recurring-sheet'
 import { SheetShell } from '@/components/organisms/sheet-shell'
 import { SpendCalendar } from '@/components/organisms/spend-calendar'
+import { DaySheet } from '@/components/organisms/day-sheet'
 import { SummaryGroup, type SummaryGroupItem } from '@/components/organisms/summary-group'
 import { UpcomingChargesCard } from '@/components/organisms/upcoming-charges-card'
 import { WeeklyTopChart } from '@/components/organisms/weekly-top-chart'
@@ -89,7 +90,6 @@ const SHOW_SUMMARY_TRENDS = false
 const UPCOMING_CHARGES_ID = 'proximos-cobros'
 /** The sidebar's section anchors (design D3): the tile row, each card (`categoria-<id>`) and the widget list. */
 const SECTION_OVERVIEW = 'resumen'
-const SECTION_WIDGETS = 'graficos'
 const categorySection = (id: string) => `categoria-${id}`
 
 function clampDate(date: string, min: string, max: string): string {
@@ -195,6 +195,8 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
   // What opened the category and definition sheets: their popover anchor from `sm` to `lg` (D5).
   const categoryOpenerRef = useRef<HTMLElement | null>(null)
   const recurringOpenerRef = useRef<HTMLElement | null>(null)
+  // The calendar's day detail; the date stays while the sheet is leaving.
+  const [dayDetail, setDayDetail] = useState({ open: false, date: data.cycle.today })
   // The last summary panel opened, kept while the side panel is leaving.
   const [lastSummaryKey, setLastSummaryKey] = useState<SummaryKey | null>(null)
   // The widget order shown while a save is in flight or being reverted (D6), like `displayedOrder`.
@@ -1228,7 +1230,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
 
   // The sidebar's sections, in the displayed order; scroll-spy only runs where the sidebar is shown.
   const sectionIds = useMemo(
-    () => [SECTION_OVERVIEW, ...renderedGroups.map((group) => categorySection(group.id)), SECTION_WIDGETS],
+    () => [SECTION_OVERVIEW, ...renderedGroups.map((group) => categorySection(group.id))],
     [renderedGroups],
   )
   const spiedSection = useScrollSpy(sectionIds, desktop && !reordering)
@@ -1240,7 +1242,6 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
   const sidebarEntries: SidebarEntry[] = [
     { id: SECTION_OVERVIEW, label: tEscritorio('resumen') },
     ...renderedGroups.map((group) => ({ id: categorySection(group.id), label: group.name, color: group.color, total: group.total })),
-    { id: SECTION_WIDGETS, label: tEscritorio('graficos') },
   ]
 
   // The widgets in the user's order; a projection keeps only the donut, in place (D6).
@@ -1294,7 +1295,14 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
       case 'calendar':
         return (
           <AnimatedContent threshold={0.2} distance={24} duration={0.3} delay={0.05}>
-            <SpendCalendar groups={data.expenses.groups} cycle={data.cycle} timeZone={data.user.timezone} currency={currency} trailing={grip} />
+            <SpendCalendar
+              groups={data.expenses.groups}
+              cycle={data.cycle}
+              timeZone={data.user.timezone}
+              currency={currency}
+              onSelectDay={(date) => setDayDetail({ open: true, date })}
+              trailing={grip}
+            />
           </AnimatedContent>
         )
       case 'monthly':
@@ -1317,7 +1325,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
   // Under a panel's scrim, the account menu or reorder mode, the floating shell drops its blur so
   // no two translucent materials overlap (design-system → *Translucent materials*).
   const pushedBack =
-    reordering || accountMenuOpen || accountSheetOpen || sheet.open || categorySheet.open || recurringSheet.open || summaryPanelOpen
+    reordering || accountMenuOpen || accountSheetOpen || sheet.open || categorySheet.open || recurringSheet.open || summaryPanelOpen || dayDetail.open
 
   const summaryItems: SummaryGroupItem[] = [
     {
@@ -1845,8 +1853,6 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
           sticking, no scrollbar of its own. Its `mt-4` is the cards' own, so both columns start
           on one line. */}
       <div
-        id={SECTION_WIDGETS}
-        tabIndex={-1}
         className="mt-section flex min-w-0 flex-col gap-stack outline-none lg:col-start-2 lg:row-start-2 lg:mt-4 lg:scroll-mt-[104px]"
         aria-hidden={reordering}
         inert={reordering}
@@ -1884,6 +1890,24 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
           {sidePanelItem?.panel}
         </Drawer.Content>
       </SheetShell>
+      <DaySheet
+        open={dayDetail.open}
+        date={dayDetail.date}
+        onDateChange={(date) => setDayDetail({ open: true, date })}
+        onClose={() => setDayDetail((prev) => ({ ...prev, open: false }))}
+        groups={data.expenses.groups}
+        cycle={data.cycle}
+        timeZone={data.user.timezone}
+        currency={currency}
+        onEdit={
+          actions.expenses
+            ? (group, expense) => {
+                setDayDetail((prev) => ({ ...prev, open: false }))
+                openEditSheet(group, expense)
+              }
+            : undefined
+        }
+      />
       <AccountMenu
         user={data.user}
         actions={actions}

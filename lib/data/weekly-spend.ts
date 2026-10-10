@@ -1,4 +1,4 @@
-import type { CategoryColor, ExpenseGroup } from './dashboard'
+import type { CategoryColor, Expense, ExpenseGroup } from './dashboard'
 import type { LocalDate } from './expenses'
 
 /**
@@ -37,6 +37,13 @@ export type WeeklyCategory = {
   share: number
   /** How many categories the fold holds; absent on a real category. */
   folded?: number
+}
+
+export type DayCategory = {
+  group: ExpenseGroup
+  /** The day's counted rows of the category, highest amount first. */
+  expenses: Expense[]
+  total: number
 }
 
 export type DayTotal = {
@@ -99,12 +106,15 @@ export function currentWeekIndex(weeks: Week[]): number {
  * The rows that count as spent (D2): expenses that are neither projected charges nor pending
  * recurring charges. Each carries its local day in the user's timezone.
  */
+function isSpent(expense: Expense): boolean {
+  return !expense.projected && !(expense.fixed && !expense.fixed.charged)
+}
+
 export function spentRows(groups: ExpenseGroup[], timeZone: string): SpentRow[] {
   const rows: SpentRow[] = []
   for (const group of groups) {
     for (const expense of group.expenses) {
-      if (expense.projected) continue
-      if (expense.fixed && !expense.fixed.charged) continue
+      if (!isSpent(expense)) continue
       rows.push({
         categoryId: group.id,
         categoryName: group.name,
@@ -196,4 +206,20 @@ export function dailyTotals(groups: ExpenseGroup[], start: LocalDate, end: Local
     })
   }
   return days
+}
+
+/**
+ * One day's spent rows grouped by category, for the day detail (`spend-insights` → *Day detail*):
+ * the rows the day's calendar cell counts, categories and rows by amount, highest first.
+ */
+export function dayExpenses(groups: ExpenseGroup[], day: LocalDate, timeZone: string): { items: DayCategory[]; total: number } {
+  const items: DayCategory[] = []
+  for (const group of groups) {
+    const expenses = group.expenses
+      .filter((expense) => isSpent(expense) && localDayOf(expense.date, timeZone) === day)
+      .sort((a, b) => b.amount - a.amount)
+    if (expenses.length > 0) items.push({ group, expenses, total: expenses.reduce((sum, expense) => sum + expense.amount, 0) })
+  }
+  items.sort((a, b) => b.total - a.total)
+  return { items, total: items.reduce((sum, item) => sum + item.total, 0) }
 }

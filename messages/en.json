@@ -102,12 +102,16 @@
     "delTotal": "{porcentaje} of the week",
     "totalSemana": "Week total: {monto}",
     "hoy": "today",
-    "irACategoria": "Go to {categoria}"
+    "irACategoria": "Go to {categoria}",
+    "gastoDelDia": "Spending that day",
+    "diaAnterior": "Previous day",
+    "diaSiguiente": "Next day",
+    "seleccionarDia": "Choose a day",
+    "totalDelDia": "Day total"
   },
   "escritorio": {
     "navegacion": "Dashboard sections",
     "resumen": "Overview",
-    "graficos": "Charts",
     "ahorroDelCiclo": "Cycle savings",
     "cifrasDelCiclo": "Cycle figures",
     "mostrarCifra": "Show {nombre}",
@@ -586,6 +590,11 @@
     "codigoInvalido": "🤔 That code isn't valid or has expired. Get a new one from your account on the web.",
     "numeroEnOtraCuenta": "📌 This number is already linked to another account.",
     "cuentaYaVinculada": "📌 That account already has a linked WhatsApp.",
-    "desconocido": "👋 Hi. Mango is used from the web: create your account at {url} and link WhatsApp from your account."
+    "desconocido": "👋 Hi. Mango is used from the web: create your account at {url} and link WhatsApp from your account.",
+    "escuche": "🎤 I heard: “{texto}”",
+    "audioLargo": "🎤 That audio is too long. Send me one of up to 30 seconds, or type it.",
+    "audioNoDescargado": "⏳ I couldn't listen to your audio right now. Send it again in a bit, or type it.",
+    "audioSinVoz": "🎤 I heard nothing in that audio. Try again or type it.",
+    "soloTextoYAudio": "🤷 I only understand text and voice notes of up to 30 seconds."
   }
 }

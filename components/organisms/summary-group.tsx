@@ -81,7 +81,7 @@ export function SummaryGroup({ items, openKey, onToggle, currency, layout = 'acc
             aria-haspopup={item.opens ? 'dialog' : undefined}
             aria-expanded={item.opens ? openKey === item.key : undefined}
             data-summary-column={item.key}
-            className="pressable flex min-w-0 flex-col items-start justify-center rounded-card border border-border bg-card px-inset py-5 text-left hover:border-foreground/25 [--press-scale:0.99]"
+            className="pressable summary-tile flex min-w-0 flex-col items-start justify-center rounded-card border border-border bg-card px-inset py-5 text-left [--press-scale:0.99]"
           >
             {/* Label and caption step up one size at `xl`; at exactly 1024px each tile is ~170px wide. */}
             <span className="w-full truncate text-body-md text-muted-foreground xl:text-body-lg">{item.label}</span>

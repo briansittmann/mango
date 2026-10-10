@@ -1,7 +1,8 @@
 /**
  * Chat message → one validated action (`bot-message-parsing`, design D1–D3). Pure module: the
  * model call is injected and only relative imports are used, so `parser.eval.mjs` and the unit
- * tests load it from plain Node without Next.
+ * tests load it from plain Node without Next. A voice note goes to the model as audio in the same
+ * call, and the action then carries `transcripcion` (`add-voice-messages` D4).
  */
 
 import { z } from 'zod'
@@ -29,39 +30,65 @@ const CargarSchema = z
     }
   })
 
+const RepreguntarSchema = z.strictObject({
+  accion: z.literal('repreguntar'),
+  falta: z.literal('categoria'),
+  tipo,
+  monto: z.number().positive(),
+  dias_atras: diasAtras,
+})
+
+const NoEntendidoSchema = z.strictObject({ accion: z.literal('no_entendido') })
+
+const ConsultarSchema = z.strictObject({ accion: z.literal('consultar'), consulta: z.enum(['margen_libre', 'mes']) })
+
+const CorregirSchema = z
+  .strictObject({
+    accion: z.literal('corregir'),
+    monto: z.number().positive().optional(),
+    categoria: z.string().min(1).optional(),
+  })
+  .refine((value) => value.monto !== undefined || value.categoria !== undefined, {
+    message: 'corregir needs monto or categoria',
+  })
+
+const BorrarSchema = z.strictObject({ accion: z.literal('borrar') })
+
+const CrearCategoriaSchema = z.strictObject({
+  accion: z.literal('crear_categoria'),
+  nombre: z.string().min(1),
+  presupuesto: z.number().positive().optional(),
+  confirmada: z.boolean().default(false),
+})
+
 export const ActionSchema = z.discriminatedUnion('accion', [
   CargarSchema,
-  z.strictObject({
-    accion: z.literal('repreguntar'),
-    falta: z.literal('categoria'),
-    tipo,
-    monto: z.number().positive(),
-    dias_atras: diasAtras,
-  }),
-  z.strictObject({ accion: z.literal('no_entendido') }),
-  z.strictObject({ accion: z.literal('consultar'), consulta: z.enum(['margen_libre', 'mes']) }),
-  z
-    .strictObject({
-      accion: z.literal('corregir'),
-      monto: z.number().positive().optional(),
-      categoria: z.string().min(1).optional(),
-    })
-    .refine((value) => value.monto !== undefined || value.categoria !== undefined, {
-      message: 'corregir needs monto or categoria',
-    }),
-  z.strictObject({ accion: z.literal('borrar') }),
-  z.strictObject({
-    accion: z.literal('crear_categoria'),
-    nombre: z.string().min(1),
-    presupuesto: z.number().positive().optional(),
-    confirmada: z.boolean().default(false),
-  }),
+  RepreguntarSchema,
+  NoEntendidoSchema,
+  ConsultarSchema,
+  CorregirSchema,
+  BorrarSchema,
+  CrearCategoriaSchema,
+])
+
+/** The literal text heard; empty when no speech was intelligible. `extend` keeps each variant's refinements. */
+const transcripcion = { transcripcion: z.string() }
+
+/** The same seven variants, each with `transcripcion`, so the two schemas never drift. */
+export const VoiceActionSchema = z.discriminatedUnion('accion', [
+  CargarSchema.extend(transcripcion),
+  RepreguntarSchema.extend(transcripcion),
+  NoEntendidoSchema.extend(transcripcion),
+  ConsultarSchema.extend(transcripcion),
+  CorregirSchema.extend(transcripcion),
+  BorrarSchema.extend(transcripcion),
+  CrearCategoriaSchema.extend(transcripcion),
 ])
 
 export type Action = z.infer<typeof ActionSchema>
 
-/** An action, or `no_disponible` when the model never answered (not something the model can return). */
-export type ParseResult = Action | { accion: 'no_disponible' }
+/** An action (with `transcripcion` when the input was audio), or `no_disponible` when the model never answered. */
+export type ParseResult = (Action & { transcripcion?: string }) | { accion: 'no_disponible' }
 
 /**
  * The question the channel holds (design D5): a category for an amount, or whether to create a
@@ -71,8 +98,12 @@ export type PendingQuestion =
   | { pregunta: 'categoria'; tipo: 'gasto' | 'ingreso' | 'ahorro'; monto: number; diasAtras: number }
   | { pregunta: 'crear_categoria'; nombre: string; presupuesto: number | null; parecida: string }
 
+export type AudioInput = { data: Uint8Array; mimeType: string }
+
 export type ParseInput = {
   text: string
+  /** A voice note's bytes; `text` is ignored then and the model transcribes it itself (D4). */
+  audio?: AudioInput
   /** Account categories, verbatim from the database. */
   categories: string[]
   /** Names of the account's active `gasto` recurring definitions. */
@@ -85,7 +116,8 @@ export type ParseInput = {
   history?: { direction: 'entrante' | 'saliente'; text: string }[]
 }
 
-export type Model = (prompt: string) => Promise<string>
+export type ModelRequest = { prompt: string; audio?: AudioInput }
+export type Model = (request: ModelRequest) => Promise<string>
 
 const EXAMPLES: Record<ParseInput['locale'], [string, object][]> = {
   es: [
@@ -122,27 +154,33 @@ const EXAMPLES: Record<ParseInput['locale'], [string, object][]> = {
 export const PENDING_HEADER = 'PREGUNTA PENDIENTE'
 /** Marks the VIP conversation block (design D8). */
 export const HISTORY_HEADER = 'CONVERSACIÓN RECIENTE'
+/** Marks the voice-note rules, present only when the input is audio (`add-voice-messages` D4). */
+export const VOICE_HEADER = 'NOTA DE VOZ'
 
 export function buildPrompt(input: ParseInput): string {
+  const voice = input.audio !== undefined
   const language = input.locale === 'en' ? 'inglés' : 'español'
   const recurring = input.recurringNames.length > 0 ? input.recurringNames.join(', ') : '(ninguno)'
-  const examples = EXAMPLES[input.locale]
-    .map(([message, action]) => `Mensaje: ${message}\nJSON: ${JSON.stringify(action)}`)
-    .join('\n\n')
+  // With audio, every action carries the transcription: the list and the examples show it.
+  const T = voice ? ',"transcripcion":string' : ''
+  const examples = [
+    ...EXAMPLES[input.locale].map(([message, action]) => `Mensaje: ${message}\nJSON: ${JSON.stringify(voice ? { ...action, transcripcion: message } : action)}`),
+    ...(voice ? [`Nota de voz: (silencio, ruido de fondo o nada inteligible)\nJSON: ${JSON.stringify({ accion: 'no_entendido', transcripcion: '' })}`] : []),
+  ].join('\n\n')
 
   const sections = [
     `Sos el intérprete de un bot de finanzas personales. Convertís UN mensaje de chat en UN objeto JSON con una acción. Devolvé solo el objeto JSON, sin texto alrededor.
 
 ACCIONES Y CAMPOS (ningún campo fuera de estos):
-- {"accion":"cargar","tipo":"gasto"|"ingreso"|"ahorro","monto":número,"categoria":string|null,"descripcion":string|null,"dias_atras":entero>=0,"recurrente":string|null}
+- {"accion":"cargar","tipo":"gasto"|"ingreso"|"ahorro","monto":número,"categoria":string|null,"descripcion":string|null,"dias_atras":entero>=0,"recurrente":string|null${T}}
   Registrar un movimiento. monto positivo en gasto e ingreso. En ahorro, positivo es un depósito y negativo un retiro ("saqué 100 del ahorro" → -100); nunca 0.
-- {"accion":"repreguntar","falta":"categoria","tipo":"gasto","monto":número,"dias_atras":entero>=0}
+- {"accion":"repreguntar","falta":"categoria","tipo":"gasto","monto":número,"dias_atras":entero>=0${T}}
   Solo cuando el mensaje da un monto de gasto y NADA que describa en qué fue ("gasté 50").
-- {"accion":"no_entendido"}  El mensaje no es ninguna de las otras acciones.
-- {"accion":"consultar","consulta":"margen_libre"|"mes"}  "libre" o cuánto le queda → margen_libre; cómo viene el mes → mes.
-- {"accion":"corregir","monto"?:número,"categoria"?:string}  Corrige la última carga; al menos uno de los dos.
-- {"accion":"borrar"}  Borra la última carga ("borrá eso").
-- {"accion":"crear_categoria","nombre":string,"presupuesto"?:número,"confirmada":boolean}  Solo cuando el mensaje pide crear una categoría. nombre con la ortografía correcta, tildes incluidas; presupuesto solo si el mensaje lo da (positivo); confirmada es false salvo que el mensaje confirme la pregunta pendiente.`,
+- {"accion":"no_entendido"${T}}  El mensaje no es ninguna de las otras acciones.
+- {"accion":"consultar","consulta":"margen_libre"|"mes"${T}}  "libre" o cuánto le queda → margen_libre; cómo viene el mes → mes.
+- {"accion":"corregir","monto"?:número,"categoria"?:string${T}}  Corrige la última carga; al menos uno de los dos.
+- {"accion":"borrar"${T}}  Borra la última carga ("borrá eso").
+- {"accion":"crear_categoria","nombre":string,"presupuesto"?:número,"confirmada":boolean${T}}  Solo cuando el mensaje pide crear una categoría. nombre con la ortografía correcta, tildes incluidas; presupuesto solo si el mensaje lo da (positivo); confirmada es false salvo que el mensaje confirme la pregunta pendiente.`,
 
     `DATOS DE LA CUENTA
 Hoy es ${input.today}. Idioma de la cuenta: ${language}; los mensajes llegan en ese idioma.
@@ -159,9 +197,17 @@ Gastos fijos activos: ${recurring}`,
 - dias_atras: 0 si el mensaje no nombra un día; "ayer" → 1; "anteayer" → 2; "hace N días" → N. "date" es una cita (Ocio), no una fecha.
 - corregir: cualquier forma de decir que la última carga estaba mal, aunque sea suelta ("osea lo que gasté esos 50 eran comida" → corregir con categoria "Comida"; "no, eran 80" → corregir con monto 80). Un monto que solo repite el de la carga para identificarla no es un monto nuevo.
 - Un "sí", "dale" u "ok" suelto, sin una pregunta pendiente que confirme, es no_entendido.`,
-
-    `EJEMPLOS\n${examples}`,
   ]
+
+  if (voice) {
+    sections.push(`${VOICE_HEADER}
+El mensaje es la nota de voz adjunta. Primero transcribila literalmente en "transcripcion" (las cifras como se dijeron: "café tres cincuenta") y después devolvé la acción para esa transcripción. Toda acción lleva "transcripcion".
+- No inventes nada. Si en el audio no se oyen palabras claras (ruido, silencio, música, voz ininteligible), "transcripcion" es "" y la acción es no_entendido. Ante la duda sobre lo que se dijo, no_entendido con lo que oíste antes que un movimiento adivinado: un gasto inventado es peor que una pregunta.
+- Montos hablados: "tres cincuenta" → 3.5; "doce con cuarenta" → 12.4; "tres con veinte" → 3.2; "dos mil cien" → 2100; "cuarenta y cinco" → 45; "y medio" → ,5 ("cuatro y medio" → 4.5). "X con Y" es X,Y: la parte entera siempre va primero.
+- Si la nota tiene varios movimientos, devolvé solo el primero.`)
+  }
+
+  sections.push(`EJEMPLOS\n${examples}`)
 
   if (input.history && input.history.length > 0) {
     const lines = input.history.map((message) => `${message.direction === 'entrante' ? 'Usuario' : 'Mango'}: ${message.text}`)
@@ -181,7 +227,11 @@ En el turno anterior el bot preguntó qué categoría corresponde a un ${tipo} d
 En el turno anterior el bot preguntó si crea la categoría "${nombre}" aunque ya existe "${parecida}". Si este mensaje lo confirma ("sí", "dale", "creala"), devolvé ${JSON.stringify(campos)}. Si el mensaje es otra cosa, interpretalo por sí solo e ignorá la pregunta; confirmada solo es true en esa confirmación.`)
   }
 
-  sections.push(`MENSAJE\n${input.text}`)
+  sections.push(
+    voice
+      ? 'MENSAJE\nLa nota de voz adjunta. Si no se oye ninguna palabra, devolvé exactamente {"accion":"no_entendido","transcripcion":""}.'
+      : `MENSAJE\n${input.text}`,
+  )
   return sections.join('\n\n')
 }
 
@@ -191,17 +241,19 @@ const NOT_UNDERSTOOD: Action = { accion: 'no_entendido' }
  * Calls `model` at most twice: a second time with the previous output and what was wrong with it
  * when the first output is not JSON, fails the schema or the call throws. Two failures →
  * `no_entendido`, or `no_disponible` when both calls threw (the model never answered); an
- * unvalidated object is never returned.
+ * unvalidated object is never returned. With audio, the retry re-sends the audio and the output
+ * is validated with `VoiceActionSchema`, so an action without `transcripcion` is a schema error.
  */
 export async function parseMessage(input: ParseInput, model: Model): Promise<ParseResult> {
   const prompt = buildPrompt(input)
+  const schema = input.audio ? VoiceActionSchema : ActionSchema
   let retryPrompt = prompt
   let answered = false
 
   for (let attempt = 0; attempt < 2; attempt++) {
     let raw: string
     try {
-      raw = await model(attempt === 0 ? prompt : retryPrompt)
+      raw = await model({ prompt: attempt === 0 ? prompt : retryPrompt, audio: input.audio })
     } catch (error) {
       console.warn(`[parser] model call failed (attempt ${attempt + 1}):`, error)
       continue
@@ -216,7 +268,7 @@ export async function parseMessage(input: ParseInput, model: Model): Promise<Par
       continue
     }
 
-    const result = ActionSchema.safeParse(json)
+    const result = schema.safeParse(json)
     if (result.success) return result.data
     retryPrompt = withFeedback(prompt, raw, z.prettifyError(result.error))
   }

@@ -39,12 +39,22 @@ import {
   type LoadBudget,
   type LoadSummary,
 } from './format'
+import { refuseVoiceNote } from './audio'
 import { createGeminiModel } from './gemini'
-import { parseMessage, type Action, type PendingQuestion } from './parser'
+import { parseMessage, type Action, type ParseResult, type PendingQuestion } from './parser'
+
+/**
+ * A voice note as the adapter hands it over (`add-voice-messages` D1): the bytes and their MIME
+ * type, or why the adapter could not fetch them. Never a media id or a URL.
+ */
+export type IncomingAudio = { data: Uint8Array; mimeType: string } | { error: 'download' | 'too-large' }
 
 export type IncomingMessage = {
   userId: string
+  /** Empty for a button press and for a voice note. */
   text: string
+  /** Set for a voice note; the logic measures it, parses it and quotes what was heard (D3, D5). */
+  audio?: IncomingAudio
   messageId: string
   channel: Channel
   /** The channel's unexpired question, read by the adapter (design D5). */
@@ -146,16 +156,32 @@ export async function processMessage(message: IncomingMessage): Promise<BotReply
   }
 
   const history = usuario.vip ? await recentMessages(usuario.id) : undefined
-  const reply = await answer(turn, history)
-  await remember(turn, message.text, reply)
+  const { reply, heard } = await answer(turn, history)
+  // For a voice note the stored incoming text is the transcription, '🎤' alone when there is none; never the bytes (D6).
+  await remember(turn, message.audio ? heard || '🎤' : message.text, reply)
   return reply
 }
 
-async function answer(turn: Turn, history: StoredMessage[] | undefined): Promise<BotReply> {
+/**
+ * Parses and acts. For a voice note (D3, D5): the duration gate comes before any model call, every
+ * reply starts with what was heard, a load is always confirmed in text, and `heard` is the
+ * transcription for the VIP history.
+ */
+async function answer(turn: Turn, history: StoredMessage[] | undefined): Promise<{ reply: BotReply; heard?: string }> {
   const { message, context, fmt, t } = turn
+  const audio = message.audio
+
+  // Before any model call (D3, D8): `unavailable` makes the adapter keep the pending question. Logs name the id, never the content.
+  const refused = audio ? refuseVoiceNote(audio) : null
+  if (refused) {
+    console.info(`[bot] audio ${message.messageId} refused: ${refused}`)
+    return { reply: { kind: 'unavailable', text: t(refused === 'too-long' ? 'audioLargo' : 'audioNoDescargado') } }
+  }
+
   const action = await parseMessage(
     {
       text: message.text,
+      audio: audio && !('error' in audio) ? audio : undefined,
       categories: context.categories.map((category) => category.nombre),
       recurringNames: context.recurring.map((definition) => definition.nombre),
       locale: turn.usuario.idioma,
@@ -166,6 +192,20 @@ async function answer(turn: Turn, history: StoredMessage[] | undefined): Promise
     createGeminiModel(),
   )
 
+  const reply = await act(turn, action)
+  if (!audio) return { reply }
+
+  const heard = 'transcripcion' in action ? action.transcripcion : undefined
+  if (action.accion === 'no_entendido' && !heard) return { reply: { kind: 'text', text: t('audioSinVoz') }, heard }
+  // `no_disponible` carries no transcription: its text goes out as it is.
+  if (reply.kind === 'none' || heard === undefined) return { reply, heard }
+
+  const text = `${t('escuche', { texto: heard })}\n${reply.text}`
+  return { reply: reply.kind === 'loaded' ? { ...reply, text, alwaysText: true } : { ...reply, text }, heard }
+}
+
+async function act(turn: Turn, action: ParseResult): Promise<BotReply> {
+  const { t } = turn
   switch (action.accion) {
     case 'cargar':
       return load(turn, action)

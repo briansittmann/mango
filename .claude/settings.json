@@ -157,7 +157,8 @@
       "WebFetch(domain:playbooks.com)",
       "WebFetch(domain:ui.shadcn.com)",
       "Skill(openspec-explore)",
-      "Skill(openspec-explore:*)"
+      "Skill(openspec-explore:*)",
+      "WebFetch(domain:developers.facebook.com)"
     ],
     "additionalDirectories": [
       "/Users/brianrebagliati/Documents/Work/mango-finanzas/mango/baseline-shots",

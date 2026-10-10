@@ -1,0 +1,45 @@
+{
+  "_descripcion": "Notas de voz grabadas por Brian en WhatsApp y exportadas como Ogg/Opus (add-voice-messages, design D10). Cada caso nombra el archivo de esta carpeta, la acción esperada y, cuando importa, la transcripción esperada (se compara sin mayúsculas, tildes ni puntuación). Las corre `npm run test:parser` después de los casos de texto, con las categorías de parser-cases.json. `sintetico-3s.ogg` y `sintetico-38s.ogg` son voz sintética de macOS (`say`), solo para el test de duración (`audio.test.mjs`); no son casos del eval.",
+  "casos": [
+    {
+      "archivo": "cafe-tres-cincuenta.ogg",
+      "transcripcion": "café tres cincuenta",
+      "esperado": { "accion": "cargar", "tipo": "gasto", "monto": 3.5 }
+    },
+    {
+      "archivo": "farmacia-doce-con-cuarenta.ogg",
+      "transcripcion": "farmacia doce con cuarenta",
+      "esperado": { "accion": "cargar", "tipo": "gasto", "monto": 12.4, "categoria": "Salud" }
+    },
+    {
+      "archivo": "cobre-dos-mil-cien.ogg",
+      "transcripcion": "cobré dos mil cien",
+      "recurringNames": ["Sueldo"],
+      "esperado": { "accion": "cargar", "tipo": "ingreso", "monto": 2100, "recurrente": null }
+    },
+    {
+      "archivo": "como-vengo.ogg",
+      "transcripcion": "¿cómo vengo?",
+      "esperado": { "accion": "consultar", "consulta": "mes" }
+    },
+    {
+      "archivo": "no-eran-cuarenta.ogg",
+      "transcripcion": "no, eran cuarenta",
+      "esperado": { "accion": "corregir", "monto": 40 }
+    },
+    {
+      "archivo": "borra-eso.ogg",
+      "transcripcion": "borrá eso",
+      "esperado": { "accion": "borrar" }
+    },
+    {
+      "archivo": "ruido.ogg",
+      "transcripcion": "",
+      "esperado": { "accion": "no_entendido" }
+    },
+    {
+      "archivo": "nota-29s.ogg",
+      "esperado": { "accion": "cargar", "tipo": "gasto" }
+    }
+  ]
+}

@@ -125,6 +125,9 @@ export function SheetShell({
               // the focus trap would otherwise pull focus to the first button and ring "Cancelar".
               initialFocus={initialFocus === false ? () => popupRef.current : initialFocus}
               finalFocus={() => {
+                // Another sheet opened as this one closed (a row of the day detail) keeps the focus it took.
+                const active = document.activeElement
+                if (active && !popupRef.current?.contains(active) && active.closest('[role="dialog"]')) return false
                 const target = opener?.current ?? focusedAtOpenRef.current
                 if (target instanceof HTMLElement && document.contains(target)) return target
                 return finalFocus?.current ?? true

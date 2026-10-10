@@ -11,9 +11,16 @@ export type WhatsAppMessage = {
   messageId: string
   /** A reply button's id (`interactive.button_reply.id`); `text` is empty then (design D2). */
   buttonId?: string
+  /** A voice note recorded in the chat (`add-voice-messages` D1); `text` is empty then. The adapter downloads it by `id`. */
+  audio?: { id: string; mimeType: string; voice: boolean }
+  /** Meta's `type` of a message the bot does not handle (image, document, an attached audio file…): answered with one fixed text. */
+  unsupported?: string
 }
 
-export function extractTextMessages(payload: unknown): WhatsAppMessage[] {
+/** Meta message types the bot answers with the fixed "text and voice notes only" reply (`bot-voice-messages`). */
+const UNSUPPORTED_TYPES = new Set(['image', 'video', 'document', 'sticker', 'location', 'contacts'])
+
+export function extractMessages(payload: unknown): WhatsAppMessage[] {
   const messages: WhatsAppMessage[] = []
   if (!isObject(payload)) return messages
 
@@ -35,9 +42,17 @@ export function extractTextMessages(payload: unknown): WhatsAppMessage[] {
   return messages
 }
 
+/** What a message is, for the logs: `text`, `button`, `voice` or `unsupported:<type>`. */
+export function messageKind(message: WhatsAppMessage): string {
+  if (message.buttonId !== undefined) return 'button'
+  if (message.audio) return 'voice'
+  if (message.unsupported) return `unsupported:${message.unsupported}`
+  return 'text'
+}
+
 /**
- * Event types in a payload that carries no text message (`status:read`,
- * `message:image`…), for the logs. Never reads contents, only types.
+ * Event types in a payload that carries no message we handle (`status:read`,
+ * `message:reaction`…), for the logs. Never reads contents, only types.
  */
 export function describeEvents(payload: unknown): string[] {
   const events: string[] = []
@@ -62,25 +77,37 @@ export function describeEvents(payload: unknown): string[] {
   return events
 }
 
+/**
+ * One of three shapes: a text or a reply-button press, a voice note (an `audio` with `voice: true`),
+ * or an unsupported media type. Reactions and other interactive types are dropped: no reply is owed.
+ */
 function extractMessage(message: unknown): WhatsAppMessage | null {
   if (!isObject(message)) return null
 
-  // Text and reply-button presses only. Incoming images, audio, reactions and other
-  // interactive types are discarded until there's something to do with them.
-  const { id, from } = message
-  if (typeof id !== 'string' || typeof from !== 'string') return null
+  const { id, from, type } = message
+  if (typeof id !== 'string' || typeof from !== 'string' || typeof type !== 'string') return null
+  const base = { phone: toE164(from), text: '', messageId: id }
 
-  if (message.type === 'interactive') {
+  if (type === 'interactive') {
     const reply = isObject(message.interactive) && message.interactive.type === 'button_reply' ? message.interactive.button_reply : undefined
     const buttonId = isObject(reply) ? reply.id : undefined
-    return typeof buttonId === 'string' ? { phone: toE164(from), text: '', messageId: id, buttonId } : null
+    return typeof buttonId === 'string' ? { ...base, buttonId } : null
   }
 
-  if (message.type !== 'text') return null
-  const text = isObject(message.text) ? message.text.body : undefined
-  if (typeof text !== 'string') return null
+  if (type === 'text') {
+    const text = isObject(message.text) ? message.text.body : undefined
+    return typeof text === 'string' ? { ...base, text } : null
+  }
 
-  return { phone: toE164(from), text, messageId: id }
+  if (type === 'audio') {
+    const audio = isObject(message.audio) ? message.audio : undefined
+    if (!audio || typeof audio.id !== 'string') return null
+    // An attached or forwarded audio file is not a voice note: its duration cannot be read the same way (design, Non-Goals).
+    if (audio.voice !== true) return { ...base, unsupported: 'audio' }
+    return { ...base, audio: { id: audio.id, mimeType: typeof audio.mime_type === 'string' ? audio.mime_type : 'audio/ogg', voice: true } }
+  }
+
+  return UNSUPPORTED_TYPES.has(type) ? { ...base, unsupported: type } : null
 }
 
 /**
