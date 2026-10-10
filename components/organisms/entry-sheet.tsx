@@ -51,7 +51,8 @@ export type FieldDescriptor<V> = TextFieldDescriptor<V> | ChoiceFieldDescriptor<
 
 export type EntryConfig<V> = {
   fields: FieldDescriptor<V>[]
-  initialFocus: keyof V & string
+  /** A new entry starts at its name; an edit at the amount, the field that usually changes. */
+  initialFocus: { create: keyof V & string; edit: keyof V & string }
   titleKeys: { create: HojaGastoKey; edit: HojaGastoKey }
   submitKeys: { create: HojaGastoKey; edit: HojaGastoKey }
   deleteKey: HojaGastoKey
@@ -59,12 +60,12 @@ export type EntryConfig<V> = {
 
 export const expenseEntry: EntryConfig<ExpenseDraft> = {
   fields: [
-    { name: 'amount', kind: 'amount', labelKey: 'importe' },
     { name: 'description', kind: 'text', labelKey: 'descripcion', placeholderKey: 'opcional', optional: true },
+    { name: 'amount', kind: 'amount', labelKey: 'importe' },
     { name: 'date', kind: 'date', labelKey: 'fecha' },
     { kind: 'recurrence' },
   ],
-  initialFocus: 'amount',
+  initialFocus: { create: 'description', edit: 'amount' },
   titleKeys: { create: 'nuevoGasto', edit: 'editarGasto' },
   submitKeys: { create: 'anadir', edit: 'guardar' },
   deleteKey: 'eliminarGasto',
@@ -72,12 +73,12 @@ export const expenseEntry: EntryConfig<ExpenseDraft> = {
 
 export const incomeEntry: EntryConfig<IncomeDraft> = {
   fields: [
-    { name: 'amount', kind: 'amount', labelKey: 'importe' },
     { name: 'description', kind: 'text', labelKey: 'descripcion', placeholderKey: 'opcional', optional: true },
+    { name: 'amount', kind: 'amount', labelKey: 'importe' },
     { name: 'date', kind: 'date', labelKey: 'fecha' },
     { kind: 'recurrence' },
   ],
-  initialFocus: 'amount',
+  initialFocus: { create: 'description', edit: 'amount' },
   titleKeys: { create: 'nuevoIngreso', edit: 'editarIngreso' },
   submitKeys: { create: 'anadir', edit: 'guardar' },
   deleteKey: 'eliminarIngreso',
@@ -99,11 +100,11 @@ export function savingsEntry(typeOptions: { deposit: string; withdrawal: string 
           { value: 'withdrawal', label: typeOptions.withdrawal },
         ],
       },
-      { name: 'amount', kind: 'amount', labelKey: 'importe' },
       { name: 'name', kind: 'text', labelKey: 'nombre', invalidMessageKey: 'nombreObligatorio' },
+      { name: 'amount', kind: 'amount', labelKey: 'importe' },
       { name: 'date', kind: 'date', labelKey: 'fecha' },
     ],
-    initialFocus: 'amount',
+    initialFocus: { create: 'name', edit: 'amount' },
     titleKeys: { create: 'nuevoMovimientoAhorro', edit: 'nuevoMovimientoAhorro' },
     submitKeys: { create: 'anadir', edit: 'anadir' },
     deleteKey: 'eliminarGasto',
@@ -243,6 +244,7 @@ export function EntrySheet<V>({
   const [recurrenceCount, setRecurrenceCount] = useState('')
   const [recurrenceTouched, setRecurrenceTouched] = useState<{ day?: boolean; count?: boolean }>({})
   const recurrenceCountRef = useRef<HTMLInputElement | null>(null)
+  const amountInputRef = useRef<HTMLInputElement | null>(null)
 
   // Picking "un número de veces" reveals the count field right below it — jump straight into it.
   useEffect(() => {
@@ -499,7 +501,8 @@ export function EntrySheet<V>({
           }}
           onBlur={() => setTouched((prev) => ({ ...prev, [field.name]: true }))}
           inputRef={(el) => {
-            if (field.name === config.initialFocus) initialFocusRef.current = el
+            amountInputRef.current = el
+            if (field.name === config.initialFocus[mode]) initialFocusRef.current = el
           }}
           disabled={disabled}
           invalid={invalid}
@@ -510,15 +513,25 @@ export function EntrySheet<V>({
 
     if (field.kind === 'text') {
       const invalid = !field.optional && Boolean(touched[field.name]) && value.trim() === ''
+      // The name comes before the amount: while the amount is empty, Enter moves on to it.
+      const nextIsAmount = amountFieldDescriptor != null && amountValue === null
       return (
         <>
           <FieldRow label={t(field.labelKey)} htmlFor={id}>
             <input
               id={id}
+              ref={(el) => {
+                if (field.name === config.initialFocus[mode]) initialFocusRef.current = el
+              }}
               type="text"
               data-base-ui-swipe-ignore
-              enterKeyHint="done"
+              enterKeyHint={nextIsAmount ? 'next' : 'done'}
               autoCapitalize="sentences"
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' || !nextIsAmount) return
+                event.preventDefault()
+                amountInputRef.current?.focus()
+              }}
               readOnly={disabled}
               aria-invalid={invalid || undefined}
               aria-describedby={invalid ? `${id}-error` : undefined}
@@ -603,6 +616,9 @@ export function EntrySheet<V>({
       leading={
         <Drawer.Close
           disabled={disabled}
+          // Keeps the focused field from blurring: its error line would grow the sheet and move
+          // this button out from under the press before the click lands.
+          onMouseDown={(event) => event.preventDefault()}
           className="pressable text-body-md text-muted-foreground disabled:pointer-events-none disabled:opacity-50"
         >
           {t('cancelar')}

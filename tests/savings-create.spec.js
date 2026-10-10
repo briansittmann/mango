@@ -67,16 +67,18 @@ test('a withdrawal lists a typographic minus sign and moves the totals down', as
   await expect.poll(() => body(page)).toMatch(/Margen libre\s*894\s?€/)
 })
 
-test('submitting with an empty amount keeps the sheet open, adds nothing and marks the amount field', async ({ page }) => {
+test('the sheet starts at the name; Enter moves to the empty amount, and an empty amount adds nothing', async ({ page }) => {
   const sheet = await openSavingsCreateSheet(page)
   const rows = page.locator('[data-savings-movement-row]')
   const rowCountBefore = await rows.count()
 
-  await sheet.locator('input[type="text"]').first().fill('Bono')
+  await expect(sheet.getByLabel('Nombre')).toBeFocused()
+  await page.keyboard.type('Bono')
+  await page.keyboard.press('Enter')
+  await expect(sheet.getByLabel('Importe')).toBeFocused()
   await page.keyboard.press('Enter')
 
   await expect(sheet).toBeVisible()
-  await expect(sheet.getByLabel('Importe')).toHaveAttribute('aria-invalid', 'true')
   await expect(rows).toHaveCount(rowCountBefore)
 
   await sheet.getByRole('button', { name: 'Cancelar' }).click()

@@ -85,7 +85,7 @@ test('the savings tile opens the accumulated block, the movements and the add ro
   await expect(dialog.getByRole('button', { name: 'Añadir movimiento de ahorro' })).toHaveCount(1)
   await dialog.getByRole('button', { name: 'Añadir movimiento de ahorro' }).click()
   const sheet = page.locator('div[role="dialog"][data-open]').last()
-  await expect(sheet.getByLabel('Importe')).toBeFocused()
+  await expect(sheet.getByLabel('Nombre')).toBeFocused()
   await sheet.getByLabel('Importe').fill('40')
   await sheet.getByLabel('Nombre').fill('Hucha')
   await sheet.locator('button[type="submit"]').click()

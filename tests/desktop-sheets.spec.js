@@ -12,7 +12,7 @@ async function openEntrySheet(page, categoryId = 'comida') {
   return dialog
 }
 
-test('the entry sheet is a panel docked right, full height minus the inset, amount focused, over a scrim', async ({ page }) => {
+test('the entry sheet is a panel docked right, full height minus the inset, name focused, over a scrim', async ({ page }) => {
   await loadDesktop(page)
   const dialog = await openEntrySheet(page)
   await expect(dialog).toHaveAttribute('data-presentation', 'side')
@@ -20,7 +20,7 @@ test('the entry sheet is a panel docked right, full height minus the inset, amou
   expect(1280 - box.right).toBeLessThanOrEqual(16)
   expect(box.height).toBeGreaterThanOrEqual(900 - 32)
   expect(box.width).toBeGreaterThanOrEqual(400)
-  await expect(dialog.getByLabel('Importe')).toBeFocused()
+  await expect(dialog.getByLabel('Descripción')).toBeFocused()
   await expect(page.locator('[data-sheet-backdrop][data-open]')).toBeVisible()
   // Dirty: an outside press is cancelled; Escape still closes.
   await dialog.getByLabel('Importe').fill('12')
@@ -169,7 +169,7 @@ test('"Añadir gasto" from the bar: pick "ocio", save 15, and the card gains the
   await page.locator('[data-add-expense]').click()
   const dialog = sideSheet(page)
   await expect(dialog).toHaveAttribute('data-presentation', 'side')
-  await expect(dialog.getByLabel('Importe')).toBeFocused()
+  await expect(dialog.getByLabel('Descripción')).toBeFocused()
   await dialog.locator('button[aria-label*="Cambiar"]').click()
   await dialog.getByRole('radio', { name: /ocio/i }).click()
   await dialog.getByLabel('Importe').fill('15')

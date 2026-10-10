@@ -134,7 +134,8 @@ The sheet SHALL open from exactly these triggers:
 
 ### Requirement: Expense fields and validation
 **Amount:**
-- When the sheet opens, the amount field SHALL have focus and SHALL request the decimal keypad on touch devices, with no intermediate step. In edit mode its value SHALL be selected, so that typing replaces it.
+- The description field SHALL come before it. In create mode the description SHALL have focus when the sheet opens, and Enter in it SHALL move focus to the amount while the amount is empty. In edit mode the amount SHALL have focus on open, with its value selected so that typing replaces it.
+- It SHALL request the decimal keypad on touch devices.
 - It SHALL accept a comma or a period as the decimal separator and at most two decimals.
 - Its value SHALL be greater than 0 and at most 9 999 999 999,99.
 - The user's currency symbol SHALL be shown next to it, on the side where the active language places it.
@@ -152,10 +153,11 @@ The sheet SHALL open from exactly these triggers:
 - While the amount is empty or invalid, the primary action SHALL be disabled.
 - When the amount field loses focus holding an invalid value, a message SHALL appear under it. The message SHALL be exposed to assistive technology and state that an amount above 0 with up to two decimals is expected.
 
-#### Scenario: Amount focused on open
-- **WHEN** the sheet opens in create mode, and separately in edit mode
-- **THEN** the amount field has keyboard focus and declares a decimal input mode
-- **AND** in edit mode its whole value is selected
+#### Scenario: Focus on open
+- **WHEN** the sheet opens in create mode
+- **THEN** the description field has keyboard focus, and Enter in it moves focus to the empty amount field, which declares a decimal input mode
+- **WHEN** the sheet opens in edit mode
+- **THEN** the amount field has keyboard focus and its whole value is selected
 
 #### Scenario: Comma decimals in Spanish
 - **WHEN** the visitor types "12,5" as the amount in "comida", in Spanish, and saves

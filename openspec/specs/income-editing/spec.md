@@ -117,7 +117,8 @@ An income entry SHALL NOT be opened from anywhere else. In particular the `upcom
 
 ### Requirement: Income fields and validation
 **Amount:**
-- When the sheet opens, the amount field SHALL have focus and SHALL request the decimal keypad on touch devices. In edit mode its value SHALL be selected, so that typing replaces it.
+- The description field SHALL come before it. In create mode the description SHALL have focus when the sheet opens, and Enter in it SHALL move focus to the amount while the amount is empty. In edit mode the amount SHALL have focus on open, with its value selected so that typing replaces it.
+- It SHALL request the decimal keypad on touch devices.
 - It SHALL accept a comma or a period as the decimal separator and at most two decimals.
 - Its value SHALL be greater than 0 and at most 9 999 999 999,99. Income SHALL NOT accept a negative amount.
 - The user's currency symbol SHALL be shown next to it, on the side where the active language places it.

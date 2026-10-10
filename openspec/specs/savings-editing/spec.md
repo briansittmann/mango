@@ -54,6 +54,7 @@ It SHALL be titled "Nuevo movimiento de ahorro" and its primary action SHALL rea
 **Validity:**
 - While the amount or the name is invalid, the primary action SHALL be disabled.
 - A submit attempt with an invalid amount (for example Enter in the amount field) SHALL save nothing, keep the sheet open and mark the amount field invalid, with the message stating that an amount above 0 with up to two decimals is expected.
+- Enter in the name field SHALL move focus to the amount while the amount is empty.
 - When the name field loses focus empty, it SHALL be marked invalid with a message stating a name is required.
 - A withdrawal SHALL NOT be limited by the savings balance: it MAY leave the cycle's savings total or the accumulated balance below zero.
 
@@ -63,7 +64,7 @@ The sheet SHALL open the same way from the savings panel of a projected cycle (`
 
 #### Scenario: Defaults on open
 - **WHEN** on `/demo` in Spanish the visitor opens the savings panel and activates "Añadir movimiento de ahorro"
-- **THEN** a sheet titled "Nuevo movimiento de ahorro" is shown with "Depósito" selected, the amount field focused and empty, the name empty and the date set to the cycle's today
+- **THEN** a sheet titled "Nuevo movimiento de ahorro" is shown with "Depósito" selected, the name field focused and empty above the empty amount field and the date set to the cycle's today
 
 #### Scenario: Defaults in a projected cycle
 - **WHEN** on `/demo` in Spanish the visitor opens the October 2026 projection, opens the savings panel and activates "Añadir movimiento de ahorro"
