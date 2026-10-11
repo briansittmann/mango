@@ -6,7 +6,7 @@ Turns a free-text chat message ("nafta 45 ayer") into one structured action the 
 
 ### Requirement: A message becomes exactly one action from the seven
 
-Every text message SHALL be parsed into exactly one action. The set of actions SHALL be: `cargar` (log a movement), `repreguntar` (a datum is missing), `no_entendido`, `consultar`, `corregir`, `borrar` and `crear_categoria`. Each action SHALL carry only the fields defined for it:
+Every message, whether it arrives as text or as a voice note, SHALL be parsed into exactly one action. The set of actions SHALL be: `cargar` (log a movement), `repreguntar` (a datum is missing), `no_entendido`, `consultar`, `corregir`, `borrar` and `crear_categoria`. Each action SHALL carry only the fields defined for it:
 
 - `cargar`: `tipo` (`gasto` | `ingreso` | `ahorro`), `monto` (a number; positive for `gasto` and `ingreso`; non-zero for `ahorro`, negative meaning a withdrawal), `categoria` (one of the account's category names, or null), `descripcion` (short text or null), `dias_atras` (integer ≥ 0, 0 when the message names no day), `recurrente` (the name of one of the account's active recurring expenses when the message refers to it, otherwise null).
 - `repreguntar`: `falta` (`categoria`), `tipo`, `monto`, `dias_atras`.
@@ -15,6 +15,8 @@ Every text message SHALL be parsed into exactly one action. The set of actions S
 - `corregir`: `monto` (optional, positive), `categoria` (optional), at least one present.
 - `borrar`: no fields.
 - `crear_categoria`: `nombre`, `presupuesto` (optional, positive), `confirmada` (true only when the message confirms a pending category-creation question; false otherwise).
+
+When the message is a voice note, the audio SHALL be given to the model in the same single request as the prompt, with no separate transcription step, and every action SHALL additionally carry `transcripcion`: the literal text heard, empty when no speech was intelligible. The parser SHALL understand amounts as they are spoken ("tres cincuenta" → 3.5, "doce con cuarenta" → 12.4, "dos mil cien" → 2100). A text message SHALL NOT carry `transcripcion`.
 
 Output that is not valid JSON, names another action or carries fields outside this contract SHALL be rejected before it reaches the logging step.
 
@@ -57,6 +59,26 @@ Output that is not valid JSON, names another action or carries fields outside th
 #### Scenario: Gibberish
 - **WHEN** the account sends "asdasda"
 - **THEN** the action is `no_entendido`
+
+#### Scenario: A spoken expense
+- **WHEN** the account sends a voice note saying "café tres cincuenta"
+- **THEN** the action is `cargar` with `tipo` `gasto`, `monto` 3.5, a category that fits coffee or "Otros", and `transcripcion` "café tres cincuenta" (punctuation and case aside)
+
+#### Scenario: A spoken amount with a decimal
+- **WHEN** the account sends a voice note saying "farmacia doce con cuarenta"
+- **THEN** the action is `cargar` with `monto` 12.4 and `categoria` "Salud"
+
+#### Scenario: A spoken query
+- **WHEN** the account sends a voice note saying "¿cuánto me queda?"
+- **THEN** the action is `consultar` with `consulta` `margen_libre` and a `transcripcion`
+
+#### Scenario: Noise only
+- **WHEN** the account sends a voice note with no intelligible speech
+- **THEN** the action is `no_entendido` with an empty `transcripcion`
+
+#### Scenario: Text carries no transcription
+- **WHEN** the account types "nafta 45"
+- **THEN** the action has no `transcripcion` field
 
 ### Requirement: The parser works with the account's own categories and recurring expenses
 
@@ -144,11 +166,15 @@ The parser SHALL receive the account's language (`es` | `en`) and SHALL understa
 
 ### Requirement: The parser is evaluated against the recorded cases
 
-The recorded parser cases (message, expected action and fields, the category list they assume, and optionally a pending question) SHALL be runnable as one command that calls the real model. It SHALL report, per case, whether every expected field matches the parsed action. It SHALL compare only the expected fields, with category names compared case-insensitively, and SHALL exit with failure when any case fails. The cases SHALL include at least one of each conversation action: an amount correction, a category correction, a deletion, both queries, a creation with a budget and a confirmed creation. That command SHALL NOT be part of the unit test command, which SHALL keep running without network access or credentials.
+The recorded parser cases (message, expected action and fields, the category list they assume, and optionally a pending question) SHALL be runnable as one command that calls the real model. The recorded cases SHALL include voice notes: real Ogg/Opus recordings kept with the cases, each with its expected action and fields and, where it matters, the expected transcription compared loosely (case, accents and punctuation ignored). It SHALL report, per case, whether every expected field matches the parsed action. It SHALL compare only the expected fields, with category names compared case-insensitively, and SHALL exit with failure when any case fails. The cases SHALL include at least one of each conversation action: an amount correction, a category correction, a deletion, both queries, a creation with a budget and a confirmed creation. The voice cases SHALL include at least a load with a decimal amount spoken in words, a query, a correction and a note with no speech. That command SHALL NOT be part of the unit test command, which SHALL keep running without network access or credentials.
 
 #### Scenario: Running the evaluation
 - **WHEN** the evaluation command runs with a valid model key
 - **THEN** it prints one line per case with pass or fail and the parsed action on failure, and its exit code is zero only when every case passes
+
+#### Scenario: Voice cases run too
+- **WHEN** the evaluation command runs
+- **THEN** every recorded voice note is sent to the model as audio and reported like a text case
 
 #### Scenario: Unit tests stay offline
 - **WHEN** the unit test command runs without a model key

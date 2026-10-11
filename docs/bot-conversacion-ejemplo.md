@@ -124,3 +124,76 @@ Charla real por WhatsApp del 1 de octubre de 2026 (ronda de prueba de `add-bot-c
 > **Mango:** 😅 No te entendí. …
 
 Los consejos sobre la plata quedan para el modo asesor (bloque 13 de `ROADMAP.md`). Un "sí" suelto, sin una pregunta del bot pendiente, no se entiende. Las categorías se crean por chat, pero se borran desde la web.
+
+## Notas de voz
+
+Ronda del 11 de octubre de 2026 (`add-voice-messages`), leída de la tabla `mensajes`. Del lado del usuario figura lo que el bot transcribió de cada nota (🎤 sola cuando no hubo transcripción); los textos del bot van tal cual. Las respuestas a una foto o a un archivo de audio reenviado no se guardan en `mensajes`, por eso no están.
+
+> **Vos:** 🎤 *café tres cincuenta*
+>
+> **Mango:** 🎤 Escuché: «café tres cincuenta»  
+> Anotado ✅ Café · 3,50 € en Ocio.  
+> *[botón: Deshacer]*
+
+> **Vos:** 🎤 *farmacia doce con cuarenta*
+>
+> **Mango:** 🎤 Escuché: «farmacia doce con cuarenta»  
+> Anotado ✅ Farmacia · 12,40 € en Salud.
+
+> **Vos:** 🎤 *cobré dos mil cien*
+>
+> **Mango:** 🎤 Escuché: «cobré dos mil cien»  
+> Anotado 💰 Ingreso · 2.100 €.
+
+**Qué muestra:** los montos dichos con palabras se entienden ("doce con cuarenta" → 12,40). Toda respuesta a una nota empieza citando lo que se oyó, y la carga va siempre en texto con *Deshacer*, aunque ya hayan pasado las 15 primeras: si el bot oyó mal, se ve y se deshace en un toque.
+
+> **Vos:** 🎤 *cómo vengo*
+>
+> **Mango:** 🎤 Escuché: «cómo vengo»  
+> 📊 Este mes llevás 3.773,21 € gastados.  
+> • Vivienda: 1.000 €  
+> • Deudas: 932 €  
+> • Valencia: 637,56 €  
+> • Otros: 587 €  
+> • Salud: 223,40 €  
+> • 5 categorías más: 393,25 €  
+>
+> El detalle: https://www.usemango.dev/dashboard
+
+> **Vos:** 🎤 *gasto ejemplo ponelo en categoría ocio 40 euros digo 35*
+>
+> **Mango:** 🎤 Escuché: «gasto ejemplo ponelo en categoría ocio 40 euros digo 35»  
+> Anotado ✅ Gasto Ejemplo · 35 € en Ocio.
+
+> **Vos:** 🎤 *no, perdón, eran 40*
+>
+> **Mango:** 🎤 Escuché: «no, perdón, eran 40»  
+> ✏️ Corregido: 40 € en Ocio, hoy.
+
+> **Vos:** 🎤 *borrá eso*
+>
+> **Mango:** 🎤 Escuché: «borrá eso»  
+> 🗑️ Borré 40 € en Ocio, hoy.
+
+**Qué muestra:** una nota puede autocorregirse a mitad ("40 euros, digo 35") y el bot se queda con lo último. Corregir y borrar por voz funcionan igual que por texto, sobre la última carga del chat.
+
+> **Vos:** 🎤 *(nota de más de 30 segundos)*
+>
+> **Mango:** 🎤 Ese audio es muy largo. Mandame uno de hasta 30 segundos, o escribímelo.
+
+> **Vos:** 🎤 *(solo ruido de fondo)*
+>
+> **Mango:** 🎤 No escuché nada en ese audio. Probá de nuevo o escribímelo.
+
+**Qué muestra:** el límite es de 30 segundos y se controla antes de mandar el audio al modelo. Una nota sin palabras no se convierte en un gasto inventado.
+
+> **Vos:** Gaste 50
+>
+> **Mango:** 🤔 ¿En qué categoría va? Respondeme con una: Vivienda, Comida, Transporte, Ocio, Salud, Suplementos, Suscripciones, Deudas, Otros, Valencia.
+
+> **Vos:** 🎤 *ocio*
+>
+> **Mango:** 🎤 Escuché: «ocio»  
+> Anotado ✅ Ocio · 50 €.
+
+**Qué muestra:** a una pregunta del bot se le puede contestar con una nota de voz.

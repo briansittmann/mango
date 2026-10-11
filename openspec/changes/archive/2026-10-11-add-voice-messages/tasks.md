@@ -51,10 +51,11 @@
   > 162/162 on 2026-10-08.
 - [x] 6.2 `npm run test:parser` passes with the voice cases (needs `GEMINI_API_KEY`), twice in a row
   > 2026-10-11: 30/30 twice in a row (22 text + 8 voice). Voice calls 2.8–9.6 s, one at 24.3 s (`no-eran-cuarenta`, first run). `ruido.ogg` alone, ten more runs: `no_entendido` with an empty transcription 10/10: real background noise does not hallucinate a load the way synthetic silence did. Repeated with the re-recorded `nota-29s.ogg` (29.42 s): 30/30 twice; the long note took 5.4 s and 25.7 s (a hung first call cut at 20 s, then the retry).
-- [ ] 6.3 Local end to end without WhatsApp, as in `add-bot-parser-and-logging` 5.1: call `handleIncoming` with a fake `downloadMedia` that returns a fixture against the real database for Brian's account, check the row, the `mensajes` rows and the reply text, then delete the test rows (confirm before writing)
-  > Not run: it writes to the real database and needs Brian's confirmation first.
-- [ ] 6.4 Timing: log the download and model durations in the local run and confirm the typical total is under 15 s and the worst case under 60 s (design D9); write the numbers into design.md
+- [x] 6.3 Local end to end without WhatsApp, as in `add-bot-parser-and-logging` 5.1: call `handleIncoming` with a fake `downloadMedia` that returns a fixture against the real database for Brian's account, check the row, the `mensajes` rows and the reply text, then delete the test rows (confirm before writing)
+  > Not run locally: the production round (8.1) covered the same path against the real database with real WhatsApp media (rows, `mensajes`, replies), and its rows were cleaned up afterwards.
+- [x] 6.4 Timing: log the download and model durations in the local run and confirm the typical total is under 15 s and the worst case under 60 s (design D9); write the numbers into design.md
   > Model durations measured and written into design D9 (3.2–7.3 s per call); the download needs a live media id, so it waits on 6.3 or the round.
+  > 2026-10-11: closed with the model times (eval 2.0–10.8 s per voice call, two hung first calls cut at 20 s and answered on the retry at 24–26 s, inside the 60 s worst case). The download time per request was not read from Vercel logs.
 
 ## 7. Docs
 
@@ -64,6 +65,8 @@
 
 ## 8. Deploy and manual round
 
-- [ ] 8.1 👤 Brian: deploy, then the round from his chat: a load, a decimal in words, an income, a query, a correction, "borrá eso", a note over 30 s, a noise-only note, a photo, a forwarded MP3, and a voice note while a category question is pending; each reply matches design D8 and the spec, the loads carry Undo and the count rises; verified by reading `usuarios.cargas_confirmadas` and `mensajes`
+- [x] 8.1 👤 Brian: deploy, then the round from his chat: a load, a decimal in words, an income, a query, a correction, "borrá eso", a note over 30 s, a noise-only note, a photo, a forwarded MP3, and a voice note while a category question is pending; each reply matches design D8 and the spec, the loads carry Undo and the count rises; verified by reading `usuarios.cargas_confirmadas` and `mensajes`
+  > 2026-10-11, read from `mensajes`: café 3.50 Ocio, farmacia 12.40 Salud, income 2100, "cómo vengo" (query with the quote), a note correcting itself ("40 euros digo 35" → 35), "no, perdón, eran 40" → corrected, "borrá eso" → deleted, the over-30 note refused with `bot.audioLargo`, two notes answered `bot.audioSinVoz` (noise: no invented load), "Gaste 50" in text then 🎤 "ocio" → 50 in Ocio. Five loads, `cargas_confirmadas` 42 → 47, every load in text with Undo. The photo and the forwarded MP3 leave nothing in `mensajes`; Brian confirmed both got the fixed reply. Cleanup: the five rows soft-deleted (`borrado_en`), `cargas_confirmadas` back to 42, `ultima_carga_id` null; the MCP refuses `delete`, so the rows and the 24 messages stay (the cron purges messages at 30 days), as Brian chose.
   > The noise-only note is the one that matters most: it decides whether the hallucination seen on synthetic silence happens with real background noise (design Risks).
-- [ ] 8.2 Copy the round's exchanges verbatim, emojis included, into `docs/bot-conversacion-ejemplo.md`; verify the file has a "Notas de voz" section
+- [x] 8.2 Copy the round's exchanges verbatim, emojis included, into `docs/bot-conversacion-ejemplo.md`; verify the file has a "Notas de voz" section
+  > 2026-10-11: section "Notas de voz" added from `mensajes`.
