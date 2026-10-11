@@ -24,7 +24,7 @@
     },
     {
       "archivo": "no-eran-cuarenta.ogg",
-      "transcripcion": "no, eran cuarenta",
+      "transcripcion": ["no, eran cuarenta", "no, eran 40"],
       "esperado": { "accion": "corregir", "monto": 40 }
     },
     {

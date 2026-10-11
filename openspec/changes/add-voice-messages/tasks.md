@@ -1,9 +1,10 @@
 ## 1. Decisions to confirm before coding
 
-- [ ] 1.1 👤 Brian confirms the Gemini key stays on Tier 1 (paid) or decides otherwise (design, Open Questions); the answer is written into design.md Context and, if it changes, the proposal is revised before any code
-  > 2026-10-08: not answered yet; the code below assumes Tier 1 (noted in design.md Context).
-- [ ] 1.2 👤 Brian records the voice fixtures on WhatsApp and exports them as Ogg/Opus into `lib/bot/voice-cases/`: a plain load ("café tres cincuenta"), a decimal in words ("farmacia doce con cuarenta"), an income ("cobré dos mil cien"), a query ("¿cómo vengo?"), a correction ("no, eran cuarenta"), "borrá eso", a note with only noise, a 25–29 s note and one over 30 s; verified by listing the files with `afinfo` durations in the task notes
+- [x] 1.1 👤 Brian confirms the Gemini key stays on Tier 1 (paid) or decides otherwise (design, Open Questions); the answer is written into design.md Context and, if it changes, the proposal is revised before any code
+  > 2026-10-11: confirmed, Tier 1 stays (design.md Context).
+- [x] 1.2 👤 Brian records the voice fixtures on WhatsApp and exports them as Ogg/Opus into `lib/bot/voice-cases/`: a plain load ("café tres cincuenta"), a decimal in words ("farmacia doce con cuarenta"), an income ("cobré dos mil cien"), a query ("¿cómo vengo?"), a correction ("no, eran cuarenta"), "borrá eso", a note with only noise, a 25–29 s note and one over 30 s; verified by listing the files with `afinfo` durations in the task notes
   > File names expected by `voice-cases/voice-cases.json`: `cafe-tres-cincuenta.ogg`, `farmacia-doce-con-cuarenta.ogg`, `cobre-dos-mil-cien.ogg`, `como-vengo.ogg`, `no-eran-cuarenta.ogg`, `borra-eso.ogg`, `ruido.ogg`, `nota-29s.ogg`. The over-30 note is not an eval case (the gate refuses it before the model); `sintetico-38s.ogg` covers that in the unit test. Record `ruido.ogg` as real background noise (street, room), not silence: see design Risks.
+  > 2026-10-11: recorded and exported, all Ogg/Opus mono 48 kHz, 7–16 kbps. Durations (`oggOpusDurationSeconds`; `afinfo` reads 0 for `como-vengo.ogg`, ours 3.54): borra-eso 3.46, cafe-tres-cincuenta 3.72, cobre-dos-mil-cien 4.86, como-vengo 3.54, farmacia-doce-con-cuarenta 4.64, no-eran-cuarenta 4.48, ruido 3.58, **nota-29s 33.32** (over the cap: production refuses it before the model; the eval calls the parser directly, so it passes there). Re-recorded the same day: `nota-29s.ogg` 29.42 s, 68 436 B, under both caps.
 
 ## 2. Payload and media download (adapter side)
 
@@ -20,6 +21,8 @@
   > Fixtures are synthetic (`sintetico-3s.ogg` 2.62 s, `sintetico-38s.ogg` 38.66 s, both confirmed by `afinfo`), so the test runs before Brian records. Also `refuseVoiceNote` (the gate the logic calls, task 5.1).
 - [x] 3.2 Check the fixtures' sizes against `MAX_AUDIO_BYTES` (the 29 s note must be well under 1 MB) and adjust the constant if not; verify by printing the sizes in the test output
   > Printed by `audio.test.mjs`: 7 841 B for 2.6 s and 120 523 B for 38.7 s at 24 kbps, an eighth of the cap. Re-read the line when Brian's `nota-29s.ogg` lands; WhatsApp encodes at a lower bitrate, so it should be smaller.
+  > 2026-10-11: Brian's recordings run at 7–16 kbps; `nota-29s.ogg` (29.4 s) is 68 436 B, a fifteenth of the cap.
+  > 2026-10-11: Brian's recordings run at 7–16 kbps; the 33 s note is 70 531 B, a fourteenth of the cap.
 
 ## 4. Parser
 
@@ -27,8 +30,9 @@
 - [x] 4.2 Prompt for audio (D4): the `MENSAJE` section for a voice note, `transcripcion` in every action of the list, the spoken-amount rules, "solo el primero" for several movements; verify with new `parser.test.mjs` cases (voice section present only with audio; fake model receives the audio; a voice `cargar` without `transcripcion` triggers the retry)
 - [x] 4.3 `lib/bot/gemini.ts`: build the two-part content with `inlineData` (base64) when audio is present, same model, JSON mode, temperature 0, 20 s timeout; verify by running one fixture through it with `audio/ogg; codecs=opus` as the MIME type and, if Gemini rejects the parameter, strip it to `audio/ogg` and note it in design D4
   > Accepted as is (design D4). Four synthetic notes parsed right on every run; silence and noise were hallucinated into loads (design Context and Risks).
-- [ ] 4.4 `lib/bot/parser.eval.mjs` and `lib/bot/voice-cases/voice-cases.json`: run each recorded note through `parseMessage` with `audio`, compare expected fields and the loose transcription; verify `npm run test:parser` passes twice in a row with every voice case and the 22 text cases
-  > Harness and cases written; the eval prints ms per case and fails for each missing file. Passing waits on 1.2.
+- [x] 4.4 `lib/bot/parser.eval.mjs` and `lib/bot/voice-cases/voice-cases.json`: run each recorded note through `parseMessage` with `audio`, compare expected fields and the loose transcription; verify `npm run test:parser` passes twice in a row with every voice case and the 22 text cases
+  > Harness and cases written; the eval prints ms per case and fails for each missing file.
+  > 2026-10-11: 29/30 on the first run: `no-eran-cuarenta` came back "no, eran 40" (right action and amount). A case's `transcripcion` may now be a list of accepted forms; that case takes "cuarenta" and "40".
 
 ## 5. Logic and replies
 
@@ -45,8 +49,8 @@
 
 - [x] 6.1 `npm run test:unit` passes offline (parser, audio, payload, adapter, media)
   > 162/162 on 2026-10-08.
-- [ ] 6.2 `npm run test:parser` passes with the voice cases (needs `GEMINI_API_KEY`), twice in a row
-  > Waits on 1.2.
+- [x] 6.2 `npm run test:parser` passes with the voice cases (needs `GEMINI_API_KEY`), twice in a row
+  > 2026-10-11: 30/30 twice in a row (22 text + 8 voice). Voice calls 2.8–9.6 s, one at 24.3 s (`no-eran-cuarenta`, first run). `ruido.ogg` alone, ten more runs: `no_entendido` with an empty transcription 10/10: real background noise does not hallucinate a load the way synthetic silence did. Repeated with the re-recorded `nota-29s.ogg` (29.42 s): 30/30 twice; the long note took 5.4 s and 25.7 s (a hung first call cut at 20 s, then the retry).
 - [ ] 6.3 Local end to end without WhatsApp, as in `add-bot-parser-and-logging` 5.1: call `handleIncoming` with a fake `downloadMedia` that returns a fixture against the real database for Brian's account, check the row, the `mensajes` rows and the reply text, then delete the test rows (confirm before writing)
   > Not run: it writes to the real database and needs Brian's confirmation first.
 - [ ] 6.4 Timing: log the download and model durations in the local run and confirm the typical total is under 15 s and the worst case under 60 s (design D9); write the numbers into design.md
