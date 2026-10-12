@@ -597,5 +597,27 @@
     "audioNoDescargado": "⏳ I couldn't listen to your audio right now. Send it again in a bit, or type it.",
     "audioSinVoz": "🎤 I heard nothing in that audio. Try again or type it.",
     "soloTextoYAudio": "🤷 I only understand text and voice notes of up to 30 seconds."
+  },
+  "movimientos": {
+    "titulo": "Activity",
+    "filtro": "Filter activity",
+    "todo": "All",
+    "gastos": "Expenses",
+    "ingresos": "Income",
+    "ahorro": "Savings",
+    "ingreso": "Income",
+    "deposito": "Deposit",
+    "retiro": "Withdrawal",
+    "hoy": "Today",
+    "ayer": "Yesterday",
+    "mostrarMas": "Show more",
+    "mostrarMenos": "Show less",
+    "mostrando": "{n, plural, one {Showing 1 movement} other {Showing # movements}}",
+    "vacio": "Nothing entered this month yet.",
+    "vacioDetalle": "What you add on the web or on WhatsApp shows up here.",
+    "sinGastos": "No expenses entered this month",
+    "sinIngresos": "No income entered this month",
+    "sinAhorro": "No savings movements this month",
+    "fila": "{nombre}, {tipo}, {dia}, {monto}"
   }
 }

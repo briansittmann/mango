@@ -597,5 +597,27 @@
     "audioNoDescargado": "⏳ No pude escuchar tu audio ahora. Volvé a mandarlo en un rato, o escribímelo.",
     "audioSinVoz": "🎤 No escuché nada en ese audio. Probá de nuevo o escribímelo.",
     "soloTextoYAudio": "🤷 Solo entiendo texto y notas de voz de hasta 30 segundos."
+  },
+  "movimientos": {
+    "titulo": "Movimientos",
+    "filtro": "Filtrar movimientos",
+    "todo": "Todo",
+    "gastos": "Gastos",
+    "ingresos": "Ingresos",
+    "ahorro": "Ahorro",
+    "ingreso": "Ingreso",
+    "deposito": "Depósito",
+    "retiro": "Retiro",
+    "hoy": "Hoy",
+    "ayer": "Ayer",
+    "mostrarMas": "Mostrar más",
+    "mostrarMenos": "Mostrar menos",
+    "mostrando": "{n, plural, one {Mostrando 1 movimiento} other {Mostrando # movimientos}}",
+    "vacio": "Todavía no cargaste nada este mes.",
+    "vacioDetalle": "Lo que anotes en la web o por WhatsApp aparece aquí.",
+    "sinGastos": "No hay gastos cargados este mes",
+    "sinIngresos": "No hay ingresos cargados este mes",
+    "sinAhorro": "No hay movimientos de ahorro este mes",
+    "fila": "{nombre}, {tipo}, {dia}, {monto}"
   }
 }

@@ -49,6 +49,7 @@ import { SpendCalendar } from '@/components/organisms/spend-calendar'
 import { DaySheet } from '@/components/organisms/day-sheet'
 import { SummaryGroup, type SummaryGroupItem } from '@/components/organisms/summary-group'
 import { UpcomingChargesCard } from '@/components/organisms/upcoming-charges-card'
+import { MovementsCard } from '@/components/organisms/movements-card'
 import { WeeklyTopChart } from '@/components/organisms/weekly-top-chart'
 import { WidgetList } from '@/components/organisms/widget-list'
 import { AnimatedAmount } from '@/components/ui/counter/animated-amount'
@@ -91,6 +92,8 @@ const UPCOMING_CHARGES_ID = 'proximos-cobros'
 /** The sidebar's section anchors (design D3): the tile row, each card (`categoria-<id>`) and the widget list. */
 const SECTION_OVERVIEW = 'resumen'
 const categorySection = (id: string) => `categoria-${id}`
+/** The "Movimientos" card's anchor, after the categories (`transaction-list` → *Sidebar entry*). */
+const SECTION_MOVEMENTS = 'movimientos'
 
 function clampDate(date: string, min: string, max: string): string {
   if (date < min) return min
@@ -175,6 +178,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
   const tRecurrente = useTranslations('gastoRecurrente')
   const tReordenar = useTranslations('modoReordenar')
   const tEscritorio = useTranslations('escritorio')
+  const tMovimientos = useTranslations('movimientos')
   const tGraficos = useTranslations('graficos')
   const format = useFormatter()
   const { money } = useAmountFormatter()
@@ -190,6 +194,10 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
   // client frame render them collapsed; the switch lands in the hydration re-render, before the
   // cascade reveals the cards (Risks).
   const [closedIds, setClosedIds] = useState<Set<string>>(new Set())
+  // The "Movimientos" card follows the categories' default (open at `lg`, folded below) but stays
+  // out of collapse/expand all (`transaction-list` → *Movements card*, design D4).
+  const [movementsOpenMobile, setMovementsOpenMobile] = useState(false)
+  const [movementsClosedDesktop, setMovementsClosedDesktop] = useState(false)
   // The category chosen in the bar's entry sheet, for the recurrence that may follow its save (D7).
   const chosenCategoryRef = useRef<string | null>(null)
   // What opened the category and definition sheets: their popover anchor from `sm` to `lg` (D5).
@@ -1076,6 +1084,13 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
     setClosedIds(new Set())
   }
 
+  const movementsOpen = desktop ? !movementsClosedDesktop : movementsOpenMobile
+
+  function toggleMovements() {
+    if (desktop) setMovementsClosedDesktop((prev) => !prev)
+    else setMovementsOpenMobile((prev) => !prev)
+  }
+
   function scrollToBreakdown() {
     expensesRef.current?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
   }
@@ -1106,6 +1121,17 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
     }
     const node = document.getElementById(sectionId)
     if (!node) return
+    // The card is the page's last section: folded, the page is too short to bring it under the bar,
+    // so it opens first and the scroll waits for its 200 ms disclosure (D4).
+    if (sectionId === SECTION_MOVEMENTS && !movementsOpen) {
+      setMovementsClosedDesktop(false)
+      setMovementsOpenMobile(true)
+      window.setTimeout(() => {
+        node.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
+        node.focus({ preventScroll: true })
+      }, prefersReducedMotion() ? 50 : 240)
+      return
+    }
     node.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
     node.focus({ preventScroll: true })
   }
@@ -1230,7 +1256,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
 
   // The sidebar's sections, in the displayed order; scroll-spy only runs where the sidebar is shown.
   const sectionIds = useMemo(
-    () => [SECTION_OVERVIEW, ...renderedGroups.map((group) => categorySection(group.id))],
+    () => [SECTION_OVERVIEW, ...renderedGroups.map((group) => categorySection(group.id)), SECTION_MOVEMENTS],
     [renderedGroups],
   )
   const spiedSection = useScrollSpy(sectionIds, desktop && !reordering)
@@ -1242,6 +1268,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
   const sidebarEntries: SidebarEntry[] = [
     { id: SECTION_OVERVIEW, label: tEscritorio('resumen') },
     ...renderedGroups.map((group) => ({ id: categorySection(group.id), label: group.name, color: group.color, total: group.total })),
+    { id: SECTION_MOVEMENTS, label: tMovimientos('titulo') },
   ]
 
   // The widgets in the user's order; a projection keeps only the donut, in place (D6).
@@ -1847,6 +1874,23 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
             </div>
           )}
         </div>
+        <AnimatedContent threshold={0.2} distance={24} duration={0.3} aria-hidden={reordering} inert={reordering}>
+          <div id={SECTION_MOVEMENTS} tabIndex={-1} className="scroll-mt-20 outline-none lg:scroll-mt-[104px]">
+            <MovementsCard
+              data={data}
+              timeZone={data.user.timezone}
+              currency={currency}
+              open={movementsOpen}
+              onToggle={toggleMovements}
+              pageSize={desktop ? 25 : 15}
+              onEditExpense={actions.expenses ? openEditSheet : undefined}
+              onEditIncome={actions.income ? openIncomeEditSheet : undefined}
+              onDeleteExpense={actions.expenses ? handleDeleteExpense : undefined}
+              onDeleteIncome={actions.income ? handleDeleteIncome : undefined}
+              onDeleteSavings={actions.savings ? handleDeleteSavings : undefined}
+            />
+          </div>
+        </AnimatedContent>
       </div>
       </div>
       {/* The widget column scrolls with the page beside the breakdown (`desktop-shell`): no
