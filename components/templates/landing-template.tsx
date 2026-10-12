@@ -247,6 +247,44 @@ function Nav({ changeLanguage }: LandingTemplateProps) {
   )
 }
 
+// Visitors stopped at the hero without guessing there was more: while the page still goes on below,
+// a glass button in the corner keeps an arrow dropping, and a press scrolls most of a screen.
+function ScrollHint() {
+  const t = useTranslations('inicio')
+  const [more, setMore] = useState(false)
+
+  useEffect(() => {
+    const update = () => setMore(window.scrollY + window.innerHeight < document.documentElement.scrollHeight - 120)
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    // The story's pins and the FAQ's answers change the page's height without a scroll.
+    const observer = new ResizeObserver(update)
+    observer.observe(document.body)
+    return () => {
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+      observer.disconnect()
+    }
+  }, [])
+
+  return (
+    <button
+      type="button"
+      aria-label={t('seguirBajando')}
+      aria-hidden={!more}
+      tabIndex={more ? 0 : -1}
+      data-visible={more}
+      onClick={() =>
+        window.scrollBy({ top: window.innerHeight * 0.85, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+      }
+      className="scroll-hint liquid-glass pressable fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] end-gutter z-40 grid size-12 place-items-center overflow-hidden rounded-full text-brand md:end-8 md:bottom-8"
+    >
+      <ChevronDown className="scroll-hint-arrow size-5" strokeWidth={2.4} aria-hidden />
+    </button>
+  )
+}
+
 function SplitWords({ text, className }: { text: string; className?: string }) {
   return (
     <span className={cn('block', className)}>
@@ -442,6 +480,7 @@ export function LandingTemplate({ changeLanguage }: LandingTemplateProps) {
         </div>
         <Closing />
       </main>
+      <ScrollHint />
       <footer className="mx-auto w-full max-w-6xl px-gutter pb-10">
         <div className="flex flex-col items-center gap-5 border-t border-border/60 pt-8 text-body-sm text-muted-foreground md:flex-row md:justify-between">
           <p>{t('pieDerechos')}</p>

@@ -1010,6 +1010,67 @@ body {
   }
 }
 
+/* "Seguir bajando": springs up once the hero has landed and sinks away at the end of the page. The
+   arrow falls out through the bottom and drops back in from the top, with a pause to rest. */
+.scroll-hint {
+  transition: opacity 300ms var(--ease-out), translate 500ms var(--ease-spring), scale 200ms var(--ease-spring);
+  &[data-visible='false'],
+  .landing:not([data-hero-settled]) & {
+    opacity: 0;
+    translate: 0 16px;
+    pointer-events: none;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+}
+/* A ring of the brand's pulse leaves the button each time the arrow lands back in place. An
+   outline, so the button can keep clipping the arrow; focus takes the outline back. */
+@media (prefers-reduced-motion: no-preference) {
+  .scroll-hint-arrow {
+    animation: scroll-hint-drop 1800ms var(--ease-in-out) infinite;
+  }
+  .scroll-hint:not(:focus-visible) {
+    animation: scroll-hint-ring 1800ms var(--ease-out) infinite;
+  }
+}
+@keyframes scroll-hint-ring {
+  0%,
+  84% {
+    outline: 2px solid transparent;
+    outline-offset: 0;
+  }
+  85% {
+    outline: 2px solid var(--landing-pulse);
+    outline-offset: 0;
+  }
+  100% {
+    outline: 2px solid transparent;
+    outline-offset: 10px;
+  }
+}
+@keyframes scroll-hint-drop {
+  0%,
+  25% {
+    translate: 0 0;
+    opacity: 1;
+  }
+  55% {
+    translate: 0 22px;
+    opacity: 0;
+  }
+  56% {
+    translate: 0 -22px;
+    opacity: 0;
+  }
+  85%,
+  100% {
+    translate: 0 0;
+    opacity: 1;
+  }
+}
+
 .landing-cta {
   transition: scale 200ms var(--ease-spring), box-shadow 300ms ease-out;
   &:hover {
