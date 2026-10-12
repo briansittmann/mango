@@ -20,7 +20,10 @@ export async function addExpense(page, categoryId, { amount, description, date }
   await expect(dialog).toBeVisible()
   await dialog.getByLabel('Importe').fill(amount)
   await dialog.getByLabel('Descripción').fill(description)
-  if (date) await dialog.getByLabel('Fecha').fill(date)
+  if (date) {
+    await dialog.getByLabel('Fecha').click()
+    await dialog.locator(`[data-date-option="${date}"]`).click()
+  }
   await dialog.getByRole('button', { name: /^(Guardar|Añadir)$/ }).click()
   await expect(dialog).toBeHidden()
 }

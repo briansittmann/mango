@@ -215,9 +215,11 @@ test('a projection bar within budget', async ({ page }) => {
 test.describe('sheets in a projected cycle', () => {
   const expectOctoberDate = async (sheet) => {
     const date = sheet.getByLabel('Fecha')
-    await expect(date).toHaveValue('2026-10-01')
-    await expect(date).toHaveAttribute('min', '2026-10-01')
-    await expect(date).toHaveAttribute('max', '2026-10-31')
+    await expect(date).toHaveAttribute('data-value', '2026-10-01')
+    await date.click()
+    await expect(sheet.locator('[data-date-option="2026-10-01"]')).toHaveAttribute('aria-pressed', 'true')
+    await expect(sheet.getByRole('button', { name: 'Mes anterior' })).toBeDisabled()
+    await expect(sheet.getByRole('button', { name: 'Mes siguiente' })).toBeDisabled()
   }
 
   test('create an expense', async ({ page }) => {

@@ -7,6 +7,7 @@ import { CategoryDot } from '@/components/atoms/category-dot'
 import { Collapsible } from '@/components/atoms/collapsible'
 import { Switch } from '@/components/atoms/switch'
 import { AmountField, parseAmount } from '@/components/molecules/amount-field'
+import { DateCalendar } from '@/components/molecules/date-calendar'
 import { FieldRow } from '@/components/molecules/field-row'
 import { IntegerField, parseInteger } from '@/components/molecules/integer-field'
 import { ScopeChoice, type Scope } from '@/components/molecules/scope-choice'
@@ -233,6 +234,8 @@ export function EntrySheet<V>({
   const initialCategoryId = context.kind === 'category' ? context.id : null
   const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [dateOpen, setDateOpen] = useState(false)
+  const dateTriggerRef = useRef<HTMLButtonElement>(null)
   const chipRef = useRef<HTMLButtonElement>(null)
   const pickerRef = useRef<HTMLDivElement>(null)
   const confirmCancelRef = useRef<HTMLButtonElement>(null)
@@ -273,6 +276,7 @@ export function EntrySheet<V>({
       setDeleteScope(null)
       setCategoryId(initialCategoryId)
       setPickerOpen(false)
+      setDateOpen(false)
     }
   }
 
@@ -400,10 +404,9 @@ export function EntrySheet<V>({
     }
   }
 
-  function handleDateClick(event: React.MouseEvent<HTMLInputElement>) {
-    try {
-      ;(event.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.()
-    } catch {}
+  function closeDate() {
+    setDateOpen(false)
+    dateTriggerRef.current?.focus()
   }
 
   function renderRecurrenceField() {
@@ -579,26 +582,39 @@ export function EntrySheet<V>({
     }
 
     return (
-      <FieldRow label={t(field.labelKey)} htmlFor={id}>
-        <div className="relative">
-          <span aria-hidden className="block rounded-lg bg-muted px-2 py-1.5 text-body-lg text-foreground">
-            {value ? format.dateTime(new Date(`${value}T00:00:00Z`), { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : ''}
-          </span>
-          <input
+      <>
+        <FieldRow label={t(field.labelKey)} htmlFor={id}>
+          <button
+            ref={dateTriggerRef}
             id={id}
-            type="date"
-            required
-            data-base-ui-swipe-ignore
-            min={fieldOptions.date?.min}
-            max={fieldOptions.date?.max}
-            readOnly={disabled}
-            value={value}
-            onChange={(event) => updateField(field.name, event.target.value)}
-            onClick={handleDateClick}
-            className={cn('absolute inset-0 cursor-pointer opacity-0', disabled && 'pointer-events-none')}
-          />
-        </div>
-      </FieldRow>
+            type="button"
+            disabled={disabled}
+            aria-expanded={dateOpen}
+            aria-controls={`${id}-calendar`}
+            data-value={value}
+            onClick={() => setDateOpen((prev) => !prev)}
+            className={cn(
+              'pressable block rounded-lg px-2 py-1.5 text-body-lg transition-colors duration-200 [--press-scale:0.96] motion-reduce:transition-none',
+              dateOpen ? 'bg-primary/15 text-primary' : 'bg-muted text-foreground',
+            )}
+          >
+            {value ? format.dateTime(new Date(`${value}T00:00:00Z`), { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : ''}
+          </button>
+        </FieldRow>
+        <DateCalendar
+          id={`${id}-calendar`}
+          open={dateOpen}
+          value={value}
+          min={fieldOptions.date?.min}
+          max={fieldOptions.date?.max}
+          onSelect={(next) => {
+            updateField(field.name, next)
+            setDateOpen(false)
+            dateTriggerRef.current?.focus()
+          }}
+          onClose={closeDate}
+        />
+      </>
     )
   }
 

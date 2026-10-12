@@ -1694,3 +1694,17 @@ body {
     backdrop-filter: none;
   }
 }
+
+/* The entry sheet's calendar: the new month's days slide in from the side of the arrow. */
+@keyframes calendar-in-next {
+  from {
+    opacity: 0;
+    translate: 16px 0;
+  }
+}
+@keyframes calendar-in-prev {
+  from {
+    opacity: 0;
+    translate: -16px 0;
+  }
+}
