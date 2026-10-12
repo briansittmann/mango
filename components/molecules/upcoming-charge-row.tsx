@@ -39,7 +39,12 @@ export function UpcomingChargeRow({ day, name, details, amount, currency, color,
       <span
         aria-hidden
         className="relative grid size-8 shrink-0 place-items-center rounded-full text-label-ui font-medium text-foreground tabular-nums"
-        style={{ background: `color-mix(in oklab, var(--cat-${color}) 16%, transparent)` }}
+        // The tint of a "Movimientos" mark plus a 1.5px ring in the full colour, so even the muted
+        // categories read as theirs (inset, so the mark keeps its 32px).
+        style={{
+          background: `color-mix(in oklab, var(--cat-${color}) 16%, transparent)`,
+          boxShadow: `inset 0 0 0 1.5px var(--cat-${color})`,
+        }}
       >
         {day}
         {charged ? (

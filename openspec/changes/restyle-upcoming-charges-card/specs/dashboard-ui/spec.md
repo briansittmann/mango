@@ -201,7 +201,7 @@ A category's colour SHALL appear only in these places:
 - the border of its card while the card is expanded
 - its slice in the pie chart
 - its dot in the pie legend
-- the tint of the day mark on its charges in the `upcoming-charges` card
+- the tint and the ring of the day mark on its charges in the `upcoming-charges` card
 - its bar and its dot in the weekly top-categories widget (`spend-insights`)
 
 It SHALL NOT colour the card surface in any state, and a collapsed card's border SHALL use a theme token. Text SHALL never take a category's colour.

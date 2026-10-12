@@ -49,7 +49,7 @@ The collapsed card SHALL read as a peer of the other cards in the main column, w
 Expanded, the card SHALL push the content below it rather than cover it, and SHALL list every charge of the cycle, one row each.
 
 **Row anatomy**, in the same arrangement as a "Movimientos" row (`transaction-list` → *Movement rows*):
-- **One mark** on the left: a 32px circle tinted with the category's colour, holding the day of the month in the regular text colour with tabular figures. A taken charge's mark SHALL carry a small check badge on its edge, in neutral tokens. No other mark, chip or dot SHALL be drawn on the row.
+- **One mark** on the left: a 32px circle tinted with the category's colour and ringed with it at full strength, holding the day of the month in the regular text colour with tabular figures. A taken charge's mark SHALL carry a small check badge on its edge, in neutral tokens. No other mark, chip or dot SHALL be drawn on the row.
 - **The name**, over **one muted line** that starts with the category's name and adds, joined with " · ":
   - the **expected amount** ("esperado 820 €"), only while the charge's amount differs from its definition's expected amount (`recurring-expenses` → *A charge that differs from its expectation says so, quietly*);
   - the **progress** of a recurrence that ends, as the count produced out of the total ("4 de 10") (`recurring-expenses` → *A recurrence can end, and ends itself*). A charge whose definition has no end SHALL show nothing in its place — no dash, no placeholder, no "no end" label.
@@ -153,7 +153,7 @@ The card SHALL NOT be rendered at all when the cycle has no charges.
 
 #### Scenario: A dot is shared, not copied
 - **WHEN** the card is expanded on `/demo` and its taken charges are shown
-- **THEN** the tint of the day mark on the "Alquiler" row is derived from the same colour value as the dot on the "Vivienda" card header
+- **THEN** the tint and the ring of the day mark on the "Alquiler" row are derived from the same colour value as the dot on the "Vivienda" card header
 - **AND** the muted line of the "Alquiler" row names "Vivienda"
 
 #### Scenario: A cycle with no recurring charges
@@ -215,7 +215,7 @@ Every colour in the card SHALL come from a theme token, and the card SHALL rende
 
 - The brand colour SHALL appear only on the chevrons of the card's disclosure and of the taken-charges line while each is expanded, as on every disclosure of the dashboard, and on the focus indicator every control shares (`design-system` → *Interaction states*). It SHALL NOT appear on the check badge, on a day mark, on the next-charge line, on a row's muted line, or on a row in its pressed or hovered state.
 - The warning and danger colours SHALL NOT appear. A charge that is due soon is not a warning, and a charge that cost more than expected is not an error.
-- A row's day mark SHALL be the only place a category colour appears, as a tint of the stored palette (`theming` → *Category colours resolve per theme*). Text SHALL never take a category colour.
+- A row's day mark SHALL be the only place a category colour appears, as a tint and a thin ring of the stored palette (`theming` → *Category colours resolve per theme*). Text SHALL never take a category colour.
 - Its title, its next-charge line, its group heading, its taken-charges line, its rows, their day numbers on the tinted marks, their muted lines and its footer SHALL each reach at least 4.5:1 contrast against what they sit on, in both themes.
 
 #### Scenario: No accents
@@ -233,4 +233,4 @@ Every colour in the card SHALL come from a theme token, and the card SHALL rende
 
 #### Scenario: Only dots carry colour
 - **WHEN** the computed colours inside the expanded card are collected with its taken charges shown
-- **THEN** the only ones outside the neutral tokens are the day marks' tints, each derived from the colour of its category card's dot, the open chevrons in the brand ink, and the focus indicator of a focused control
+- **THEN** the only ones outside the neutral tokens are the day marks' tints and rings, each derived from the colour of its category card's dot, the open chevrons in the brand ink, and the focus indicator of a focused control
