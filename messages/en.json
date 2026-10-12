@@ -130,6 +130,7 @@
     "metaMensual": "Target {monto} a month",
     "acumulado": "{monto} accumulated",
     "deIngresos": "of {monto} income",
+    "volverArriba": "Back to top",
     "enCurso": "in progress",
     "cerrar": "Close"
   },

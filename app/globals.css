@@ -1071,6 +1071,73 @@ body {
   }
 }
 
+/* "Volver arriba" on the desktop dashboard: the landing's scroll hint turned around. It springs up
+   at the end of the page and the arrow rises out through the top and climbs back in from below. */
+.back-to-top {
+  --back-to-top-pulse: color-mix(in oklab, var(--brand) 55%, transparent);
+  transition: opacity 300ms var(--ease-out), translate 500ms var(--ease-spring), scale 200ms var(--ease-spring);
+  &[data-visible='false'] {
+    opacity: 0;
+    translate: 0 16px;
+    pointer-events: none;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .back-to-top-arrow {
+    animation: back-to-top-rise 1800ms var(--ease-in-out) infinite;
+  }
+  .back-to-top[data-visible='true']:not(:focus-visible) {
+    animation: back-to-top-ring 1800ms var(--ease-out) infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .back-to-top {
+    transition: opacity 200ms linear;
+    &[data-visible='false'] {
+      translate: none;
+    }
+  }
+}
+@keyframes back-to-top-ring {
+  0%,
+  84% {
+    outline: 2px solid transparent;
+    outline-offset: 0;
+  }
+  85% {
+    outline: 2px solid var(--back-to-top-pulse);
+    outline-offset: 0;
+  }
+  100% {
+    outline: 2px solid transparent;
+    outline-offset: 10px;
+  }
+}
+@keyframes back-to-top-rise {
+  0%,
+  25% {
+    translate: 0 0;
+    opacity: 1;
+  }
+  55% {
+    translate: 0 -22px;
+    opacity: 0;
+  }
+  56% {
+    translate: 0 22px;
+    opacity: 0;
+  }
+  85%,
+  100% {
+    translate: 0 0;
+    opacity: 1;
+  }
+}
+
 .landing-cta {
   transition: scale 200ms var(--ease-spring), box-shadow 300ms ease-out;
   &:hover {

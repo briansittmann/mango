@@ -130,6 +130,7 @@
     "metaMensual": "Meta {monto} al mes",
     "acumulado": "{monto} acumulados",
     "deIngresos": "de {monto} de ingresos",
+    "volverArriba": "Volver arriba",
     "enCurso": "en curso",
     "cerrar": "Cerrar"
   },

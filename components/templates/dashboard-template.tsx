@@ -34,6 +34,7 @@ import { Drawer } from '@base-ui/react/drawer'
 import { useDesktop } from '@/components/hooks/use-desktop'
 import { useScrollSpy } from '@/components/hooks/use-scroll-spy'
 import { AccountMenu } from '@/components/organisms/account-menu'
+import { BackToTop } from '@/components/organisms/back-to-top'
 import { AccountSheet } from '@/components/organisms/account-sheet'
 import { CategoryCard } from '@/components/organisms/category-card'
 import { CategoryPieChart } from '@/components/organisms/category-pie-chart'
@@ -1511,6 +1512,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
         actions={actions}
         onAddExpense={actions.expenses && data.expenses.groups.length > 0 ? () => openCreateSheet(data.expenses.groups[0], true) : undefined}
       />
+      <BackToTop hidden={pushedBack} onPress={scrollToTop} />
         </>
       ) : null}
       <div className="sticky top-0 z-30 lg:hidden" style={{ height: BAR_HEIGHT }} aria-hidden={reordering} inert={reordering}>
