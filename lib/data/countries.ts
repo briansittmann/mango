@@ -145,12 +145,14 @@ export function countryForTimezone(timezone: string | null | undefined): string 
 
 /**
  * The timezone an account keeps after choosing `code`: the stored one when it belongs to that
- * country, otherwise the country's main zone. Null for a code outside the table.
+ * country, under the table's name (a browser's `America/Buenos_Aires` comes back as
+ * `America/Argentina/Buenos_Aires`, the name `validateBasics` accepts), otherwise the country's
+ * main zone. Null for a code outside the table.
  */
 export function timezoneForCountry(code: string, stored: string | null | undefined): string | null {
   const country = countryOf(code)
   if (!country) return null
-  return stored && country.timezones.some((zone) => sameZone(zone, stored)) ? stored : country.timezones[0]
+  return (stored && country.timezones.find((zone) => sameZone(zone, stored))) || country.timezones[0]
 }
 
 /** The flag emoji of an ISO alpha-2 code (two regional-indicator code points, no assets). */
