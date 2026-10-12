@@ -145,13 +145,13 @@ export function DesktopSidebar({
           type="button"
           onClick={onScrollTop}
           aria-label={tDashboard('irArriba')}
-          className="pressable -ml-1 flex min-h-target items-center gap-1 self-start rounded-full pr-3 [--press-scale:0.96]"
+          className="pressable -ml-1 flex min-h-target items-center self-start rounded-full pr-3 [--press-scale:0.96]"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/mango-logo-light.svg" alt="" aria-hidden className="size-11 object-contain dark:hidden" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/mango-logo-dark.svg" alt="" aria-hidden className="hidden size-11 object-contain dark:block" />
-          <span className="font-display text-headline-md text-foreground">{tDashboard('appName')}</span>
+          <span className="-ml-0.5 font-display text-headline-md text-foreground">{tDashboard('appName')}</span>
         </button>
 
         <nav aria-label={t('navegacion')} className="mt-5 min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-width:thin]">
