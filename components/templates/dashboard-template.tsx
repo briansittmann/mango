@@ -1623,7 +1623,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
       <div
         id={SECTION_OVERVIEW}
         tabIndex={-1}
-        className="outline-none lg:col-span-2 lg:grid lg:grid-cols-4 lg:gap-stack lg:scroll-mt-[104px]"
+        className="outline-none lg:col-span-2 lg:grid lg:grid-cols-4 lg:gap-stack xl:grid-cols-[minmax(0,5fr)_minmax(0,9fr)] lg:scroll-mt-[104px]"
         data-dashboard-tiles
         aria-hidden={reordering}
         inert={reordering}
@@ -1642,7 +1642,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
           presentation={desktop ? 'tile' : 'card'}
         />
       </AnimatedContent>
-      <AnimatedContent className="mt-stack lg:col-span-3 lg:mt-0" distance={24} delay={0.32}>
+      <AnimatedContent className="mt-stack lg:col-span-3 lg:mt-0 xl:col-span-1" distance={24} delay={0.32}>
         <SummaryGroup
           currency={currency}
           openKey={openSummary}

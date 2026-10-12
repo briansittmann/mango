@@ -45,7 +45,8 @@ export function FreeMarginCard({ amount, currency, income = 0, savings = 0, pres
         currencyClassName="text-headline-md"
         className={cn(
           'hero-value mt-2 block font-display text-display-mobile sm:text-display',
-          // Four tiles at exactly 1024px leave ~230px each: the number steps down one size and back up at `xl`.
+          // Four equal tiles at 1024px leave ~230px each: the number steps down one size, and back up at `xl`,
+          // where the tile takes 5/14 of the row so a seven-digit figure fits.
           tile && 'lg:text-display-mobile xl:text-display',
         )}
       />
