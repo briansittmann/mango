@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test'
-import { loadDesktop, rect, sideSheet, SIDEBAR_WIDTH } from './desktop-helpers'
+import { loadDesktop, openCategory, rect, sideSheet, SIDEBAR_WIDTH } from './desktop-helpers'
 
 // `dashboard-ui` → *Desktop columns* and `design-system` → *Wide viewports*, on `/demo`.
 
@@ -83,7 +83,7 @@ test('reorder mode on a laptop dims the shell and the widget column, keeps the h
 
 test('the entry sheet opens as a side panel at 1280px', async ({ page }) => {
   await loadDesktop(page, { width: 1280 })
-  await page.locator('#category-panel-comida').getByRole('button', { name: 'Añadir gasto' }).click()
+  await (await openCategory(page, 'comida')).getByRole('button', { name: 'Añadir gasto' }).click()
   const dialog = sideSheet(page)
   await expect(dialog).toBeVisible()
   await expect(dialog).toHaveAttribute('data-presentation', 'side')

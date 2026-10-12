@@ -96,6 +96,7 @@ test.describe('on a phone', () => {
 
   test("only the user's entries, newest first, grouped by local day", async ({ page }) => {
     await openCard(page)
+    await card(page).locator('[data-movements-more]').click()
     expect(await rowNames(page)).toEqual(DEMO_ORDER)
     for (const name of FIXED) await expect(row(page, name)).toHaveCount(0)
 
@@ -164,34 +165,32 @@ test.describe('on a phone', () => {
   })
 
   test('show more, show less, and the filter goes back to the first page', async ({ page }) => {
-    for (const [i, name] of ['Kiosco', 'Pan', 'Taxi'].entries()) {
-      await addExpense(page, 'comida', { amount: String(5 + i), description: name, date: '2026-09-02' })
-    }
     await openCard(page)
-    await expect(card(page).locator('[data-movements-count]')).toHaveText('16')
-    await expect(rows(page)).toHaveCount(15)
+    await expect(rows(page)).toHaveCount(10)
+    expect(await rowNames(page)).toEqual(DEMO_ORDER.slice(0, 10))
     const more = card(page).locator('[data-movements-more]')
     await expect(more).toHaveText('Mostrar más')
 
     await more.click()
-    await expect(rows(page)).toHaveCount(16)
-    await expect(rows(page).nth(15)).toBeFocused()
+    await expect(rows(page)).toHaveCount(13)
+    await expect(rows(page).nth(10)).toBeFocused()
     await expect(more).toHaveText('Mostrar menos')
 
     await more.click()
-    await expect(rows(page)).toHaveCount(15)
+    await expect(rows(page)).toHaveCount(10)
     await expect.poll(() => card(page).evaluate((el) => el.getBoundingClientRect().top)).toBeGreaterThanOrEqual(0)
 
     await more.click()
-    await expect(rows(page)).toHaveCount(16)
+    await expect(rows(page)).toHaveCount(13)
     await segment(page, 'expense').click()
     await segment(page, 'all').click()
-    await expect(rows(page)).toHaveCount(15)
+    await expect(rows(page)).toHaveCount(10)
   })
 
   test('no "Mostrar más" with fewer than a page', async ({ page }) => {
     await openCard(page)
-    await expect(rows(page)).toHaveCount(13)
+    await segment(page, 'savings').click()
+    await expect(rows(page)).toHaveCount(3)
     await expect(card(page).locator('[data-movements-more]')).toHaveCount(0)
   })
 
@@ -252,9 +251,6 @@ test.describe('on a phone', () => {
   })
 
   test('nothing moves with reduced motion', async ({ page }) => {
-    for (const [i, name] of ['Kiosco', 'Pan', 'Taxi'].entries()) {
-      await addExpense(page, 'comida', { amount: String(5 + i), description: name, date: '2026-09-02' })
-    }
     await openCard(page)
     const running = () =>
       card(page).evaluate((el) =>
@@ -265,6 +261,8 @@ test.describe('on a phone', () => {
           // A colour may still fade; nothing may be translated or scaled.
           .filter((name) => name !== 'color' && name !== 'background-color' && name !== 'opacity'),
       )
+    // The chevron's turn belongs to opening the card, not to the changes measured here.
+    await card(page).evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)))
     await segment(page, 'savings').click()
     expect(await running()).toEqual([])
     await segment(page, 'all').click()
@@ -283,10 +281,14 @@ test.describe('on a laptop', () => {
     await loadDesktop(page)
   })
 
-  test('open by default in the main column, outside collapse all', async ({ page }) => {
+  test('open by default in the main column while the categories start folded, outside expand and collapse all', async ({ page }) => {
     await expect(page.locator('[data-dashboard-main] [data-movements-card]')).toHaveCount(1)
     await expect(header(page)).toHaveAttribute('aria-expanded', 'true')
-    await expect(rows(page)).toHaveCount(13)
+    await expect(rows(page)).toHaveCount(10)
+    await expect(page.locator('[aria-controls="category-panel-ocio"]')).toHaveAttribute('aria-expanded', 'false')
+    await page.getByRole('button', { name: 'Expandir todas' }).click()
+    await expect(page.locator('[aria-controls="category-panel-ocio"]')).toHaveAttribute('aria-expanded', 'true')
+    await expect(header(page)).toHaveAttribute('aria-expanded', 'true')
     await page.getByRole('button', { name: 'Contraer todas' }).click()
     await expect(page.locator('[aria-controls="category-panel-ocio"]')).toHaveAttribute('aria-expanded', 'false')
     await expect(header(page)).toHaveAttribute('aria-expanded', 'true')

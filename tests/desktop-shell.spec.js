@@ -14,7 +14,7 @@ test('the shell replaces the phone chrome: sidebar with the sections, bar with t
   await expect(page.locator('[data-desktop-sidebar]')).toBeVisible()
   const names = await page.locator('[data-shell-nav] .truncate').evaluateAll((els) => els.map((e) => e.textContent?.trim()))
   expect(names[0]).toBe('Resumen')
-  expect(names.slice(1)).toEqual(CATEGORIES)
+  expect(names.slice(1)).toEqual([...CATEGORIES, 'Movimientos'])
   await expect(page.locator('[data-shell-nav="categoria-comida"]')).toContainText(/310\s?€/)
   await expect(page.locator('[data-sidebar-account]')).toContainText('Ana García')
   // The figures block starts on the income and its dots move it; reduced motion is on, so it never rotates by itself.
@@ -151,7 +151,7 @@ test('with motion on, the material changes over successive frames within 450 ms 
   expect(samples.monthMoved).toBe(false)
 })
 
-test('clicking "ocio" lands its card under the bar and marks it current; the end of the page marks the last category', async ({ page }) => {
+test('clicking "ocio" lands its card under the bar and marks it current; the end of the page marks "Movimientos"', async ({ page }) => {
   await loadDesktop(page)
   expect(await activeSection(page)).toBe('resumen')
   await page.locator('[data-shell-nav="categoria-ocio"]').click()
@@ -169,7 +169,7 @@ test('clicking "ocio" lands its card under the bar and marks it current; the end
   expect(Math.round(pill)).toBe(link)
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
   await page.waitForTimeout(400)
-  expect(await activeSection(page)).toBe('categoria-compras')
+  expect(await activeSection(page)).toBe('movimientos')
   await page.evaluate(() => window.scrollTo(0, 0))
   await page.waitForTimeout(400)
   expect(await activeSection(page)).toBe('resumen')

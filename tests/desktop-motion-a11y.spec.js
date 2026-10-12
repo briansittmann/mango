@@ -1,7 +1,7 @@
 // @ts-check
 import { readFileSync } from 'node:fs'
 import { test, expect } from '@playwright/test'
-import { loadDesktop, sideSheet, visibleBackdrops, widgetOrder } from './desktop-helpers'
+import { loadDesktop, openCategory, sideSheet, visibleBackdrops, widgetOrder } from './desktop-helpers'
 import { reveal } from './widgets-helpers'
 
 // `design-system` → *Motion respects user preference* (shell, side panels, widget list) and
@@ -134,7 +134,7 @@ test.describe('materials and accessibility at 1280px', () => {
     await page.evaluate(() => window.scrollTo(0, 200))
     await page.waitForTimeout(300)
     expect((await visibleBackdrops(page)).sort()).toEqual(['shell-material', 'shell-material'])
-    await page.locator('#category-panel-comida').getByRole('button', { name: 'Añadir gasto' }).click()
+    await (await openCategory(page, 'comida')).getByRole('button', { name: 'Añadir gasto' }).click()
     await expect(sideSheet(page)).toBeVisible()
     await page.waitForTimeout(300)
     expect((await visibleBackdrops(page)).sort()).toEqual(['popup:side', 'sheet-backdrop'])

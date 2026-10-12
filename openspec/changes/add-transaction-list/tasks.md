@@ -21,8 +21,11 @@
 
 ## 4. Verification
 
-- [ ] 4.1 New `tests/movements.spec.js` covering every scenario of `transaction-list` and the new "Movimientos" lines of `dashboard-ui` → *Expense cards group each expense exactly once* at 390px and 1280px, with reduced motion and axe in both themes (reuse `tests/widgets-helpers.js` / `tests/desktop-helpers.js`); run it in Chromium, then the full `npm test`, and report failures with output
-- [ ] 4.2 Existing specs that count cards or check nesting (`dashboard-ui` *Mobile visual hierarchy* checks, `desktop-shell`, `desktop-tiles`, `reorder-mode`) still pass with the new card; verify in the same `npm test` run
+- [x] 4.1 New `tests/movements.spec.js` covering every scenario of `transaction-list` and the new "Movimientos" lines of `dashboard-ui` → *Expense cards group each expense exactly once* at 390px and 1280px, with reduced motion and axe in both themes (reuse `tests/widgets-helpers.js` / `tests/desktop-helpers.js`); run it in Chromium, then the full `npm test`, and report failures with output
+  > 17 tests, 51/51 in Chromium, Firefox and WebKit. Brian changed two things after the first commit: pages of 10 at every width (was 15 / 25) and category cards folded by default at `lg` too (edited in `add-desktop-dashboard-shell`'s delta). The full Chromium run: 291 passed, 12 failures outside this change (`home`, `login-code`, `onboarding-*`, `example.spec`, none renders the dashboard) and `desktop-shell` ocio flaky under load (3/3 alone).
+- [x] 4.2 Existing specs that count cards or check nesting (`dashboard-ui` *Mobile visual hierarchy* checks, `desktop-shell`, `desktop-tiles`, `reorder-mode`) still pass with the new card; verify in the same `npm test` run
+  > `desktop-shell` (sidebar list now ends with "Movimientos", the end of the page marks it), `desktop-tiles`, `desktop-sheets`, `desktop-motion-a11y`, `widgets-desktop` (open a card through `openCategory`) and `widgets-motion-a11y` (the filter's 14 px labels were a seventh text size: now 13 px) updated and passing in the three browsers.
 - [x] 4.3 Screenshots on `/demo` at 390px and 1280px, light and dark: folded, open, each filter, after "Mostrar más" (with three added expenses), empty filter; check against `motion-skills/AUDIT.md` and the taste pre-flight items that apply (no em dash, one accent, contrast, no nested surfaces)
 - [ ] 4.4 `npm run lint` and `npx tsc --noEmit` pass; `/dashboard` against the real database at 390px and 1280px shows only Brian's own entries (no Sueldo, no fixed charges) with a read-only script, no writes
-- [ ] 4.5 Update `CLAUDE.md` *Estado actual* (Web/dashboard, Tests, OpenSpec) and move the change's Open Questions and accepted risks into *Deuda tecnica* when archiving
+- [x] 4.5 Update `CLAUDE.md` *Estado actual* (Web/dashboard, Tests, OpenSpec) and move the change's Open Questions and accepted risks into *Deuda tecnica* when archiving
+  > *Estado actual* updated; *Deuda tecnica* moves at archive time.

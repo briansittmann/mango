@@ -201,7 +201,7 @@ A **movement** SHALL show, from left to right: a circular icon distinguishing a 
 - **THEN** after scrolling ends, the top edge of the first expense card is below the bottom edge of the top bar
 
 ### Requirement: Expense card states
-Below 1024px each expense card SHALL start collapsed. At 1024px and wider each expense card SHALL start open, and the expenses section title SHALL be followed by a "collapse all" / "expand all" control — "collapse all" while at least one card is open, "expand all" while none is — and a "new category" control that opens the category sheet in create mode. Closing a card at that width SHALL be remembered while the page is open and SHALL NOT change what the next load shows.
+Each expense card SHALL start collapsed, at every width. At 1024px and wider the expenses section title SHALL be followed by a "collapse all" / "expand all" control — "collapse all" while at least one card is open, "expand all" while none is — and a "new category" control that opens the category sheet in create mode. Closing a card at that width SHALL be remembered while the page is open and SHALL NOT change what the next load shows.
 
 **Collapsed:**
 - It SHALL show a colour dot, the name, the total aligned right (or "spent of budget" for a category with a budget), and a chevron.
@@ -230,9 +230,9 @@ Several cards SHALL be able to be open at once. Below 1024px a "collapse all" co
 - **THEN** no "collapse all" control is visible
 - **AND** when the user expands the "comida" card, expands the "ocio" card, then activates "collapse all", both cards were open at the same time, both are collapsed afterwards, and the control is hidden again
 
-#### Scenario: Cards start open on a laptop
+#### Scenario: Cards start collapsed on a laptop
 - **WHEN** `/demo` is rendered at a 1280px-wide viewport
-- **THEN** every category card is exposed as expanded with its rows visible, the section title is followed by "collapse all" and "new category", and activating "collapse all" collapses every card and turns the control into "expand all"
+- **THEN** every category card is exposed as collapsed, the section title is followed by "expand all" and "new category", and activating "expand all" opens every category card and turns the control into "collapse all"
 
 #### Scenario: New category from the section header
 - **WHEN** at 1280px the "new category" control is activated

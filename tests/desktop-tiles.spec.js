@@ -102,7 +102,7 @@ test('the expenses tile scrolls to the breakdown and opens nothing', async ({ pa
   expect(first.top).toBeGreaterThanOrEqual(TOP_BAR_HEIGHT)
 })
 
-test('cards start open on a laptop; "Contraer todas" closes them and becomes "Expandir todas"; "Nueva categoría" opens the create sheet', async ({ page }) => {
+test('cards start collapsed on a laptop; "Expandir todas" opens them and becomes "Contraer todas"; "Nueva categoría" opens the create sheet', async ({ page }) => {
   const errors = []
   page.on('console', (message) => {
     if (message.type() === 'error' || message.type() === 'warning') errors.push(message.text())
@@ -110,16 +110,16 @@ test('cards start open on a laptop; "Contraer todas" closes them and becomes "Ex
   await loadDesktop(page)
   const headers = page.locator('[data-dashboard-main] [aria-controls^="category-panel-"]')
   await expect(headers).toHaveCount(7)
-  for (let i = 0; i < 7; i += 1) await expect(headers.nth(i)).toHaveAttribute('aria-expanded', 'true')
-  expect(errors.filter((text) => /hydrat/i.test(text))).toEqual([])
-  await page.getByRole('button', { name: 'Contraer todas' }).click()
-  await page.waitForTimeout(300)
   for (let i = 0; i < 7; i += 1) await expect(headers.nth(i)).toHaveAttribute('aria-expanded', 'false')
-  await expect(page.getByRole('button', { name: 'Expandir todas' })).toBeVisible()
+  expect(errors.filter((text) => /hydrat/i.test(text))).toEqual([])
   await expect(page.getByRole('button', { name: 'Contraer todas' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Expandir todas' }).click()
   await page.waitForTimeout(300)
   for (let i = 0; i < 7; i += 1) await expect(headers.nth(i)).toHaveAttribute('aria-expanded', 'true')
+  await page.getByRole('button', { name: 'Contraer todas' }).click()
+  await page.waitForTimeout(300)
+  for (let i = 0; i < 7; i += 1) await expect(headers.nth(i)).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByRole('button', { name: 'Expandir todas' })).toBeVisible()
   await page.getByRole('button', { name: 'Nueva categoría' }).click()
   const dialog = sideSheet(page)
   await expect(dialog).toHaveAttribute('data-presentation', 'side')

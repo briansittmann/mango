@@ -1,4 +1,5 @@
 // @ts-check
+import { expect } from '@playwright/test'
 
 /** Shared steps for the desktop shell specs (`desktop-shell`, `dashboard-ui`, `design-system`), on `/demo`. */
 
@@ -104,4 +105,13 @@ export function translateOf(page, selector) {
     const m = new DOMMatrixReadOnly(cs.transform)
     return { x: Math.round(m.m41), y: Math.round(m.m42) }
   })
+}
+
+/** Opens a category card if it is folded: since 2026-10-12 every card starts folded at `lg` too. */
+export async function openCategory(page, categoryId) {
+  const header = page.locator(`[aria-controls="category-panel-${categoryId}"]`)
+  await header.scrollIntoViewIfNeeded()
+  if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click()
+  await expect(header).toHaveAttribute('aria-expanded', 'true')
+  return page.locator(`#category-panel-${categoryId}`)
 }

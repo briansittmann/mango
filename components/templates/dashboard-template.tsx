@@ -190,12 +190,8 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
   const sentinelRef = useRef<HTMLDivElement>(null)
   const accountCardRef = useRef<HTMLButtonElement>(null)
   const avatarRef = useRef<HTMLButtonElement>(null)
-  // At `lg` cards start open: this set holds the ones the user closed. The server and the first
-  // client frame render them collapsed; the switch lands in the hydration re-render, before the
-  // cascade reveals the cards (Risks).
-  const [closedIds, setClosedIds] = useState<Set<string>>(new Set())
-  // The "Movimientos" card follows the categories' default (open at `lg`, folded below) but stays
-  // out of collapse/expand all (`transaction-list` → *Movements card*, design D4).
+  // The "Movimientos" card is open at `lg` and folded below, while every category card starts
+  // folded at any width; it stays out of collapse/expand all (`transaction-list` → *Movements card*).
   const [movementsOpenMobile, setMovementsOpenMobile] = useState(false)
   const [movementsClosedDesktop, setMovementsClosedDesktop] = useState(false)
   // The category chosen in the bar's entry sheet, for the recurrence that may follow its save (D7).
@@ -1054,34 +1050,24 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
     setOpenSummary((prev) => (prev === key ? null : key))
   }
 
-  // At `lg` a category card is open unless the user closed it; below, closed unless opened (3.2).
+  // Every category card starts folded, at any width (Brian, 2026-10-12).
   function isCategoryOpen(id: string) {
-    return desktop ? !closedIds.has(id) : openIds.has(id)
+    return openIds.has(id)
   }
 
   function toggleCategory(id: string) {
-    if (!desktop) {
-      toggleCard(id)
-      return
-    }
-    setClosedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    toggleCard(id)
   }
 
   const categoryIds = data.expenses.groups.map((group) => group.id)
-  const anyCategoryOpen = desktop ? categoryIds.some((id) => !closedIds.has(id)) : openIds.size > 0
+  const anyCategoryOpen = desktop ? categoryIds.some((id) => openIds.has(id)) : openIds.size > 0
 
   function collapseAll() {
     setOpenIds(new Set())
-    if (desktop) setClosedIds(new Set(categoryIds))
   }
 
   function expandAll() {
-    setClosedIds(new Set())
+    setOpenIds((prev) => new Set([...prev, ...categoryIds]))
   }
 
   const movementsOpen = desktop ? !movementsClosedDesktop : movementsOpenMobile
@@ -1139,18 +1125,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
   function scrollToCategory(id: string) {
     const node = cardNodeRefs.current.get(id)
     if (!node) return
-    const openCard = () => {
-      if (desktop) {
-        setClosedIds((prev) => {
-          if (!prev.has(id)) return prev
-          const next = new Set(prev)
-          next.delete(id)
-          return next
-        })
-        return
-      }
-      setOpenIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
-    }
+    const openCard = () => setOpenIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
     if (prefersReducedMotion()) {
       node.scrollIntoView({ behavior: 'auto', block: 'start' })
       openCard()
@@ -1882,7 +1857,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
               currency={currency}
               open={movementsOpen}
               onToggle={toggleMovements}
-              pageSize={desktop ? 25 : 15}
+              pageSize={10}
               onEditExpense={actions.expenses ? openEditSheet : undefined}
               onEditIncome={actions.income ? openIncomeEditSheet : undefined}
               onDeleteExpense={actions.expenses ? handleDeleteExpense : undefined}

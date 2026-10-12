@@ -18,8 +18,8 @@ The card SHALL be open by default at viewports of 1024px and wider and folded by
 - **THEN** the "Movimientos" card is open in the main column, under the category cards
 
 #### Scenario: Not part of collapse all
-- **WHEN** at 1280px the visitor activates "Contraer todas"
-- **THEN** every category card folds and the "Movimientos" card stays open
+- **WHEN** at 1280px the visitor activates "Expandir todas" and then "Contraer todas"
+- **THEN** every category card opens and then folds, and the "Movimientos" card stays open throughout
 
 #### Scenario: Header states no amount
 - **WHEN** the card is rendered, open or folded
@@ -104,16 +104,16 @@ The open card SHALL show, above the list, a segmented control with four options:
 - **THEN** "Todo" is selected in the new cycle
 
 ### Requirement: Show more
-The list SHALL show at most one page of movements at first: 15 movements below 1024px and 25 at 1024px and wider, counted after the filter. When more remain, a "Mostrar más" control at the end of the list SHALL reveal the next page of the same size. When every movement is shown and there was more than one page, the control SHALL read "Mostrar menos" and fold the list back to the first page, keeping the card's header in view. Changing the filter or the shown cycle SHALL return to the first page. When "Mostrar más" reveals a page, keyboard focus SHALL move to the first newly revealed row.
+The list SHALL show at most one page of movements at first: 10 movements at every width, counted after the filter. When more remain, a "Mostrar más" control at the end of the list SHALL reveal the next page of the same size. When every movement is shown and there was more than one page, the control SHALL read "Mostrar menos" and fold the list back to the first page, keeping the card's header in view. Changing the filter or the shown cycle SHALL return to the first page. When "Mostrar más" reveals a page, keyboard focus SHALL move to the first newly revealed row.
 
-#### Scenario: A sixteenth movement on a phone
-- **WHEN** at a 390px-wide viewport on `/demo` the visitor adds three expenses, so the card holds 16 movements, and opens the card
-- **THEN** 15 rows are listed followed by "Mostrar más"
-- **AND** activating it lists the 16th row and the control then reads "Mostrar menos"
+#### Scenario: The demo's second page
+- **WHEN** the card is open on `/demo` with its 13 movements
+- **THEN** 10 rows are listed, from "Electrónica" to "Gasolina", followed by "Mostrar más"
+- **AND** activating it lists the last three rows and the control then reads "Mostrar menos"
 
 #### Scenario: Fewer than a page
-- **WHEN** `/demo` is rendered with its 13 movements
-- **THEN** all 13 rows are listed and neither "Mostrar más" nor "Mostrar menos" is shown
+- **WHEN** the visitor selects "Ahorro" on `/demo`
+- **THEN** its 3 rows are listed and neither "Mostrar más" nor "Mostrar menos" is shown
 
 #### Scenario: Show less
 - **WHEN** every movement is shown after "Mostrar más" and the visitor activates "Mostrar menos"

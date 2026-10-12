@@ -25,7 +25,7 @@ The main column is: summary, breakdown header, "Próximos cobros", category card
 `userMovements(data, timeZone)` returns a flat list, newest first:
 `{ kind: 'expense' | 'income' | 'savings', id, name, amount, date, day, group?, entry?, movement? }`, where `day` is the local day (`localDayOf` from `weekly-spend.ts`) and the original object is kept for the row's actions. A second helper, `groupByDay(movements, today)`, folds a slice into `{ day, label: 'today' | 'yesterday' | null, items }[]`.
 
-Paging slices the flat list **before** grouping, so a page always holds exactly 15 or 25 rows and a day may continue onto the next page under the same heading (which is merged, not repeated, because grouping runs over the whole shown slice).
+Paging slices the flat list **before** grouping, so a page always holds exactly 10 rows and a day may continue onto the next page under the same heading (which is merged, not repeated, because grouping runs over the whole shown slice).
 
 Ordering: by `date` instant descending; ties keep input order (expenses by group, then income, then savings), which is stable across renders. `node:test` cases in `lib/data/movements.test.mjs` cover the demo's 13 rows, the Dublin boundary row, exclusion of every `fixed` / `recurring` / `projected` row, ties, and "today" / "yesterday" labels.
 
@@ -50,7 +50,7 @@ The card is a section with `id="movimientos"` (`SECTION_MOVEMENTS`) and `scroll-
 - `components/molecules/segmented-control.tsx`: the filter (D6). It is generic (options + value + onChange) because the theme pill and toggle already repeat the same track/thumb pair, but those two are not migrated here (rule 7: no cleanup outside the change).
 
 ### D6. Filter on Base UI `RadioGroup` over `.segment-track`
-`@base-ui/react/radio-group` gives the single-choice semantics and roving arrow-key focus the spec asks for, without hand-written key handling. The visual is the existing pair: `.segment-track` (rounded-full, `p-1`) with a `.segment-thumb` that moves with `translate: index * 100%` over four equal columns (`grid-cols-4`), `transition-[translate,scale] duration-500 ease-spring`, `group-active:scale-[0.96]`, and `motion-reduce:transition-none`, as in `theme-toggle.tsx`. Labels in `text-body-md font-medium`; the selected one in `text-foreground`, the others `text-muted-foreground hover-fine:hover:text-foreground`. Each option is `min-h-target` (44 px). Equal columns keep the thumb a pure `translate` (no width interpolation); "Ingresos" is the longest label and fits a quarter of a 358 px track at `text-body-md`.
+`@base-ui/react/radio-group` gives the single-choice semantics and roving arrow-key focus the spec asks for, without hand-written key handling. The visual is the existing pair: `.segment-track` (rounded-full, `p-1`) with a `.segment-thumb` that moves with `translate: index * 100%` over four equal columns (`grid-cols-4`), `transition-[translate,scale] duration-500 ease-spring`, `group-active:scale-[0.96]`, and `motion-reduce:transition-none`, as in `theme-toggle.tsx`. Labels in `text-label-ui font-medium` (13 px, the iOS segmented size; `text-body-md` would have been a seventh text size on the phone, against `design-system`); the selected one in `text-foreground`, the others `text-muted-foreground hover-fine:hover:text-foreground`. Each option is `min-h-target` (44 px). Equal columns keep the thumb a pure `translate` (no width interpolation); "Ingresos" is the longest label and fits a quarter of a 358 px track.
 
 *Alternative considered:* a thumb that measures each label (`left` + `width`). Rejected: animates layout properties, and equal segments read calmer on a phone.
 
@@ -67,7 +67,7 @@ The heading uses `useFormatter().dateTime(..., { weekday: 'short', day: 'numeric
 Row keys are `${kind}:${id}`: ids are unique per table, but the card mixes three sources.
 
 ### D8. Paging state
-`const [paging, setPaging] = useState({ key, pages: 1 })` where `key = ${cycle.month}|${filter}`; when the current key differs from the stored one, render with `pages = 1` and store the new key during render (the repo's existing "adjust state on prop change" idiom, as `lastSummaryKey`). Shown rows: `filtered.slice(0, pageSize * pages)`. `pageSize` comes from `desktop` (15 / 25).
+`const [paging, setPaging] = useState({ key, pages: 1 })` where `key = ${cycle.month}|${filter}`; when the current key differs from the stored one, render with `pages = 1` and store the new key during render (the repo's existing "adjust state on prop change" idiom, as `lastSummaryKey`). Shown rows: `filtered.slice(0, pageSize * pages)`. `pageSize` is 10 at every width (Brian, 2026-10-12; the plan had 15 / 25).
 
 "Mostrar más" stores the id of the first new row and focuses it after commit (a ref map keyed by row key; `preventScroll` is not used, so the browser keeps it in view). "Mostrar menos" sets `pages = 1` and, after commit, calls `scrollIntoView({ block: 'nearest' })` on the card header (its `scroll-mt` keeps it below the bar). Its button reads "Mostrar menos" only when `pages > 1` and nothing remains.
 
@@ -102,7 +102,7 @@ New `movimientos` namespace in `messages/es.json` and `messages/en.json`: `titul
 - **Hydration flip at `lg`** → `useDesktop()` snapshots `false` on the server, so the card first renders folded and opens after hydration, as the category cards already do. Same accepted behaviour; the `Collapsible` transition makes it read as an opening.
 - **A row shown in two places** → swiping it in the card removes it from its category card through the same data refresh, and undo brings both back (`SwipeRestoreContext` is keyed by row id, so both wrappers reopen). Covered by a scenario.
 - **Ties on the same instant** → web rows often share midnight-local timestamps; input order breaks ties. Not chronological truth, but stable, and the day is right.
-- **Long main column at `lg`** → 25 rows plus the categories make the left column much taller than the widgets. Accepted: the page scrolls as one, and the sidebar entry jumps to the card.
+- **Category cards folded at `lg`** → since 2026-10-12 every category card starts folded at every width (Brian), so on load at `lg` the open "Movimientos" card is the main column's only expanded list. That rule lives in `add-desktop-dashboard-shell`'s delta of *Expense card states*, which was edited in place.
 - **The demo has 13 movements** → "Mostrar más" is not visible on load; the spec and tests add rows first.
 - **`fixed` completed from the chat is hidden** → a user who types "luz 72" sees the charge complete in its category, not in the card. Intended (Brian's rule); if it confuses, it is a one-condition change in `userMovements`.
 

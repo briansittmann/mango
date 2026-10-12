@@ -40,7 +40,7 @@ export function SegmentedControl<T extends string>({ label, options, value, onCh
           value={option.value}
           data-segment={option.value}
           className={cn(
-            'relative grid min-h-target cursor-pointer select-none place-items-center rounded-full px-2 text-body-md font-medium transition-colors duration-150 ease-out outline-none focus-visible:outline-2 focus-visible:-outline-offset-2',
+            'relative grid min-h-target cursor-pointer select-none place-items-center rounded-full px-2 text-label-ui font-medium transition-colors duration-150 ease-out outline-none focus-visible:outline-2 focus-visible:-outline-offset-2',
             option.value === value ? 'text-foreground' : 'text-muted-foreground hover-fine:hover:text-foreground',
           )}
         >

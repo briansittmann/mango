@@ -1,12 +1,12 @@
 // @ts-check
 import { test, expect } from '@playwright/test'
-import { loadDesktop, rect, sideSheet, visibleBackdrops } from './desktop-helpers'
+import { loadDesktop, openCategory, rect, sideSheet, visibleBackdrops } from './desktop-helpers'
 
 // `desktop-shell` → *Sheets open as side panels*, *Anchored popovers stay on screen* and *Add an
 // expense from the top bar*; `design-system` → *The shell yields to a side panel*, on `/demo`.
 
 async function openEntrySheet(page, categoryId = 'comida') {
-  await page.locator(`#category-panel-${categoryId}`).getByRole('button', { name: 'Añadir gasto' }).click()
+  await (await openCategory(page, categoryId)).getByRole('button', { name: 'Añadir gasto' }).click()
   const dialog = sideSheet(page)
   await expect(dialog).toBeVisible()
   return dialog
@@ -176,7 +176,7 @@ test('"Añadir gasto" from the bar: pick "ocio", save 15, and the card gains the
   await dialog.getByLabel('Descripción').fill('Cine')
   await dialog.locator('button[type="submit"]').click()
   await expect(dialog).toBeHidden()
-  await expect(page.locator('#category-panel-ocio').getByRole('button', { name: /^Cine/ }).first()).toBeVisible()
+  await expect((await openCategory(page, 'ocio')).getByRole('button', { name: /^Cine/ }).first()).toBeVisible()
   await expect(page.locator('#category-amount-ocio')).toContainText(`${before + 15} €`)
   // Still available on a projected cycle.
   await page.locator('[data-desktop-top-bar]').getByRole('button', { name: 'Ciclo siguiente' }).click()

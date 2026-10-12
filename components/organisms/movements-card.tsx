@@ -39,7 +39,7 @@ type MovementsCardProps = {
   currency: string
   open: boolean
   onToggle: () => void
-  /** Rows per page: 15 on a phone, 25 at `lg` (`transaction-list` → *Show more*). */
+  /** Rows per page: 10 at every width (`transaction-list` → *Show more*). */
   pageSize: number
   onEditExpense?: (group: ExpenseGroup, expense: Expense) => void
   onEditIncome?: (entry: IncomeEntry) => void
