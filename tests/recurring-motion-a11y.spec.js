@@ -25,6 +25,7 @@ async function openEntrySheetOnTransporte(page) {
 async function openDefinitionSheet(page, name) {
   await page.goto('/demo')
   await page.locator('button[aria-controls="upcoming-charges-panel"]').click()
+  await page.locator('button[aria-controls="upcoming-charges-taken"]').click()
   const row = page.locator('#upcoming-charges-panel').getByRole('button', { name: new RegExp(`^${name} ·`) })
   await row.click()
   return { sheet: dialog(page), row }
@@ -178,6 +179,7 @@ test.describe('recurring motion', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/demo')
     await page.locator('button[aria-controls="upcoming-charges-panel"]').click()
+    await page.locator('button[aria-controls="upcoming-charges-taken"]').click()
 
     await startSampling(page, [{ name: 'top', selector: OPEN_SHEET, prop: 'top' }])
     await page.locator('#upcoming-charges-panel').getByRole('button', { name: /^Alquiler ·/ }).click()
@@ -214,6 +216,7 @@ test.describe('recurring motion', () => {
   test('without reduced motion, the definition sheet slides in over frames', async ({ page }) => {
     await page.goto('/demo')
     await page.locator('button[aria-controls="upcoming-charges-panel"]').click()
+    await page.locator('button[aria-controls="upcoming-charges-taken"]').click()
 
     await startSampling(page, [{ name: 'top', selector: OPEN_SHEET, prop: 'top' }])
     await page.locator('#upcoming-charges-panel').getByRole('button', { name: /^Alquiler ·/ }).click()
@@ -251,6 +254,7 @@ for (const theme of /** @type {const} */ (['light', 'dark'])) {
       await setTheme(page, theme)
       await page.goto('/demo')
       await page.locator('button[aria-controls="upcoming-charges-panel"]').click()
+    await page.locator('button[aria-controls="upcoming-charges-taken"]').click()
       await expect(page.locator('#upcoming-charges-panel')).toBeVisible()
 
       // The open modal sheet marks the rest of the page aria-hidden (base-ui's `markOthers`),

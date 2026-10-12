@@ -245,7 +245,9 @@
     "fila": "{nombre} · day {dia}",
     "pie": "committed this cycle · {monto}",
     "cobrado": "Charged",
-    "pendiente": "Pending"
+    "pendiente": "Pending",
+    "grupoPendientes": "Pending",
+    "grupoCobrados": "{n} charged"
   },
   "gastoRecurrente": {
     "seRepite": "Repeats every month",

@@ -11,8 +11,10 @@ function body(page) {
   return page.evaluate(() => document.body.textContent.replace(/\s+/g, ' '))
 }
 
+/** Expands the card and unfolds its taken charges, which start folded (Alquiler and Seguro are taken). */
 async function openUpcomingCharges(page) {
   await page.locator('button[aria-controls="upcoming-charges-panel"]').click()
+  await page.locator('button[aria-controls="upcoming-charges-taken"]').click()
 }
 
 /** Opens the definition sheet for a "Próximos cobros" row. Expands the card first, so call it

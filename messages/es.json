@@ -245,7 +245,9 @@
     "fila": "{nombre} · día {dia}",
     "pie": "comprometido este ciclo · {monto}",
     "cobrado": "Cobrado",
-    "pendiente": "Pendiente"
+    "pendiente": "Pendiente",
+    "grupoPendientes": "Pendientes",
+    "grupoCobrados": "{n, plural, one {# cobrado} other {# cobrados}}"
   },
   "gastoRecurrente": {
     "seRepite": "Se repite todos los meses",

@@ -4,6 +4,8 @@ import type { RecurringDefinition } from '@/lib/data/recurring'
 export type UpcomingCharge = {
   id: string
   name: string
+  /** The category's name, for the row's muted line. */
+  category: string
   day: number
   amount: number
   color: CategoryColor
@@ -28,6 +30,7 @@ export function selectUpcomingCharges(groups: ExpenseGroup[], definitions: Recur
         return {
           id: expense.id,
           name: expense.name,
+          category: group.name,
           day: fixed.day,
           amount: expense.amount,
           color: group.color,
@@ -39,8 +42,6 @@ export function selectUpcomingCharges(groups: ExpenseGroup[], definitions: Recur
       }),
   )
 
-  return charges.sort((a, b) => {
-    if (a.charged !== b.charged) return a.charged ? -1 : 1
-    return a.day - b.day
-  })
+  // The card splits pending from taken itself; here only the day orders them (stable on ties).
+  return charges.sort((a, b) => a.day - b.day)
 }
