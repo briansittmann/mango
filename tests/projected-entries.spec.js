@@ -179,6 +179,11 @@ test('a deposit in a projected cycle', async ({ page }) => {
   }
   await expect.poll(() => body(page)).toMatch(/Ahorro\s*350\s?€/)
   await expect.poll(() => body(page)).toMatch(margin('425'))
+  // The balance runs to each projected cycle's end: 2 646 € + October's 350 €, then November's 300 € target.
+  await expect.poll(() => body(page)).toMatch(/Acumulado\s*2\.996\s?€/)
+  await move(page, 'next')
+  await expect.poll(() => body(page)).toMatch(/Acumulado\s*3\.296\s?€/)
+  await move(page, 'previous')
 
   await move(page, 'previous')
   await expect.poll(() => body(page)).toMatch(/Ahorro\s*146\s?€/)

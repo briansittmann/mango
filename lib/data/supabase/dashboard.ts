@@ -107,7 +107,11 @@ export async function resumenMensual(
   // `history` is the six cycles ending at the shown one, or at the one in progress for a
   // projection, whose chart is not shown (D6).
   const months = [-5, -4, -3, -2, -1, 0].map((n) => shiftMonth(projected ? currentMonth : shownMonth, n))
-  const [ranges, shown, generatedMonth] = await Promise.all([
+  // The projected cycles between the one in progress and the shown one, for the accumulated balance.
+  const between = projected
+    ? Array.from({ length: monthsBetween(currentMonth, shownMonth) - 1 }, (_, n) => shiftMonth(currentMonth, n + 1))
+    : []
+  const [ranges, shown, generatedMonth, betweenRanges] = await Promise.all([
     Promise.all(months.map((m) => cycleRange(client, { ...cycleParams, ref: refInstantForMonth(m) }))),
     projected ? cycleRange(client, { ...cycleParams, ref: refInstantForMonth(shownMonth) }) : null,
     // The projection counts cycles from the last generated one; with no marker the cycle in
@@ -119,6 +123,7 @@ export async function resumenMensual(
         : cycleRange(client, { ...cycleParams, ref: new Date(`${usuario.ciclo_generado_hasta}T12:00:00Z`) }).then(
             (range) => cycleMonthOf(range, timezone),
           ),
+    Promise.all(between.map((m) => cycleRange(client, { ...cycleParams, ref: refInstantForMonth(m) }))),
   ])
   const oldest = ranges[0]
   const latest = ranges[5]
@@ -168,7 +173,7 @@ export async function resumenMensual(
       .eq('usuario_id', usuario.id)
       .eq('tipo', 'ahorro')
       .is('borrado_en', null)
-      .lt('fecha', latest.fin.toISOString()),
+      .lt('fecha', shownRange.fin.toISOString()),
     // A soft-deleted linked row still holds its definition's slot in this cycle (D1).
     projected
       ? client
@@ -349,6 +354,20 @@ export async function resumenMensual(
       .filter((row) => row.tipo === 'ingreso' && inRange(row.fecha, range))
       .reduce((sum, row) => sum + Number(row.monto), 0),
   }))
+  // In a projection the balance runs to the shown cycle's end: the real rows up to the cycle in
+  // progress, then each projected cycle's savings as that cycle would show them (target as envelope).
+  const sumSavings = (from: number, to: number) =>
+    savingsRows
+      .filter((row) => from <= new Date(row.fecha).getTime() && new Date(row.fecha).getTime() < to)
+      .reduce((sum, row) => sum + Number(row.monto), 0)
+  const accumulated = projection
+    ? sumSavings(-Infinity, latest.fin.getTime()) +
+      betweenRanges.reduce(
+        (sum, range) => sum + Math.max(projection.savings, sumSavings(range.inicio.getTime(), range.fin.getTime())),
+        0,
+      ) +
+      savingsCycle
+    : null
   const savingsHistory = ranges.map((range, index) => ({
     month: months[index],
     accumulated: savingsRows
@@ -397,7 +416,7 @@ export async function resumenMensual(
       income: { total: incomeTotal, entries: incomeEntries, history: incomeHistory },
       savings: {
         cycle: savingsCycle,
-        accumulated: savingsHistory[5].accumulated,
+        accumulated: accumulated ?? savingsHistory[5].accumulated,
         target: usuario.meta_ahorro_mensual,
         history: savingsHistory,
         movements,

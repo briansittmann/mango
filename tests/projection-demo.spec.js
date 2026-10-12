@@ -100,8 +100,8 @@ test.describe('a projected cycle', () => {
     await expect(page.locator('#summary-group-panel').getByRole('button', { name: /^Salario/ })).toBeVisible()
     await expect(page.locator('#summary-group-panel').getByRole('button', { name: 'Añadir ingreso' })).toBeVisible()
     await page.getByRole('button', { name: /^Ahorro/ }).click()
-    await expect(page.locator('#summary-group-panel')).not.toContainText('Acumulado')
-    await expect(page.locator('#summary-group-panel').getByRole('button')).toHaveCount(1)
+    // 2 646 € at the sample's end plus the 300 € target of October and of November.
+    await expect(page.locator('#summary-group-panel')).toContainText(/Acumulado\s*3\.246\s?€/)
     await expect(page.locator('#summary-group-panel').getByRole('button', { name: 'Añadir movimiento de ahorro' })).toBeVisible()
   })
 

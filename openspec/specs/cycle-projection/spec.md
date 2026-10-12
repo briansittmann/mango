@@ -96,7 +96,8 @@ A projected cycle SHALL be rendered by the same dashboard as any other, with the
 - The "add expense" row of every category card, the "add income" row and the "add savings movement" row SHALL be offered as in the cycle in progress. The entry sheet SHALL open with the cycle's first day as its date, SHALL limit the date to the cycle's range, and SHALL NOT offer the recurrence switch.
 - A budgeted category SHALL show its budget amount and an empty bar, and no spent-of-budget figure, no amount left per week and no over-budget text, while it holds no real row; once it holds a real row, it SHALL show its progress as the cycle in progress does, with the projected charges counted as spending (`dashboard-ui` → *Budget progress on budgeted categories*).
 - The "Próximos cobros" card SHALL list the projected charges, all pending, sorted by day; a row SHALL still open its definition's sheet. A real row that replaced a projected charge SHALL be listed there as the cycle in progress would list it.
-- The monthly spend chart and the accumulated savings SHALL NOT be shown.
+- The monthly spend chart SHALL NOT be shown.
+- The accumulated savings SHALL be shown, as the balance at the cycle's end: every real savings row up to the end of the cycle in progress, plus each projected cycle's savings up to and including the shown one, each counted as that cycle's savings column shows it (the larger of the target and its movements).
 - The "Añadir categoría" tile SHALL be offered as in the cycle in progress; a category created there starts in that cycle (`category-creation` → *Category creation goes through an injected operation*). No reorder mode SHALL be offered.
 - Only the categories alive in the cycle SHALL be listed.
 - The category sheet SHALL open from a card and SHALL allow changing the budget of that cycle (`category-editing` → *A future cycle's budget asks how far it reaches*).

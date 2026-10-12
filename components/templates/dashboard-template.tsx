@@ -263,7 +263,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
   const toasts = useMemo(() => Toast.createToastManager(), [])
   const currency = data.user.currency
   // In a projected cycle (`cycle-projection` → *What a projected cycle shows and allows*) there is
-  // no reorder, spend chart, "Acumulado" or recurrence switch; computed charges open and swipe as
+  // no reorder, spend chart or recurrence switch; computed charges open and swipe as
   // their definition's slot, and real rows, add rows and category creation work as usual.
   const projected = data.cycle.projected
 
@@ -1412,18 +1412,16 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
       panel: (
         <>
           <div className="flex flex-col">
-            {projected ? null : (
-              <button
-                type="button"
-                onClick={actions.openSavingsHistory}
-                disabled={!actions.openSavingsHistory}
-                className="pressable flex w-full items-center gap-3 px-inset py-4 text-left [--press-tint:8%] hover:bg-foreground/[0.04] disabled:pointer-events-none"
-              >
-                <span className="min-w-0 flex-1 truncate text-headline-sm text-muted-foreground">{tResumen('acumulado')}</span>
-                <AnimatedAmount amount={data.savings.accumulated} currency={currency} className="shrink-0 text-headline-sm text-foreground" />
-                {actions.openSavingsHistory ? <ChevronRight aria-hidden className="-mr-1 size-4 shrink-0 text-muted-foreground" /> : null}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={actions.openSavingsHistory}
+              disabled={!actions.openSavingsHistory}
+              className="pressable flex w-full items-center gap-3 px-inset py-4 text-left [--press-tint:8%] hover:bg-foreground/[0.04] disabled:pointer-events-none"
+            >
+              <span className="min-w-0 flex-1 truncate text-headline-sm text-muted-foreground">{tResumen('acumulado')}</span>
+              <AnimatedAmount amount={data.savings.accumulated} currency={currency} className="shrink-0 text-headline-sm text-foreground" />
+              {actions.openSavingsHistory ? <ChevronRight aria-hidden className="-mr-1 size-4 shrink-0 text-muted-foreground" /> : null}
+            </button>
             {data.savings.movements.map((movement, index) => {
               const row = (
                 <SavingsMovementRow

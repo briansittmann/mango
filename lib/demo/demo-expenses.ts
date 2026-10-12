@@ -607,6 +607,22 @@ export function deriveDemoData(
     .filter(notDeleted)
     .sort(byDate)
   const projectedSavings = Math.max(projection.savings, projectedMovements.reduce((sum, movement) => sum + movement.amount, 0))
+  // The balance runs to the projected cycle's end: each projected cycle before it adds its savings
+  // as that cycle shows them (the target as an envelope), then this one.
+  const savingsIn = (month: string) =>
+    Math.max(
+      projection.savings,
+      savingsEdits.created
+        .filter((c) => c.draft.date.slice(0, 7) === month)
+        .map(toMovement)
+        .filter(notDeleted)
+        .reduce((sum, movement) => sum + movement.amount, 0),
+    )
+  const between = Array.from({ length: monthsBetween(base.cycle.month, shownMonth) - 1 }, (_, n) =>
+    shiftDemoMonth(base.cycle.month, n + 1),
+  )
+  const projectedAccumulated =
+    sample.savings.accumulated + between.reduce((sum, month) => sum + savingsIn(month), 0) + projectedSavings
 
   return {
     data: {
@@ -619,7 +635,7 @@ export function deriveDemoData(
       }),
       // The six history entries end at the cycle in progress (`dashboard-data`), as the sample's do.
       income: { total: projectedIncome, entries, history: sample.income.history },
-      savings: { ...sample.savings, cycle: projectedSavings, movements: projectedMovements },
+      savings: { ...sample.savings, cycle: projectedSavings, accumulated: projectedAccumulated, movements: projectedMovements },
       expenses: { total: projectedGroups.reduce((sum, group) => sum + group.total, 0), groups: projectedGroups },
     },
     definitions: storedDefinitions,

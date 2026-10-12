@@ -98,7 +98,7 @@ The savings total, the accumulated balance and the free margin SHALL animate fro
 
 No savings movement SHALL move an income or expense figure: the income total, the expenses total, card totals, budget bars, the charts and the `upcoming-charges` card SHALL stay as they were.
 
-**In a projected cycle** the savings column's total and the savings that enter the free margin SHALL be the larger of the savings target (0 when there is none) and the sum of the cycle's signed movements (`cycle-projection` → *A future cycle is computed, not stored*), so a movement moves the free margin only by the part of the cycle's movements beyond the target. The accumulated balance is not shown in a projection and SHALL NOT be recomputed for it.
+**In a projected cycle** the savings column's total and the savings that enter the free margin SHALL be the larger of the savings target (0 when there is none) and the sum of the cycle's signed movements (`cycle-projection` → *A future cycle is computed, not stored*), so a movement moves the free margin only by the part of the cycle's movements beyond the target. The accumulated balance SHALL be shown in a projection and SHALL run to the shown cycle's end (`cycle-projection` → *What a projected cycle shows and allows*): a movement entered in an earlier projected cycle SHALL count in every later one.
 
 #### Scenario: A deposit of 50
 - **WHEN** on `/demo` in Spanish, with savings at 146 €, the accumulated balance at 2.646 € and the free margin at 864 €, the visitor saves a deposit of 50 named "Extra"
