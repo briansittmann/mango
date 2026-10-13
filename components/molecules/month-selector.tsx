@@ -47,14 +47,14 @@ export function MonthSelector({
     setOpen(false)
   }
 
-  // The name keeps its box while the spinner sits over it, so nothing beside it moves.
+  // The name keeps its box while the spinner sits over it, so nothing beside it moves. Both swap
+  // in the same frame: a fade-out would freeze half-done while the new month renders on the main
+  // thread, leaving the spinner over the name. Only the name's return fades.
   function name(className: string, spinner: string) {
     return (
       <span className="relative grid place-items-center" aria-busy={loading || undefined}>
-        <span className={cn(className, 'transition-opacity duration-150 motion-reduce:transition-none', loading && 'opacity-0')}>{monthName}</span>
-        {loading ? (
-          <Loader2 aria-hidden className={cn('absolute animate-spin text-muted-foreground transition-opacity duration-200 starting:opacity-0 motion-reduce:transition-none', spinner)} />
-        ) : null}
+        <span className={cn(className, loading ? 'opacity-0' : 'transition-opacity duration-150 motion-reduce:transition-none')}>{monthName}</span>
+        {loading ? <Loader2 aria-hidden className={cn('absolute animate-spin text-muted-foreground', spinner)} /> : null}
         {loading ? <span className="sr-only">{t('cargandoMes')}</span> : null}
       </span>
     )
