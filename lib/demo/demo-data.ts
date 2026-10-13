@@ -1,11 +1,11 @@
 import type { BudgetRow } from '@/lib/data/budget'
 import { DEFAULT_WIDGET_ORDER, type CategoryColor, type DashboardData, type ExpenseGroup } from '@/lib/data/dashboard'
 import type { RecurringDefinition } from '@/lib/data/recurring'
-import { deriveDemoData, noDemoEdits, shiftDemoMonth } from '@/lib/demo/demo-expenses'
+import { deriveDemoData, noDemoEdits, shiftDemoMonth, type DemoExpenseEdits } from '@/lib/demo/demo-expenses'
 import { noDemoCategoryEdits } from '@/lib/demo/demo-categories'
-import { noDemoIncomeEdits } from '@/lib/demo/demo-income'
+import { noDemoIncomeEdits, type DemoIncomeEdits } from '@/lib/demo/demo-income'
 import { noDemoRecurringEdits } from '@/lib/demo/demo-recurring'
-import { noDemoSavingsEdits } from '@/lib/demo/demo-savings'
+import { noDemoSavingsEdits, type DemoSavingsEdits } from '@/lib/demo/demo-savings'
 
 type Locale = 'es' | 'en'
 type Localized = { es: string; en: string }
@@ -92,6 +92,55 @@ export function buildDemoBudgetRows(): BudgetRow[] {
     { categoryId: 'ocio', cycle: '2026-08-01', amount: 150 },
     { categoryId: 'transporte', cycle: '2026-08-01', amount: 100 },
   ]
+}
+
+// What Ana planned ahead in the projected months, so each one reads differently on the embedded
+// demo (`?embed=1`, the landing's phone and the promo footage): seeded as her own entries, they
+// edit and delete like any other. Budgets per cycle carry forward, so January's rows also hold
+// February and March.
+export function buildDemoPlan(locale: Locale): {
+  expenses: DemoExpenseEdits['created']
+  income: DemoIncomeEdits['created']
+  savings: DemoSavingsEdits['created']
+  budgets: BudgetRow[]
+} {
+  const expense = (id: string, categoryId: string, text: Localized, amount: number, date: string) => ({
+    id: `plan-${id}`,
+    categoryId,
+    draft: { description: text[locale], amount, date },
+  })
+  const income = (id: string, text: Localized, amount: number, date: string) => ({
+    id: `plan-${id}`,
+    draft: { description: text[locale], amount, date },
+  })
+
+  return {
+    expenses: [
+      expense('regalo', 'compras', { es: 'Regalo de cumpleaños', en: 'Birthday present' }, 60, '2026-10-18'),
+      expense('auriculares', 'compras', { es: 'Auriculares (Black Friday)', en: 'Headphones (Black Friday)' }, 180, '2026-11-27'),
+      expense('dentista', 'salud', { es: 'Dentista', en: 'Dentist' }, 90, '2026-11-12'),
+      expense('regalos', 'compras', { es: 'Regalos de Navidad', en: 'Christmas presents' }, 260, '2026-12-15'),
+      expense('rebajas', 'compras', { es: 'Rebajas', en: 'Sales' }, 120, '2027-01-08'),
+      expense('calefaccion', 'hogar', { es: 'Calefacción', en: 'Heating' }, 70, '2027-01-20'),
+      expense('oporto', 'ocio', { es: 'Escapada a Oporto', en: 'Weekend in Porto' }, 280, '2027-02-13'),
+    ],
+    income: [
+      income('freelance-oct', { es: 'Proyecto freelance', en: 'Freelance project' }, 350, '2026-10-20'),
+      income('paga-extra', { es: 'Paga extra', en: 'Christmas bonus' }, 1200, '2026-12-20'),
+      income('freelance-mar', { es: 'Proyecto freelance', en: 'Freelance project' }, 400, '2027-03-16'),
+    ],
+    savings: [
+      { id: 'plan-ahorro-paga', draft: { kind: 'deposit', name: locale === 'es' ? 'Parte de la paga extra' : 'Part of the bonus', amount: 500, date: '2026-12-21' } },
+    ],
+    budgets: [
+      { categoryId: 'comida', cycle: '2026-12-01', amount: 480 },
+      { categoryId: 'ocio', cycle: '2026-12-01', amount: 250 },
+      { categoryId: 'transporte', cycle: '2026-12-01', amount: 100 },
+      { categoryId: 'comida', cycle: '2027-01-01', amount: 350 },
+      { categoryId: 'ocio', cycle: '2027-01-01', amount: 100 },
+      { categoryId: 'transporte', cycle: '2027-01-01', amount: 100 },
+    ],
+  }
 }
 
 function buildCategory(

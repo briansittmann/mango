@@ -14,20 +14,29 @@ import { selectUpcomingCharges } from '@/lib/data/upcoming-charges'
 import type { BudgetRow } from '@/lib/data/budget'
 import { DEFAULT_WIDGET_ORDER, type DashboardData, type WidgetId } from '@/lib/data/dashboard'
 import type { RecurringDefinition } from '@/lib/data/recurring'
+import type { buildDemoPlan } from '@/lib/demo/demo-data'
 
 type DemoDashboardProps = {
   data: DashboardData
   recurringDefinitions: RecurringDefinition[]
   budgetRows: BudgetRow[]
+  plan: ReturnType<typeof buildDemoPlan>
   changeLanguage: (l: 'es' | 'en') => Promise<void>
 }
 
-export function DemoDashboard({ data, recurringDefinitions, budgetRows, changeLanguage }: DemoDashboardProps) {
-  const [edits, setEdits] = useState(noDemoEdits)
+export function DemoDashboard({ data, recurringDefinitions, budgetRows: baseBudgetRows, plan, changeLanguage }: DemoDashboardProps) {
+  const searchParams = useSearchParams()
+  // The landing's phone frames this page with `?embed=1` and tells it, as the visitor scrolls,
+  // which of its story's expenses have been sent so far; the list replaces the visitor's edits.
+  // Embedded, the projected months also carry what Ana planned ahead (`buildDemoPlan`), so they
+  // do not repeat each other; the plain `/demo` and its specs keep the bare projection.
+  const embedded = searchParams.get('embed') === '1'
+  const [edits, setEdits] = useState(embedded ? { ...noDemoEdits, created: plan.expenses } : noDemoEdits)
   const [categoryEdits, setCategoryEdits] = useState(noDemoCategoryEdits)
   const [recurringEdits, setRecurringEdits] = useState(noDemoRecurringEdits)
-  const [incomeEdits, setIncomeEdits] = useState(noDemoIncomeEdits)
-  const [savingsEdits, setSavingsEdits] = useState(noDemoSavingsEdits)
+  const [incomeEdits, setIncomeEdits] = useState(embedded ? { ...noDemoIncomeEdits, created: plan.income } : noDemoIncomeEdits)
+  const [savingsEdits, setSavingsEdits] = useState(embedded ? { ...noDemoSavingsEdits, created: plan.savings } : noDemoSavingsEdits)
+  const budgetRows = useMemo(() => (embedded ? [...baseBudgetRows, ...plan.budgets] : baseBudgetRows), [embedded, baseBudgetRows, plan])
   const router = useRouter()
   const [messageOpen, setMessageOpen] = useState(false)
   // The sample's month or one of its six projections (D9).
@@ -54,11 +63,7 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows, changeLa
   // (resolved from the request on both the server and client render) instead of `window.location`
   // — a lazy `useState` initializer that differs between them would leave that attribute unpatched:
   // React logs the hydration mismatch but does not fix up the DOM for it.
-  const searchParams = useSearchParams()
   const noCategoryActions = searchParams.get('e2eNoCategoryActions') === '1'
-  // The landing's phone frames this page with `?embed=1` and tells it, as the visitor scrolls,
-  // which of its story's expenses have been sent so far; the list replaces the visitor's edits.
-  const embedded = searchParams.get('embed') === '1'
   const categories = useMemo(() => {
     const base = createDemoCategoryMutations(view.expenses.groups, setCategoryEdits)
     if (!failReorder) return base
@@ -94,13 +99,16 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows, changeLa
       const entries: { id: string; categoryId: string; description: string; amount: number }[] = event.data.entries
       setEdits({
         ...noDemoEdits,
-        created: entries.map(({ id, categoryId, description, amount }) => ({ id, categoryId, draft: { description, amount, date: today } })),
+        created: [
+          ...plan.expenses,
+          ...entries.map(({ id, categoryId, description, amount }) => ({ id, categoryId, draft: { description, amount, date: today } })),
+        ],
       })
     }
     window.addEventListener('message', onMessage)
     window.parent.postMessage({ type: 'mango:ready' }, window.location.origin)
     return () => window.removeEventListener('message', onMessage)
-  }, [embedded, view.cycle.today])
+  }, [embedded, view.cycle.today, plan])
 
   function showUnavailable() {
     setMessageOpen(true)

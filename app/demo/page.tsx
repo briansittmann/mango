@@ -1,7 +1,7 @@
 import type { Metadata, ResolvingMetadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { changeLanguage } from "@/app/actions/language";
-import { buildDemoBudgetRows, buildDemoData, buildDemoRecurringDefinitions } from "@/lib/demo/demo-data";
+import { buildDemoBudgetRows, buildDemoData, buildDemoPlan, buildDemoRecurringDefinitions } from "@/lib/demo/demo-data";
 import { socialMetadata } from "@/lib/metadata";
 import { DemoDashboard } from "./demo-dashboard";
 
@@ -22,8 +22,9 @@ export default async function DemoPage() {
   const data = buildDemoData(locale);
   const recurringDefinitions = buildDemoRecurringDefinitions(locale);
   const budgetRows = buildDemoBudgetRows();
+  const plan = buildDemoPlan(locale);
 
   return (
-    <DemoDashboard data={data} recurringDefinitions={recurringDefinitions} budgetRows={budgetRows} changeLanguage={changeLanguage} />
+    <DemoDashboard data={data} recurringDefinitions={recurringDefinitions} budgetRows={budgetRows} plan={plan} changeLanguage={changeLanguage} />
   );
 }
