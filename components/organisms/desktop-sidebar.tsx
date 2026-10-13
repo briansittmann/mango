@@ -11,6 +11,7 @@ import { useMediaQuery } from '@/components/hooks/use-desktop'
 import { CompositionStrip } from '@/components/molecules/composition-strip'
 import { AnimatedAmount } from '@/components/ui/counter/animated-amount'
 import type { CategoryColor } from '@/lib/data/dashboard'
+import { swing } from '@/lib/ui/fruit-swing'
 import { cn } from '@/lib/utils'
 // A pure formatter over the stored number, not data access (add-whatsapp-linking D8).
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
@@ -144,13 +145,16 @@ export function DesktopSidebar({
         <button
           type="button"
           onClick={onScrollTop}
+          onPointerEnter={swing}
           aria-label={tDashboard('irArriba')}
           className="pressable -ml-1 flex min-h-target items-center self-start rounded-full pr-3 [--press-scale:0.96]"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/mango-logo-light.svg" alt="" aria-hidden className="size-11 object-contain dark:hidden" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/mango-logo-dark.svg" alt="" aria-hidden className="hidden size-11 object-contain dark:block" />
+          <span className="nav-fruit inline-flex">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/mango-logo-light.svg" alt="" aria-hidden className="size-11 object-contain dark:hidden" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/mango-logo-dark.svg" alt="" aria-hidden className="hidden size-11 object-contain dark:block" />
+          </span>
           <span className="-ml-0.5 font-display text-headline-md text-foreground">{tDashboard('appName')}</span>
         </button>
 

@@ -17,6 +17,7 @@ import { DotField } from '@/components/ui/dot-field'
 import { RevealText } from '@/components/ui/reveal-text'
 import { RevealTitle } from '@/components/ui/reveal-title'
 import { ScrambledText } from '@/components/ui/scrambled-text'
+import { swing } from '@/lib/ui/fruit-swing'
 import { cn } from '@/lib/utils'
 
 gsap.registerPlugin(SplitText, ScrollTrigger)
@@ -52,18 +53,6 @@ function Logo() {
       </span>
     </span>
   )
-}
-
-// On hover the mango hops and swings from its stem like fruit on a branch, settling on its own
-// even if the pointer leaves mid-swing.
-function swing(event: PointerEvent<HTMLElement>) {
-  if (event.pointerType !== 'mouse' || matchMedia('(prefers-reduced-motion: reduce)').matches) return
-  const fruit = event.currentTarget.querySelector('.nav-fruit')
-  if (!fruit || gsap.isTweening(fruit)) return
-  gsap
-    .timeline({ defaults: { transformOrigin: '62% 30%' } })
-    .to(fruit, { rotate: -18, y: -3, scale: 1.1, duration: 0.2, ease: 'power2.out' })
-    .to(fruit, { rotate: 0, y: 0, scale: 1, duration: 1.2, ease: 'elastic.out(1.1, 0.28)' })
 }
 
 // A wave of the button's own ink spreads from where it was pressed.
