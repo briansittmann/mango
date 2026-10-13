@@ -53,3 +53,9 @@ referencia/
 
 # Datos personales de usuarios reales
 docs/usuarios.md
+
+# Clips del video promocional (scripts/promo/record.mts)
+/promo/
+
+# Video promocional, todavia sin publicar
+/scripts/
