@@ -9,6 +9,9 @@ function followsSystemByDefault(pathname: string): boolean {
 
 export function ThemeSync() {
   useLayoutEffect(() => {
+    // The landing's phone (`/demo?embed=1`) is dark like the landing itself; the root layout's
+    // inline script already set it, whatever the demo's own theme choice.
+    if (location.pathname === '/demo' && new URLSearchParams(location.search).get('embed') === '1') return
     try {
       const theme = localStorage.getItem('theme')
       if (theme !== 'system' && !(theme === null && followsSystemByDefault(location.pathname))) {
