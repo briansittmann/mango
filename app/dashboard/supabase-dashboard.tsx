@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardTemplate } from '@/components/templates/dashboard-template'
 import { changeLanguage } from '@/app/actions/language'
@@ -89,19 +89,23 @@ export function SupabaseDashboard({ data, definitions }: SupabaseDashboardProps)
   const router = useRouter()
   const charges = useMemo(() => selectUpcomingCharges(data.expenses.groups, definitions), [data, definitions])
   const month = data.cycle.month
+  // The new month's data comes from the server; the transition's pending flag spins the month name.
+  const [cycleLoading, startCycleTransition] = useTransition()
+  const goTo = (selected: string) => startCycleTransition(() => router.push(`/dashboard?mes=${selected}`))
 
   return (
     <DashboardTemplate
       data={data}
       charges={charges}
       definitions={definitions}
+      cycleLoading={cycleLoading}
       actions={{
         ...mutations,
         changeLanguage,
         // The month selector disables "next" on the cycle in progress; the page clamps any URL past it.
-        previousCycle: () => router.push(`/dashboard?mes=${shiftMonth(month, -1)}`),
-        nextCycle: () => router.push(`/dashboard?mes=${shiftMonth(month, 1)}`),
-        selectCycle: (selected) => router.push(`/dashboard?mes=${selected}`),
+        previousCycle: () => goTo(shiftMonth(month, -1)),
+        nextCycle: () => goTo(shiftMonth(month, 1)),
+        selectCycle: goTo,
         signOut: () => void actions.signOut(),
         deleteAccount: actions.deleteAccount,
       }}

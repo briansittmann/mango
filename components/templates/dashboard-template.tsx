@@ -72,6 +72,8 @@ type DashboardTemplateProps = {
   charges: UpcomingCharge[]
   definitions: RecurringDefinition[]
   notice?: ReactNode
+  /** `/dashboard` only: a month change is loading from the database (the demo switches instantly). */
+  cycleLoading?: boolean
 }
 
 type SummaryKey = 'income' | 'expenses' | 'savings'
@@ -167,7 +169,7 @@ export function DashboardTemplate(props: DashboardTemplateProps) {
   )
 }
 
-function Dashboard({ data, actions, charges, definitions, notice }: DashboardTemplateProps) {
+function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }: DashboardTemplateProps) {
   const t = useTranslations('dashboard')
   const tCuenta = useTranslations('cuenta')
   const tResumen = useTranslations('resumen')
@@ -1510,6 +1512,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
         hidden={reordering}
         cycle={data.cycle}
         actions={actions}
+        cycleLoading={cycleLoading}
         onAddExpense={actions.expenses && data.expenses.groups.length > 0 ? () => openCreateSheet(data.expenses.groups[0], true) : undefined}
       />
       <BackToTop hidden={pushedBack} onPress={scrollToTop} />
@@ -1569,6 +1572,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
                   onPrevious={actions.previousCycle}
                   onNext={actions.nextCycle}
                   onSelect={actions.selectCycle}
+                  loading={cycleLoading}
                 />
               </div>
             </div>
@@ -1611,6 +1615,7 @@ function Dashboard({ data, actions, charges, definitions, notice }: DashboardTem
               onPrevious={actions.previousCycle}
               onNext={actions.nextCycle}
               onSelect={actions.selectCycle}
+              loading={cycleLoading}
             />
           </div>
         </AnimatedContent>

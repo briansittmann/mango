@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { MonthPicker } from '@/components/molecules/month-picker'
@@ -19,6 +19,8 @@ type MonthSelectorProps = {
   onPrevious?: () => void
   onNext?: () => void
   onSelect?: (month: string) => void
+  /** A month change is on its way from the server: the name turns into a spinner until it lands. */
+  loading?: boolean
 }
 
 export function MonthSelector({
@@ -33,6 +35,7 @@ export function MonthSelector({
   onPrevious,
   onNext,
   onSelect,
+  loading = false,
 }: MonthSelectorProps) {
   const t = useTranslations('dashboard')
   const format = useFormatter()
@@ -42,6 +45,19 @@ export function MonthSelector({
   function handleSelect(value: string) {
     onSelect?.(value)
     setOpen(false)
+  }
+
+  // The name keeps its box while the spinner sits over it, so nothing beside it moves.
+  function name(className: string, spinner: string) {
+    return (
+      <span className="relative grid place-items-center" aria-busy={loading || undefined}>
+        <span className={cn(className, 'transition-opacity duration-150 motion-reduce:transition-none', loading && 'opacity-0')}>{monthName}</span>
+        {loading ? (
+          <Loader2 aria-hidden className={cn('absolute animate-spin text-muted-foreground transition-opacity duration-200 starting:opacity-0 motion-reduce:transition-none', spinner)} />
+        ) : null}
+        {loading ? <span className="sr-only">{t('cargandoMes')}</span> : null}
+      </span>
+    )
   }
 
   if (variant === 'compact') {
@@ -64,7 +80,7 @@ export function MonthSelector({
           aria-haspopup="dialog"
           className="pressable flex min-h-target items-center gap-1 rounded-full px-2"
         >
-          <span className="font-display text-headline-sm capitalize text-foreground">{monthName}</span>
+          {name('font-display text-headline-sm capitalize text-foreground', 'size-5')}
           <span className="sr-only"> {t('seleccionarMes')}</span>
         </button>
         <button
@@ -110,7 +126,7 @@ export function MonthSelector({
           aria-haspopup="dialog"
           className="pressable -ml-2 flex min-h-target items-center gap-1 rounded-full px-2"
         >
-          <span className="font-display text-headline-lg font-bold capitalize text-foreground">{monthName}</span>
+          {name('font-display text-headline-lg font-bold capitalize text-foreground', 'size-6')}
           <ChevronDown
             aria-hidden
             className={cn('size-5 text-muted-foreground transition-transform duration-200', open && 'rotate-180')}

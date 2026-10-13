@@ -14,6 +14,7 @@ type DesktopTopBarProps = {
   actions: Pick<DashboardActions, 'previousCycle' | 'nextCycle' | 'selectCycle'>
   /** Opens the entry sheet in create mode (design D7); absent when the page has no expense operations. */
   onAddExpense?: () => void
+  cycleLoading?: boolean
 }
 
 /**
@@ -22,7 +23,7 @@ type DesktopTopBarProps = {
  * the content sits in the bar's lower 72px, which is the floating pill's own height, so nothing
  * moves when the material changes (design D2).
  */
-export function DesktopTopBar({ floating, pushedBack, hidden, cycle, actions, onAddExpense }: DesktopTopBarProps) {
+export function DesktopTopBar({ floating, pushedBack, hidden, cycle, actions, onAddExpense, cycleLoading }: DesktopTopBarProps) {
   const t = useTranslations('escritorio')
   const tDashboard = useTranslations('dashboard')
 
@@ -52,6 +53,7 @@ export function DesktopTopBar({ floating, pushedBack, hidden, cycle, actions, on
               onPrevious={actions.previousCycle}
               onNext={actions.nextCycle}
               onSelect={actions.selectCycle}
+              loading={cycleLoading}
             />
             {cycle.inProgress ? (
               <span data-cycle-status="en-curso" className="flex items-center gap-1.5 rounded-full bg-brand/[0.12] px-2.5 py-1 text-label-ui font-medium text-brand-ink">
