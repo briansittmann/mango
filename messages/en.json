@@ -31,6 +31,7 @@
     "acumulado": "Accumulated",
     "deposito": "Deposit",
     "retiro": "Withdrawal",
+    "yaAhorrado": "Already saved",
     "incomeSources": "Income sources",
     "cycleSavings": "Cycle savings",
     "progresoAhorro": "{ahorrado} of {meta}",
@@ -78,7 +79,8 @@
       "ahorro": "Savings",
       "cobrado": "Charged",
       "pendiente": "Pending",
-      "proyectado": "Projected"
+      "proyectado": "Projected",
+      "yaAhorrado": "Already saved"
     }
   },
   "graficos": {
@@ -185,7 +187,20 @@
     "cambiosDesde": "Changes saved from {mes} on",
     "eliminadoDesde": "Deleted from {mes} on",
     "movimientoEliminado": "Movement deleted",
-    "errorEliminarMovimiento": "Couldn't delete the movement"
+    "errorEliminarMovimiento": "Couldn't delete the movement",
+    "editarMovimientoAhorro": "Edit movement",
+    "eliminarMovimiento": "Delete movement",
+    "yaLoTenia": "I already had it saved",
+    "yaLoTeniaAyuda": "Adds to your total savings without coming out of your free margin",
+    "marcarCobrado": "Mark as charged",
+    "cobradoEsteMes": "{nombre}: charged this month",
+    "errorMarcar": "Couldn't mark it as charged",
+    "yaNoSeRepite": "{nombre} no longer repeats",
+    "errorDejarDeRepetir": "Couldn't stop it repeating",
+    "eliminadoConHistorial": "{nombre} deleted, earlier months included",
+    "eliminarSoloAyuda": "It comes back next month.",
+    "eliminarDesdeAyuda": "It stops repeating. Earlier months stay.",
+    "eliminarTodoAyuda": "Also deletes the charges of earlier months."
   },
   "hojaCategoria": {
     "cancelar": "Cancel",
@@ -235,7 +250,8 @@
   "alcance": {
     "aplicar": "Apply the change",
     "soloEsteMes": "Only this month",
-    "desdeEsteMes": "From this month on"
+    "desdeEsteMes": "From this month on",
+    "todosLosMeses": "Every month, earlier ones included"
   },
   "modoReordenar": {
     "titulo": "Reorder categories",
@@ -285,7 +301,9 @@
     "guardar": "Save",
     "cambiosGuardados": "{nombre}: {monto} every month",
     "errorGuardar": "Couldn't save. Try again.",
-    "errorEliminar": "Couldn't delete the recurrence"
+    "errorEliminar": "Couldn't delete the recurrence",
+    "resumen": "{monto} every month, on day {dia}",
+    "quedanPagos": "{pagos, plural, one {# payment} other {# payments}} left · {monto}"
   },
   "metadatos": {
     "nombre": "Mango",
@@ -615,6 +633,7 @@
     "ingreso": "Income",
     "deposito": "Deposit",
     "retiro": "Withdrawal",
+    "yaAhorrado": "Already saved",
     "hoy": "Today",
     "ayer": "Yesterday",
     "mostrarMas": "Show more",

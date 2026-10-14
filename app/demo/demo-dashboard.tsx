@@ -50,7 +50,12 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows: baseBudg
   const expenses = useMemo(() => createDemoExpenseMutations(setEdits), [])
   const recurring = useMemo(() => createDemoRecurringMutations(setRecurringEdits), [])
   const income = useMemo(() => createDemoIncomeMutations(setIncomeEdits), [])
-  const savings = useMemo(() => createDemoSavingsMutations(setSavingsEdits), [])
+  // `?e2e=fail-savings-update` makes a savings edit reject (`savings-editing` → *A failed save*).
+  const failSavingsUpdate = searchParams.get('e2e') === 'fail-savings-update'
+  const savings = useMemo(() => {
+    const base = createDemoSavingsMutations(setSavingsEdits)
+    return failSavingsUpdate ? { ...base, update: () => Promise.reject(new Error('e2e-forced-savings-update-failure')) } : base
+  }, [failSavingsUpdate])
   // Test-only seam for Playwright coverage of the reorder failure path (11.3): the demo has no
   // network layer to intercept, so `?e2eFailReorder=1` makes `reorder` reject deterministically.
   const [failReorder] = useState(

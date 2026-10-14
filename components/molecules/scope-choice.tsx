@@ -3,15 +3,19 @@ import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 
 export type Scope = 'only' | 'onward'
+/** A fixed row's delete can also reach every month, the earlier ones included (`unify-fixed-charge-sheet` D6). */
+export type Reach = Scope | 'all'
 
-type ScopeChoiceProps = {
-  value: Scope | null
-  onChange: (scope: Scope) => void
+type ScopeChoiceProps<S extends Reach> = {
+  value: S | null
+  onChange: (scope: S) => void
+  /** The options in order; "Solo este mes" and "Desde este mes en adelante" by default. */
+  options?: readonly S[]
   disabled?: boolean
   /** The fieldset's legend; "Aplicar el cambio" by default. */
   legend?: string
   /** A muted line under an option, e.g. what a delete "only this month" leaves behind. */
-  hints?: Partial<Record<Scope, string>>
+  hints?: Partial<Record<S, string>>
   /** Destructive colour on the options, for the delete step. */
   destructive?: boolean
 }
@@ -21,14 +25,22 @@ type ScopeChoiceProps = {
  * adelante", a single choice with neither preselected. The category sheet (budget and delete) and
  * the entry sheet (a recurring row's save and delete) all ask it with this control.
  */
-export function ScopeChoice({ value, onChange, disabled = false, legend, hints, destructive = false }: ScopeChoiceProps) {
+export function ScopeChoice<S extends Reach = Scope>({
+  value,
+  onChange,
+  options = ['only', 'onward'] as unknown as readonly S[],
+  disabled = false,
+  legend,
+  hints,
+  destructive = false,
+}: ScopeChoiceProps<S>) {
   const t = useTranslations('alcance')
   const name = useId()
 
   return (
     <fieldset className="pb-2">
       <legend className="float-left w-full px-inset pb-1 pt-2 text-body-sm text-muted-foreground">{legend ?? t('aplicar')}</legend>
-      {(['only', 'onward'] as const).map((option) => {
+      {options.map((option) => {
         const checked = value === option
         const hint = hints?.[option]
         return (
@@ -40,7 +52,7 @@ export function ScopeChoice({ value, onChange, disabled = false, legend, hints, 
             )}
           >
             <span className="flex min-w-0 flex-1 flex-col py-2">
-              <span>{t(option === 'only' ? 'soloEsteMes' : 'desdeEsteMes')}</span>
+              <span>{option === 'only' ? t('soloEsteMes') : option === 'onward' ? t('desdeEsteMes') : t('todosLosMeses')}</span>
               {hint ? <span className="text-body-sm text-muted-foreground">{hint}</span> : null}
             </span>
             <input

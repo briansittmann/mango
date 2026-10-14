@@ -13,7 +13,7 @@ import type { DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
 import type { IncomeEntry } from '@/lib/data/income'
 // Pure arithmetic over the rows the dashboard already holds, like the calendar's (design D1).
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
-import { groupByDay, userMovements, type Movement, type MovementKind } from '@/lib/data/movements'
+import { groupByDay, userMovements, type Movement, type MovementKind, type SavingsMovement } from '@/lib/data/movements'
 import { cn } from '@/lib/utils'
 
 type Filter = 'all' | MovementKind
@@ -45,6 +45,7 @@ type MovementsCardProps = {
   onEditIncome?: (entry: IncomeEntry) => void
   onDeleteExpense?: (expense: Expense) => Promise<void>
   onDeleteIncome?: (entry: IncomeEntry) => Promise<void>
+  onEditSavings?: (movement: SavingsMovement) => void
   onDeleteSavings?: (movementId: string) => Promise<void>
 }
 
@@ -63,6 +64,7 @@ export function MovementsCard({
   onEditIncome,
   onDeleteExpense,
   onDeleteIncome,
+  onEditSavings,
   onDeleteSavings,
 }: MovementsCardProps) {
   const t = useTranslations('movimientos')
@@ -137,7 +139,15 @@ export function MovementsCard({
 
   function renderRow(movement: Movement, index: number, first: boolean, heading: string) {
     const kindLabel =
-      movement.kind === 'expense' ? movement.group.name : movement.kind === 'income' ? t('ingreso') : movement.amount < 0 ? t('retiro') : t('deposito')
+      movement.kind === 'expense'
+        ? movement.group.name
+        : movement.kind === 'income'
+          ? t('ingreso')
+          : movement.amount < 0
+            ? t('retiro')
+            : movement.movement.alreadySaved
+              ? `${t('deposito')} · ${t('yaAhorrado')}`
+              : t('deposito')
     const name = movement.name || kindLabel
     const sign = movement.kind === 'expense' ? '' : movement.amount < 0 ? '−' : '+'
     const label = t('fila', { nombre: name, tipo: kindLabel, dia: heading, monto: `${sign}${money(Math.abs(movement.amount), currency)}` })
@@ -147,7 +157,9 @@ export function MovementsCard({
         ? () => onEditExpense(movement.group, movement.expense)
         : movement.kind === 'income' && onEditIncome
           ? () => onEditIncome(movement.entry)
-          : undefined
+          : movement.kind === 'savings' && onEditSavings
+            ? () => onEditSavings(movement.movement)
+            : undefined
     const onDelete =
       movement.kind === 'expense'
         ? onDeleteExpense && (() => onDeleteExpense(movement.expense))

@@ -13,7 +13,7 @@ type UpcomingChargesCardProps = {
   currency: string
   open: boolean
   onToggle: () => void
-  onOpenDefinition?: (charge: UpcomingCharge) => void
+  onOpenCharge?: (charge: UpcomingCharge) => void
 }
 
 const PANEL_ID = 'upcoming-charges-panel'
@@ -29,7 +29,7 @@ export function selectNextCharge(charges: UpcomingCharge[]): UpcomingCharge | nu
   return pool.reduce((lowest, charge) => (charge.day < lowest.day ? charge : lowest))
 }
 
-export function UpcomingChargesCard({ charges, currency, open, onToggle, onOpenDefinition }: UpcomingChargesCardProps) {
+export function UpcomingChargesCard({ charges, currency, open, onToggle, onOpenCharge }: UpcomingChargesCardProps) {
   const t = useTranslations('proximosCobros')
   const tRecurrente = useTranslations('gastoRecurrente')
   const { money } = useAmountFormatter()
@@ -67,7 +67,7 @@ export function UpcomingChargesCard({ charges, currency, open, onToggle, onOpenD
         color={charge.color}
         charged={charge.charged}
         label={rowLabel}
-        onActivate={onOpenDefinition ? () => onOpenDefinition(charge) : undefined}
+        onActivate={onOpenCharge ? () => onOpenCharge(charge) : undefined}
         first={first}
       />
     )

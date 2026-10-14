@@ -7,10 +7,12 @@ export type SavingsMovementDraft = {
   name: string // trimmed, never empty
   amount: number // > 0, at most two decimals; the sign comes from `kind`
   date: LocalDate
+  /** A deposit the user already had saved: counts in the accumulated balance only. Always false for a withdrawal. */
+  alreadySaved: boolean
 }
 
 /**
- * Three operations, injected by the page, that every data source implements with the same
+ * Four operations, injected by the page, that every data source implements with the same
  * inputs and outcomes:
  * - each resolves once the change is durable, and rejects with nothing changed
  * - the amount is always positive; the sign is applied by the implementation from `kind`
@@ -18,8 +20,25 @@ export type SavingsMovementDraft = {
  */
 export type SavingsMutations = {
   addSavingsMovement(draft: SavingsMovementDraft): Promise<void>
+  /** Replaces the movement's type, name, amount, date and mark with the draft's. */
+  update(movementId: string, draft: SavingsMovementDraft): Promise<void>
   softDelete(movementId: string): Promise<void>
   restore(movementId: string): Promise<void>
+}
+
+/**
+ * The two sums a cycle's savings split into (`savings-editing` → *A deposit the user already had*):
+ * `counted` enters the savings column, the free margin and a projection's floor; `alreadySaved`
+ * only the accumulated balance.
+ */
+export function splitSavings(movements: { amount: number; alreadySaved?: boolean }[]): { counted: number; alreadySaved: number } {
+  let counted = 0
+  let alreadySaved = 0
+  for (const movement of movements) {
+    if (movement.alreadySaved) alreadySaved += movement.amount
+    else counted += movement.amount
+  }
+  return { counted, alreadySaved }
 }
 
 export type SavingsProgress = {

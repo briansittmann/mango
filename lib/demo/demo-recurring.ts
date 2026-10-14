@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { LocalDate } from '@/lib/data/expenses'
-import type { RecurringDraft, RecurringMutations, RecurringTarget, SlotEntry } from '@/lib/data/recurring'
+import type { RecurringDefinition, RecurringDraft, RecurringMutations, RecurringTarget, SlotEntry } from '@/lib/data/recurring'
 
 /**
  * One cycle's slot of a definition (`add-forward-scoped-edits` D1): an override of what that cycle
@@ -20,6 +20,10 @@ export type DemoRecurringEdits = {
   onward: { seq: number; definitionId: string; cycle: LocalDate; entry: SlotEntry | null }[]
   /** Keyed by `slotKey`. */
   slots: Record<string, DemoSlot>
+  /** "Marcar como cobrado" and its undo, keyed by `slotKey`: the charge's state in that cycle. */
+  charged: Record<string, boolean>
+  /** The reminder setting each definition was last given from its row's sheet. */
+  reminders: Record<string, RecurringDefinition['reminder']>
 }
 
 export const noDemoRecurringEdits: DemoRecurringEdits = {
@@ -30,6 +34,8 @@ export const noDemoRecurringEdits: DemoRecurringEdits = {
   deletedIds: [],
   onward: [],
   slots: {},
+  charged: {},
+  reminders: {},
 }
 
 export function slotKey(definitionId: string, cycle: LocalDate): string {
@@ -62,6 +68,14 @@ export function createDemoRecurringMutations(setEdits: Dispatch<SetStateAction<D
         ...edits,
         stoppedIds: edits.stoppedIds.includes(definitionId) ? edits.stoppedIds : [...edits.stoppedIds, definitionId],
       }))
+      return Promise.resolve()
+    },
+    setCharged(definitionId, cycle, charged) {
+      setEdits((edits) => ({ ...edits, charged: { ...edits.charged, [slotKey(definitionId, cycle)]: charged } }))
+      return Promise.resolve()
+    },
+    setReminder(definitionId, reminder) {
+      setEdits((edits) => ({ ...edits, reminders: { ...edits.reminders, [definitionId]: reminder } }))
       return Promise.resolve()
     },
     delete(definitionId) {

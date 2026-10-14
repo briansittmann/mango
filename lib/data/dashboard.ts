@@ -139,7 +139,8 @@ export type DashboardData = {
     target: number | null
     /** Accumulated balance per cycle, most recent last, same shape as `history` above. */
     history: { month: string; accumulated: number }[]
-    movements: { id: string; name: string; date: string; amount: number }[]
+    /** `alreadySaved`: a deposit the user already had (`ahorro_previo`), outside `cycle` and the free margin. */
+    movements: { id: string; name: string; date: string; amount: number; alreadySaved?: true }[]
   }
   expenses: { total: number; groups: ExpenseGroup[] }
   history: { month: string; total: number }[]

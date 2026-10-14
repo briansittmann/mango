@@ -31,6 +31,7 @@
     "acumulado": "Acumulado",
     "deposito": "Depósito",
     "retiro": "Retiro",
+    "yaAhorrado": "Ya ahorrado",
     "incomeSources": "Fuentes de ingreso",
     "cycleSavings": "Ahorro del ciclo",
     "progresoAhorro": "{ahorrado} de {meta}",
@@ -78,7 +79,8 @@
       "ahorro": "Ahorro",
       "cobrado": "Cobrado",
       "pendiente": "Pendiente",
-      "proyectado": "Proyectado"
+      "proyectado": "Proyectado",
+      "yaAhorrado": "Ya ahorrado"
     }
   },
   "graficos": {
@@ -185,7 +187,20 @@
     "cambiosDesde": "Cambios guardados desde {mes}",
     "eliminadoDesde": "Eliminado desde {mes}",
     "movimientoEliminado": "Movimiento eliminado",
-    "errorEliminarMovimiento": "No se pudo eliminar el movimiento"
+    "errorEliminarMovimiento": "No se pudo eliminar el movimiento",
+    "editarMovimientoAhorro": "Editar movimiento",
+    "eliminarMovimiento": "Eliminar movimiento",
+    "yaLoTenia": "Ya lo tenía ahorrado",
+    "yaLoTeniaAyuda": "Suma a tu acumulado sin restar de tu margen libre",
+    "marcarCobrado": "Marcar como cobrado",
+    "cobradoEsteMes": "{nombre}: cobrado este mes",
+    "errorMarcar": "No se pudo marcar como cobrado",
+    "yaNoSeRepite": "{nombre} ya no se repite",
+    "errorDejarDeRepetir": "No se pudo dejar de repetir",
+    "eliminadoConHistorial": "{nombre} eliminado, también en los meses anteriores",
+    "eliminarSoloAyuda": "Vuelve el mes que viene.",
+    "eliminarDesdeAyuda": "Deja de repetirse. Los meses anteriores quedan.",
+    "eliminarTodoAyuda": "Borra también los cargos de los meses anteriores."
   },
   "hojaCategoria": {
     "cancelar": "Cancelar",
@@ -235,7 +250,8 @@
   "alcance": {
     "aplicar": "Aplicar el cambio",
     "soloEsteMes": "Solo este mes",
-    "desdeEsteMes": "Desde este mes en adelante"
+    "desdeEsteMes": "Desde este mes en adelante",
+    "todosLosMeses": "Todos los meses, también los anteriores"
   },
   "modoReordenar": {
     "titulo": "Reordenar categorías",
@@ -285,7 +301,9 @@
     "guardar": "Guardar",
     "cambiosGuardados": "{nombre}: {monto} cada mes",
     "errorGuardar": "No se pudo guardar. Inténtalo de nuevo.",
-    "errorEliminar": "No se pudo eliminar la recurrencia"
+    "errorEliminar": "No se pudo eliminar la recurrencia",
+    "resumen": "{monto} cada mes, el día {dia}",
+    "quedanPagos": "quedan {pagos, plural, one {# pago} other {# pagos}} · {monto}"
   },
   "metadatos": {
     "nombre": "Mango",
@@ -615,6 +633,7 @@
     "ingreso": "Ingreso",
     "deposito": "Depósito",
     "retiro": "Retiro",
+    "yaAhorrado": "Ya ahorrado",
     "hoy": "Hoy",
     "ayer": "Ayer",
     "mostrarMas": "Mostrar más",

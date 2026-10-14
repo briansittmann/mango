@@ -16,8 +16,26 @@ export function createSupabaseSavingsMutations({ client, usuarioId, currency, or
             moneda: currency,
             fecha: `${draft.date}T12:00:00Z`,
             descripcion: draft.name,
+            ahorro_previo: draft.kind === 'deposit' && draft.alreadySaved,
             ...originColumns(origin),
           })
+          .select('id'),
+      )
+    },
+    async update(movementId, draft) {
+      expectRows(
+        await client
+          .from('transacciones')
+          .update({
+            monto: draft.kind === 'withdrawal' ? -draft.amount : draft.amount,
+            fecha: `${draft.date}T12:00:00Z`,
+            descripcion: draft.name,
+            ahorro_previo: draft.kind === 'deposit' && draft.alreadySaved,
+          })
+          .eq('id', movementId)
+          .eq('usuario_id', usuarioId)
+          .eq('tipo', 'ahorro')
+          .is('borrado_en', null)
           .select('id'),
       )
     },

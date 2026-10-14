@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { Drawer } from '@base-ui/react/drawer'
-import { Check, ChevronDown, Loader2, Trash2 } from 'lucide-react'
+import { Ban, Check, ChevronDown, CircleCheck, Loader2, Trash2 } from 'lucide-react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { useAmountFormatter } from '@/components/atoms/amount-format'
 import { CategoryDot } from '@/components/atoms/category-dot'
@@ -10,13 +10,13 @@ import { AmountField, parseAmount } from '@/components/molecules/amount-field'
 import { DateCalendar } from '@/components/molecules/date-calendar'
 import { FieldRow } from '@/components/molecules/field-row'
 import { IntegerField, parseInteger } from '@/components/molecules/integer-field'
-import { ScopeChoice, type Scope } from '@/components/molecules/scope-choice'
+import { ScopeChoice, type Reach, type Scope } from '@/components/molecules/scope-choice'
 import { SheetShell } from '@/components/organisms/sheet-shell'
 import { cn } from '@/lib/utils'
 import type { CategoryColor } from '@/lib/data/dashboard'
 import type { ExpenseDraft, LocalDate } from '@/lib/data/expenses'
 import type { IncomeDraft } from '@/lib/data/income'
-import type { RecurringDraft } from '@/lib/data/recurring'
+import type { RecurringDefinition, RecurringDraft } from '@/lib/data/recurring'
 import type { SavingsMovementDraft } from '@/lib/data/savings'
 import type esMessages from '@/messages/es.json'
 
@@ -43,12 +43,22 @@ export type ChoiceFieldDescriptor<V> = {
   options: { value: string; label: string }[]
 }
 
+/** A switch with a hint line under it, revealed while another field holds `shownWhen.value`
+ * (`add-savings-sheet` D5). It reads and saves a boolean; while hidden it saves `false`. */
+export type ToggleFieldDescriptor<V> = {
+  name: keyof V & string
+  kind: 'toggle'
+  labelKey: HojaGastoKey
+  hintKey: HojaGastoKey
+  shownWhen: { field: keyof V & string; value: string }
+}
+
 /** The switch plus its revealed day/ending/count block (D3) — one composite kind, not three
  * descriptors, because the three validate and read from each other as one unit. Renders in
  * create mode only, and only when the sheet is given `onSaveRecurrence`. */
 export type RecurrenceFieldDescriptor = { kind: 'recurrence' }
 
-export type FieldDescriptor<V> = TextFieldDescriptor<V> | ChoiceFieldDescriptor<V> | RecurrenceFieldDescriptor
+export type FieldDescriptor<V> = TextFieldDescriptor<V> | ChoiceFieldDescriptor<V> | ToggleFieldDescriptor<V> | RecurrenceFieldDescriptor
 
 export type EntryConfig<V> = {
   fields: FieldDescriptor<V>[]
@@ -87,8 +97,7 @@ export const incomeEntry: EntryConfig<IncomeDraft> = {
 
 /** Built by the caller, not exported as a static config like `expenseEntry`/`incomeEntry`: the
  * type labels come from `resumen.deposito` / `resumen.retiro` (D4), outside `hojaGasto`, so the
- * caller resolves them and passes them in. Create mode only — no `deleteKey` is ever shown since
- * the sheet mounts with no `onDelete`. */
+ * caller resolves them and passes them in. "Ya lo tenía ahorrado" is offered for a deposit only. */
 export function savingsEntry(typeOptions: { deposit: string; withdrawal: string }): EntryConfig<SavingsMovementDraft> {
   return {
     fields: [
@@ -104,11 +113,12 @@ export function savingsEntry(typeOptions: { deposit: string; withdrawal: string 
       { name: 'name', kind: 'text', labelKey: 'nombre', invalidMessageKey: 'nombreObligatorio' },
       { name: 'amount', kind: 'amount', labelKey: 'importe' },
       { name: 'date', kind: 'date', labelKey: 'fecha' },
+      { name: 'alreadySaved', kind: 'toggle', labelKey: 'yaLoTenia', hintKey: 'yaLoTeniaAyuda', shownWhen: { field: 'kind', value: 'deposit' } },
     ],
     initialFocus: { create: 'name', edit: 'amount' },
-    titleKeys: { create: 'nuevoMovimientoAhorro', edit: 'nuevoMovimientoAhorro' },
-    submitKeys: { create: 'anadir', edit: 'anadir' },
-    deleteKey: 'eliminarGasto',
+    titleKeys: { create: 'nuevoMovimientoAhorro', edit: 'editarMovimientoAhorro' },
+    submitKeys: { create: 'anadir', edit: 'guardar' },
+    deleteKey: 'eliminarMovimiento',
   }
 }
 
@@ -131,10 +141,25 @@ type EntrySheetProps<V> = {
    * `scope` is the answer to "Solo este mes" / "Desde este mes en adelante" on a row that belongs to
    * a definition (`recurring-expenses` → *Every change to a recurring row asks how far it reaches*),
    * `'only'` when nothing changed, null on any other row. `categoryId` is the header's category.
+   * `slotChanged` says whether this month's values or category differ from what the sheet opened
+   * with; `reminder` is the fixed's new reminder, null when unchanged (`unify-fixed-charge-sheet` D3).
    */
-  onSave: (values: V, extra: { scope: Scope | null; categoryId: string | null }) => Promise<void>
-  /** A recurring row asks the scope first, in a confirmation step; any other row passes null. */
-  onDelete?: (scope: Scope | null) => Promise<void>
+  onSave: (
+    values: V,
+    extra: { scope: Scope | null; categoryId: string | null; slotChanged: boolean; reminder: RecurringDefinition['reminder'] | null },
+  ) => Promise<void>
+  /** A recurring row asks how far first, in a confirmation step (three reaches with `fixed`); any other row passes null. */
+  onDelete?: (reach: Reach | null) => Promise<void>
+  /** A fixed row's own section below the fields (`unify-fixed-charge-sheet` D1, D2); absent on any other row. */
+  fixed?: {
+    definition: RecurringDefinition
+    /** Present only for this cycle's pending expense charge. */
+    onMarkCharged?: () => Promise<void>
+    /** The reminder switch, for an expense. */
+    reminder: boolean
+    /** Present only while the definition is active. */
+    onStop?: () => Promise<void>
+  }
   /**
    * The categories alive in the displayed cycle. In edit mode, with a category context, the
    * header's category becomes the control that moves the row (`expense-editing` → *Moving an
@@ -144,9 +169,10 @@ type EntrySheetProps<V> = {
   /** Create mode opened without a card ("Añadir gasto" in the desktop bar, design D7): the header's category control is enabled too. */
   allowCategoryChange?: boolean
   /**
-   * Present only when the page supplies `actions.recurring` — its presence, together with
-   * `mode === 'create'`, is what makes the recurrence field render at all. Called after `onSave`
-   * resolves, only when the switch is on; `onSave` still runs the ordinary create either way.
+   * Present only when the page supplies `actions.recurring` and the row may become fixed: any create,
+   * or an edit of a row with no definition in the cycle in progress (`unify-fixed-charge-sheet` D7).
+   * Its presence is what makes the recurrence field render at all. Called after `onSave` resolves,
+   * only when the switch is on; `onSave` still runs the ordinary create or update either way.
    */
   onSaveRecurrence?: (draft: RecurringDraft) => Promise<void>
   /** Opened from a projected cycle: no recurrence switch, whatever `onSaveRecurrence` is (D5). */
@@ -171,6 +197,8 @@ function buildFieldState<V>(config: EntryConfig<V>, values: Partial<V>, locale: 
     const raw = source[field.name]
     if (field.kind === 'amount') {
       state[field.name] = typeof raw === 'number' ? formatAmountForEdit(raw, locale) : ''
+    } else if (field.kind === 'toggle') {
+      state[field.name] = raw === true ? 'true' : ''
     } else {
       state[field.name] = typeof raw === 'string' ? raw : ''
     }
@@ -184,6 +212,7 @@ function buildValues<V>(config: EntryConfig<V>, state: FieldState, amount: numbe
     if (field.kind === 'recurrence') continue
     if (field.kind === 'amount') result[field.name] = amount
     else if (field.kind === 'text') result[field.name] = state[field.name].trim()
+    else if (field.kind === 'toggle') result[field.name] = state[field.name] === 'true' && state[field.shownWhen.field] === field.shownWhen.value
     else result[field.name] = state[field.name]
   }
   return result as V
@@ -192,7 +221,7 @@ function buildValues<V>(config: EntryConfig<V>, state: FieldState, amount: numbe
 const RECURRENCE_ENDINGS = ['none', 'count'] as const
 type RecurrenceEnding = (typeof RECURRENCE_ENDINGS)[number]
 
-function isTextField<V>(field: FieldDescriptor<V>): field is TextFieldDescriptor<V> | ChoiceFieldDescriptor<V> {
+function isTextField<V>(field: FieldDescriptor<V>): field is TextFieldDescriptor<V> | ChoiceFieldDescriptor<V> | ToggleFieldDescriptor<V> {
   return field.kind !== 'recurrence'
 }
 
@@ -208,6 +237,7 @@ export function EntrySheet<V>({
   finalFocusRef,
   onSave,
   onDelete,
+  fixed,
   onSaveRecurrence: onSaveRecurrenceProp,
   projected = false,
   categories,
@@ -226,11 +256,14 @@ export function EntrySheet<V>({
   const [fieldState, setFieldState] = useState<FieldState>(() => buildFieldState(config, initialValues, locale))
   const [initialSnapshot, setInitialSnapshot] = useState<FieldState>(fieldState)
   const [touched, setTouched] = useState<Partial<Record<string, boolean>>>({})
-  const [status, setStatus] = useState<'idle' | 'saving' | 'deleting'>('idle')
-  const [error, setError] = useState<'save' | 'delete' | null>(null)
+  const [status, setStatus] = useState<'idle' | 'saving' | 'deleting' | 'marking' | 'stopping'>('idle')
+  const [error, setError] = useState<'save' | 'delete' | 'mark' | 'stop' | null>(null)
   const [step, setStep] = useState<'form' | 'confirmDelete'>('form')
   const [scope, setScope] = useState<Scope | null>(null)
-  const [deleteScope, setDeleteScope] = useState<Scope | null>(null)
+  const [deleteScope, setDeleteScope] = useState<Reach | null>(null)
+  const [reminderActive, setReminderActive] = useState(fixed?.definition.reminder.active ?? false)
+  const [reminderDaysBefore, setReminderDaysBefore] = useState(String(fixed?.definition.reminder.daysBefore ?? 1))
+  const [reminderTouched, setReminderTouched] = useState(false)
   const initialCategoryId = context.kind === 'category' ? context.id : null
   const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -274,6 +307,9 @@ export function EntrySheet<V>({
       setStep('form')
       setScope(null)
       setDeleteScope(null)
+      setReminderActive(fixed?.definition.reminder.active ?? false)
+      setReminderDaysBefore(String(fixed?.definition.reminder.daysBefore ?? 1))
+      setReminderTouched(false)
       setCategoryId(initialCategoryId)
       setPickerOpen(false)
       setDateOpen(false)
@@ -312,12 +348,19 @@ export function EntrySheet<V>({
     (field): field is TextFieldDescriptor<V> & { kind: 'amount' } => field.kind === 'amount',
   )
   const amountValue = amountFieldDescriptor ? parseAmount(fieldState[amountFieldDescriptor.name] ?? '') : 0
-  const isDirty =
+  const slotDirty =
     config.fields.filter(isTextField).some((field) => fieldState[field.name] !== initialSnapshot[field.name]) ||
     categoryId !== initialCategoryId
+  const daysBeforeValue = parseInteger(reminderDaysBefore, { min: 0 })
+  const reminderValid = !reminderActive || daysBeforeValue !== null
+  const reminderDirty =
+    fixed != null &&
+    fixed.reminder &&
+    (reminderActive !== fixed.definition.reminder.active || (reminderActive && daysBeforeValue !== fixed.definition.reminder.daysBefore))
+  const isDirty = slotDirty || reminderDirty
   const disabled = status !== 'idle'
   const asksScope = mode === 'edit' && context.kind !== 'savings' && context.recurring
-  const showScope = asksScope && isDirty
+  const showScope = asksScope && slotDirty
   const movable = (mode === 'edit' || allowCategoryChange) && context.kind === 'category' && categories != null && categories.length > 1
   const shownCategory =
     context.kind === 'category' ? (categories?.find((category) => category.id === categoryId) ?? context) : null
@@ -336,6 +379,7 @@ export function EntrySheet<V>({
     (amountFieldDescriptor ? amountValue === null : false) ||
     emptyRequiredTextFields.length > 0 ||
     !recurrenceValid ||
+    !reminderValid ||
     (showScope && scope == null)
 
   function updateField(name: string, value: string) {
@@ -356,6 +400,10 @@ export function EntrySheet<V>({
       setRecurrenceTouched({ day: true, count: recurrenceEnding === 'count' })
       return
     }
+    if (!reminderValid) {
+      setReminderTouched(true)
+      return
+    }
     const values = buildValues(config, fieldState, amountValue ?? 0)
     const recurrenceDayNumber = parseInteger(recurrenceDay, { min: 1, max: 31 })
     if (recurrenceOn && onSaveRecurrence && recurrenceDayNumber != null) {
@@ -371,7 +419,12 @@ export function EntrySheet<V>({
     setStatus('saving')
     setError(null)
     try {
-      await onSave(values, { scope: asksScope ? (scope ?? 'only') : null, categoryId })
+      await onSave(values, {
+        scope: asksScope ? (scope ?? 'only') : null,
+        categoryId,
+        slotChanged: slotDirty,
+        reminder: reminderDirty ? { active: reminderActive, daysBefore: daysBeforeValue ?? fixed!.definition.reminder.daysBefore } : null,
+      })
       if (onSaveRecurrence && recurrenceOn) {
         // The definition's name and expected amount are the same values just typed into the
         // expense's own description and amount fields — see attachCreatedDefinitions in
@@ -392,7 +445,18 @@ export function EntrySheet<V>({
     }
   }
 
-  async function handleDelete(chosen: Scope | null) {
+  async function runFixedAction(action: () => Promise<void>, running: 'marking' | 'stopping', failure: 'mark' | 'stop') {
+    setStatus(running)
+    setError(null)
+    try {
+      await action()
+    } catch {
+      setStatus('idle')
+      setError(failure)
+    }
+  }
+
+  async function handleDelete(chosen: Reach | null) {
     if (!onDelete) return
     setStatus('deleting')
     setError(null)
@@ -410,7 +474,7 @@ export function EntrySheet<V>({
   }
 
   function renderRecurrenceField() {
-    if (mode !== 'create' || !onSaveRecurrence) return null
+    if (!onSaveRecurrence) return null
 
     const switchId = `${formId}-recurrence-switch`
     const dayId = `${formId}-recurrence-day`
@@ -554,6 +618,31 @@ export function EntrySheet<V>({
       )
     }
 
+    if (field.kind === 'toggle') {
+      const hintId = `${id}-hint`
+      return (
+        <Collapsible open={fieldState[field.shownWhen.field] === field.shownWhen.value}>
+          <div className="border-t border-border" />
+          <FieldRow label={t(field.labelKey)} htmlFor={id}>
+            {/* Keeps the focused field from blurring, as the type buttons do: an empty name's error
+                line would grow a top-anchored side sheet and move the switch out from under the press. */}
+            <span className="contents" onMouseDown={(event) => event.preventDefault()}>
+              <Switch
+                id={id}
+                checked={value === 'true'}
+                onCheckedChange={(on) => updateField(field.name, on ? 'true' : '')}
+                disabled={disabled}
+                aria-describedby={hintId}
+              />
+            </span>
+          </FieldRow>
+          <p id={hintId} className="px-inset pb-3 text-body-sm text-muted-foreground">
+            {t(field.hintKey)}
+          </p>
+        </Collapsible>
+      )
+    }
+
     if (field.kind === 'choice') {
       return (
         <div role="radiogroup" aria-label={t(field.labelKey)} className="flex gap-2 px-inset pb-3">
@@ -614,6 +703,77 @@ export function EntrySheet<V>({
           }}
           onClose={closeDate}
         />
+      </>
+    )
+  }
+
+  // The fixed's section (`unify-fixed-charge-sheet` D2): what it repeats, then what can be done to it.
+  function renderFixedSection(section: NonNullable<typeof fixed>) {
+    const { definition } = section
+    const currency = fieldOptions.amount?.currency ?? 'EUR'
+    const remaining = definition.repetitions ? definition.repetitions.total - definition.repetitions.done : 0
+    // The pending total follows the typed amount once it is meant for every month.
+    const perCharge = scope === 'onward' && amountValue != null ? amountValue : definition.expectedAmount
+    const reminderId = `${formId}-reminder`
+    const daysBeforeId = `${formId}-days-before`
+    const rowClass =
+      'flex min-h-row items-center gap-3 px-inset text-body-lg font-medium text-foreground hover:bg-muted active:bg-muted disabled:pointer-events-none disabled:opacity-50'
+    return (
+      <>
+        <div className="border-t border-border" />
+        <p data-fixed-summary className="px-inset py-3 text-body-sm text-muted-foreground">
+          <span className="block">{tRecurrente('resumen', { monto: money(definition.expectedAmount, currency), dia: definition.day })}</span>
+          {definition.repetitions && remaining > 0 ? (
+            <span className="block">
+              {tRecurrente('progreso', { hechas: definition.repetitions.done, total: definition.repetitions.total })}
+              {' · '}
+              {tRecurrente('quedanPagos', { pagos: remaining, monto: money(remaining * perCharge, currency) })}
+            </span>
+          ) : null}
+        </p>
+        {section.onMarkCharged ? (
+          <button
+            type="button"
+            onClick={() => void runFixedAction(section.onMarkCharged!, 'marking', 'mark')}
+            disabled={disabled}
+            className={cn(rowClass, 'relative before:absolute before:left-4 before:right-0 before:top-0 before:h-px before:bg-border')}
+          >
+            {status === 'marking' ? <Loader2 aria-hidden className="size-5 animate-spin" /> : <CircleCheck aria-hidden className="size-5" />}
+            {t('marcarCobrado')}
+          </button>
+        ) : null}
+        {section.reminder ? (
+          <>
+            <FieldRow label={tRecurrente('recordatorio')} htmlFor={reminderId}>
+              {/* Keeps a focused field from blurring under the press, as the other switches do. */}
+              <span className="contents" onMouseDown={(event) => event.preventDefault()}>
+                <Switch id={reminderId} checked={reminderActive} onCheckedChange={setReminderActive} disabled={disabled} />
+              </span>
+            </FieldRow>
+            <Collapsible open={reminderActive}>
+              <IntegerField
+                id={daysBeforeId}
+                label={tRecurrente('diasAntes')}
+                value={reminderDaysBefore}
+                onChange={setReminderDaysBefore}
+                onBlur={() => setReminderTouched(true)}
+                disabled={disabled}
+                invalid={reminderTouched && !reminderValid}
+                invalidMessage={tRecurrente('diasAntesInvalido')}
+                maxLength={2}
+              />
+            </Collapsible>
+          </>
+        ) : null}
+        {section.onStop ? (
+          <>
+            <div className="border-t border-border" />
+            <button type="button" onClick={() => void runFixedAction(section.onStop!, 'stopping', 'stop')} disabled={disabled} className={rowClass}>
+              {status === 'stopping' ? <Loader2 aria-hidden className="size-5 animate-spin" /> : <Ban aria-hidden className="size-5" />}
+              {tRecurrente('dejarDeRepetir')}
+            </button>
+          </>
+        ) : null}
       </>
     )
   }
@@ -725,7 +885,7 @@ export function EntrySheet<V>({
         <Drawer.Content className="flex flex-1 flex-col overflow-y-auto overscroll-contain pb-4">
           {error ? (
             <div role="alert" className="mx-inset mt-3 rounded-inner bg-destructive/[0.08] px-4 py-3 text-body-md text-destructive-ink">
-              {t(error === 'save' ? 'errorGuardar' : 'errorEliminar')}
+              {t(error === 'save' ? 'errorGuardar' : error === 'mark' ? 'errorMarcar' : error === 'stop' ? 'errorDejarDeRepetir' : 'errorEliminar')}
             </div>
           ) : null}
           {step === 'confirmDelete' ? (
@@ -733,7 +893,19 @@ export function EntrySheet<V>({
               <h3 className="px-inset pb-2 pt-3 text-body-lg text-foreground">
                 {t('confirmarEliminarFijo', { nombre: fieldState.description || (shownCategory?.name ?? t('ingreso')) })}
               </h3>
-              <ScopeChoice value={deleteScope} onChange={setDeleteScope} disabled={disabled} legend={t('eliminarAlcance')} destructive />
+              {fixed ? (
+                <ScopeChoice<Reach>
+                  value={deleteScope}
+                  onChange={setDeleteScope}
+                  options={['only', 'onward', 'all']}
+                  hints={{ only: t('eliminarSoloAyuda'), onward: t('eliminarDesdeAyuda'), all: t('eliminarTodoAyuda') }}
+                  disabled={disabled}
+                  legend={t('eliminarAlcance')}
+                  destructive
+                />
+              ) : (
+                <ScopeChoice value={deleteScope as Scope | null} onChange={setDeleteScope} disabled={disabled} legend={t('eliminarAlcance')} destructive />
+              )}
               <div className="px-inset pb-2 pt-3">
                 <button
                   type="button"
@@ -797,6 +969,7 @@ export function EntrySheet<V>({
               <ScopeChoice value={scope} onChange={setScope} disabled={disabled} />
             </Collapsible>
           ) : null}
+          {fixed ? renderFixedSection(fixed) : null}
           {onDelete ? (
             <>
               <div className="border-t border-border" />

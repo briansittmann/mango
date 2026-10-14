@@ -3,7 +3,7 @@ import type { DashboardData } from './data/dashboard'
 export type CsvLabels = {
   headers: { date: string; kind: string; category: string; description: string; amount: string; currency: string; status: string }
   kinds: { expense: string; income: string; savings: string }
-  statuses: { charged: string; pending: string; projected: string }
+  statuses: { charged: string; pending: string; projected: string; alreadySaved: string }
 }
 
 /**
@@ -32,7 +32,7 @@ export function buildCycleCsv(data: DashboardData, labels: CsvLabels, locale: st
     rows.push([entry.date, labels.kinds.income, '', entry.name, formatAmount(entry.amount, decimal), currency, entry.projected ? labels.statuses.projected : ''])
   }
   for (const movement of data.savings.movements) {
-    rows.push([movement.date, labels.kinds.savings, '', movement.name, formatAmount(movement.amount, decimal), currency, ''])
+    rows.push([movement.date, labels.kinds.savings, '', movement.name, formatAmount(movement.amount, decimal), currency, movement.alreadySaved ? labels.statuses.alreadySaved : ''])
   }
   rows.sort((a, b) => a[0].localeCompare(b[0]))
 

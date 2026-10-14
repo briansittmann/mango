@@ -274,6 +274,7 @@ async function load(turn: Turn, action: Cargar): Promise<BotReply> {
       amount,
       date,
       name: action.descripcion ?? resumen(withdrawal ? 'retiro' : 'deposito'),
+      alreadySaved: false,
     })
     return loaded(turn, { tipo: 'ahorro', amount: action.monto, date }, await writtenRowId(turn), answered)
   }

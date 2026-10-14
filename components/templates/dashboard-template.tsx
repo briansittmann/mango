@@ -29,7 +29,7 @@ import { SavingsMovementRow } from '@/components/molecules/savings-movement-row'
 import { SummaryRow } from '@/components/molecules/summary-row'
 import { SwipeRestoreContext, SwipeToDelete } from '@/components/molecules/swipe-to-delete'
 import { UndoToast } from '@/components/molecules/undo-toast'
-import type { Scope } from '@/components/molecules/scope-choice'
+import type { Reach, Scope } from '@/components/molecules/scope-choice'
 import { Drawer } from '@base-ui/react/drawer'
 import { useDesktop } from '@/components/hooks/use-desktop'
 import { useScrollSpy } from '@/components/hooks/use-scroll-spy'
@@ -44,7 +44,6 @@ import { DesktopTopBar } from '@/components/organisms/desktop-top-bar'
 import { EntrySheet, expenseEntry, incomeEntry, savingsEntry } from '@/components/organisms/entry-sheet'
 import { FreeMarginCard } from '@/components/organisms/free-margin-card'
 import { MonthlyBarsChart } from '@/components/organisms/monthly-bars-chart'
-import { RecurringSheet } from '@/components/organisms/recurring-sheet'
 import { SheetShell } from '@/components/organisms/sheet-shell'
 import { SpendCalendar } from '@/components/organisms/spend-calendar'
 import { DaySheet } from '@/components/organisms/day-sheet'
@@ -85,6 +84,7 @@ type SheetTarget =
   | { kind: 'income'; mode: 'create' }
   | { kind: 'income'; mode: 'edit'; entry: IncomeEntry }
   | { kind: 'savings'; mode: 'create' }
+  | { kind: 'savings'; mode: 'edit'; movement: DashboardData['savings']['movements'][number] }
 
 type CategorySheetTarget = { mode: 'create' } | { mode: 'edit'; group: ExpenseGroup }
 
@@ -178,7 +178,6 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   const router = useRouter()
   const tHojaGasto = useTranslations('hojaGasto')
   const tHojaCategoria = useTranslations('hojaCategoria')
-  const tRecurrente = useTranslations('gastoRecurrente')
   const tReordenar = useTranslations('modoReordenar')
   const tEscritorio = useTranslations('escritorio')
   const tMovimientos = useTranslations('movimientos')
@@ -201,7 +200,6 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   const chosenCategoryRef = useRef<string | null>(null)
   // What opened the category and definition sheets: their popover anchor from `sm` to `lg` (D5).
   const categoryOpenerRef = useRef<HTMLElement | null>(null)
-  const recurringOpenerRef = useRef<HTMLElement | null>(null)
   // The calendar's day detail; the date stays while the sheet is leaving.
   const [dayDetail, setDayDetail] = useState({ open: false, date: data.cycle.today })
   // The last summary panel opened, kept while the side panel is leaving.
@@ -232,7 +230,6 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
     open: false,
     target: null,
   })
-  const [recurringSheet, setRecurringSheet] = useState<{ open: boolean; charge: UpcomingCharge | null }>({ open: false, charge: null })
   const [statusMessage, setStatusMessage] = useState('')
   const [reordering, setReordering] = useState(false)
   const [displayedOrder, setDisplayedOrder] = useState<string[] | null>(null)
@@ -297,6 +294,12 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
     savingsInitialFocusRef.current?.focus({ preventScroll: true })
   }
 
+  function openSavingsEditSheet(movement: DashboardData['savings']['movements'][number]) {
+    flushSync(() => setSheet({ open: true, target: { kind: 'savings', mode: 'edit', movement } }))
+    savingsInitialFocusRef.current?.focus({ preventScroll: true })
+    savingsInitialFocusRef.current?.select()
+  }
+
   function openCategorySheet(group: ExpenseGroup) {
     categoryOpenerRef.current =
       document.querySelector<HTMLElement>(`[data-category-options="${group.id}"]`) ?? (document.activeElement as HTMLElement | null)
@@ -308,9 +311,13 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
     setCategorySheet({ open: true, target: { mode: 'create' } })
   }
 
-  function openRecurringSheet(charge: UpcomingCharge) {
-    recurringOpenerRef.current = document.activeElement as HTMLElement | null
-    setRecurringSheet({ open: true, charge })
+  // A "Próximos cobros" row opens its charge's sheet, as its row in the category card does
+  // (`upcoming-charges` → *A row opens its charge's sheet, and nothing else does*).
+  function openChargeSheet(charge: UpcomingCharge) {
+    for (const group of data.expenses.groups) {
+      const expense = group.expenses.find((candidate) => candidate.id === charge.id)
+      if (expense) return openEditSheet(group, expense)
+    }
   }
 
   function handleEnterReorder() {
@@ -836,10 +843,19 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
     }
   }
 
-  async function handleSheetDelete(scope: Scope | null) {
-    if (sheet.target?.mode !== 'edit') return
+  async function handleSheetDelete(reach: Reach | null) {
+    if (sheet.target?.mode !== 'edit' || sheet.target.kind === 'savings') return
     const definitionId =
       sheet.target.kind === 'income' ? sheet.target.entry.recurring?.definitionId : sheet.target.kind === 'expense' ? sheet.target.expense.fixed?.definitionId : undefined
+    // Every month, the earlier ones included: the definition goes with every charge it produced (D6).
+    if (definitionId && actions.recurring && reach === 'all') {
+      const name = sheet.target.kind === 'income' ? sheet.target.entry.name : sheet.target.expense.name
+      await actions.recurring.delete(definitionId)
+      setSheet((prev) => ({ ...prev, open: false }))
+      setStatusMessage(tHojaGasto('eliminadoConHistorial', { nombre: name }))
+      return
+    }
+    const scope = reach === 'all' ? null : reach
     if (definitionId && actions.recurring) {
       await actions.recurring.deleteInCycle(definitionId, cycleStart, scope ?? 'only')
       setSheet((prev) => ({ ...prev, open: false }))
@@ -862,7 +878,10 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
     showUndo(expense)
   }
 
-  async function handleSaveEntry(values: ExpenseDraft, { scope, categoryId }: { scope: Scope | null; categoryId: string | null }) {
+  async function handleSaveEntry(
+    values: ExpenseDraft,
+    { scope, categoryId, slotChanged, reminder }: { scope: Scope | null; categoryId: string | null; slotChanged: boolean; reminder: RecurringDefinition['reminder'] | null },
+  ) {
     if (!sheet.target || sheet.target.kind === 'savings') return
     const definitionId =
       sheet.target.mode !== 'edit'
@@ -871,10 +890,13 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
           ? sheet.target.entry.recurring?.definitionId
           : sheet.target.expense.fixed?.definitionId
     if (definitionId && actions.recurring) {
+      // This month's values first, then the reminder; an unchanged slot writes nothing, so a
+      // "Guardar" never confirms a pending charge by accident (`unify-fixed-charge-sheet` D3).
       const expenseCategory = sheet.target.kind === 'expense' ? (categoryId ?? sheet.target.group.id) : null
-      await actions.recurring.editInCycle(definitionId, cycleStart, { ...values, categoryId: expenseCategory }, scope ?? 'only')
+      if (slotChanged) await actions.recurring.editInCycle(definitionId, cycleStart, { ...values, categoryId: expenseCategory }, scope ?? 'only')
+      if (reminder) await actions.recurring.setReminder(definitionId, reminder)
       setSheet((prev) => ({ ...prev, open: false }))
-      setStatusMessage(scope === 'onward' ? tHojaGasto('cambiosDesde', { mes: monthName }) : tHojaGasto('cambiosGuardados'))
+      setStatusMessage(slotChanged && scope === 'onward' ? tHojaGasto('cambiosDesde', { mes: monthName }) : tHojaGasto('cambiosGuardados'))
       return
     }
     if (sheet.target.kind === 'income') {
@@ -901,14 +923,29 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   }
 
   async function handleSaveSavingsEntry(values: SavingsMovementDraft) {
-    if (!actions.savings) return
+    if (!actions.savings || sheet.target?.kind !== 'savings') return
+    if (sheet.target.mode === 'edit') {
+      await actions.savings.update(sheet.target.movement.id, values)
+      setSheet((prev) => ({ ...prev, open: false }))
+      setStatusMessage(tHojaGasto('cambiosGuardados'))
+      return
+    }
     await actions.savings.addSavingsMovement(values)
     setSheet((prev) => ({ ...prev, open: false }))
     setStatusMessage(tHojaGasto('movimientoAhorroAnadido'))
   }
 
+  // The sheet's "Eliminar movimiento": no confirmation step, the same undo toast as a swipe.
+  async function handleSavingsSheetDelete() {
+    if (!actions.savings || sheet.target?.kind !== 'savings' || sheet.target.mode !== 'edit') return
+    const movementId = sheet.target.movement.id
+    await actions.savings.softDelete(movementId)
+    setSheet((prev) => ({ ...prev, open: false }))
+    showSavingsUndo(movementId)
+  }
+
   async function handleSaveRecurrence(draft: RecurringDraft) {
-    if (!actions.recurring || sheet.target?.mode !== 'create' || sheet.target.kind === 'savings') return
+    if (!actions.recurring || !sheet.target || sheet.target.kind === 'savings') return
     if (sheet.target.kind === 'income') {
       await actions.recurring.create({ tipo: 'ingreso' }, draft)
       return
@@ -916,25 +953,34 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
     await actions.recurring.create({ tipo: 'gasto', categoryId: chosenCategoryRef.current ?? sheet.target.group.id }, draft)
   }
 
-  async function handleSaveDefinition(definitionId: string, draft: RecurringDraft) {
+  // "Marcar como cobrado": this cycle's pending charge turns charged, with an undo (D4).
+  async function handleMarkCharged(definitionId: string, name: string) {
     if (!actions.recurring) return
-    await actions.recurring.update(definitionId, draft)
-    setRecurringSheet((prev) => ({ ...prev, open: false }))
-    setStatusMessage(
-      tRecurrente('cambiosGuardados', { nombre: draft.name, monto: money(draft.expectedAmount, currency) }),
-    )
+    await actions.recurring.setCharged(definitionId, cycleStart, true)
+    setSheet((prev) => ({ ...prev, open: false }))
+    toasts.close()
+    const id = toasts.add({
+      title: tHojaGasto('cobradoEsteMes', { nombre: name }),
+      priority: 'low',
+      actionProps: { children: tHojaGasto('deshacer'), onClick: () => void undoMarkCharged(id, definitionId) },
+    })
   }
 
-  async function handleStopDefinition(definitionId: string) {
+  async function undoMarkCharged(id: string, definitionId: string) {
+    if (!actions.recurring) return
+    try {
+      await actions.recurring.setCharged(definitionId, cycleStart, false)
+      toasts.close(id)
+    } catch {
+      toasts.update(id, { title: tHojaGasto('errorDeshacer'), priority: 'high', actionProps: undefined })
+    }
+  }
+
+  async function handleStopDefinition(definitionId: string, name: string) {
     if (!actions.recurring) return
     await actions.recurring.stop(definitionId)
-    setRecurringSheet((prev) => ({ ...prev, open: false }))
-  }
-
-  async function handleDeleteDefinition(definitionId: string) {
-    if (!actions.recurring) return
-    await actions.recurring.delete(definitionId)
-    setRecurringSheet((prev) => ({ ...prev, open: false }))
+    setSheet((prev) => ({ ...prev, open: false }))
+    setStatusMessage(tHojaGasto('yaNoSeRepite', { nombre: name }))
   }
 
   const sheetIsIncome = sheet.target?.kind === 'income'
@@ -950,7 +996,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
           recurring: sheet.target?.kind === 'expense' && sheet.target.mode === 'edit' && sheet.target.expense.fixed != null,
         }
   const sheetInitialValues: Partial<ExpenseDraft> =
-    sheet.target?.mode === 'edit'
+    sheet.target?.mode === 'edit' && sheet.target.kind !== 'savings'
       ? sheet.target.kind === 'income'
         ? {
             amount: sheet.target.entry.amount,
@@ -964,7 +1010,17 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
           }
       : { date: clampDate(data.cycle.today, data.cycle.start, data.cycle.end) }
 
-  const savingsInitialValues: Partial<SavingsMovementDraft> = { kind: 'deposit', date: data.cycle.today }
+  const savingsTarget = sheet.target?.kind === 'savings' ? sheet.target : null
+  const savingsInitialValues: Partial<SavingsMovementDraft> =
+    savingsTarget?.mode === 'edit'
+      ? {
+          kind: savingsTarget.movement.amount < 0 ? 'withdrawal' : 'deposit',
+          name: savingsTarget.movement.name,
+          amount: Math.abs(savingsTarget.movement.amount),
+          date: localDateOf(savingsTarget.movement.date, data.user.timezone),
+          alreadySaved: savingsTarget.movement.alreadySaved === true,
+        }
+      : { kind: 'deposit', date: data.cycle.today, alreadySaved: false }
 
   const categorySheetMode = categorySheet.target?.mode ?? 'edit'
   const categorySheetTargetGroup = categorySheet.target?.mode === 'edit' ? categorySheet.target.group : null
@@ -976,13 +1032,32 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   const usedCategoryColors = new Set(data.expenses.groups.filter((group) => group.kind === 'category').map((group) => group.color))
   const createCategoryColor = CATEGORY_COLORS.find((color) => !usedCategoryColors.has(color)) ?? CATEGORY_COLORS[0]
 
-  const recurringSheetTarget =
-    (recurringSheet.charge ? definitions.find((definition) => definition.id === recurringSheet.charge!.definitionId) : null) ??
-    definitions[0]
-  const recurringSheetCategory = recurringSheetTarget
-    ? data.expenses.groups.find((group) => group.id === recurringSheetTarget.categoryId)
-    : undefined
-  const recurringSheetCurrentAmount = recurringSheet.charge?.amount ?? recurringSheetTarget?.expectedAmount ?? 0
+  // The fixed row's own section (`unify-fixed-charge-sheet` D1, D2), from its definition. "This
+  // cycle" is the one the dashboard treats as current: the cycle in progress, or the demo's sample.
+  const currentCycle = data.cycle.month === data.cycle.currentMonth
+  const editedFixed =
+    sheet.target?.mode === 'edit' && sheet.target.kind === 'expense'
+      ? { definitionId: sheet.target.expense.fixed?.definitionId, name: sheet.target.expense.name, pending: sheet.target.expense.fixed?.charged === false && !sheet.target.expense.projected, expense: true }
+      : sheet.target?.mode === 'edit' && sheet.target.kind === 'income'
+        ? { definitionId: sheet.target.entry.recurring?.definitionId, name: sheet.target.entry.name, pending: false, expense: false }
+        : null
+  const editedDefinition = editedFixed?.definitionId ? definitions.find((definition) => definition.id === editedFixed.definitionId) : undefined
+  const fixedSection =
+    editedFixed && editedDefinition && actions.recurring
+      ? {
+          definition: editedDefinition,
+          onMarkCharged:
+            editedFixed.pending && currentCycle ? () => handleMarkCharged(editedDefinition.id, editedFixed.name) : undefined,
+          reminder: editedFixed.expense,
+          onStop: editedDefinition.active ? () => handleStopDefinition(editedDefinition.id, editedFixed.name) : undefined,
+        }
+      : undefined
+  // A row with no definition may become fixed in the cycle in progress; any create may (D7).
+  const sheetMayRecur =
+    sheet.target?.mode === 'create' ||
+    (sheet.target?.mode === 'edit' &&
+      currentCycle &&
+      (sheet.target.kind === 'expense' ? !sheet.target.expense.fixed : sheet.target.kind === 'income' ? !sheet.target.entry.recurring : false))
 
   useEffect(() => {
     const el = titleRef.current
@@ -1330,7 +1405,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   // Under a panel's scrim, the account menu or reorder mode, the floating shell drops its blur so
   // no two translucent materials overlap (design-system → *Translucent materials*).
   const pushedBack =
-    reordering || accountMenuOpen || accountSheetOpen || sheet.open || categorySheet.open || recurringSheet.open || summaryPanelOpen || dayDetail.open
+    reordering || accountMenuOpen || accountSheetOpen || sheet.open || categorySheet.open || summaryPanelOpen || dayDetail.open
 
   const summaryItems: SummaryGroupItem[] = [
     {
@@ -1436,6 +1511,8 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
                   depositLabel={tResumen('deposito')}
                   withdrawalLabel={tResumen('retiro')}
                   index={index}
+                  tag={movement.alreadySaved ? tResumen('yaAhorrado') : undefined}
+                  onActivate={actions.savings?.update ? () => openSavingsEditSheet(movement) : undefined}
                 />
               )
               return actions.savings ? (
@@ -1720,7 +1797,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
             currency={currency}
             open={openIds.has(UPCOMING_CHARGES_ID)}
             onToggle={() => toggleCard(UPCOMING_CHARGES_ID)}
-            onOpenDefinition={actions.recurring ? openRecurringSheet : undefined}
+            onOpenCharge={actions.expenses && actions.recurring ? openChargeSheet : undefined}
           />
         </AnimatedContent>
         {/* The lane is a step, not an animation: one reflow of the list, hidden inside the
@@ -1867,6 +1944,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
               onEditIncome={actions.income ? openIncomeEditSheet : undefined}
               onDeleteExpense={actions.expenses ? handleDeleteExpense : undefined}
               onDeleteIncome={actions.income ? handleDeleteIncome : undefined}
+              onEditSavings={actions.savings?.update ? openSavingsEditSheet : undefined}
               onDeleteSavings={actions.savings ? handleDeleteSavings : undefined}
             />
           </div>
@@ -1953,7 +2031,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
                 status: tMenu('csv.estado'),
               },
               kinds: { expense: tMenu('csv.gasto'), income: tMenu('csv.ingreso'), savings: tMenu('csv.ahorro') },
-              statuses: { charged: tMenu('csv.cobrado'), pending: tMenu('csv.pendiente'), projected: tMenu('csv.proyectado') },
+              statuses: { charged: tMenu('csv.cobrado'), pending: tMenu('csv.pendiente'), projected: tMenu('csv.proyectado'), alreadySaved: tMenu('csv.yaAhorrado') },
             },
             locale,
           )
@@ -1995,7 +2073,8 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
         initialFocusRef={initialFocusRef}
         onSave={handleSaveEntry}
         onDelete={sheet.target?.mode === 'edit' ? handleSheetDelete : undefined}
-        onSaveRecurrence={actions.recurring ? handleSaveRecurrence : undefined}
+        fixed={fixedSection}
+        onSaveRecurrence={actions.recurring && sheetMayRecur ? handleSaveRecurrence : undefined}
         projected={projected}
         categories={data.expenses.groups.map(({ id, name, color }) => ({ id, name, color }))}
         allowCategoryChange={sheet.target?.kind === 'expense' && sheet.target.mode === 'create' && sheet.target.pickCategory === true}
@@ -2004,12 +2083,13 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
         config={savingsEntry({ deposit: tResumen('deposito'), withdrawal: tResumen('retiro') })}
         open={sheet.open && sheet.target?.kind === 'savings'}
         onOpenChange={(open) => setSheet((prev) => ({ ...prev, open }))}
-        mode="create"
+        mode={savingsTarget?.mode ?? 'create'}
         context={{ kind: 'savings' }}
         initialValues={savingsInitialValues}
         fieldOptions={{ amount: { currency }, date: { min: data.cycle.start, max: data.cycle.end } }}
         initialFocusRef={savingsInitialFocusRef}
         onSave={handleSaveSavingsEntry}
+        onDelete={savingsTarget?.mode === 'edit' ? handleSavingsSheetDelete : undefined}
       />
       <CategorySheet
         open={categorySheet.open}
@@ -2035,21 +2115,6 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
         }}
         projected={projected}
       />
-      {recurringSheetTarget ? (
-        <RecurringSheet
-          open={recurringSheet.open}
-          onOpenChange={(open) => setRecurringSheet((prev) => ({ ...prev, open }))}
-          opener={recurringOpenerRef}
-          target={recurringSheetTarget}
-          categoryName={recurringSheetCategory?.name ?? ''}
-          categoryColor={recurringSheetCategory?.color ?? 'gris_calido'}
-          currency={currency}
-          currentAmount={recurringSheetCurrentAmount}
-          onSave={handleSaveDefinition}
-          onStop={handleStopDefinition}
-          onDelete={handleDeleteDefinition}
-        />
-      ) : null}
       <UndoToast />
       <div role="status" className="sr-only">
         {statusMessage}

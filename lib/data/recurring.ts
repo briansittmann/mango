@@ -31,7 +31,7 @@ export type RecurringDraft = {
 }
 
 /**
- * Four operations, injected by the page, typed like `ExpenseMutations`:
+ * Six operations, injected by the page, typed like `ExpenseMutations`:
  * - each operation resolves once the change is durable, and rejects with nothing changed
  * - `create` takes a `RecurringTarget`, so a `'gasto'` definition always carries a category and
  *   an `'ingreso'` definition never can — the type carries the same rule the database's check
@@ -45,6 +45,10 @@ export type RecurringDraft = {
  *   any other field, and asks no confirmation because it is reversible in effect (a stopped
  *   definition simply produces no more charges).
  * - `delete` removes the definition and the charges it produced, in every cycle.
+ *
+ * - `setCharged` turns this definition's charge in `cycle` charged or back to pending, and changes
+ *   nothing else of it (`unify-fixed-charge-sheet` D4).
+ * - `setReminder` writes only the reminder setting: no charge, no other field (D5).
  *
  * Three more act on the slot a definition holds in one cycle — `(movimiento_recurrente_id,
  * ciclo_mes)`, a soft-deleted row included — from a row of the entry sheet (`recurring-expenses`
@@ -65,6 +69,8 @@ export type RecurringMutations = {
   update(definitionId: string, draft: RecurringDraft): Promise<void>
   stop(definitionId: string): Promise<void>
   delete(definitionId: string): Promise<void>
+  setCharged(definitionId: string, cycle: LocalDate, charged: boolean): Promise<void>
+  setReminder(definitionId: string, reminder: RecurringDefinition['reminder']): Promise<void>
   editInCycle(definitionId: string, cycle: LocalDate, entry: SlotEntry, scope: 'only' | 'onward'): Promise<void>
   deleteInCycle(definitionId: string, cycle: LocalDate, scope: 'only' | 'onward'): Promise<void>
   restoreInCycle(definitionId: string, cycle: LocalDate): Promise<void>

@@ -7,6 +7,7 @@ import type { LocalDate } from '@/lib/data/expenses'
 import type { IncomeEntry } from '@/lib/data/income'
 import { mezclarProyeccion, proyectarCiclo } from '@/lib/data/projection'
 import type { RecurringDefinition } from '@/lib/data/recurring'
+import { splitSavings } from '@/lib/data/savings'
 import {
   PROJECTION_HORIZON,
   cycleMonthOf,
@@ -52,6 +53,8 @@ type TransaccionRow = {
   movimiento_recurrente_id: string | null
   ciclo_mes: LocalDate | null
   estado: 'pendiente' | 'confirmada'
+  /** A savings deposit the user already had (0033); absent on computed charges. */
+  ahorro_previo?: boolean
   /** A charge `proyectarCiclo` computed for a projected cycle, not a stored row. */
   projected?: true
 }
@@ -160,7 +163,7 @@ export async function resumenMensual(
       .order('nombre'),
     client
       .from('transacciones')
-      .select('id, monto, fecha, categoria_id, descripcion, tipo, movimiento_recurrente_id, ciclo_mes, estado')
+      .select('id, monto, fecha, categoria_id, descripcion, tipo, movimiento_recurrente_id, ciclo_mes, estado, ahorro_previo')
       .eq('usuario_id', usuario.id)
       .is('borrado_en', null)
       .gte('fecha', oldest.inicio.toISOString())
@@ -169,7 +172,7 @@ export async function resumenMensual(
       .order('fecha'),
     client
       .from('transacciones')
-      .select('monto, fecha')
+      .select('monto, fecha, ahorro_previo')
       .eq('usuario_id', usuario.id)
       .eq('tipo', 'ahorro')
       .is('borrado_en', null)
@@ -216,7 +219,7 @@ export async function resumenMensual(
   const budgetRows = (presupuestos.data ?? []) as PresupuestoRow[]
   const definitionRows = (definiciones.data ?? []) as MovimientoRecurrenteRow[]
   const rows = (transacciones.data ?? []) as TransaccionRow[]
-  const savingsRows = (ahorros.data ?? []) as Pick<TransaccionRow, 'monto' | 'fecha'>[]
+  const savingsRows = (ahorros.data ?? []) as Pick<TransaccionRow, 'monto' | 'fecha' | 'ahorro_previo'>[]
 
   const definitions: RecurringDefinition[] = definitionRows
     .filter((d): d is MovimientoRecurrenteRow & { tipo: 'gasto' | 'ingreso' } => d.tipo !== 'ahorro')
@@ -337,10 +340,17 @@ export async function resumenMensual(
 
   const movements = shownRows
     .filter((row) => row.tipo === 'ahorro')
-    .map((row) => ({ id: row.id, name: row.descripcion ?? '', date: row.fecha, amount: Number(row.monto) }))
-  // In a projection the savings target is an envelope, as a budget is for a category (D4).
-  const movementsTotal = movements.reduce((sum, movement) => sum + movement.amount, 0)
-  const savingsCycle = projection ? Math.max(projection.savings, movementsTotal) : movementsTotal
+    .map((row) => ({
+      id: row.id,
+      name: row.descripcion ?? '',
+      date: row.fecha,
+      amount: Number(row.monto),
+      ...(row.ahorro_previo ? { alreadySaved: true as const } : {}),
+    }))
+  // In a projection the savings target is an envelope, as a budget is for a category (D4). A
+  // deposit the user already had stays out of both (`savings-editing` → *A deposit the user already had*).
+  const shownSavings = splitSavings(movements)
+  const savingsCycle = projection ? Math.max(projection.savings, shownSavings.counted) : shownSavings.counted
 
   const history = ranges.map((range, index) => ({
     month: months[index],
@@ -357,16 +367,24 @@ export async function resumenMensual(
   // In a projection the balance runs to the shown cycle's end: the real rows up to the cycle in
   // progress, then each projected cycle's savings as that cycle would show them (target as envelope).
   const sumSavings = (from: number, to: number) =>
-    savingsRows
-      .filter((row) => from <= new Date(row.fecha).getTime() && new Date(row.fecha).getTime() < to)
-      .reduce((sum, row) => sum + Number(row.monto), 0)
+    splitSavings(
+      savingsRows
+        .filter((row) => from <= new Date(row.fecha).getTime() && new Date(row.fecha).getTime() < to)
+        .map((row) => ({ amount: Number(row.monto), alreadySaved: row.ahorro_previo })),
+    )
+  const allSavings = (from: number, to: number) => {
+    const { counted, alreadySaved } = sumSavings(from, to)
+    return counted + alreadySaved
+  }
+  const projectedCycleSavings = (floor: number, from: number, to: number) => {
+    const { counted, alreadySaved } = sumSavings(from, to)
+    return Math.max(floor, counted) + alreadySaved
+  }
   const accumulated = projection
-    ? sumSavings(-Infinity, latest.fin.getTime()) +
-      betweenRanges.reduce(
-        (sum, range) => sum + Math.max(projection.savings, sumSavings(range.inicio.getTime(), range.fin.getTime())),
-        0,
-      ) +
-      savingsCycle
+    ? allSavings(-Infinity, latest.fin.getTime()) +
+      betweenRanges.reduce((sum, range) => sum + projectedCycleSavings(projection.savings, range.inicio.getTime(), range.fin.getTime()), 0) +
+      savingsCycle +
+      shownSavings.alreadySaved
     : null
   const savingsHistory = ranges.map((range, index) => ({
     month: months[index],

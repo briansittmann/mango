@@ -5,6 +5,7 @@ import type { ExpenseDraft, ExpenseMutations, LocalDate } from '@/lib/data/expen
 import type { IncomeDraft, IncomeEntry } from '@/lib/data/income'
 import { mezclarProyeccion, proyectarCiclo } from '@/lib/data/projection'
 import type { RecurringDefinition, RecurringDraft, RecurringTarget } from '@/lib/data/recurring'
+import { splitSavings } from '@/lib/data/savings'
 import { budgetFor, copyForward, dropCategory, dropCategoryFrom, setBudgetInCycle } from '@/lib/demo/demo-budgets'
 import type { DemoCategoryEdits } from '@/lib/demo/demo-categories'
 import type { DemoIncomeEdits } from '@/lib/demo/demo-income'
@@ -96,7 +97,7 @@ function definitionsAt(definitions: RecurringDefinition[], edits: DemoRecurringE
         .map((onward) => ({ seq: onward.seq, sheet: undefined, onward })),
     ].sort((a, b) => a.seq - b.seq)
 
-    return changes.reduce<RecurringDefinition>((current, { sheet, onward }) => {
+    const changed = changes.reduce<RecurringDefinition>((current, { sheet, onward }) => {
       if (sheet) return { ...current, name: sheet.name, expectedAmount: sheet.expectedAmount, day: sheet.day, reminder: sheet.reminder }
       if (!onward!.entry) return { ...current, active: false }
       const { amount, description, date, categoryId } = onward!.entry
@@ -108,6 +109,9 @@ function definitionsAt(definitions: RecurringDefinition[], edits: DemoRecurringE
         categoryId: current.tipo === 'gasto' ? categoryId : null,
       }
     }, definition)
+    // The reminder set from the row's sheet touches nothing else (`unify-fixed-charge-sheet` D5).
+    const reminder = edits.reminders[definition.id]
+    return reminder ? { ...changed, reminder } : changed
   })
 }
 
@@ -268,7 +272,13 @@ function monthsBetween(from: string, to: string): number {
 }
 
 function toMovement({ id, draft }: DemoSavingsEdits['created'][number]): DashboardData['savings']['movements'][number] {
-  return { id, name: draft.name, date: `${draft.date}T12:00:00Z`, amount: draft.kind === 'withdrawal' ? -draft.amount : draft.amount }
+  return {
+    id,
+    name: draft.name,
+    date: `${draft.date}T12:00:00Z`,
+    amount: draft.kind === 'withdrawal' ? -draft.amount : draft.amount,
+    ...(draft.kind === 'deposit' && draft.alreadySaved ? { alreadySaved: true as const } : {}),
+  }
 }
 
 const byDate = <T extends { date: string }>(a: T, b: T) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)
@@ -385,6 +395,12 @@ export function deriveDemoData(
         },
       ]
     })
+    // "Marcar como cobrado" and its undo set the charge's state last (`unify-fixed-charge-sheet` D4).
+    .map((placed): Placed => {
+      const fixed = placed.expense.fixed
+      const charged = fixed ? recurringEdits.charged[slotKey(fixed.definitionId, sampleStart)] : undefined
+      return fixed && charged != null ? { ...placed, expense: { ...placed.expense, fixed: { ...fixed, charged } } } : placed
+    })
 
   // 5. Budgets come from the per-cycle rows (D4): the copy into the sample cycle, then creations
   //    (a budget from the category's first cycle on), then budget saves in order (the sample
@@ -494,11 +510,24 @@ export function deriveDemoData(
 
   // 9. Savings: created movements append to the base ones and are stable-sorted by date, so a
   //    same-day addition lands after the existing movement(s); deleted ones count nowhere.
+  //    An edit (the last one per id) replaces a sample or created movement before anything is summed.
   const notDeleted = (movement: { id: string }) => !savingsEdits.deletedIds.includes(movement.id)
-  const createdMovements = savingsEdits.created.filter((c) => c.draft.date.slice(0, 7) === base.cycle.month).map(toMovement)
-  const movements = [...base.savings.movements, ...createdMovements].filter(notDeleted).sort(byDate)
-  const savingsCycle = movements.reduce((sum, movement) => sum + movement.amount, 0)
-  const savingsAccumulated = base.savings.accumulated - base.savings.cycle + savingsCycle
+  const lastSavingsEdit = (id: string) => savingsEdits.updated.findLast((edit) => edit.id === id)
+  const savingsEdited = <T extends { id: string }>(movement: T) => {
+    const edit = lastSavingsEdit(movement.id)
+    return edit ? toMovement(edit) : movement
+  }
+  const savingsCreatedIn = (month: string) =>
+    savingsEdits.created
+      .map((c) => lastSavingsEdit(c.id) ?? c)
+      .filter((c) => c.draft.date.slice(0, 7) === month)
+      .map(toMovement)
+      .filter(notDeleted)
+  const movements = [...base.savings.movements.map(savingsEdited).filter(notDeleted), ...savingsCreatedIn(base.cycle.month)].sort(byDate)
+  // A deposit the user already had counts in the balance only (`savings-editing`).
+  const sampleSavings = splitSavings(movements)
+  const savingsCycle = sampleSavings.counted
+  const savingsAccumulated = base.savings.accumulated - base.savings.cycle + savingsCycle + sampleSavings.alreadySaved
   const savingsHistory = base.savings.history.map((entry) =>
     entry.month === base.cycle.month ? { ...entry, accumulated: savingsAccumulated } : entry,
   )
@@ -601,28 +630,20 @@ export function deriveDemoData(
   ].sort(byDate)
   const projectedIncome = entries.reduce((sum, entry) => sum + entry.amount, 0)
   // The savings target is an envelope in a projection (D4).
-  const projectedMovements = savingsEdits.created
-    .filter((c) => c.draft.date.slice(0, 7) === shownMonth)
-    .map(toMovement)
-    .filter(notDeleted)
-    .sort(byDate)
-  const projectedSavings = Math.max(projection.savings, projectedMovements.reduce((sum, movement) => sum + movement.amount, 0))
+  const projectedMovements = savingsCreatedIn(shownMonth).sort(byDate)
+  const shownSplit = splitSavings(projectedMovements)
+  const projectedSavings = Math.max(projection.savings, shownSplit.counted)
   // The balance runs to the projected cycle's end: each projected cycle before it adds its savings
-  // as that cycle shows them (the target as an envelope), then this one.
-  const savingsIn = (month: string) =>
-    Math.max(
-      projection.savings,
-      savingsEdits.created
-        .filter((c) => c.draft.date.slice(0, 7) === month)
-        .map(toMovement)
-        .filter(notDeleted)
-        .reduce((sum, movement) => sum + movement.amount, 0),
-    )
+  // as that cycle shows them (the target as an envelope) plus what was already saved, then this one.
+  const savingsIn = (month: string) => {
+    const { counted, alreadySaved } = splitSavings(savingsCreatedIn(month))
+    return Math.max(projection.savings, counted) + alreadySaved
+  }
   const between = Array.from({ length: monthsBetween(base.cycle.month, shownMonth) - 1 }, (_, n) =>
     shiftDemoMonth(base.cycle.month, n + 1),
   )
   const projectedAccumulated =
-    sample.savings.accumulated + between.reduce((sum, month) => sum + savingsIn(month), 0) + projectedSavings
+    sample.savings.accumulated + between.reduce((sum, month) => sum + savingsIn(month), 0) + projectedSavings + shownSplit.alreadySaved
 
   return {
     data: {

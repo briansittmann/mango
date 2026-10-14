@@ -130,7 +130,7 @@ export function buildDemoPlan(locale: Locale): {
       income('freelance-mar', { es: 'Proyecto freelance', en: 'Freelance project' }, 400, '2027-03-16'),
     ],
     savings: [
-      { id: 'plan-ahorro-paga', draft: { kind: 'deposit', name: locale === 'es' ? 'Parte de la paga extra' : 'Part of the bonus', amount: 500, date: '2026-12-21' } },
+      { id: 'plan-ahorro-paga', draft: { kind: 'deposit', name: locale === 'es' ? 'Parte de la paga extra' : 'Part of the bonus', amount: 500, date: '2026-12-21', alreadySaved: false } },
     ],
     budgets: [
       { categoryId: 'comida', cycle: '2026-12-01', amount: 480 },

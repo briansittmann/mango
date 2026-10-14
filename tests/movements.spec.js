@@ -207,11 +207,32 @@ test.describe('on a phone', () => {
     await expect(page.locator('#category-panel-ocio')).toContainText(/90\s?€/)
   })
 
-  test('a savings row opens nothing', async ({ page }) => {
+  test('a savings row opens the savings sheet', async ({ page }) => {
     await openCard(page)
     await row(page, 'Bono ahorro').click()
-    await page.waitForTimeout(400)
-    await expect(sheet(page)).toHaveCount(0)
+    const dialog = sheet(page)
+    await expect(dialog.getByText('Editar movimiento')).toBeVisible()
+    await expect(dialog.getByLabel('Nombre')).toHaveValue('Bono ahorro')
+    await expect(dialog.getByLabel('Importe')).toHaveValue('50')
+    await dialog.getByLabel('Importe').fill('80')
+    await dialog.getByRole('button', { name: 'Guardar' }).click()
+    await expect(dialog).toBeHidden()
+    await expect(row(page, 'Bono ahorro')).toContainText(/\+80\s?€/)
+  })
+
+  test('a deposit already saved says so on its muted line', async ({ page }) => {
+    await page.getByRole('button', { name: /^Ahorro/ }).first().click()
+    await page.locator('#summary-group-panel').getByRole('button', { name: 'Añadir movimiento de ahorro' }).click()
+    const dialog = sheet(page)
+    await dialog.getByRole('switch', { name: 'Ya lo tenía ahorrado' }).click()
+    await dialog.getByLabel('Nombre').fill('Ahorros de antes')
+    await dialog.getByLabel('Importe').fill('1000')
+    await dialog.getByRole('button', { name: 'Añadir', exact: true }).click()
+    await expect(dialog).toBeHidden()
+    await page.keyboard.press('Escape')
+    await openCard(page)
+    await expect(row(page, 'Ahorros de antes')).toContainText('Depósito · Ya ahorrado')
+    await expect(row(page, 'Ahorros de antes')).toContainText(/\+1\.000\s?€/)
   })
 
   test('swipe to delete with undo, in the card and in its category', async ({ page }) => {

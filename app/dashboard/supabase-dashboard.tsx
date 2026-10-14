@@ -69,6 +69,7 @@ const mutations = {
   },
   savings: {
     addSavingsMovement: actions.addSavingsMovement,
+    update: actions.updateSavingsMovement,
     softDelete: actions.softDeleteSavingsMovement,
     restore: actions.restoreSavingsMovement,
   },
@@ -78,6 +79,8 @@ const mutations = {
     update: actions.updateRecurring,
     stop: actions.stopRecurring,
     delete: actions.deleteRecurring,
+    setCharged: actions.setRecurringCharged,
+    setReminder: actions.setRecurringReminder,
     editInCycle: actions.editRecurringInCycle,
     deleteInCycle: actions.deleteRecurringInCycle,
     restoreInCycle: actions.restoreRecurringInCycle,

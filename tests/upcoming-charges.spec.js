@@ -182,7 +182,7 @@ test.describe('on a phone', () => {
       expect(await focused()).toBe(name)
     }
     await page.keyboard.press('Enter')
-    await expect(dialog(page)).toContainText('Seguro')
+    await expect(dialog(page).getByLabel('Descripción')).toHaveValue('Seguro')
   })
 
   test('reduced motion: unfolded rows are at their final height in the first frame', async ({ page }) => {

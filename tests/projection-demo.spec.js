@@ -137,7 +137,7 @@ test.describe('a projected cycle', () => {
     await expect(page.locator('#upcoming-charges-panel')).toContainText(/comprometido este ciclo · 1\.025\s?€/)
 
     await rows.first().click()
-    await expect(dialog(page)).toContainText('Alquiler')
+    await expect(dialog(page).getByLabel('Descripción')).toHaveValue('Alquiler')
   })
 })
 

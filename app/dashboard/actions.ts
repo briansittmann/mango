@@ -13,7 +13,7 @@ import type { ExpenseDraft, LocalDate } from "@/lib/data/expenses";
 import type { IncomeDraft } from "@/lib/data/income";
 import { PROFILE_ERRORS, validateBasics, type ProfileBasics } from "@/lib/data/profile";
 import { createSupabaseProfileMutations } from "@/lib/data/supabase/profile";
-import type { RecurringDraft, RecurringTarget, SlotEntry } from "@/lib/data/recurring";
+import type { RecurringDefinition, RecurringDraft, RecurringTarget, SlotEntry } from "@/lib/data/recurring";
 import type { SavingsMovementDraft } from "@/lib/data/savings";
 import { createSupabaseCategoryMutations } from "@/lib/data/supabase/categories";
 import type { DataContext } from "@/lib/data/supabase/context";
@@ -83,6 +83,9 @@ export async function restoreIncome(entryId: string) {
 export async function addSavingsMovement(draft: SavingsMovementDraft) {
   await run((ctx) => createSupabaseSavingsMutations(ctx).addSavingsMovement(draft));
 }
+export async function updateSavingsMovement(movementId: string, draft: SavingsMovementDraft) {
+  await run((ctx) => createSupabaseSavingsMutations(ctx).update(movementId, draft));
+}
 export async function softDeleteSavingsMovement(movementId: string) {
   await run((ctx) => createSupabaseSavingsMutations(ctx).softDelete(movementId));
 }
@@ -118,6 +121,12 @@ export async function stopRecurring(definitionId: string) {
 }
 export async function deleteRecurring(definitionId: string) {
   await run((ctx) => createSupabaseRecurringMutations(ctx).delete(definitionId));
+}
+export async function setRecurringCharged(definitionId: string, cycle: LocalDate, charged: boolean) {
+  await run((ctx) => createSupabaseRecurringMutations(ctx).setCharged(definitionId, cycle, charged));
+}
+export async function setRecurringReminder(definitionId: string, reminder: RecurringDefinition["reminder"]) {
+  await run((ctx) => createSupabaseRecurringMutations(ctx).setReminder(definitionId, reminder));
 }
 export async function editRecurringInCycle(definitionId: string, cycle: LocalDate, entry: SlotEntry, scope: "only" | "onward") {
   await run((ctx) => createSupabaseRecurringMutations(ctx).editInCycle(definitionId, cycle, entry, scope));

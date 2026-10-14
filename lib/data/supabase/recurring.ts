@@ -73,6 +73,30 @@ export function createSupabaseRecurringMutations(ctx: DataContext): RecurringMut
           .select('id'),
       )
     },
+    async setCharged(definitionId, cycle, charged) {
+      expectRows(
+        await client
+          .from('transacciones')
+          .update({ estado: charged ? 'confirmada' : 'pendiente' })
+          .eq('usuario_id', usuarioId)
+          .eq('movimiento_recurrente_id', definitionId)
+          .eq('ciclo_mes', cycle)
+          .eq('tipo', 'gasto')
+          .eq('estado', charged ? 'pendiente' : 'confirmada')
+          .is('borrado_en', null)
+          .select('id'),
+      )
+    },
+    async setReminder(definitionId, reminder) {
+      expectRows(
+        await client
+          .from('movimientos_recurrentes')
+          .update({ recordatorio_activo: reminder.active, dias_antes: reminder.daysBefore })
+          .eq('id', definitionId)
+          .eq('usuario_id', usuarioId)
+          .select('id'),
+      )
+    },
     async delete(definitionId) {
       const { error } = await client.rpc('eliminar_movimiento_recurrente', { p_usuario_id: usuarioId, p_id: definitionId })
       if (error) throw new Error(error.message)

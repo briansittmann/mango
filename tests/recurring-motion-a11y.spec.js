@@ -175,7 +175,7 @@ test.describe('recurring motion', () => {
     expect(last(samples.thumb)).toBeCloseTo(20, 0)
   })
 
-  test('reduced motion: the definition sheet is at rest in the first frame', async ({ page }) => {
+  test("reduced motion: the fixed row's sheet is at rest in the first frame", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/demo')
     await page.locator('button[aria-controls="upcoming-charges-panel"]').click()
@@ -213,7 +213,7 @@ test.describe('recurring motion', () => {
     expect(last(samples.thumb)).toBeCloseTo(20, 0)
   })
 
-  test('without reduced motion, the definition sheet slides in over frames', async ({ page }) => {
+  test("without reduced motion, the fixed row's sheet slides in over frames", async ({ page }) => {
     await page.goto('/demo')
     await page.locator('button[aria-controls="upcoming-charges-panel"]').click()
     await page.locator('button[aria-controls="upcoming-charges-taken"]').click()
@@ -228,7 +228,7 @@ test.describe('recurring motion', () => {
   })
 })
 
-test.describe('definition sheet geometry', () => {
+test.describe("fixed row's sheet geometry", () => {
   test('rows are 48px and the switch hit area is 44 x 44', async ({ page }) => {
     const { sheet } = await openDefinitionSheet(page, 'Alquiler')
     await expect(sheet).toBeVisible()
@@ -265,12 +265,14 @@ for (const theme of /** @type {const} */ (['light', 'dark'])) {
       expect(cardResult.failures).toEqual([])
     })
 
-    test('the definition sheet reaches 4.5:1', async ({ page }) => {
+    test("the fixed row's sheet reaches 4.5:1", async ({ page }) => {
       await setTheme(page, theme)
       const { sheet } = await openDefinitionSheet(page, 'Alquiler')
       await expect(sheet).toBeVisible()
       // The reminder switch reveals the "Días antes" field, which is otherwise not on screen.
       await sheet.getByRole('switch', { name: 'Recordatorio' }).click()
+      // Measured at rest: the focused amount field's symbol is the entry sheet's own (Deuda tecnica).
+      await page.evaluate(() => /** @type {HTMLElement | null} */ (document.activeElement)?.blur())
 
       const sheetResult = await page.evaluate(CONTRAST_CHECK, 'div[role="dialog"][data-open]')
       expect(sheetResult.error).toBeUndefined()

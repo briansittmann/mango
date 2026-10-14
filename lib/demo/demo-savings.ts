@@ -3,10 +3,12 @@ import type { SavingsMovementDraft, SavingsMutations } from '@/lib/data/savings'
 
 export type DemoSavingsEdits = {
   created: { id: string; draft: SavingsMovementDraft }[]
+  /** Edits of sample or created movements, oldest first: the last one for an id wins. */
+  updated: { id: string; draft: SavingsMovementDraft }[]
   deletedIds: string[] // the demo's borrado_en: rows stay, flagged
 }
 
-export const noDemoSavingsEdits: DemoSavingsEdits = { created: [], deletedIds: [] }
+export const noDemoSavingsEdits: DemoSavingsEdits = { created: [], updated: [], deletedIds: [] }
 
 let counter = 0
 
@@ -16,6 +18,10 @@ export function createDemoSavingsMutations(setEdits: Dispatch<SetStateAction<Dem
       counter += 1
       const id = `demo-savings-${counter}`
       setEdits((edits) => ({ ...edits, created: [...edits.created, { id, draft }] }))
+      return Promise.resolve()
+    },
+    update(movementId, draft) {
+      setEdits((edits) => ({ ...edits, updated: [...edits.updated, { id: movementId, draft }] }))
       return Promise.resolve()
     },
     softDelete(movementId) {
