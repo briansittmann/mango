@@ -1,5 +1,5 @@
 import { useId, useLayoutEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
-import { ArrowUpDown, Eye, EyeOff, Loader2, Trash2 } from 'lucide-react'
+import { ArrowUpDown, Eye, EyeOff, Loader2, Trash2, X } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { CategoryDot } from '@/components/atoms/category-dot'
 import { Collapsible } from '@/components/atoms/collapsible'
@@ -98,6 +98,7 @@ export function CategorySheet({
   const confirmHeadingRef = useRef<HTMLHeadingElement>(null)
   const deleteRowRef = useRef<HTMLButtonElement>(null)
   const nameRef = useRef<HTMLInputElement>(null)
+  const submitRef = useRef<HTMLButtonElement>(null)
 
   const [wasOpen, setWasOpen] = useState(open)
   const [step, setStep] = useState<Step>('form')
@@ -244,6 +245,7 @@ export function CategorySheet({
         step === 'form' ? (
           <button
             key="submit"
+            ref={submitRef}
             type="submit"
             form={formId}
             disabled={primaryDisabled}
@@ -365,6 +367,25 @@ export function CategorySheet({
                     {progressVisible ? <Eye aria-hidden className="size-5" /> : <EyeOff aria-hidden className="size-5" />}
                     {progressVisible ? t('ocultarProgreso') : t('mostrarProgreso')}
                   </button>
+                  {fieldState.budget.trim() !== '' ? (
+                    <>
+                      <div className="border-t border-border" />
+                      <button
+                        type="button"
+                        data-category-remove-budget
+                        onClick={() => {
+                          // Empties the field; Guardar sends `budget: null` (a projection still asks how far it reaches).
+                          updateField('budget', '')
+                          submitRef.current?.focus()
+                        }}
+                        disabled={busy}
+                        className="flex min-h-row items-center gap-3 px-inset text-body-lg font-medium text-foreground hover:bg-muted active:bg-muted disabled:pointer-events-none disabled:opacity-50"
+                      >
+                        <X aria-hidden className="size-5" />
+                        {t('eliminarPresupuesto')}
+                      </button>
+                    </>
+                  ) : null}
                 </>
               ) : null}
 

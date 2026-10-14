@@ -216,6 +216,7 @@
     "errorEliminar": "No se pudo eliminar la categoría",
     "ocultarProgreso": "Ocultar barra de progreso",
     "mostrarProgreso": "Mostrar barra de progreso",
+    "eliminarPresupuesto": "Eliminar presupuesto",
     "reordenar": "Reordenar",
     "eliminarCategoria": "Eliminar categoría",
     "confirmarEliminar": "¿Eliminar {categoria}? Tiene {count, plural, =0 {ningún gasto} one {un gasto} other {# gastos}} este ciclo{fijos, plural, =0 {} one { y un gasto fijo} other { y # gastos fijos}}.",
