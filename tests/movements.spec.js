@@ -53,6 +53,26 @@ async function longSwipe(page, target) {
   await page.mouse.up()
 }
 
+const HINT_KEY = 'mango:pista-deslizar-movimientos'
+const hint = (page) => card(page).locator('[data-hint]')
+
+/** The one-time swipe hint, marked as seen so it never plays over the tests about something else. */
+async function skipHint(page) {
+  await page.addInitScript((key) => {
+    try {
+      localStorage.setItem(key, '1')
+    } catch {}
+  }, HINT_KEY)
+}
+
+/** Scrolls down in wheel steps, the way a person does, so the observer sees each position. */
+async function scrollDown(page, steps) {
+  for (let i = 0; i < steps; i++) {
+    await page.mouse.wheel(0, 100)
+    await page.waitForTimeout(120)
+  }
+}
+
 async function axeViolations(page) {
   await page.evaluate(readFileSync('node_modules/axe-core/axe.min.js', 'utf8'))
   const found = []
@@ -72,10 +92,25 @@ async function axeViolations(page) {
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    if (!testInfo.title.startsWith('swipe hint')) await skipHint(page)
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/demo')
     await card(page).waitFor()
+  })
+
+  test('swipe hint: plays once on the first row when the card is opened, never again', async ({ page }) => {
+    await openCard(page)
+    await scrollDown(page, 6)
+    await expect(hint(page)).toHaveCount(1)
+    await expect(hint(page)).toContainText('Desliza para borrar')
+    await expect(hint(page).locator('[data-movement-row]')).toHaveAttribute('aria-label', /Electrónica/)
+    expect(await page.evaluate((key) => localStorage.getItem(key), HINT_KEY)).toBe('1')
+    await page.reload()
+    await openCard(page)
+    await scrollDown(page, 6)
+    await page.waitForTimeout(500)
+    await expect(hint(page)).toHaveCount(0)
   })
 
   test('folded below the categories, with a count and no amount', async ({ page }) => {
@@ -298,8 +333,16 @@ test.describe('on a phone', () => {
 })
 
 test.describe('on a laptop', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    if (!testInfo.title.startsWith('swipe hint')) await skipHint(page)
     await loadDesktop(page)
+  })
+
+  test('swipe hint: plays when the open card scrolls into view, not before', async ({ page }) => {
+    await page.waitForTimeout(500)
+    await expect(hint(page)).toHaveCount(0)
+    await scrollDown(page, 8)
+    await expect(hint(page)).toHaveCount(1)
   })
 
   test('open by default in the main column while the categories start folded, outside expand and collapse all', async ({ page }) => {

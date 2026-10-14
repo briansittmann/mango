@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { useAmountFormatter } from '@/components/atoms/amount-format'
@@ -8,6 +8,7 @@ import { Collapsible } from '@/components/atoms/collapsible'
 import { ExpandChevron } from '@/components/atoms/expand-chevron'
 import { MovementRow } from '@/components/molecules/movement-row'
 import { SegmentedControl } from '@/components/molecules/segmented-control'
+import { useSwipeHint } from '@/components/molecules/swipe-hint'
 import { SwipeToDelete } from '@/components/molecules/swipe-to-delete'
 import type { DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
 import type { IncomeEntry } from '@/lib/data/income'
@@ -32,6 +33,8 @@ const TITLE_ID = 'movements-title'
 const COUNT_ID = 'movements-count'
 const STAGGER_MS = 30
 const STAGGER_CAP = 7
+/** `Collapsible`'s 200 ms, plus a frame. */
+const COLLAPSIBLE_MS = 250
 
 type MovementsCardProps = {
   data: Pick<DashboardData, 'expenses' | 'income' | 'savings' | 'cycle'>
@@ -104,6 +107,37 @@ export function MovementsCard({
     if (paging.focusKey) rowRefs.current.get(paging.focusKey)?.focus()
   }, [paging.focusKey])
 
+  function deleteFor(movement: Movement) {
+    if (movement.kind === 'expense') return onDeleteExpense && (() => onDeleteExpense(movement.expense))
+    if (movement.kind === 'income') return onDeleteIncome && (() => onDeleteIncome(movement.entry))
+    return onDeleteSavings && (() => onDeleteSavings(movement.id))
+  }
+
+  // The swipe-to-delete hint plays once, the first time the first deletable row is on screen,
+  // below the top bar, with the card open: the card starts open at `lg`, so nobody opens it by hand
+  // there.
+  const swipeHint = useSwipeHint('mango:pista-deslizar-movimientos')
+  const hintKey = shown.find((movement) => deleteFor(movement))?.key
+  const showHint = useEffectEvent(() => swipeHint.show())
+  useEffect(() => {
+    const node = open && hintKey ? rowRefs.current.get(hintKey) : undefined
+    if (!node) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return
+        observer.disconnect()
+        showHint()
+      },
+      { threshold: 0.9, rootMargin: '-88px 0px 0px 0px' },
+    )
+    // Observed once the panel has opened: Chromium does not re-check a row the opening clipped.
+    const timeout = setTimeout(() => observer.observe(node), COLLAPSIBLE_MS)
+    return () => {
+      clearTimeout(timeout)
+      observer.disconnect()
+    }
+  }, [open, hintKey])
+
   function changeFilter(next: Filter) {
     setFilterState({ month, filter: next })
     const count = next === 'all' ? movements.length : movements.filter((movement) => movement.kind === next).length
@@ -160,12 +194,7 @@ export function MovementsCard({
           : movement.kind === 'savings' && onEditSavings
             ? () => onEditSavings(movement.movement)
             : undefined
-    const onDelete =
-      movement.kind === 'expense'
-        ? onDeleteExpense && (() => onDeleteExpense(movement.expense))
-        : movement.kind === 'income'
-          ? onDeleteIncome && (() => onDeleteIncome(movement.entry))
-          : onDeleteSavings && (() => onDeleteSavings(movement.id))
+    const onDelete = deleteFor(movement)
 
     const row = (
       <MovementRow
@@ -193,7 +222,12 @@ export function MovementsCard({
         style={revealed ? { animationDelay: `${Math.min(index - revealFrom, STAGGER_CAP) * STAGGER_MS}ms` } : undefined}
       >
         {onDelete ? (
-          <SwipeToDelete rowId={movement.id} onDelete={onDelete}>
+          <SwipeToDelete
+            rowId={movement.id}
+            onDelete={onDelete}
+            hint={swipeHint.active && movement.key === hintKey}
+            onHintDismiss={swipeHint.dismiss}
+          >
             {row}
           </SwipeToDelete>
         ) : (

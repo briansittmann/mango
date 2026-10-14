@@ -56,8 +56,9 @@ export function CategoryCard({
   // In reorder mode the card keeps its identity and nothing else: collapsed, dot and name only,
   // every control off. Its own open state is untouched, so leaving the mode restores it.
   const expanded = open && !reordering
-  // The swipe-to-delete hint, on the first row, the first time this card is opened by hand.
-  const swipeHint = useSwipeHint(`mango:pista-deslizar-categoria-${group.id}`)
+  // The swipe-to-delete hint, on the first row, the first time any category card is opened by hand:
+  // every card has the same rows, so one showing teaches them all.
+  const swipeHint = useSwipeHint('mango:pista-deslizar-categoria')
 
   function toggle() {
     if (!expanded && onDeleteExpense && group.expenses.length > 0) swipeHint.show()
