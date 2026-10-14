@@ -26,13 +26,28 @@ export async function sendReaction(phone: string, messageId: string, emoji: stri
   await send(phone, 'reaction', { type: 'reaction', reaction: { message_id: messageId, emoji } })
 }
 
-async function send(phone: string, what: string, message: Record<string, unknown>): Promise<void> {
+/**
+ * An approved Meta template, the only message allowed outside the 24-hour window (ARCHITECTURE.md
+ * §14). `params` fill the body's `{{1}}`, `{{2}}`… in order. Never throws; true when Meta accepted it.
+ */
+export async function sendTemplate(phone: string, name: string, language: string, params: string[]): Promise<boolean> {
+  return send(phone, `template ${name}`, {
+    type: 'template',
+    template: {
+      name,
+      language: { code: language },
+      components: [{ type: 'body', parameters: params.map((text) => ({ type: 'text', text })) }],
+    },
+  })
+}
+
+async function send(phone: string, what: string, message: Record<string, unknown>): Promise<boolean> {
   const token = process.env.WHATSAPP_TOKEN
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
 
   if (!token || !phoneNumberId) {
     console.error(`[whatsapp] missing WHATSAPP_TOKEN or WHATSAPP_PHONE_NUMBER_ID, ${what} to ${maskPhone(phone)} not sent`)
-    return
+    return false
   }
 
   try {
@@ -45,8 +60,10 @@ async function send(phone: string, what: string, message: Record<string, unknown
     if (!response.ok) {
       console.error(`[whatsapp] ${what} to ${maskPhone(phone)} failed: ${response.status} ${await response.text()}`)
     }
+    return response.ok
   } catch (error) {
     console.error(`[whatsapp] ${what} to ${maskPhone(phone)} failed:`, error)
+    return false
   }
 }
 

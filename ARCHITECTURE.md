@@ -1180,7 +1180,7 @@ Idea aportada por uno de los amigos. Al cargar un gasto fijo se puede activar un
  
 **Por qué entra:** es puntual (5–6 mensajes al mes), llega en el momento exacto en que sirve, y evita el cobro sorpresa — que es justo lo que rompe un presupuesto ajustado. Alto valor por mensaje enviado.
  
-Implementación: campo `recordatorio_activo` (bool) y `dias_antes` (int, default 1) en `gastos_fijos`. El cron diario (sección 5.3 de tareas) consulta los fijos que vencen mañana y dispara la plantilla.
+Implementación: campo `recordatorio_activo` (bool) y `dias_antes` (int, default 1) en `movimientos_recurrentes`. Un cron diario propio (`/api/cron/recordatorios`, 11:00 UTC, de día en España y en Argentina) busca, por gasto fijo activo con recordatorio, el próximo cargo pendiente entre hoy y `dias_antes` días adelante, y manda la plantilla *Utility* `recordatorio_cobro_<idioma>` a la cuenta con WhatsApp vinculado: *"📅 Recordatorio: Netflix se te cobra mañana, por 12,99 €."* `recordatorio_enviado_para` guarda el último cargo avisado: un aviso por cargo, y si un día no corre, avisa al siguiente mientras el cargo no haya pasado.
  
 ### 14.2 · Recordatorio diario de carga — **opcional, apagado por defecto**
  

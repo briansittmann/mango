@@ -1,3 +1,4 @@
+
 ## Purpose
 
 The "Movimientos" card: one chronological list of everything the user entered in the shown cycle (one-off expenses, non-recurring income, savings deposits and withdrawals), grouped by day, filterable by kind and paged, so the user can check what is already in without opening every category.
@@ -18,8 +19,8 @@ The card SHALL be open by default at viewports of 1024px and wider and folded by
 - **THEN** the "Movimientos" card is open in the main column, under the category cards
 
 #### Scenario: Not part of collapse all
-- **WHEN** at 1280px the visitor activates "Expandir todas" and then "Contraer todas"
-- **THEN** every category card opens and then folds, and the "Movimientos" card stays open throughout
+- **WHEN** at 1280px the visitor activates "Contraer todas"
+- **THEN** every category card folds and the "Movimientos" card stays open
 
 #### Scenario: Header states no amount
 - **WHEN** the card is rendered, open or folded
@@ -47,11 +48,11 @@ A recurring charge or recurring income entry SHALL NOT appear in the card, wheth
 - **THEN** the card is rendered with its empty state and no projected charge or projected income is listed
 
 ### Requirement: Grouped by day, newest first
-Movements SHALL be grouped by their local day in the user's timezone, days newest first. Within a day, movements SHALL be ordered by their stored instant, newest first. Each day SHALL have a heading: "Hoy" for the cycle's today, "Ayer" for the day before, and otherwise the short weekday, the day and the short month in the active language (for example "jue 10 sept" / "Thu Sep 10", with no comma). A day heading SHALL state no amount.
+Movements SHALL be grouped by their local day in the user's timezone, days newest first. Within a day, movements SHALL be ordered by their stored instant, newest first. Each day SHALL have a heading: "Hoy" for the cycle's today, "Ayer" for the day before, and otherwise the short weekday, the day and the short month in the active language (for example "jue 10 sep" / "Thu 10 Sep"). A day heading SHALL state no amount.
 
 #### Scenario: The demo's first days
 - **WHEN** the card is open on `/demo` in Spanish
-- **THEN** the first heading reads "jue 10 sept" over "Electrónica", the second "mié 9 sept" over "Decoración" then "Bono ahorro", and the third "mar 8 sept" over "Conciertos" then "Retiro emergencia"
+- **THEN** the first heading reads "jue 10 sep" over "Electrónica", the second "mié 9 sep" over "Decoración" then "Bono ahorro", and the third "mar 8 sep" over "Conciertos" then "Retiro emergencia"
 
 #### Scenario: A row at the boundary
 - **WHEN** the user's timezone is Europe/Dublin and the "Café" row is stored at 23:30 UTC on 2 September
@@ -72,7 +73,7 @@ A row with no description SHALL show its category name (expense), "Ingreso" or t
 The card SHALL NOT state a total of any kind: not for the cycle, a day, a filter or a page.
 
 #### Scenario: Three kinds side by side
-- **WHEN** the card is open on `/demo` in Spanish under "sáb 5 sept"
+- **WHEN** the card is open on `/demo` in Spanish under "sáb 5 sep"
 - **THEN** "Cine" shows the "Ocio" colour, "Ocio" on its muted line and "45 €"
 - **AND** "Freelance" shows "Ingreso" on its muted line and "+420 €" in the brand text colour
 
@@ -89,7 +90,7 @@ The open card SHALL show, above the list, a segmented control with four options:
 
 #### Scenario: Only income
 - **WHEN** the visitor selects "Ingresos" on `/demo`
-- **THEN** the list holds only "Freelance" under "sáb 5 sept"
+- **THEN** the list holds only "Freelance" under "sáb 5 sep"
 
 #### Scenario: Only savings
 - **WHEN** the visitor selects "Ahorro" on `/demo`
@@ -104,16 +105,16 @@ The open card SHALL show, above the list, a segmented control with four options:
 - **THEN** "Todo" is selected in the new cycle
 
 ### Requirement: Show more
-The list SHALL show at most one page of movements at first: 10 movements at every width, counted after the filter. When more remain, a "Mostrar más" control at the end of the list SHALL reveal the next page of the same size. When every movement is shown and there was more than one page, the control SHALL read "Mostrar menos" and fold the list back to the first page, keeping the card's header in view. Changing the filter or the shown cycle SHALL return to the first page. When "Mostrar más" reveals a page, keyboard focus SHALL move to the first newly revealed row.
+The list SHALL show at most one page of movements at first: 15 movements below 1024px and 25 at 1024px and wider, counted after the filter. When more remain, a "Mostrar más" control at the end of the list SHALL reveal the next page of the same size. When every movement is shown and there was more than one page, the control SHALL read "Mostrar menos" and fold the list back to the first page, keeping the card's header in view. Changing the filter or the shown cycle SHALL return to the first page. When "Mostrar más" reveals a page, keyboard focus SHALL move to the first newly revealed row.
 
-#### Scenario: The demo's second page
-- **WHEN** the card is open on `/demo` with its 13 movements
-- **THEN** 10 rows are listed, from "Electrónica" to "Gasolina", followed by "Mostrar más"
-- **AND** activating it lists the last three rows and the control then reads "Mostrar menos"
+#### Scenario: A sixteenth movement on a phone
+- **WHEN** at a 390px-wide viewport on `/demo` the visitor adds three expenses, so the card holds 16 movements, and opens the card
+- **THEN** 15 rows are listed followed by "Mostrar más"
+- **AND** activating it lists the 16th row and the control then reads "Mostrar menos"
 
 #### Scenario: Fewer than a page
-- **WHEN** the visitor selects "Ahorro" on `/demo`
-- **THEN** its 3 rows are listed and neither "Mostrar más" nor "Mostrar menos" is shown
+- **WHEN** `/demo` is rendered with its 13 movements
+- **THEN** all 13 rows are listed and neither "Mostrar más" nor "Mostrar menos" is shown
 
 #### Scenario: Show less
 - **WHEN** every movement is shown after "Mostrar más" and the visitor activates "Mostrar menos"
