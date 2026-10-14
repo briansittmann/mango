@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=block" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0D110E;
+    --fg: #F3F4F6;
+    --muted: #9CA3AF;
+    --lime: #84CC16;
+    --lime-btn: #9BD13F;
+    --card: rgba(22, 28, 23, 0.72);
+    --card-line: rgba(255, 255, 255, 0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1200px; height: 630px; background: var(--bg); overflow: hidden; }
+  body { position: relative; font-family: Inter, system-ui, sans-serif; color: var(--fg); -webkit-font-smoothing: antialiased; }
+
+  #bends { position: absolute; inset: 0; width: 1200px; height: 630px; opacity: 0.55; }
+  .vignette { position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 70% at 22% 50%, rgba(13,17,14,0.85) 0%, rgba(13,17,14,0) 70%),
+      radial-gradient(ellipse 120% 90% at 50% 50%, rgba(13,17,14,0) 55%, rgba(13,17,14,0.9) 100%); }
+  .glow { position: absolute; left: 820px; top: 315px; width: 560px; height: 560px; transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(132,204,22,0.22) 0%, rgba(132,204,22,0) 65%); }
+
+  .copy { position: absolute; left: 80px; top: 0; bottom: 0; width: 590px; display: flex; flex-direction: column; justify-content: center; }
+  .brand { display: flex; align-items: center; gap: 14px; margin-bottom: 40px; }
+  .brand .logo { width: 56px; height: 56px; position: relative; }
+  .brand .logo::before { content: ""; position: absolute; inset: -14px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(132,204,22,0.35), rgba(132,204,22,0) 70%); }
+  .brand img { position: relative; width: 56px; height: 56px; }
+  .brand span { font-family: Manrope; font-weight: 800; font-size: 34px; letter-spacing: -0.02em; }
+
+  h1 { font-family: Manrope; font-weight: 800; font-size: 66px; line-height: 1.04; letter-spacing: -0.035em; }
+  h1 em { font-style: normal; color: var(--lime); display: block; }
+  .sub { margin-top: 26px; font-size: 24px; line-height: 1.45; color: var(--muted); max-width: 520px; }
+  .sub b { color: var(--fg); font-weight: 500; }
+
+  .cta { margin-top: 38px; display: flex; align-items: center; gap: 18px; }
+  .pill { height: 56px; padding: 0 30px; border-radius: 999px; background: var(--lime-btn); color: #0D110E;
+    display: inline-flex; align-items: center; font-weight: 600; font-size: 21px; }
+  .url { font-size: 21px; color: var(--muted); font-weight: 500; letter-spacing: 0.01em; }
+
+  /* Product side */
+  .stage { position: absolute; left: 700px; top: 0; bottom: 0; width: 440px; }
+  .card { position: absolute; border-radius: 28px; background: var(--card); border: 1px solid var(--card-line);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05); backdrop-filter: blur(18px); }
+
+  .margin { left: 40px; top: 122px; width: 380px; padding: 28px 30px 30px; }
+  .label { font-size: 17px; color: var(--muted); font-weight: 500; display: flex; justify-content: space-between; }
+  .label i { font-style: normal; color: var(--lime); font-weight: 600; font-size: 15px; background: rgba(132,204,22,0.12); padding: 3px 10px; border-radius: 999px; }
+  .big { margin-top: 8px; font-family: Manrope; font-weight: 800; font-size: 76px; letter-spacing: -0.04em; line-height: 1; color: var(--lime); }
+  .big small { font-size: 46px; margin-left: 6px; }
+  .strip { margin-top: 24px; display: flex; gap: 4px; height: 12px; }
+  .strip div { border-radius: 999px; }
+  .legend { margin-top: 14px; display: flex; gap: 18px; font-size: 14px; color: var(--muted); }
+  .legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; background: currentColor; vertical-align: 1px; }
+
+  .chat { left: -30px; top: 344px; z-index: 2; width: 420px; padding: 18px 18px 20px; }
+  .msg-out { margin-left: auto; width: fit-content; background: #1F5C34; color: #F3F4F6; padding: 10px 16px; border-radius: 18px 18px 6px 18px; font-size: 19px; font-weight: 500; }
+  .msg-in { margin-top: 10px; width: fit-content; max-width: 360px; background: rgba(255,255,255,0.07); padding: 12px 16px; border-radius: 18px 18px 18px 6px; font-size: 17px; line-height: 1.45; color: #E5E7EB; }
+  .msg-in b { color: var(--fg); font-weight: 600; }
+  .wa { position: absolute; top: -16px; left: 22px; display: inline-flex; align-items: center; gap: 7px; background: #25D366; color: #0D110E; font-weight: 600; font-size: 13px; padding: 5px 11px 5px 9px; border-radius: 999px; box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
+</style>
+</head>
+<body>
+  <canvas id="bends" width="1200" height="630"></canvas>
+  <div class="vignette"></div>
+  <div class="glow"></div>
+
+  <div class="copy">
+    <div class="brand">
+      <div class="logo"><img src="logo.svg" alt=""></div>
+      <span>Mango</span>
+    </div>
+    <h1>Tus finanzas,<em>a un mensaje de distancia.</em></h1>
+    <p class="sub">Anota tus gastos por <b>WhatsApp</b> y mira al instante cuánto te queda libre este mes.</p>
+    <div class="cta">
+      <span class="pill">Empezar</span>
+      <span class="url">usemango.dev</span>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="card margin">
+      <div class="label">Margen libre <i>Octubre</i></div>
+      <div class="big">864<small>€</small></div>
+      <div class="strip">
+        <div style="flex: 52; background: rgba(243,244,246,0.2);"></div>
+        <div style="flex: 14; background: rgba(132,204,22,0.5);"></div>
+        <div style="flex: 34; background: var(--lime);"></div>
+      </div>
+      <div class="legend">
+        <span style="color:rgba(243,244,246,0.35)"><em style="font-style:normal;color:var(--muted)">Gastado</em></span>
+        <span style="color:rgba(132,204,22,0.55)"><em style="font-style:normal;color:var(--muted)">Ahorrado</em></span>
+        <span style="color:var(--lime)"><em style="font-style:normal;color:var(--muted)">Libre</em></span>
+      </div>
+    </div>
+
+    <div class="card chat">
+      <span class="wa">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="#0D110E"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9 0-1.4.7-2 1-2.3.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.1 1.3Z"/></svg>
+        WhatsApp
+      </span>
+      <div class="msg-out">super 15</div>
+      <div class="msg-in">Anotado ✅ <b>Super · 15 €</b> en Comida.<br>Llevas 48 € de 300 € este mes 🟢</div>
+    </div>
+  </div>
+
+<script>
+const FRAG = `
+precision highp float;
+uniform vec2 uCanvas; uniform float uTime; uniform vec2 uRot; uniform vec3 uColor;
+uniform float uBandWidth; uniform float uIntensity;
+varying vec2 vUv;
+void main() {
+  float t = uTime * 0.2;
+  vec2 p = vUv * 2.0 - 1.0;
+  vec2 rp = vec2(p.x * uRot.x - p.y * uRot.y, p.x * uRot.y + p.y * uRot.x);
+  vec2 q = vec2(rp.x * (uCanvas.x / uCanvas.y), rp.y);
+  q /= 0.5 + 0.2 * dot(q, q);
+  q += 0.2 * cos(t) - 7.56;
+  q -= rp * 0.2;
+  vec2 s = q - 0.01;
+  vec2 r = sin(1.5 * s.yx + 2.0 * cos(s));
+  float m = length(r + sin(5.0 * r.y - 3.0 * t) / 4.0);
+  float a = 1.0 - exp(-uBandWidth / exp(uBandWidth * m));
+  vec3 col = clamp(uColor * a, 0.0, 1.0) * uIntensity;
+  gl_FragColor = vec4(col * a, a);
+}`;
+const VERT = `attribute vec2 aPosition; varying vec2 vUv; void main(){ vUv = aPosition*0.5+0.5; gl_Position = vec4(aPosition,0.0,1.0); }`;
+const c = document.getElementById('bends');
+const gl = c.getContext('webgl', { alpha: true, preserveDrawingBuffer: true });
+function sh(t, s) { const x = gl.createShader(t); gl.shaderSource(x, s); gl.compileShader(x); return x; }
+const pr = gl.createProgram();
+gl.attachShader(pr, sh(gl.VERTEX_SHADER, VERT)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FRAG));
+gl.linkProgram(pr); gl.useProgram(pr);
+const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,3,-1,-1,3]), gl.STATIC_DRAW);
+const pos = gl.getAttribLocation(pr, 'aPosition'); gl.enableVertexAttribArray(pos); gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+const u = (n) => gl.getUniformLocation(pr, n);
+const P = new URLSearchParams(location.search);
+const rot = (+(P.get('rot') ?? 70)) * Math.PI / 180;
+gl.uniform2f(u('uCanvas'), c.width, c.height);
+gl.uniform1f(u('uTime'), +(P.get('t') ?? 2.4));
+gl.uniform2f(u('uRot'), Math.cos(rot), Math.sin(rot));
+gl.uniform3f(u('uColor'), 0x84/255, 0xCC/255, 0x16/255);
+gl.uniform1f(u('uBandWidth'), 1.5);
+gl.uniform1f(u('uIntensity'), 1.3);
+gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT); gl.drawArrays(gl.TRIANGLES, 0, 3);
+</script>
+</body>
+</html>
