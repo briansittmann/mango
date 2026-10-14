@@ -2,6 +2,7 @@ import type { LocalDate } from '@/lib/data/expenses'
 import { congelarCiclos, fechaEnCiclo } from '@/lib/data/projection'
 import type { RecurringDefinition, RecurringMutations } from '@/lib/data/recurring'
 import { expectRows, type DataContext } from './context'
+import { localDateOf } from './cycle'
 import { DEFINITION_COLUMNS, futureCycles, toDefinition } from './future-cycles'
 
 const SCOPE = { only: 'solo', onward: 'desde' } as const
@@ -74,16 +75,25 @@ export function createSupabaseRecurringMutations(ctx: DataContext): RecurringMut
       )
     },
     async setCharged(definitionId, cycle, charged) {
+      const { data: row, error } = await client
+        .from('transacciones')
+        .select('id, fecha')
+        .eq('usuario_id', usuarioId)
+        .eq('movimiento_recurrente_id', definitionId)
+        .eq('ciclo_mes', cycle)
+        .eq('tipo', 'gasto')
+        .is('borrado_en', null)
+        .maybeSingle()
+      if (error) throw new Error(error.message)
+      if (!row) throw new Error('not-found')
+      // Only a charge whose day passed needs the mark: before it, pending already shows pending.
+      const dayPassed = localDateOf(row.fecha, ctx.timezone) <= localDateOf(new Date(), ctx.timezone)
       expectRows(
         await client
           .from('transacciones')
-          .update({ estado: charged ? 'confirmada' : 'pendiente' })
+          .update({ estado: charged ? 'confirmada' : 'pendiente', no_cobrado: !charged && dayPassed })
+          .eq('id', row.id)
           .eq('usuario_id', usuarioId)
-          .eq('movimiento_recurrente_id', definitionId)
-          .eq('ciclo_mes', cycle)
-          .eq('tipo', 'gasto')
-          .eq('estado', charged ? 'pendiente' : 'confirmada')
-          .is('borrado_en', null)
           .select('id'),
       )
     },

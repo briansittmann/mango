@@ -53,6 +53,8 @@ type TransaccionRow = {
   movimiento_recurrente_id: string | null
   ciclo_mes: LocalDate | null
   estado: 'pendiente' | 'confirmada'
+  /** A charge marked not charged after its day (0037); absent on computed charges. */
+  no_cobrado?: boolean
   /** A savings deposit the user already had (0033); absent on computed charges. */
   ahorro_previo?: boolean
   /** A charge `proyectarCiclo` computed for a projected cycle, not a stored row. */
@@ -79,11 +81,12 @@ function inRange(fecha: string, range: CycleRange): boolean {
 
 /**
  * A charge shows as taken when it is confirmed or its local day is not after the cycle's today
- * (Q4): a pending charge whose day passed was, most likely, paid at that amount.
+ * (Q4): a pending charge whose day passed was, most likely, paid at that amount — unless the user
+ * marked it not charged (`no_cobrado`, 0037).
  * `actualizar_movimiento_recurrente` (0021) rewrites only the charges this returns false for.
  */
 function isCharged(row: TransaccionRow, timezone: string, today: LocalDate): boolean {
-  return row.estado === 'confirmada' || localDateOf(row.fecha, timezone) <= today
+  return row.estado === 'confirmada' || (!row.no_cobrado && localDateOf(row.fecha, timezone) <= today)
 }
 
 /**
@@ -163,7 +166,7 @@ export async function resumenMensual(
       .order('nombre'),
     client
       .from('transacciones')
-      .select('id, monto, fecha, categoria_id, descripcion, tipo, movimiento_recurrente_id, ciclo_mes, estado, ahorro_previo')
+      .select('id, monto, fecha, categoria_id, descripcion, tipo, movimiento_recurrente_id, ciclo_mes, estado, no_cobrado, ahorro_previo')
       .eq('usuario_id', usuario.id)
       .is('borrado_en', null)
       .gte('fecha', oldest.inicio.toISOString())

@@ -456,6 +456,68 @@
   transition: opacity 150ms ease, background-color 150ms ease, scale 200ms var(--ease-spring);
 }
 
+/* "Cobrado este mes" in a fixed's sheet: a row that tints green and draws its check when on. */
+.charge-toggle {
+  transition: scale 200ms var(--ease-spring), background-color 200ms var(--ease-out);
+}
+.charge-toggle[data-on] {
+  background-color: color-mix(in oklab, var(--positive) 12%, transparent);
+}
+@media (hover: hover) and (pointer: fine) {
+  .charge-toggle:hover {
+    background-color: var(--muted);
+  }
+  .charge-toggle[data-on]:hover {
+    background-color: color-mix(in oklab, var(--positive) 18%, transparent);
+  }
+}
+.charge-toggle-ring {
+  fill: transparent;
+  stroke: var(--muted-foreground);
+  stroke-width: 1.5;
+  transition: fill 200ms var(--ease-out), stroke 200ms var(--ease-out);
+}
+.charge-toggle-check {
+  fill: none;
+  stroke: var(--background);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 150ms var(--ease-out);
+}
+.charge-toggle-mark {
+  transform-origin: center;
+}
+.charge-toggle[data-on] .charge-toggle-ring {
+  fill: var(--positive);
+  stroke: var(--positive);
+}
+.charge-toggle[data-on] .charge-toggle-check {
+  stroke-dashoffset: 0;
+  transition-duration: 250ms;
+  transition-delay: 80ms;
+}
+.charge-toggle[data-on] .charge-toggle-mark {
+  animation: charge-pop 400ms var(--ease-bounce);
+}
+@keyframes charge-pop {
+  from {
+    scale: 0.6;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .charge-toggle,
+  .charge-toggle-ring,
+  .charge-toggle-check {
+    transition: none;
+  }
+  .charge-toggle[data-on] .charge-toggle-mark {
+    animation: none;
+  }
+}
+
 .sparkline-stroke {
   stroke-dasharray: 1;
   stroke-dashoffset: 1;

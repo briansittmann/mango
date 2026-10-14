@@ -8,7 +8,7 @@ The income sheet SHALL open from exactly these triggers:
 An income entry SHALL NOT be opened from anywhere else. In particular the `upcoming-charges` card SHALL never list it (`upcoming-charges` → *Only expense charges are listed*), and no category card SHALL contain it.
 
 **Income entries produced by a recurring definition.** Such an entry is the slot a definition holds in one cycle, shown in the income panel like any other: a real entry in the cycle in progress or a past one, and a real or projected entry in a projection.
-- Activating its row SHALL open edit mode for that entry, and the header caption SHALL state that it repeats every month. Below the fields the sheet SHALL show the fixed's section (`recurring-expenses` → *One sheet for a fixed row*) without "Marcar como cobrado" and without a reminder.
+- Activating its row SHALL open edit mode for that entry, and the header caption SHALL state that it repeats every month. Below the fields the sheet SHALL show the fixed's section (`recurring-expenses` → *One sheet for a fixed row*) without "Cobrado este mes" and without a reminder.
 - Saving or deleting it SHALL ask how far it reaches, and reach as far as the answer, and no further (`recurring-expenses` → *Every surface changes a fixed row the same way*, *Every change to a recurring row asks how far it reaches*). "Desde este mes en adelante" SHALL change the income definition itself: its expected amount, its day and its name, from that cycle on.
 - Swiping it SHALL delete that cycle's entry only, with undo.
 - The income panel is where an income recurrence is changed.

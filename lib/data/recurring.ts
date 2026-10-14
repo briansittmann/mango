@@ -47,7 +47,8 @@ export type RecurringDraft = {
  * - `delete` removes the definition and the charges it produced, in every cycle.
  *
  * - `setCharged` turns this definition's charge in `cycle` charged or back to pending, and changes
- *   nothing else of it (`unify-fixed-charge-sheet` D4).
+ *   nothing else of it (`unify-fixed-charge-sheet` D4). Back to pending after its day, it stays
+ *   pending on screen until something confirms it (`no_cobrado`, 0037).
  * - `setReminder` writes only the reminder setting: no charge, no other field (D5).
  *
  * Three more act on the slot a definition holds in one cycle — `(movimiento_recurrente_id,

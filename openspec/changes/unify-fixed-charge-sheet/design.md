@@ -14,7 +14,7 @@ In the database, an `editar_cargo_en_ciclo` "solo" on the cycle in progress sets
 
 **Goals:**
 - One sheet for a fixed row, whatever opened it, holding every option the two sheets held.
-- No new data model: two narrow operations on existing columns, no migration.
+- A small data model change: two narrow operations, and one additive column (`no_cobrado`, D4).
 - Keep the scope model of `add-forward-scoped-edits` as the single way a fixed row changes.
 
 **Non-Goals:**
@@ -61,7 +61,9 @@ The scope question keeps showing only for slot changes. Skipping `editInCycle` o
 ### D4. `setCharged(definitionId, cycle, charged)`
 Supabase: one `update transacciones set estado` on the row with `movimiento_recurrente_id = definitionId`, `ciclo_mes = cycle`, `tipo = 'gasto'`, `borrado_en is null` and the opposite `estado`, scoped by `usuario_id`, with `expectRows`. Demo: `charged: Record<slotKey, boolean>` in `DemoRecurringEdits`, applied to the sample cycle's fixed rows after the slot step.
 
-The template marks, closes the sheet and shows a toast `hojaGasto.cobradoEsteMes` ("{nombre}: cobrado este mes") with "Deshacer" calling `setCharged(…, false)`. The bot's `completar_cargo_recurrente` already answers "ya cargado" for a confirmed charge, so a later chat message does not load it twice.
+The sheet shows it as a switch, "Cobrado este mes" (`fixed.charged`, the charge's shown state), applied by "Guardar" after the slot (`extra.charged`, null when unchanged); a slot saved with the switch off is set back to pending, because `editar_cargo_en_ciclo` confirms it. The message is `hojaGasto.marcadoCobrado` / `marcadoPendiente` when only the switch changed. The bot's `completar_cargo_recurrente` already answers "ya cargado" for a confirmed charge, so a later chat message does not load it twice. (First shipped as a one-tap action with a toast and "Deshacer"; Brian asked on 2026-10-14 for a switch that waits for "Guardar" and works both ways.)
+
+A charge shows charged when it is confirmed or its day has passed (`isCharged`), so a pending charge after its day could not be shown pending. Migration `0037` adds `transacciones.no_cobrado` (boolean, default false): `setCharged(…, false)` sets it when the charge's local day is today or earlier, `setCharged(…, true)` clears it, and `isCharged` is `confirmada || (!no_cobrado && day passed)`. Anything that confirms the row (the chat, a web edit, `cerrar_pendientes`) wins over the flag, so no SQL function changes. Brian chose this over "charged only when marked", which would have turned 14 of his October charges back to pending.
 
 *Alternative considered:* reuse `editInCycle(…, 'only')` with the same values, which confirms in the database. Rejected: it has no inverse for "Deshacer", and in the demo it is a slot override, not a state.
 
@@ -87,7 +89,7 @@ Supabase: one `update movimientos_recurrentes set recordatorio_activo, dias_ante
 
 ## Migration Plan
 
-No database change. Deploy the code; nothing to apply. Rollback is a revert of the code.
+`0037_no_cobrado.sql` (additive) before deploying the switch: the dashboard reads `no_cobrado`. Rollback is a revert of the code; the column can stay.
 
 ## Open Questions
 

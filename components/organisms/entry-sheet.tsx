@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { Drawer } from '@base-ui/react/drawer'
-import { Ban, Check, ChevronDown, CircleCheck, Loader2, Trash2 } from 'lucide-react'
+import { Ban, Check, ChevronDown, Loader2, Trash2 } from 'lucide-react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { useAmountFormatter } from '@/components/atoms/amount-format'
 import { CategoryDot } from '@/components/atoms/category-dot'
@@ -142,19 +142,26 @@ type EntrySheetProps<V> = {
    * a definition (`recurring-expenses` → *Every change to a recurring row asks how far it reaches*),
    * `'only'` when nothing changed, null on any other row. `categoryId` is the header's category.
    * `slotChanged` says whether this month's values or category differ from what the sheet opened
-   * with; `reminder` is the fixed's new reminder, null when unchanged (`unify-fixed-charge-sheet` D3).
+   * with; `reminder` is the fixed's new reminder, null when unchanged (`unify-fixed-charge-sheet` D3);
+   * `charged` is the "Cobrado este mes" switch, null when unchanged or not shown.
    */
   onSave: (
     values: V,
-    extra: { scope: Scope | null; categoryId: string | null; slotChanged: boolean; reminder: RecurringDefinition['reminder'] | null },
+    extra: {
+      scope: Scope | null
+      categoryId: string | null
+      slotChanged: boolean
+      reminder: RecurringDefinition['reminder'] | null
+      charged: boolean | null
+    },
   ) => Promise<void>
   /** A recurring row asks how far first, in a confirmation step (three reaches with `fixed`); any other row passes null. */
   onDelete?: (reach: Reach | null) => Promise<void>
   /** A fixed row's own section below the fields (`unify-fixed-charge-sheet` D1, D2); absent on any other row. */
   fixed?: {
     definition: RecurringDefinition
-    /** Present only for this cycle's pending expense charge. */
-    onMarkCharged?: () => Promise<void>
+    /** Whether this cycle's expense charge shows charged; absent hides the switch. Saved with "Guardar". */
+    charged?: boolean
     /** The reminder switch, for an expense. */
     reminder: boolean
     /** Present only while the definition is active. */
@@ -256,14 +263,15 @@ export function EntrySheet<V>({
   const [fieldState, setFieldState] = useState<FieldState>(() => buildFieldState(config, initialValues, locale))
   const [initialSnapshot, setInitialSnapshot] = useState<FieldState>(fieldState)
   const [touched, setTouched] = useState<Partial<Record<string, boolean>>>({})
-  const [status, setStatus] = useState<'idle' | 'saving' | 'deleting' | 'marking' | 'stopping'>('idle')
-  const [error, setError] = useState<'save' | 'delete' | 'mark' | 'stop' | null>(null)
+  const [status, setStatus] = useState<'idle' | 'saving' | 'deleting' | 'stopping'>('idle')
+  const [error, setError] = useState<'save' | 'delete' | 'stop' | null>(null)
   const [step, setStep] = useState<'form' | 'confirmDelete'>('form')
   const [scope, setScope] = useState<Scope | null>(null)
   const [deleteScope, setDeleteScope] = useState<Reach | null>(null)
   const [reminderActive, setReminderActive] = useState(fixed?.definition.reminder.active ?? false)
   const [reminderDaysBefore, setReminderDaysBefore] = useState(String(fixed?.definition.reminder.daysBefore ?? 1))
   const [reminderTouched, setReminderTouched] = useState(false)
+  const [chargedOn, setChargedOn] = useState(fixed?.charged ?? false)
   const initialCategoryId = context.kind === 'category' ? context.id : null
   const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -310,6 +318,7 @@ export function EntrySheet<V>({
       setReminderActive(fixed?.definition.reminder.active ?? false)
       setReminderDaysBefore(String(fixed?.definition.reminder.daysBefore ?? 1))
       setReminderTouched(false)
+      setChargedOn(fixed?.charged ?? false)
       setCategoryId(initialCategoryId)
       setPickerOpen(false)
       setDateOpen(false)
@@ -357,7 +366,8 @@ export function EntrySheet<V>({
     fixed != null &&
     fixed.reminder &&
     (reminderActive !== fixed.definition.reminder.active || (reminderActive && daysBeforeValue !== fixed.definition.reminder.daysBefore))
-  const isDirty = slotDirty || reminderDirty
+  const chargedDirty = fixed?.charged != null && chargedOn !== fixed.charged
+  const isDirty = slotDirty || reminderDirty || chargedDirty
   const disabled = status !== 'idle'
   const asksScope = mode === 'edit' && context.kind !== 'savings' && context.recurring
   const showScope = asksScope && slotDirty
@@ -424,6 +434,7 @@ export function EntrySheet<V>({
         categoryId,
         slotChanged: slotDirty,
         reminder: reminderDirty ? { active: reminderActive, daysBefore: daysBeforeValue ?? fixed!.definition.reminder.daysBefore } : null,
+        charged: chargedDirty ? chargedOn : null,
       })
       if (onSaveRecurrence && recurrenceOn) {
         // The definition's name and expected amount are the same values just typed into the
@@ -445,7 +456,7 @@ export function EntrySheet<V>({
     }
   }
 
-  async function runFixedAction(action: () => Promise<void>, running: 'marking' | 'stopping', failure: 'mark' | 'stop') {
+  async function runFixedAction(action: () => Promise<void>, running: 'stopping', failure: 'stop') {
     setStatus(running)
     setError(null)
     try {
@@ -731,15 +742,23 @@ export function EntrySheet<V>({
             </span>
           ) : null}
         </p>
-        {section.onMarkCharged ? (
+        {section.charged != null ? (
+          // A switch, not an action: it only changes what "Guardar" writes, both ways.
           <button
             type="button"
-            onClick={() => void runFixedAction(section.onMarkCharged!, 'marking', 'mark')}
+            role="switch"
+            aria-checked={chargedOn}
+            data-on={chargedOn || undefined}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => setChargedOn((value) => !value)}
             disabled={disabled}
-            className={cn(rowClass, 'relative before:absolute before:left-4 before:right-0 before:top-0 before:h-px before:bg-border')}
+            className="charge-toggle pressable relative flex min-h-row w-full items-center gap-3 px-inset text-left text-body-lg font-medium text-foreground disabled:pointer-events-none disabled:opacity-50 before:absolute before:left-4 before:right-0 before:top-0 before:h-px before:bg-border"
           >
-            {status === 'marking' ? <Loader2 aria-hidden className="size-5 animate-spin" /> : <CircleCheck aria-hidden className="size-5" />}
-            {t('marcarCobrado')}
+            <svg aria-hidden viewBox="0 0 20 20" className="charge-toggle-mark size-5 shrink-0">
+              <circle cx="10" cy="10" r="8.5" className="charge-toggle-ring" />
+              <path d="M6.2 10.4l2.5 2.5 5.1-5.6" pathLength={1} className="charge-toggle-check" />
+            </svg>
+            <span className="flex-1">{t('cobradoEsteMes')}</span>
           </button>
         ) : null}
         {section.reminder ? (
@@ -885,7 +904,7 @@ export function EntrySheet<V>({
         <Drawer.Content className="flex flex-1 flex-col overflow-y-auto overscroll-contain pb-4">
           {error ? (
             <div role="alert" className="mx-inset mt-3 rounded-inner bg-destructive/[0.08] px-4 py-3 text-body-md text-destructive-ink">
-              {t(error === 'save' ? 'errorGuardar' : error === 'mark' ? 'errorMarcar' : error === 'stop' ? 'errorDejarDeRepetir' : 'errorEliminar')}
+              {t(error === 'save' ? 'errorGuardar' : error === 'stop' ? 'errorDejarDeRepetir' : 'errorEliminar')}
             </div>
           ) : null}
           {step === 'confirmDelete' ? (

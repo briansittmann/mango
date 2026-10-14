@@ -880,7 +880,13 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
 
   async function handleSaveEntry(
     values: ExpenseDraft,
-    { scope, categoryId, slotChanged, reminder }: { scope: Scope | null; categoryId: string | null; slotChanged: boolean; reminder: RecurringDefinition['reminder'] | null },
+    {
+      scope,
+      categoryId,
+      slotChanged,
+      reminder,
+      charged,
+    }: { scope: Scope | null; categoryId: string | null; slotChanged: boolean; reminder: RecurringDefinition['reminder'] | null; charged: boolean | null },
   ) {
     if (!sheet.target || sheet.target.kind === 'savings') return
     const definitionId =
@@ -894,9 +900,23 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       // "Guardar" never confirms a pending charge by accident (`unify-fixed-charge-sheet` D3).
       const expenseCategory = sheet.target.kind === 'expense' ? (categoryId ?? sheet.target.group.id) : null
       if (slotChanged) await actions.recurring.editInCycle(definitionId, cycleStart, { ...values, categoryId: expenseCategory }, scope ?? 'only')
+      // "Cobrado este mes" is written last: editing this month's slot confirms it in the database,
+      // so a switch left off puts it back to pending.
+      const wasCharged = fixedSection?.charged
+      const finalCharged = charged ?? wasCharged
+      if (wasCharged != null && (charged != null || (slotChanged && !finalCharged))) {
+        await actions.recurring.setCharged(definitionId, cycleStart, finalCharged!)
+      }
       if (reminder) await actions.recurring.setReminder(definitionId, reminder)
       setSheet((prev) => ({ ...prev, open: false }))
-      setStatusMessage(slotChanged && scope === 'onward' ? tHojaGasto('cambiosDesde', { mes: monthName }) : tHojaGasto('cambiosGuardados'))
+      const name = sheet.target.kind === 'expense' && sheet.target.mode === 'edit' ? sheet.target.expense.name : ''
+      setStatusMessage(
+        slotChanged && scope === 'onward'
+          ? tHojaGasto('cambiosDesde', { mes: monthName })
+          : charged != null && !slotChanged && !reminder
+            ? tHojaGasto(charged ? 'marcadoCobrado' : 'marcadoPendiente', { nombre: name })
+            : tHojaGasto('cambiosGuardados'),
+      )
       return
     }
     if (sheet.target.kind === 'income') {
@@ -951,29 +971,6 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       return
     }
     await actions.recurring.create({ tipo: 'gasto', categoryId: chosenCategoryRef.current ?? sheet.target.group.id }, draft)
-  }
-
-  // "Marcar como cobrado": this cycle's pending charge turns charged, with an undo (D4).
-  async function handleMarkCharged(definitionId: string, name: string) {
-    if (!actions.recurring) return
-    await actions.recurring.setCharged(definitionId, cycleStart, true)
-    setSheet((prev) => ({ ...prev, open: false }))
-    toasts.close()
-    const id = toasts.add({
-      title: tHojaGasto('cobradoEsteMes', { nombre: name }),
-      priority: 'low',
-      actionProps: { children: tHojaGasto('deshacer'), onClick: () => void undoMarkCharged(id, definitionId) },
-    })
-  }
-
-  async function undoMarkCharged(id: string, definitionId: string) {
-    if (!actions.recurring) return
-    try {
-      await actions.recurring.setCharged(definitionId, cycleStart, false)
-      toasts.close(id)
-    } catch {
-      toasts.update(id, { title: tHojaGasto('errorDeshacer'), priority: 'high', actionProps: undefined })
-    }
   }
 
   async function handleStopDefinition(definitionId: string, name: string) {
@@ -1037,17 +1034,21 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   const currentCycle = data.cycle.month === data.cycle.currentMonth
   const editedFixed =
     sheet.target?.mode === 'edit' && sheet.target.kind === 'expense'
-      ? { definitionId: sheet.target.expense.fixed?.definitionId, name: sheet.target.expense.name, pending: sheet.target.expense.fixed?.charged === false && !sheet.target.expense.projected, expense: true }
+      ? {
+          definitionId: sheet.target.expense.fixed?.definitionId,
+          name: sheet.target.expense.name,
+          charged: sheet.target.expense.projected ? undefined : sheet.target.expense.fixed?.charged,
+          expense: true,
+        }
       : sheet.target?.mode === 'edit' && sheet.target.kind === 'income'
-        ? { definitionId: sheet.target.entry.recurring?.definitionId, name: sheet.target.entry.name, pending: false, expense: false }
+        ? { definitionId: sheet.target.entry.recurring?.definitionId, name: sheet.target.entry.name, charged: undefined, expense: false }
         : null
   const editedDefinition = editedFixed?.definitionId ? definitions.find((definition) => definition.id === editedFixed.definitionId) : undefined
   const fixedSection =
     editedFixed && editedDefinition && actions.recurring
       ? {
           definition: editedDefinition,
-          onMarkCharged:
-            editedFixed.pending && currentCycle ? () => handleMarkCharged(editedDefinition.id, editedFixed.name) : undefined,
+          charged: currentCycle ? editedFixed.charged : undefined,
           reminder: editedFixed.expense,
           onStop: editedDefinition.active ? () => handleStopDefinition(editedDefinition.id, editedFixed.name) : undefined,
         }

@@ -27,3 +27,11 @@
 ## 5. Docs
 
 - [x] 5.1 Update `CLAUDE.md` *Estado actual* (Web/dashboard, Tests, OpenSpec: archives after `restyle-upcoming-charges-card`) and move the Open Question and accepted risks into *Deuda tecnica* when archiving
+
+## 6. "Cobrado este mes" as a switch (Brian, 2026-10-14)
+
+- [x] 6.1 Migration `0037_no_cobrado.sql`; `setCharged` writes `no_cobrado` by the charge's day, `isCharged` honours it (D4)
+- [x] 6.2 `EntrySheet`: the mark becomes a switch (`fixed.charged`, `extra.charged`), with hover, tint and an animated check (`.charge-toggle` in `globals.css`, at rest under reduced motion); the template applies it on save, after the slot, and keeps an edited slot pending with the switch off; strings `cobradoEsteMes`, `marcadoCobrado`, `marcadoPendiente`
+- [x] 6.3 `tests/fixed-sheet.spec.js`: the switch waits for "Guardar" both ways, a charge taken by its date unmarks, an edited pending charge stays pending; screenshots in both themes
+- [ ] 6.4 Apply `0037` to the real database (with Brian's confirmation) and check the switch on `/dashboard`
+  > `0037` applied by the MCP on 2026-10-14 and read back (boolean, not null, default false, 0 of 171 rows marked); the `/dashboard` check is still open.

@@ -8,7 +8,7 @@ The page that mounts the dashboard SHALL supply changes to recurring definitions
 - **update:** replaces an existing definition's name, expected amount, category, day of the month, and reminder settings
 - **stop:** marks a definition as no longer active without removing it or any charge it produced
 - **delete:** removes the definition and the charges it produced
-- **set charged:** takes a definition, a cycle and whether its charge in that cycle is charged; it SHALL change only that charge's state, pending or charged, and nothing else of it or of the definition
+- **set charged:** takes a definition, a cycle and whether its charge in that cycle is charged; it SHALL change only that charge's state, pending or charged, and nothing else of it or of the definition. A charge set back to pending after its day SHALL stay pending on screen until something confirms it, although its day has passed
 - **set reminder:** takes a definition and its reminder setting (on or off, with a number of days before); it SHALL change only that setting, and no charge
 
 Each operation SHALL complete asynchronously and then either succeed or fail. A failed operation SHALL leave the data unchanged.
@@ -194,7 +194,7 @@ A fixed row — a recurring charge in its category card, the same charge in "Pr�
 
 **The fixed's section**, separated from the fields by a divider, in this order:
 - **Summary**: one muted line stating the definition's expected amount and its day ("820 € cada mes, el día 1"), and for a definition with a number of repetitions its progress and pending total ("4 de 10 · quedan 6 pagos · 210 €", *A recurrence can end, and ends itself*). When this month's amount differs from the expected amount, the line SHALL still state the expected one, so both figures are on screen at once.
-- **"Marcar como cobrado"**, for an expense whose charge in the cycle in progress is pending (*Marking a charge as charged*). It SHALL NOT be shown for a charge already charged, for a projected cycle or a past one, or for an income entry.
+- **"Cobrado este mes"**, a switch for an expense's charge in the cycle in progress, on when the charge is shown charged (*Marking a charge as charged*). It SHALL NOT be shown for a projected cycle or a past one, or for an income entry.
 - **Recordatorio**, for an expense: a switch with the definition's reminder setting that, when on, reveals a days-before field in place. Saving the sheet with a changed reminder SHALL set it through the set reminder operation, after any change to this month's values, and SHALL NOT ask how far it reaches.
 - **"Dejar de repetir"**, below a divider, in the ordinary text colour, while the definition is active: it SHALL make the definition inactive without confirmation and change no charge of this or an earlier cycle.
 - **Delete**, below a divider, in the destructive colour on a faint destructive tint, with the three reaches of *Every change to a recurring row asks how far it reaches*.
@@ -206,19 +206,19 @@ When the mounting page supplies no recurring operations, the sheet SHALL show no
 #### Scenario: Same sheet from both places
 - **WHEN** on `/demo` in Spanish the visitor activates "Parking" in "Próximos cobros", closes the sheet, and activates "Parking" in the "Transporte" card
 - **THEN** both times the same sheet opens, titled "Editar gasto", captioned "Transporte · Se repite cada mes", holding 50 € and 15 September 2026
-- **AND** both times it shows "50 € cada mes, el día 15", "Marcar como cobrado", a reminder switch, "Dejar de repetir" and the delete action
+- **AND** both times it shows "50 € cada mes, el día 15", "Cobrado este mes" off, a reminder switch, "Dejar de repetir" and the delete action
 
 #### Scenario: Both numbers at once
 - **WHEN** the visitor changes this cycle's "Alquiler" to 880 € with "Solo este mes" and opens "Alquiler" again from "Próximos cobros"
 - **THEN** the amount field holds 880 and the summary line states "820 € cada mes, el día 1"
 
-#### Scenario: A charged row offers no mark
+#### Scenario: A charged row shows the switch on
 - **WHEN** the visitor opens "Alquiler", already charged
-- **THEN** "Marcar como cobrado" is not shown, and the reminder, "Dejar de repetir" and delete are
+- **THEN** "Cobrado este mes" is on, and the reminder, "Dejar de repetir" and delete are shown
 
 #### Scenario: A fixed income entry
 - **WHEN** the visitor opens "Salario" in the income panel
-- **THEN** the sheet shows the summary line, "Dejar de repetir" and the delete action, and neither "Marcar como cobrado" nor a reminder switch
+- **THEN** the sheet shows the summary line, "Dejar de repetir" and the delete action, and neither "Cobrado este mes" nor a reminder switch
 
 #### Scenario: Stop repeating cuts forward only
 - **WHEN** the visitor opens "Gimnasio" and activates "Dejar de repetir"
@@ -267,16 +267,25 @@ A change to a fixed row SHALL reach as far as the scope chosen in its sheet, fro
 
 ### Requirement: Marking a charge as charged
 
-"Marcar como cobrado" in the sheet of a pending charge of the cycle in progress SHALL turn that charge into a charged one through the set charged operation, at its current amount, name and date, without creating, editing or deleting any row and without changing the definition. The sheet SHALL close; the charge SHALL be shown as charged in "Próximos cobros" and wherever else a charged charge differs from a pending one, and no total, budget or free margin SHALL change.
+"Cobrado este mes" in the sheet of a charge of the cycle in progress SHALL be a switch that changes nothing until the sheet is saved. Turning it on or off SHALL tint the row (the positive colour, faint) and fill or empty its check mark with a short animation, at rest under reduced motion; on a fine pointer the row SHALL show a hover state.
 
-A toast SHALL state that the charge is charged this month and offer "Deshacer", which SHALL turn it back to pending through the same operation. A failed mark SHALL keep the sheet open with an alert and the charge pending.
+Saving with the switch changed SHALL set the charge charged or pending through the set charged operation, after any change to this month's values, at its current amount, name and date otherwise, without creating or deleting any row and without changing the definition. The sheet SHALL close; the charge SHALL be listed with the charged or the pending ones of "Próximos cobros", and a status message SHALL name it charged or pending this month when nothing else changed. A charge set pending after its day SHALL stay pending until it is marked again, the chat completes it, or the web saves this month's values with the switch on. Saving this month's values with the switch off SHALL leave the charge pending.
 
 A charge marked this way SHALL be what the chat finds when the user later sends its expense (`bot-transaction-logging`): an already charged charge, which is not loaded again.
 
 #### Scenario: Marking Parking
-- **WHEN** on `/demo` in Spanish, with "Parking" pending at 50 € on day 15, the visitor opens it from "Próximos cobros" and activates "Marcar como cobrado"
+- **WHEN** on `/demo` in Spanish, with "Parking" pending at 50 € on day 15, the visitor opens it from "Próximos cobros" and turns "Cobrado este mes" on
+- **THEN** the sheet stays open, the row is tinted and checked, and "Parking" is still pending
+- **WHEN** the visitor saves
 - **THEN** the sheet closes, "Parking" is listed among the charged ones of "Próximos cobros", and the "Transporte" card total, the footer total and the free margin are unchanged
-- **AND** a toast offers "Deshacer", and activating it lists "Parking" among the pending ones again
+
+#### Scenario: Unmarking a charge taken by its date
+- **WHEN** the visitor opens "Internet", charged on day 3, turns "Cobrado este mes" off and saves
+- **THEN** "Internet" is listed among the pending ones
+
+#### Scenario: A changed amount keeps a pending charge pending
+- **WHEN** the visitor changes pending "Parking" to 55 € with "Solo este mes" and saves with the switch off
+- **THEN** "Parking" is still listed among the pending ones
 
 #### Scenario: A failed mark
 - **WHEN** the set charged operation rejects
