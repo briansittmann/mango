@@ -72,7 +72,7 @@ async function openSummary(page, name) {
   if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click()
   const panel = page.locator('#summary-group-panel')
   // Its rows only take clicks once the expand transition ends; WebKit hit-tests mid-way otherwise.
-  await panel.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)))
+  await panel.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).filter((a) => !a.effect?.target?.closest('[data-hint]')).map((a) => a.finished)))
   return panel
 }
 

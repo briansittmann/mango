@@ -56,7 +56,7 @@ export function SwipeHint({ label }: { label: string }) {
         <Trash2 className="size-5" />
       </div>
       <div aria-hidden className="swipe-hint pointer-events-none absolute inset-0 flex items-center px-inset">
-        <span className="flex items-center gap-1.5 rounded-full bg-foreground/85 px-3 py-1.5 text-body-sm font-medium text-background shadow-lg backdrop-blur-sm">
+        <span className="flex items-center gap-1.5 rounded-full bg-foreground/85 px-3 py-1.5 text-body-sm font-medium text-background shadow-lg">
           <ArrowLeft className="size-4" />
           {label}
         </span>

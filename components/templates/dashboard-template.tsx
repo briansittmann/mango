@@ -27,6 +27,7 @@ import { ExpenseRow } from '@/components/molecules/expense-row'
 import { MonthSelector } from '@/components/molecules/month-selector'
 import { SavingsMovementRow } from '@/components/molecules/savings-movement-row'
 import { SummaryRow } from '@/components/molecules/summary-row'
+import { useSwipeHint } from '@/components/molecules/swipe-hint'
 import { SwipeRestoreContext, SwipeToDelete } from '@/components/molecules/swipe-to-delete'
 import { UndoToast } from '@/components/molecules/undo-toast'
 import type { Reach, Scope } from '@/components/molecules/scope-choice'
@@ -222,6 +223,9 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   const [progressOverrides, setProgressOverrides] = useState<Map<string, boolean>>(new Map())
   const progressShown = (group: ExpenseGroup) => progressOverrides.get(group.id) ?? group.showProgress
   const [openSummary, setOpenSummary] = useState<SummaryKey | null>(null)
+  // The swipe-to-delete hint on the first row of the income and savings panels, once each.
+  const incomeSwipeHint = useSwipeHint('mango:pista-deslizar-ingresos')
+  const savingsSwipeHint = useSwipeHint('mango:pista-deslizar-ahorro')
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [accountSheetOpen, setAccountSheetOpen] = useState(false)
   const [titleInView, setTitleInView] = useState(true)
@@ -1167,6 +1171,10 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       scrollToBreakdown()
       return
     }
+    if (openSummary !== key) {
+      if (key === 'income' && firstSwipeableIncomeId) incomeSwipeHint.show()
+      if (key === 'savings' && actions.savings && data.savings.movements.length > 0) savingsSwipeHint.show()
+    }
     toggleSummary(key)
   }
 
@@ -1408,6 +1416,10 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   const pushedBack =
     reordering || accountMenuOpen || accountSheetOpen || sheet.open || categorySheet.open || summaryPanelOpen || dayDetail.open
 
+  // The income row the panel's swipe hint plays on: the first one that swipes.
+  const firstSwipeableIncomeId = actions.income
+    ? sortedIncomeEntries.find((entry) => !entry.projected || actions.recurring)?.id
+    : undefined
   const summaryItems: SummaryGroupItem[] = [
     {
       key: 'income',
@@ -1434,7 +1446,13 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
                 />
               )
               return editable ? (
-                <SwipeToDelete key={entry.id} rowId={entry.id} onDelete={() => handleDeleteIncome(entry)}>
+                <SwipeToDelete
+                  key={entry.id}
+                  rowId={entry.id}
+                  onDelete={() => handleDeleteIncome(entry)}
+                  hint={incomeSwipeHint.active && entry.id === firstSwipeableIncomeId}
+                  onHintDismiss={incomeSwipeHint.dismiss}
+                >
                   {row}
                 </SwipeToDelete>
               ) : (
@@ -1517,7 +1535,13 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
                 />
               )
               return actions.savings ? (
-                <SwipeToDelete key={movement.id} rowId={movement.id} onDelete={() => handleDeleteSavings(movement.id)}>
+                <SwipeToDelete
+                  key={movement.id}
+                  rowId={movement.id}
+                  onDelete={() => handleDeleteSavings(movement.id)}
+                  hint={savingsSwipeHint.active && index === 0}
+                  onHintDismiss={savingsSwipeHint.dismiss}
+                >
                   {row}
                 </SwipeToDelete>
               ) : (

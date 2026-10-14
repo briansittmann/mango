@@ -2,12 +2,16 @@ import { createContext, useContext, useEffect, useRef, useState, type MouseEvent
 import { Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Collapsible } from '@/components/atoms/collapsible'
+import { SwipeHint } from '@/components/molecules/swipe-hint'
 import { cn } from '@/lib/utils'
 
 type SwipeToDeleteProps = {
   onDelete: () => Promise<void>
   /** The row's id, matched against `SwipeRestoreContext`. */
   rowId: string
+  /** Plays the one-time swipe hint over this row (`swipe-hint.tsx`); a press on the row ends it. */
+  hint?: boolean
+  onHintDismiss?: () => void
   children: ReactNode
 }
 
@@ -32,8 +36,9 @@ function wait(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms))
 }
 
-export function SwipeToDelete({ onDelete, rowId, children }: SwipeToDeleteProps) {
+export function SwipeToDelete({ onDelete, rowId, hint = false, onHintDismiss, children }: SwipeToDeleteProps) {
   const t = useTranslations('hojaGasto')
+  const tOnboarding = useTranslations('onboarding')
   const [offset, setOffset] = useState(0)
   const [dragging, setDragging] = useState(false)
   const [armed, setArmed] = useState(false)
@@ -202,7 +207,12 @@ export function SwipeToDelete({ onDelete, rowId, children }: SwipeToDeleteProps)
 
   return (
     <Collapsible open={!removing} className="motion-safe:starting:grid-rows-[0fr]">
-      <div className="relative overflow-hidden" data-removing={removing || undefined}>
+      <div
+        className="relative overflow-hidden"
+        data-removing={removing || undefined}
+        data-hint={hint || undefined}
+        onPointerDownCapture={hint ? onHintDismiss : undefined}
+      >
         <div
           ref={actionRef}
           className="absolute inset-y-0 right-0 flex items-center justify-end"
@@ -243,6 +253,7 @@ export function SwipeToDelete({ onDelete, rowId, children }: SwipeToDeleteProps)
         >
           {children}
         </div>
+        {hint ? <SwipeHint label={tOnboarding('deslizaBorrar')} /> : null}
       </div>
     </Collapsible>
   )

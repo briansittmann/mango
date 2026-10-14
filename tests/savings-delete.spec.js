@@ -30,7 +30,7 @@ async function longSwipe(page, row) {
 async function openSavings(page) {
   await page.getByRole('button', { name: /^Ahorro/ }).click()
   const panel = page.locator('#summary-group-panel')
-  await panel.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)))
+  await panel.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).filter((a) => !a.effect?.target?.closest('[data-hint]')).map((a) => a.finished)))
   return panel
 }
 

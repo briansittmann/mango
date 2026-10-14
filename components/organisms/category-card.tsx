@@ -8,6 +8,7 @@ import { AnimatedAmount } from '@/components/ui/counter/animated-amount'
 import { AddRow } from '@/components/molecules/add-row'
 import { BudgetProgress } from '@/components/molecules/budget-progress'
 import { ExpenseRow } from '@/components/molecules/expense-row'
+import { useSwipeHint } from '@/components/molecules/swipe-hint'
 import { SwipeToDelete } from '@/components/molecules/swipe-to-delete'
 import type { Expense, ExpenseGroup } from '@/lib/data/dashboard'
 
@@ -55,6 +56,13 @@ export function CategoryCard({
   // In reorder mode the card keeps its identity and nothing else: collapsed, dot and name only,
   // every control off. Its own open state is untouched, so leaving the mode restores it.
   const expanded = open && !reordering
+  // The swipe-to-delete hint, on the first row, the first time this card is opened by hand.
+  const swipeHint = useSwipeHint(`mango:pista-deslizar-categoria-${group.id}`)
+
+  function toggle() {
+    if (!expanded && onDeleteExpense && group.expenses.length > 0) swipeHint.show()
+    onToggle()
+  }
 
   return (
     <div
@@ -67,7 +75,7 @@ export function CategoryCard({
             §9-required order (dot · name · amount · options · chevron) painted above it. */}
         <button
           type="button"
-          onClick={onToggle}
+          onClick={toggle}
           disabled={reordering}
           aria-expanded={expanded}
           aria-controls={panelId}
@@ -150,7 +158,13 @@ export function CategoryCard({
               />
             )
             return onDeleteExpense ? (
-              <SwipeToDelete key={expense.id} rowId={expense.id} onDelete={() => onDeleteExpense(expense)}>
+              <SwipeToDelete
+                key={expense.id}
+                rowId={expense.id}
+                onDelete={() => onDeleteExpense(expense)}
+                hint={swipeHint.active && index === 0}
+                onHintDismiss={swipeHint.dismiss}
+              >
                 {row}
               </SwipeToDelete>
             ) : (
