@@ -1,15 +1,20 @@
-import { useId, useState, type CSSProperties, type FormEvent } from 'react'
+import { useEffect, useId, useState, type CSSProperties, type FormEvent } from 'react'
 import { Toast } from '@base-ui/react/toast'
+import { Check, Loader2, Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { CategoryDot } from '@/components/atoms/category-dot'
 import { Money } from '@/components/atoms/money'
 import { AmountField, parseAmount } from '@/components/molecules/amount-field'
 import { IntegerField, parseInteger } from '@/components/molecules/integer-field'
+import { SwipeHint, useSwipeHint } from '@/components/molecules/swipe-hint'
 import { SwipeToDelete } from '@/components/molecules/swipe-to-delete'
 import { StarBorder } from '@/components/ui/star-border'
 import { cn } from '@/lib/utils'
 import type { OnboardingActions, OnboardingData } from '@/lib/data/onboarding'
 import type { RecurringDefinition } from '@/lib/data/recurring'
+
+/** How long the check holds before "Añadir" opens back up. */
+const ADD_DONE_MS = 700
 
 type FixedStepProps = {
   categories: OnboardingData['categories']
@@ -28,13 +33,12 @@ type ComposerProps = {
   /** The expense composer's chosen category, owned by the step: the list's border glows in its colour. */
   categoryId: string | null
   onCategoryChange: (categoryId: string) => void
-  /** A hairline above the composer, when rows sit above it. */
-  divided: boolean
+  onAdded: () => void
   onStatus: (message: string) => void
 }
 
 /** The last row of each list: name, amount, day and, for an expense, the category (D9). */
-function Composer({ tipo, categories, currency, actions, categoryId, onCategoryChange, divided, onStatus }: ComposerProps) {
+function Composer({ tipo, categories, currency, actions, categoryId, onCategoryChange, onAdded, onStatus }: ComposerProps) {
   const t = useTranslations('onboarding')
   const tAmount = useTranslations('hojaGasto')
   const tDay = useTranslations('gastoRecurrente')
@@ -44,7 +48,15 @@ function Composer({ tipo, categories, currency, actions, categoryId, onCategoryC
   const [amount, setAmount] = useState('')
   const [day, setDay] = useState('1')
   const [touched, setTouched] = useState({ amount: false, day: false })
-  const [busy, setBusy] = useState(false)
+  // "Añadir" folds into a spinner while it writes, shows a check once it landed, then opens back up.
+  const [phase, setPhase] = useState<'idle' | 'busy' | 'done'>('idle')
+  const busy = phase !== 'idle'
+
+  useEffect(() => {
+    if (phase !== 'done') return
+    const timeout = setTimeout(() => setPhase('idle'), ADD_DONE_MS)
+    return () => clearTimeout(timeout)
+  }, [phase])
 
   const amountValue = parseAmount(amount)
   const dayValue = parseInteger(day, { min: 1, max: 31 })
@@ -55,7 +67,7 @@ function Composer({ tipo, categories, currency, actions, categoryId, onCategoryC
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (!valid || busy || amountValue == null || dayValue == null) return
-    setBusy(true)
+    setPhase('busy')
     try {
       await actions.create(
         tipo === 'gasto' && category ? { tipo: 'gasto', categoryId: category.id } : { tipo: 'ingreso' },
@@ -65,15 +77,16 @@ function Composer({ tipo, categories, currency, actions, categoryId, onCategoryC
       setName('')
       setAmount('')
       setTouched({ amount: false, day: false })
+      setPhase('done')
+      onAdded()
     } catch {
       toasts.add({ title: t('fijos.errorAnadir'), priority: 'high' })
-    } finally {
-      setBusy(false)
+      setPhase('idle')
     }
   }
 
   return (
-    <form onSubmit={submit} className={cn('pb-2', divided && 'border-t border-border')} aria-label={t(tipo === 'gasto' ? 'fijos.pagas' : 'fijos.cobras')}>
+    <form onSubmit={submit} className="pb-3" aria-label={t(tipo === 'gasto' ? 'fijos.pagas' : 'fijos.cobras')}>
       <div className="flex min-h-row items-center gap-3 px-inset py-2">
         <label htmlFor={`${id}-name`} className="flex-1 text-body-lg text-foreground">
           {t('fijos.nombre')}
@@ -143,13 +156,23 @@ function Composer({ tipo, categories, currency, actions, categoryId, onCategoryC
           </div>
         </div>
       ) : null}
-      <div className="flex justify-end px-inset pt-3">
+      <div className="flex justify-end px-inset pt-4">
         <button
           type="submit"
-          disabled={!valid || busy}
-          className="onboarding-button h-10 rounded-full px-3 text-body-lg font-medium text-brand-ink outline-none focus-visible:outline-2 disabled:opacity-50"
+          disabled={!valid && !busy}
+          aria-disabled={busy || undefined}
+          aria-busy={phase === 'busy' || undefined}
+          data-ready={valid || busy || undefined}
+          data-phase={phase}
+          className="fixed-add relative flex h-10 items-center justify-center overflow-hidden rounded-full text-body-lg font-semibold outline-none focus-visible:outline-2 focus-visible:outline-offset-2"
         >
-          {t('fijos.anadir')}
+          <span className="fixed-add-label flex items-center gap-1.5">
+            <Plus aria-hidden className="size-4" strokeWidth={2.5} />
+            {t('fijos.anadir')}
+          </span>
+          {/* Mounted only while needed: a hidden spinner would still be an endless animation. */}
+          {phase === 'busy' ? <Loader2 aria-hidden className="fixed-add-icon absolute inset-0 m-auto size-5 animate-spin" /> : null}
+          {phase === 'done' ? <Check aria-hidden className="fixed-add-check absolute inset-0 m-auto size-5" strokeWidth={3} /> : null}
         </button>
       </div>
     </form>
@@ -158,7 +181,7 @@ function Composer({ tipo, categories, currency, actions, categoryId, onCategoryC
 
 /**
  * Step 4 (`onboarding` → *Income and fixed expenses step*, D9): two lists, income first, each with
- * its rows and a composer; a row opens the definition sheet the template mounts. The pending
+ * its rows (one card each) and a composer below them. The pending
  * charges of the cycle in progress are stored by the template on "Continuar".
  */
 export function FixedStep({ categories, definitions, currency, actions, onCategoriesStep, onStatus }: FixedStepProps) {
@@ -207,6 +230,11 @@ export function FixedStep({ categories, definitions, currency, actions, onCatego
   }
   const [expenseCategoryId, setExpenseCategoryId] = useState<string | null>(null)
   const expenseCategory = categories.find((c) => c.id === expenseCategoryId) ?? null
+  // The rows the step opened with: any other one was added here and lands with a glow.
+  const [initialIds] = useState(() => new Set(definitions.map((definition) => definition.id)))
+  // The swipe-to-delete hint, on the first row added here, once per browser.
+  const swipeHint = useSwipeHint('mango:pista-deslizar')
+  const hintRowId = swipeHint.active ? (definitions.find((definition) => definition.active && !initialIds.has(definition.id))?.id ?? null) : null
 
   return (
     <div className="flex flex-col gap-4">
@@ -224,60 +252,63 @@ export function FixedStep({ categories, definitions, currency, actions, onCatego
             <h2 id={`fixed-${tipo}-title`} className="font-display text-headline-sm text-foreground">
               {title}
             </h2>
-            <StarBorder color={glow}>
-            <div className="rounded-card border bg-card">
-              {rows.length > 0 ? (
-                <ul>
-                  {rows.map((definition, index) => {
-                    const category = categories.find((c) => c.id === definition.categoryId)
-                    return (
-                      // A row is not tappable here: a tap opened the definition sheet by accident while
-                      // the person meant to swipe or scroll. Swipe deletes; editing is the dashboard's.
-                      <li
-                        key={definition.id}
-                        aria-label={t('fijos.fila', { nombre: definition.name, dia: definition.day })}
-                        className="onboarding-row overflow-hidden first:rounded-t-card"
-                      >
-                        <SwipeToDelete rowId={definition.id} onDelete={() => remove(definition)}>
-                        <div
-                          className={cn(
-                            'relative flex min-h-row w-full items-center gap-3 px-inset py-2 text-left',
-                            index > 0 && 'before:absolute before:left-4 before:right-0 before:top-0 before:h-px before:bg-border',
-                          )}
-                        >
-                          {category ? <CategoryDot color={category.color} className="size-1.5" /> : null}
+            {rows.length > 0 ? (
+              <ul className="flex flex-col gap-2">
+                {rows.map((definition) => {
+                  const category = categories.find((c) => c.id === definition.categoryId)
+                  const hint = hintRowId === definition.id
+                  return (
+                    // A row is not tappable here: a tap opened the definition sheet by accident while
+                    // the person meant to swipe or scroll. Swipe deletes; editing is the dashboard's.
+                    // Each row is its own card framed in its colour; one added here lands with a glow.
+                    <li
+                      key={definition.id}
+                      aria-label={t('fijos.fila', { nombre: definition.name, dia: definition.day })}
+                      data-fresh={!initialIds.has(definition.id) || undefined}
+                      data-hint={hint || undefined}
+                      // Touching the row ends the hint: the person is already doing what it shows.
+                      onPointerDownCapture={hint ? swipeHint.dismiss : undefined}
+                      style={{ '--row-color': category ? `var(--cat-${category.color})` : 'var(--brand)' } as CSSProperties}
+                      className="onboarding-row fixed-row overflow-hidden rounded-card border bg-card"
+                    >
+                      <SwipeToDelete rowId={definition.id} onDelete={() => remove(definition)}>
+                        <div className="flex min-h-row w-full items-center gap-3 px-inset py-2 text-left">
+                          {category ? <CategoryDot color={category.color} className="size-2" /> : null}
                           <span className="flex min-w-0 flex-1 flex-col">
                             <span className="truncate text-body-lg text-foreground">{definition.name}</span>
                             <span className="text-body-sm text-muted-foreground">{t('fijos.diaCorto', { dia: definition.day })}</span>
                           </span>
                           <Money amount={definition.expectedAmount} currency={currency} className="shrink-0 text-tabular-numeric-md text-foreground" />
                         </div>
-                        </SwipeToDelete>
-                      </li>
-                    )
-                  })}
-                </ul>
-              ) : null}
-              {canCompose ? (
-                <Composer
-                  tipo={tipo}
-                  categories={categories}
-                  currency={currency}
-                  actions={actions}
-                  categoryId={expenseCategory?.id ?? null}
-                  onCategoryChange={setExpenseCategoryId}
-                  divided={rows.length > 0}
-                  onStatus={onStatus}
-                />
-              ) : (
-                <p className="flex min-h-row flex-wrap items-center gap-x-2 px-inset py-3 text-body-md text-muted-foreground">
-                  <span>{t('fijos.sinCategorias')}</span>
-                  <button type="button" onClick={onCategoriesStep} className="onboarding-button font-medium text-brand-ink outline-none focus-visible:outline-2">
-                    {t('fijos.irACategorias')}
-                  </button>
-                </p>
-              )}
-            </div>
+                      </SwipeToDelete>
+                      {hint ? <SwipeHint label={t('deslizaBorrar')} /> : null}
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : null}
+            <StarBorder color={glow}>
+              <div className="rounded-card border bg-card">
+                {canCompose ? (
+                  <Composer
+                    tipo={tipo}
+                    categories={categories}
+                    currency={currency}
+                    actions={actions}
+                    categoryId={expenseCategory?.id ?? null}
+                    onCategoryChange={setExpenseCategoryId}
+                    onAdded={swipeHint.show}
+                    onStatus={onStatus}
+                  />
+                ) : (
+                  <p className="flex min-h-row flex-wrap items-center gap-x-2 px-inset py-3 text-body-md text-muted-foreground">
+                    <span>{t('fijos.sinCategorias')}</span>
+                    <button type="button" onClick={onCategoriesStep} className="onboarding-button font-medium text-brand-ink outline-none focus-visible:outline-2">
+                      {t('fijos.irACategorias')}
+                    </button>
+                  </p>
+                )}
+              </div>
             </StarBorder>
           </section>
         )

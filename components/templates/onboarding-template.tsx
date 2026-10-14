@@ -6,15 +6,15 @@ import { Loader2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { usePhone } from '@/components/hooks/use-desktop'
 import { AmountFormatProvider, useAmountFormatter } from '@/components/atoms/amount-format'
 import { parseAmount } from '@/components/molecules/amount-field'
 import { basicsValid, looksLikeName, type BasicsDraft } from '@/components/molecules/basics-fields'
 import { parseInteger } from '@/components/molecules/integer-field'
-import type { PhoneDraft } from '@/components/molecules/phone-field'
 import { SwipeRestoreContext } from '@/components/molecules/swipe-to-delete'
 import { GlassBackButton, ThemePill } from '@/components/molecules/theme-pill'
 import { UndoToast } from '@/components/molecules/undo-toast'
-import { WhatsAppLinkAction } from '@/components/molecules/whatsapp-link'
+import { useLinkPolling, WhatsAppLinkAction } from '@/components/molecules/whatsapp-link'
 import { BasicsStep } from '@/components/organisms/onboarding/basics-step'
 import { BudgetsStep, type Envelope } from '@/components/organisms/onboarding/budgets-step'
 import { CategoriesStep, isNewCategory, type DraftCategory } from '@/components/organisms/onboarding/categories-step'
@@ -51,8 +51,6 @@ export type OnboardingTemplateProps = {
 
 /** Mirrors the profile contract's rejection messages (`lib/data/profile.ts`) without a runtime import. */
 const CYCLE_LOCKED = 'cycle-locked'
-const PHONE_TAKEN = 'phone-taken'
-const INVALID_PHONE = 'invalid-phone'
 
 function formatAmountForEdit(amount: number, locale: string): string {
   return new Intl.NumberFormat(locale, { minimumFractionDigits: 2, trailingZeroDisplay: 'stripIfInteger', useGrouping: false }).format(amount)
@@ -111,6 +109,8 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
   const [basics, setBasics] = useState<BasicsDraft>(() => initialBasics(data.profile))
   // Step 3 edits a local list and writes it on "Continuar" (D8): null = the stored categories.
   const [categoryDraft, setCategoryDraft] = useState<DraftCategory[] | null>(null)
+  // A written row keeps the React key of its draft id, so it is not remounted (and its entrance not replayed).
+  const [categoryKeys, setCategoryKeys] = useState<Record<string, string>>({})
   const [budgetDrafts, setBudgetDrafts] = useState<Record<string, string>>({})
   const [savingsText, setSavingsText] = useState(() => (data.profile.savingsTarget == null ? '' : String(data.profile.savingsTarget)))
   const [pending, setPending] = useState(false)
@@ -120,14 +120,14 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
   // moves to "waiting" when the link is activated and to "linked" when the account shows a channel.
   const [linkCode, setLinkCode] = useState<string | null>(data.whatsapp.code)
   const [opened, setOpened] = useState(false)
-  const [phoneDraft, setPhoneDraft] = useState<PhoneDraft>({ country: data.profile.country, local: '' })
-  const [phoneError, setPhoneError] = useState<'taken' | 'invalid' | 'save' | null>(null)
-  const [phoneSaved, setPhoneSaved] = useState(false)
-  const [savingPhone, setSavingPhone] = useState(false)
   const requestingCode = useRef(false)
   const linked = data.whatsapp.linked
-  // Without a configured number there is no link to activate: the step starts waiting (D7).
-  const phase: LinkPhase = linked ? 'linked' : opened || !data.whatsapp.number ? 'waiting' : 'idle'
+  // A phone opens the chat with the link; a tablet or a computer shows the QR to scan instead.
+  const onPhone = usePhone()
+  const showsQr = !onPhone && data.whatsapp.number != null
+  // Without a configured number there is no link to activate, and a QR is already the action:
+  // either way the step starts waiting (D7).
+  const phase: LinkPhase = linked ? 'linked' : opened || showsQr || !data.whatsapp.number ? 'waiting' : 'idle'
 
   // A browser with no stored choice follows the OS from the first frame and keeps it (D13).
   useLayoutEffect(() => {
@@ -153,6 +153,9 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
         requestingCode.current = false
       })
   }, [step, linkCode, linked, actions.profile])
+
+  // The QR is scanned with another device: the step re-reads the account on a timer.
+  useLinkPolling(step === 7 && phase === 'waiting' && showsQr, actions.refresh)
 
   // While waiting, a return to the tab re-reads the account: a link made in the chat shows up.
   useEffect(() => {
@@ -202,6 +205,7 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
     for (const row of draft) {
       if (isNewCategory(row)) {
         const id = await actions.categories.create({ name: row.name, color: row.color, budget: null }, cycleStart, 'onward')
+        setCategoryKeys((prev) => ({ ...prev, [id]: row.id }))
         setCategoryDraft((prev) => prev?.map((r) => (r.id === row.id ? { ...r, id } : r)) ?? null)
         ids.push(id)
         continue
@@ -272,23 +276,6 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
   async function finish() {
     await actions.finish()
     onFinished()
-  }
-
-  /** "Guardar número": stores the typed number for its country and stays on the step. */
-  async function savePhone() {
-    if (savingPhone || !phoneDraft.country) return
-    setSavingPhone(true)
-    setPhoneError(null)
-    setPhoneSaved(false)
-    try {
-      await actions.profile.requestWhatsApp(phoneDraft.local, phoneDraft.country)
-      setPhoneSaved(true)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : ''
-      setPhoneError(message === PHONE_TAKEN ? 'taken' : message === INVALID_PHONE ? 'invalid' : 'save')
-    } finally {
-      setSavingPhone(false)
-    }
   }
 
   // ── The primary action of each step (D7) ────────────────────────────────────────────────────
@@ -410,6 +397,7 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
         return (
           <CategoriesStep
             categories={categoryDraft ?? data.categories}
+            rowKeys={categoryKeys}
             definitions={data.definitions}
             onChange={setCategoryDraft}
             disabled={pending}
@@ -447,17 +435,7 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
             code={linkCode}
             linked={linked}
             phase={phase}
-            phone={phoneDraft}
-            onPhoneChange={(next) => {
-              setPhoneDraft(next)
-              setPhoneError(null)
-              setPhoneSaved(false)
-            }}
-            onSavePhone={() => void savePhone()}
-            savingPhone={savingPhone}
-            phoneError={phoneError}
-            phoneSaved={phoneSaved}
-            disabled={pending}
+            qr={showsQr}
           />
         )
       default:

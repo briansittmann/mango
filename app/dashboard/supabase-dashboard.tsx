@@ -43,10 +43,7 @@ const profile: ProfileMutations = {
   },
   setSavingsTarget: unsupported,
   requestWhatsAppLink: actions.requestWhatsAppLink,
-  async requestWhatsApp(phone, country) {
-    const result = await actions.requestWhatsApp(phone, country)
-    if (!result.ok) throw new Error(result.error)
-  },
+  unlinkWhatsApp: actions.unlinkWhatsApp,
   setStep: unsupported,
   complete: unsupported,
   setWidgetOrder: actions.setWidgetOrder,

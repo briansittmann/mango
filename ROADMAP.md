@@ -163,20 +163,23 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [x] 🤖 Campo del número con bandera y prefijo: `select` nativo con emoji de bandera (derivado del ISO de `lib/data/countries.ts`) y prefijo a la izquierda, número local a la derecha, país de la cuenta preseleccionado; `libphonenumber-js` a E.164 en lugar de `normalizePhone` (resuelve el 9 y el 15 argentinos y el cero troncal). Solo sirve para cargar el número en el panel de Meta mientras dure el número de prueba — `add-whatsapp-linking`: `phone-field.tsx`, `toE164` / `formatPhone` en `lib/data/phone.ts`
 - [ ] 🤖 Rate limiting (mensajes al bot y registro web)
 - [ ] 👤 Verificar RLS con dos usuarios reales
-- [ ] 👤 Cargar los números en Meta (máx. 5 con el número de prueba; mientras se use ese número, es el único filtro de quién tiene bot)
-- [ ] 👤 Medir consumo del cupo de 1000 mensajes en WhatsApp Manager (número de prueba)
+- [x] 👤 Cargar los números en Meta → no hace falta: con número propio (14/10) cualquiera vincula desde la web
+- [ ] 👤 Medir el costo por mensaje en WhatsApp Manager (con número propio ya no hay cupo de 1000)
 - [ ] 🤖 Aviso de suscripción por vencer (template de Meta, §14.1)
 - [x] 👤 Pedir en Meta la plantilla del mensaje de vinculación → no hace falta: la vinculación la inicia la persona (3/10)
-- [ ] 👤 Decidir cuándo se compra el número propio y cuánto gasto se acepta (rompe el "coste cero")
-- [ ] 👤 Número propio para la Cloud API (virtual o fijo, que no esté en WhatsApp) — adelantado desde el bloque 14. Plan: número virtual de EE. UU. en Twilio (~1,15 USD/mes, Voice + SMS), verificado en Meta por llamada de voz; si Meta lo rechaza por VoIP, SIM prepago
+- [x] 👤 Decidir cuándo se compra el número propio y cuánto gasto se acepta (rompe el "coste cero") → comprado el 12/10
+- [x] 👤 Número propio para la Cloud API (virtual o fijo, que no esté en WhatsApp) — funcionando el 14/10 — adelantado desde el bloque 14. Plan: número virtual de EE. UU. en Twilio (~1,15 USD/mes, Voice + SMS), verificado en Meta por llamada de voz; si Meta lo rechaza por VoIP, SIM prepago
 - [ ] 👤 Con el número propio: nombre visible (lo revisa Meta) y foto de perfil; en el número de prueba el nombre no se puede cambiar
 - [ ] 👤 Suscribir la app a la WABA con `subscribed_apps` si el número propio queda en otra WABA (ARCHITECTURE.md §2)
-- [ ] 👤 Cambiar credenciales en Vercel y redeploy
-- [ ] 🤖 Con el número propio: vincular una cuenta nueva desde ajustes sin cargar nada en el panel de Meta; sacar el campo del número y dejar solo el botón
+- [x] 👤 Cambiar credenciales en Vercel y redeploy (14/10: `WHATSAPP_PHONE_NUMBER` y la Cloud API con el número propio)
+- [x] 🤖 Con el número propio: vincular una cuenta nueva desde ajustes sin cargar nada en el panel de Meta; sacar el campo del número y dejar solo el botón — 14/10: sin campo del número en el cierre ni en ajustes, QR en tablet y computadora, bienvenida con un ejemplo de carga
+- [x] 🤖 Desvincular desde ajustes para cambiar de número — 14/10: "Desvincular este número" con confirmación, `desvincular_canal` (`0036`)
+- [x] 👤 Aplicar `0036` antes de desplegar (14/10, en el SQL editor)
+- [ ] 👤 Vuelta real: vincular, desvincular y vincular otro número
 
 ## 11 · Telegram como segundo canal
 
-> Se activa cuando se llenen los 5 destinatarios de Meta, o cuando alguien prefiera Telegram. Depende del bloque 4. Las variables `TELEGRAM_BOT_TOKEN` y `TELEGRAM_WEBHOOK_SECRET` ya están en Vercel.
+> Se activa cuando alguien prefiera Telegram (el tope de 5 destinatarios era del número de prueba, que ya no se usa). Depende del bloque 4. Las variables `TELEGRAM_BOT_TOKEN` y `TELEGRAM_WEBHOOK_SECRET` ya están en Vercel.
 
 - [ ] 🤖 Adaptador en `/api/telegram`: validar el secret token del header, traducir al formato interno (`{ usuarioId, texto, mensajeId }`) y llamar a la misma lógica
 - [ ] 🤖 Confirmación siempre en texto con botón Deshacer: sin cupo que cuidar, la regla de las 15 cargas no aplica

@@ -158,12 +158,9 @@ export async function requestWhatsAppLink(): Promise<{ code: string }> {
   return run((ctx) => createSupabaseProfileMutations(ctx).requestWhatsAppLink());
 }
 
-/** The account sheet's phone, converted by the chosen country's rules on the server (D8); `INVALID_PHONE` / `PHONE_TAKEN` as values. */
-export async function requestWhatsApp(
-  phone: string,
-  country: string,
-): Promise<{ ok: true } | { ok: false; error: (typeof PROFILE_ERRORS)[number] }> {
-  return knownRejections(() => run((ctx) => createSupabaseProfileMutations(ctx).requestWhatsApp(phone, country)));
+/** The account sheet's "Desvincular" (0036): drops the account's WhatsApp channel and its phone. */
+export async function unlinkWhatsApp(): Promise<void> {
+  await run((ctx) => createSupabaseProfileMutations(ctx).unlinkWhatsApp!());
 }
 
 async function knownRejections(

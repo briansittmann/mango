@@ -63,7 +63,7 @@
 
 ## 9. Deploy and environment
 
-- [ ] 9.1 👤 Brian deploys the code (after 1.3) and sets `WHATSAPP_PHONE_NUMBER` in Vercel Production and in `.env.local` (Meta's test number, digits only) — verify `/demo/onboarding?paso=7` in production shows the link with that number, and `/onboarding` for an alias shows a real code
+- [x] 9.1 👤 Brian deploys the code (after 1.3) and sets `WHATSAPP_PHONE_NUMBER` in Vercel Production and in `.env.local` (Meta's test number, digits only) — verify `/demo/onboarding?paso=7` in production shows the link with that number, and `/onboarding` for an alias shows a real code
 
 ## 10. Manual pass against the real project (👤 Brian + 🤖 by MCP)
 

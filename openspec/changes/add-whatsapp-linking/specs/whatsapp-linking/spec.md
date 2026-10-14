@@ -24,11 +24,15 @@ An account SHALL be able to hold at most one linking code: six characters from t
 - **THEN** only their own row's code is returned
 
 ### Requirement: "Vincular WhatsApp" opens the chat with the message written
-Wherever the web offers to link ("Vincular WhatsApp"), the action SHALL open WhatsApp against Mango's number with the message `vincular <código>` already written, using the `wa.me` link of the configured number and the account's live code. On a phone this SHALL open the WhatsApp app; on a desktop, WhatsApp Web, in a new tab. The code SHALL also be shown as text next to the action, so it can be typed by hand. When no number is configured for the deployment, the action SHALL NOT be offered: the screen SHALL show the code and a line that says to send `vincular <código>` to Mango.
+Wherever the web offers to link ("Vincular WhatsApp"), the action SHALL open WhatsApp against Mango's number with the message `vincular <código>` already written, using the `wa.me` link of the configured number and the account's live code. On a phone (a touch screen whose short side is under 640px) the action SHALL be that link, which opens the WhatsApp app. On a tablet or a computer the action SHALL instead be a QR code of that same link, generated in the browser, for the person to scan with their phone's camera, with the link itself offered below it for a WhatsApp installed on that device; the screen SHALL be waiting from the start. The code SHALL also be shown as text next to the action, so it can be typed by hand. When no number is configured for the deployment, the action SHALL NOT be offered: the screen SHALL show the code and a line that says to send `vincular <código>` to Mango.
 
 #### Scenario: Link
 - **WHEN** the configured number is `15551234567`, the account's code is `K7M2PX` and the person activates "Vincular WhatsApp"
 - **THEN** `https://wa.me/15551234567?text=vincular%20K7M2PX` opens, and the screen shows "K7M2PX" beside the action
+
+#### Scenario: QR on a computer
+- **WHEN** the same account opens the closing step on a computer or a tablet
+- **THEN** a QR encoding `https://wa.me/15551234567?text=vincular%20K7M2PX` is shown in place of the action, with "Abrir WhatsApp en este dispositivo" linking there, and the state reads *esperando tu mensaje*
 
 #### Scenario: No number configured
 - **WHEN** the deployment has no WhatsApp number and the closing step is shown
@@ -39,7 +43,7 @@ When a text message from a number with no `whatsapp` channel reads `vincular` fo
 
 #### Scenario: Linked
 - **WHEN** account A holds the live code `K7M2PX` and the number `+5491155551234`, unknown to any channel, sends "vincular K7M2PX"
-- **THEN** account A has a `whatsapp` channel with identifier `+5491155551234`, its phone is `+5491155551234`, its code is gone, and the chat receives "✅ Listo, este chat ya está vinculado a tu cuenta."
+- **THEN** account A has a `whatsapp` channel with identifier `+5491155551234`, its phone is `+5491155551234`, its code is gone, and the chat receives a reply that starts with "✅ Listo, este chat ya está vinculado a tu cuenta." and suggests a first expense and the "¿cómo vengo?" question
 
 #### Scenario: Case and spacing
 - **WHEN** the same number sends "  Vincular   k7m2px "
@@ -58,7 +62,7 @@ When a text message from a number with no `whatsapp` channel reads `vincular` fo
 - **THEN** the expense is loaded on account A
 
 ### Requirement: A linking message that cannot link is answered with its reason
-A linking message from an unknown number SHALL be refused, with one reply and no change, when: the code matches no account or has expired ("código inválido"); the sender's number is already another account's channel ("número en otra cuenta"); the code's account already has a `whatsapp` channel ("cuenta ya vinculada": the account must unlink on the web first — not offered yet, see design). A linking message from a number that already is a channel SHALL be answered that the chat is already linked, without parsing it, and SHALL write nothing. Replies to an unknown number SHALL be in Spanish and English.
+A linking message from an unknown number SHALL be refused, with one reply and no change, when: the code matches no account or has expired ("código inválido"); the sender's number is already another account's channel ("número en otra cuenta"); the code's account already has a `whatsapp` channel ("cuenta ya vinculada": the reply says to unlink the current number from the account on the web first). A linking message from a number that already is a channel SHALL be answered that the chat is already linked, without parsing it, and SHALL write nothing. Replies to an unknown number SHALL be in Spanish and English.
 
 #### Scenario: Expired code
 - **WHEN** an unknown number sends "vincular K7M2PX" and the code's request time is 8 days ago
@@ -100,7 +104,7 @@ A text from a number with no `whatsapp` channel that is not a linking message SH
 - **THEN** the row is gone, and its next message is answered once again
 
 ### Requirement: The web shows the channel's state
-The web SHALL show, in the onboarding's closing step and in the account sheet, one of three states for WhatsApp: *sin vincular* (no channel, no live code), *esperando tu mensaje* (a live code, no channel) and *vinculado* with the linked number (a channel exists). The state SHALL be read from the account's own channel through an operation that returns only the identifier, never the channel's pending question or last load. The web SHALL re-read the state when the page regains focus after "Vincular WhatsApp" was activated, so a link made in the chat appears without a manual reload.
+The web SHALL show, in the onboarding's closing step and in the account sheet, one of three states for WhatsApp: *sin vincular* (no channel, no live code), *esperando tu mensaje* (a live code, no channel) and *vinculado* with the linked number (a channel exists). The state SHALL be read from the account's own channel through an operation that returns only the identifier, never the channel's pending question or last load. The web SHALL re-read the state when the page regains focus after "Vincular WhatsApp" was activated, so a link made in the chat appears without a manual reload. While a QR is shown the tab keeps its focus, so the web SHALL re-read the state every 4 seconds instead, for at most 10 minutes.
 
 #### Scenario: Waiting
 - **WHEN** the person activated "Vincular WhatsApp" and no channel exists yet
@@ -114,25 +118,13 @@ The web SHALL show, in the onboarding's closing step and in the account sheet, o
 - **WHEN** a signed-in user reads the channels table with the public key
 - **THEN** no row is returned, while the state operation returns their own identifier
 
-### Requirement: The typed number is optional, converted by the account's country, and never links
-The phone field, wherever it is shown, SHALL be a country choice (the flag and the dialling prefix of each country in the countries table, the account's country preselected) and a local number. Saving SHALL store the number in E.164 as the chosen country's rules convert it: a trunk zero SHALL be dropped, and an Argentine mobile SHALL get the `9` after the country code. A number that is not valid for the chosen country SHALL be refused with a message. Saving the number SHALL NOT create a channel, SHALL NOT create a code and SHALL NOT change the request time. The screen SHALL say in one line what the number is for while the test number is in use: the bot reaches few people, because Meta limits who the test number can write to. A number already stored by another account SHALL be refused with a message.
+### Requirement: An account can unlink its number
+In the account sheet, a linked account SHALL offer "Desvincular este número", which asks for confirmation in place, naming the number. Confirming SHALL remove the account's `whatsapp` channel and its stored phone, through an operation that acts only on the session's own account, and SHALL leave the account's movements, categories and conversation history untouched. The sheet SHALL then show *sin vincular* and offer to link again with a new code, so another number can be linked as the first one was. From then on, a message from the old number SHALL be treated as one from an unknown number.
 
-#### Scenario: Argentine mobile
-- **WHEN** Argentina is chosen and "11 5555 1234" is saved
-- **THEN** the stored phone is `+5491155551234`
+#### Scenario: Change of number
+- **WHEN** account A, linked to `+5491155551234`, confirms "Desvincular" and then sends "vincular <new code>" from `+34600111222`
+- **THEN** account A's channel is `+34600111222`, its phone is `+34600111222`, and its movements are unchanged
 
-#### Scenario: Irish trunk zero
-- **WHEN** Ireland is chosen and "085 152 8917" is saved
-- **THEN** the stored phone is `+353851528917`
-
-#### Scenario: Invalid for the country
-- **WHEN** Ireland is chosen and "12" is saved
-- **THEN** a message says to check the number, and nothing is stored
-
-#### Scenario: Taken
-- **WHEN** another account stores the same E.164 number
-- **THEN** a message says the number belongs to another account, and nothing is stored
-
-#### Scenario: Saving changes nothing else
-- **WHEN** a number is saved on an account with a live code
-- **THEN** the code and the request time are unchanged and no channel exists
+#### Scenario: Old number after unlinking
+- **WHEN** `+5491155551234` sends "super 15" after the unlink
+- **THEN** nothing is loaded on account A

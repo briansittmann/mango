@@ -151,3 +151,16 @@ test('a name is renamed in place', async ({ page }) => {
   await expect(list(page)).toContainText('Mercado')
   await expect(list(page)).not.toContainText('Comida')
 })
+
+test('the first category added shows the swipe hint once, and never again in this browser', async ({ page }) => {
+  await page.goto('/demo/onboarding?paso=3')
+  await takeChip(page, 'Comida')
+  const row = list(page).locator('[data-hint]')
+  await expect(row).toHaveCount(1)
+  await expect(row).toContainText('Desliza para borrar')
+  await expect(list(page).locator('[data-hint]')).toHaveCount(0, { timeout: 6000 })
+  await takeChip(page, 'Ocio')
+  await expect(list(page).getByRole('listitem')).toHaveCount(2)
+  await expect(list(page).locator('[data-hint]')).toHaveCount(0)
+  expect(await page.evaluate(() => localStorage.getItem('mango:pista-deslizar-categorias'))).toBe('1')
+})

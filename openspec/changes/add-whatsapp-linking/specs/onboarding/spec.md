@@ -5,7 +5,7 @@ The last step SHALL explain in one or two lines that loading by WhatsApp is opti
 
 The primary action SHALL be "Vincular WhatsApp": it opens the chat with the message written (`whatsapp-linking` → *"Vincular WhatsApp" opens the chat with the message written*) and SHALL NOT complete the onboarding by itself. After it is activated the step SHALL show the waiting state and the primary action SHALL become "Ir a mi mes", which completes the onboarding; when the page re-reads the account and finds the channel, the step SHALL show "Vinculado" with the number before the person leaves. "Seguir sin WhatsApp" SHALL complete the onboarding at any moment, keeping whatever code or number the account holds. When no number is configured, the step SHALL show the code with the line to send it by hand, and "Ir a mi mes" SHALL be the primary action from the start.
 
-Under the preview, a collapsed line "Dejar mi número" SHALL open the phone field (`whatsapp-linking` → *The typed number is optional…*) with its explanation; "Guardar número" SHALL store it and stay on the step. A refused number SHALL keep the step with its message. Completing the onboarding, by either action, SHALL mark the account as onboarded and lead to `/dashboard`, which from then on SHALL render instead of redirecting.
+The step SHALL NOT ask for the person's number: the bot stores it when the chat links. Completing the onboarding, by either action, SHALL mark the account as onboarded and lead to `/dashboard`, which from then on SHALL render instead of redirecting.
 
 #### Scenario: Link then leave
 - **WHEN** the person activates "Vincular WhatsApp", the chat opens with "vincular K7M2PX", and they come back and activate "Ir a mi mes"
@@ -18,18 +18,6 @@ Under the preview, a collapsed line "Dejar mi número" SHALL open the phone fiel
 #### Scenario: Continue without WhatsApp
 - **WHEN** the person activates "Seguir sin WhatsApp"
 - **THEN** the onboarding is complete, no channel exists, and `/dashboard` renders
-
-#### Scenario: Optional number
-- **WHEN** the person opens "Dejar mi número", chooses Argentina, types "11 5555 1234" and activates "Guardar número"
-- **THEN** the account's phone is `+5491155551234`, the step stays, and the code is unchanged
-
-#### Scenario: Phone taken
-- **WHEN** another account already holds the typed number
-- **THEN** a message says the number belongs to another account, the step stays, and the onboarding is not complete
-
-#### Scenario: Malformed phone
-- **WHEN** the person types "abc" as the phone
-- **THEN** "Guardar número" stays disabled and nothing is stored
 
 #### Scenario: No number configured
 - **WHEN** the deployment has no WhatsApp number

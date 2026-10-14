@@ -1,6 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { toE164 } from '@/lib/data/phone'
-import { CYCLE_LOCKED, INVALID_PHONE, LINK_CODE_TTL_MS, PHONE_TAKEN, type ProfileMutations } from '@/lib/data/profile'
+import { CYCLE_LOCKED, LINK_CODE_TTL_MS, type ProfileMutations } from '@/lib/data/profile'
 import type { Channel } from '@/lib/data/users'
 import { generateLinkCode } from '@/lib/whatsapp/link'
 import { expectRows, type DataContext } from './context'
@@ -87,13 +86,10 @@ export function createSupabaseProfileMutations(ctx: DataContext): ProfileMutatio
         return { code }
       }
     },
-    async requestWhatsApp(phone, country) {
-      // Converted here, on the server: the values are the user's to send, not to trust.
-      const normalized = toE164(phone, country)
-      if (!normalized) throw new Error(INVALID_PHONE)
-      const result = await client.from('usuarios').update({ telefono: normalized }).eq('id', usuarioId).select('id')
-      if (result.error?.code === UNIQUE_VIOLATION) throw new Error(PHONE_TAKEN)
-      expectRows(result)
+    async unlinkWhatsApp() {
+      // The session's own channel only: the function resolves the account from the JWT (0036).
+      const { error } = await client.rpc('desvincular_canal', { p_tipo: 'whatsapp' })
+      if (error) throw new Error(error.message)
     },
     async setStep(step) {
       await update({ onboarding_paso: step })

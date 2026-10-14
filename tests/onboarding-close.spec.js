@@ -2,7 +2,8 @@
 import { test, expect } from '@playwright/test'
 import { primary, takeChip } from './onboarding-helpers.js'
 
-test.use({ viewport: { width: 390, height: 844 } })
+// A phone: the step offers the `wa.me` link; a tablet or a computer gets the QR (below).
+test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
 
 // `onboarding` → *Closing step* (`add-whatsapp-linking`), on `/demo/onboarding?paso=7`: the
 // sandbox's code is `DEMO42`, its number `15551234567`; `?e2eVinculado=1` makes the next re-read
@@ -52,21 +53,11 @@ test('a return to the tab after the chat linked shows "Vinculado" with the numbe
   await expect(page).toHaveURL(/\/demo$/)
 })
 
-test('"Dejar mi número" opens the field; a valid number enables the save, "abc" does not', async ({ page }) => {
+test('with Mango\'s own number there is nothing to type: no phone field, no test-number note', async ({ page }) => {
   await page.goto('/demo/onboarding?paso=7&pais=AR')
-  const save = page.getByRole('button', { name: 'Guardar número' })
-  await page.getByRole('button', { name: 'Dejar mi número' }).click()
-  await expect(page.getByRole('combobox', { name: 'País' })).toHaveValue('AR')
-  await expect(save).toBeDisabled()
-  await page.getByLabel('Número', { exact: true }).fill('abc')
-  await expect(save).toBeDisabled()
-  await page.getByLabel('Número', { exact: true }).fill('11 5555 1234')
-  await expect(save).toBeEnabled()
-  await save.click()
-  await expect(page.getByText('Número guardado')).toBeVisible()
-  // Saving stays on the step, with the code untouched.
-  await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '7')
   await expect(page.locator('[data-link-code]')).toHaveText('DEMO42')
+  await expect(page.getByRole('button', { name: 'Dejar mi número' })).toHaveCount(0)
+  await expect(page.getByText('número de prueba')).toHaveCount(0)
 })
 
 test('"Seguir sin WhatsApp" completes the onboarding', async ({ page }) => {
@@ -99,4 +90,31 @@ test('the sandbox writes nothing over the network', async ({ page }) => {
   await expect(page.getByRole('list', { name: 'Categorías' })).toHaveCount(0)
   expect(posts).toEqual([])
   expect(supabase).toEqual([])
+})
+
+test.describe('on a computer', () => {
+  test.use({ viewport: { width: 1280, height: 900 }, hasTouch: false })
+
+  test('the QR takes the link\'s place, the step waits, and the scan shows up without leaving the tab', async ({ page }) => {
+    await blockWhatsApp(page)
+    await page.goto('/demo/onboarding?paso=7&pais=AR&e2eVinculado=1')
+    const qr = page.locator('[data-whatsapp-qr]')
+    await expect(qr.getByRole('img', { name: 'Código QR para vincular WhatsApp' })).toBeVisible()
+    await expect(qr.getByRole('link', { name: 'Abrir WhatsApp en este dispositivo' })).toHaveAttribute('href', LINK)
+    await expect(page.locator('a[data-primary]')).toHaveCount(0)
+    await expect(page.locator('[data-link-state]')).toHaveAttribute('data-link-state', 'waiting')
+    await expect(primary(page)).toHaveText('Ir a mi mes')
+    // No focus change: the step re-reads the account on its own timer (every 4 s).
+    await expect(page.locator('[data-link-state]')).toHaveAttribute('data-link-state', 'linked', { timeout: 9000 })
+    await expect(qr).toHaveCount(0)
+  })
+
+  test('a tablet gets the QR too', async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 820, height: 1180 }, hasTouch: true })
+    const page = await context.newPage()
+    await page.goto('/demo/onboarding?paso=7&pais=AR')
+    await expect(page.locator('[data-whatsapp-qr]')).toBeVisible()
+    await expect(page.locator('a[data-primary]')).toHaveCount(0)
+    await context.close()
+  })
 })

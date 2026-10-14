@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { CategoryDot } from '@/components/atoms/category-dot'
 import { Collapsible } from '@/components/atoms/collapsible'
 import { CATEGORY_COLORS, ColorSwatchPicker } from '@/components/molecules/color-swatch-picker'
+import { SwipeHint, useSwipeHint } from '@/components/molecules/swipe-hint'
 import { SwipeToDelete } from '@/components/molecules/swipe-to-delete'
 import { cn } from '@/lib/utils'
 import type { CategoryColor } from '@/lib/data/dashboard'
@@ -29,6 +30,8 @@ type CategoriesStepProps = {
   categories: DraftCategory[]
   definitions: RecurringDefinition[]
   onChange: (categories: DraftCategory[]) => void
+  /** The React key of a written row: the draft id it had before "Continuar" wrote it. */
+  rowKeys?: Record<string, string>
   /** While "Continuar" writes the list. */
   disabled?: boolean
   onStatus: (message: string) => void
@@ -118,7 +121,7 @@ function moveRow(rows: DraftCategory[], from: number, to: number): DraftCategory
  * mode with the dashboard's lift and neighbour shift. Everything here edits the draft; the
  * template writes it through the dashboard's category operations on "Continuar".
  */
-export function CategoriesStep({ categories, definitions, onChange, disabled = false, onStatus }: CategoriesStepProps) {
+export function CategoriesStep({ categories, definitions, onChange, rowKeys = {}, disabled = false, onStatus }: CategoriesStepProps) {
   const t = useTranslations('onboarding')
   const tCategory = useTranslations('hojaCategoria')
   const tReordenar = useTranslations('modoReordenar')
@@ -135,6 +138,9 @@ export function CategoriesStep({ categories, definitions, onChange, disabled = f
   const rowNodes = useRef(new Map<string, HTMLLIElement>())
   const listRef = useRef<HTMLUListElement>(null)
   const newCount = useRef(0)
+  // The swipe-to-delete hint, on the first category added here, once per browser.
+  const swipeHint = useSwipeHint('mango:pista-deslizar-categorias')
+  const [hintRowId, setHintRowId] = useState<string | null>(null)
   // The latest list, for the undo of a delete and a drop that land after other edits.
   const latest = useRef(categories)
   useEffect(() => {
@@ -160,7 +166,10 @@ export function CategoriesStep({ categories, definitions, onChange, disabled = f
     const rows = latest.current
     const color = preferred && !rows.some((row) => row.color === preferred) ? preferred : randomColor(rows)
     newCount.current += 1
-    onChange([...rows, { id: `${NEW_PREFIX}${listId}-${newCount.current}`, name: name.trim(), color }])
+    const id = `${NEW_PREFIX}${listId}-${newCount.current}`
+    onChange([...rows, { id, name: name.trim(), color }])
+    if (!swipeHint.active) setHintRowId(id)
+    swipeHint.show()
     onStatus(t('categorias.creada'))
     return true
   }
@@ -454,9 +463,10 @@ export function CategoriesStep({ categories, definitions, onChange, disabled = f
             const isDragging = dragVisual?.categoryId === category.id
             const shift = dragVisual && !isDragging ? neighbourShift(index, dragVisual) : 0
             const colorLabelId = `${listId}-${category.id}-color`
+            const hint = swipeHint.active && hintRowId === category.id
             return (
               <li
-                key={category.id}
+                key={rowKeys[category.id] ?? category.id}
                 ref={(node) => {
                   if (node) rowNodes.current.set(category.id, node)
                   else rowNodes.current.delete(category.id)
@@ -465,7 +475,13 @@ export function CategoriesStep({ categories, definitions, onChange, disabled = f
                 style={!isDragging && shift ? { transform: `translateY(${shift}px)` } : undefined}
               >
                 {/* The category's colour frames its row, as the dashboard's open card does. */}
-                <div className="onboarding-row overflow-hidden rounded-card border bg-card" style={{ borderColor: `var(--cat-${category.color})` }}>
+                <div
+                  data-hint={hint || undefined}
+                  // Touching the row ends the hint: the person is already doing what it shows.
+                  onPointerDownCapture={hint ? swipeHint.dismiss : undefined}
+                  className="onboarding-row relative overflow-hidden rounded-card border bg-card"
+                  style={{ borderColor: `var(--cat-${category.color})` }}
+                >
                   <SwipeToDelete rowId={category.id} onDelete={() => remove(category)}>
                     <div className="flex min-h-row items-center gap-3 ps-inset">
                       <button
@@ -550,6 +566,7 @@ export function CategoriesStep({ categories, definitions, onChange, disabled = f
                       <ColorSwatchPicker value={category.color} onChange={(color) => recolour(category, color)} labelledBy={colorLabelId} />
                     </div>
                   </Collapsible>
+                  {hint ? <SwipeHint label={t('deslizaBorrar')} /> : null}
                 </div>
               </li>
             )

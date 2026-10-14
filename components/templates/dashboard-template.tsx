@@ -2052,13 +2052,13 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
           onOpenChange={setAccountSheetOpen}
           opener={desktop ? accountCardRef : avatarRef}
           user={data.user}
-          onSave={async (basics, phone) => {
+          onSave={async (basics) => {
             await actions.profile!.updateBasics(basics)
-            if (phone?.country) await actions.profile!.requestWhatsApp(phone.local, phone.country)
             setStatusMessage(tCuenta('guardado'))
           }}
           onRequestLink={actions.profile.requestWhatsAppLink}
           onRefresh={() => router.refresh()}
+          onUnlink={actions.profile.unlinkWhatsApp}
           onDelete={actions.deleteAccount}
         />
       ) : null}

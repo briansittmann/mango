@@ -2,7 +2,8 @@
 import { test, expect } from '@playwright/test'
 import { body, expectStep, fillBasics, primary, progress, takeChip } from './onboarding-helpers.js'
 
-test.use({ viewport: { width: 390, height: 844 }, timezoneId: 'Europe/Dublin' })
+// A phone (touch): step 7 offers the `wa.me` link, not the QR a computer gets.
+test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, timezoneId: 'Europe/Dublin' })
 
 // `onboarding` → *The onboarding is one route with seven steps*, on `/demo/onboarding` in Spanish.
 

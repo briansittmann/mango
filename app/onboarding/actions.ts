@@ -56,10 +56,6 @@ export async function setSavingsTarget(amount: number | null) {
 export async function requestWhatsAppLink() {
   return run((ctx) => createSupabaseProfileMutations(ctx).requestWhatsAppLink());
 }
-/** The optional phone, converted by the chosen country's rules on the server (D8). */
-export async function requestWhatsApp(phone: string, country: string) {
-  return run((ctx) => createSupabaseProfileMutations(ctx).requestWhatsApp(phone, country));
-}
 export async function setOnboardingStep(step: number) {
   return run((ctx) => createSupabaseProfileMutations(ctx).setStep(step));
 }

@@ -202,7 +202,7 @@ export function SwipeToDelete({ onDelete, rowId, children }: SwipeToDeleteProps)
 
   return (
     <Collapsible open={!removing} className="motion-safe:starting:grid-rows-[0fr]">
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden" data-removing={removing || undefined}>
         <div
           ref={actionRef}
           className="absolute inset-y-0 right-0 flex items-center justify-end"
@@ -227,6 +227,7 @@ export function SwipeToDelete({ onDelete, rowId, children }: SwipeToDeleteProps)
         </div>
         <div
           ref={contentRef}
+          data-swipe-content
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={endDrag}

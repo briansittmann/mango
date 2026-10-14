@@ -4,7 +4,6 @@ import type { CategoryDraft } from '@/lib/data/categories'
 import type { CategoryColor } from '@/lib/data/dashboard'
 import type { LocalDate } from '@/lib/data/expenses'
 import type { OnboardingActions, OnboardingData, OnboardingProfile } from '@/lib/data/onboarding'
-import { toE164 } from '@/lib/data/phone'
 import type { WhatsAppState } from '@/lib/data/profile'
 import type { RecurringDefinition } from '@/lib/data/recurring'
 
@@ -180,12 +179,6 @@ export function createDemoOnboardingActions(store: DemoOnboardingStore): Onboard
       requestWhatsAppLink() {
         setState((s) => ({ ...s, whatsapp: { ...s.whatsapp, code: DEMO_LINK_CODE } }))
         return settle({ code: DEMO_LINK_CODE })
-      },
-      requestWhatsApp(phone, country) {
-        const normalized = toE164(phone, country)
-        if (!normalized) return Promise.reject(new Error('invalid-phone'))
-        setState((s) => ({ ...s, profile: { ...s.profile, phone: normalized } }))
-        return settle(undefined)
       },
       setStep(step) {
         setState((s) => ({ ...s, step }))

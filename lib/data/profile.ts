@@ -27,10 +27,8 @@ export type ProfileBasics = {
  * - `requestWhatsAppLink` returns the account's linking code (`whatsapp-linking` → *Each account
  *   can hold one live linking code*): the stored one while it is live (7 days from its request
  *   time, `LINK_CODE_TTL_MS`), otherwise a new code with a new request time. Sends nothing.
- * - `requestWhatsApp` stores the phone typed for `country` (ISO code), converted to E.164 by that
- *   country's rules (`toE164`), and nothing else — no code, no channel, no request time; rejects
- *   `PHONE_TAKEN` when another account holds the phone and `INVALID_PHONE` when it is not valid
- *   for the country
+ * - `unlinkWhatsApp` removes the account's WhatsApp channel and its phone (`desvincular_canal`,
+ *   0036), so another number can be linked with a new code; the dashboard's page supplies it
  * - `setStep` stores the pending onboarding step (1–7)
  * - `complete` marks the onboarding complete
  * - `setWidgetOrder` writes the whole desktop widget order (`orden_widgets`, 0032); the dashboard's
@@ -40,7 +38,7 @@ export type ProfileMutations = {
   updateBasics(basics: ProfileBasics): Promise<void>
   setSavingsTarget(amount: number | null): Promise<void>
   requestWhatsAppLink(): Promise<{ code: string }>
-  requestWhatsApp(phone: string, country: string): Promise<void>
+  unlinkWhatsApp?(): Promise<void>
   setStep(step: number): Promise<void>
   complete(): Promise<void>
   setWidgetOrder?(order: WidgetId[]): Promise<void>
@@ -66,8 +64,6 @@ export const INVALID_COUNTRY = 'invalid-country'
 export const INVALID_CURRENCY = 'invalid-currency'
 export const INVALID_TIMEZONE = 'invalid-timezone'
 export const INVALID_CYCLE_DAY = 'invalid-cycle-day'
-export const PHONE_TAKEN = 'phone-taken'
-export const INVALID_PHONE = 'invalid-phone'
 
 /** Every rejection message a profile operation can carry, so a server action can pass it as a value. */
 export const PROFILE_ERRORS = [
@@ -77,8 +73,6 @@ export const PROFILE_ERRORS = [
   INVALID_CURRENCY,
   INVALID_TIMEZONE,
   INVALID_CYCLE_DAY,
-  PHONE_TAKEN,
-  INVALID_PHONE,
 ] as const
 
 export const MAX_NAME_LENGTH = 80

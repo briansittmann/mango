@@ -81,10 +81,32 @@ test('income glows green; expenses glow red until a category is chosen, then in 
   await expect(vivienda).not.toHaveAttribute('style', /--cat-/)
   await expect(glow).toHaveAttribute('style', /--cat-rojo/)
 
-  // With rows above, the composer keeps its hairline; with none, it has no border to poke past the corners.
-  await expect(expenses(page).getByRole('form')).toHaveCSS('border-top-width', '1px')
-  await page.goto('/demo/onboarding?paso=4')
-  await expect(income(page).getByRole('form')).toHaveCSS('border-top-width', '0px')
+  // Each row is its own card framed in its colour, outside the composer's card.
+  const alquiler = expenses(page).getByRole('listitem', { name: 'Alquiler · día 1' })
+  await expect(alquiler).toHaveAttribute('style', /--cat-granate/)
+  await expect(form.getByRole('listitem')).toHaveCount(0)
+})
+
+test('"Añadir" fills in once the row is complete, folds into a check and the new row lands glowing', async ({ page }) => {
+  await page.goto('/demo/onboarding?paso=4&e2eSeed=1&lento=400')
+  const form = income(page).getByRole('form', { name: 'Lo que cobras' })
+  const add = form.getByRole('button', { name: 'Añadir' })
+  await expect(add).toBeDisabled()
+  await expect(add).not.toHaveAttribute('data-ready')
+  await form.getByLabel('Nombre').fill('Propina')
+  await form.getByLabel('Monto').fill('50')
+  await expect(add).toHaveAttribute('data-ready', 'true')
+  await expect(add).toHaveCSS('background-color', await add.evaluate(() => getComputedStyle(document.querySelector('[data-primary]')).backgroundColor))
+  await add.click()
+  await expect(add).toHaveAttribute('data-phase', 'busy')
+  await expect(add).toHaveAttribute('aria-busy', 'true')
+  await expect(add).toHaveAttribute('data-phase', 'done')
+  const row = income(page).getByRole('listitem', { name: 'Propina · día 1' })
+  await expect(row).toHaveAttribute('data-fresh', 'true')
+  await expect(income(page).getByRole('listitem', { name: 'Sueldo · día 1' })).not.toHaveAttribute('data-fresh')
+  // It opens back up, quiet again: the fields were cleared.
+  await expect(add).toHaveAttribute('data-phase', 'idle')
+  await expect(add).not.toHaveAttribute('data-ready')
 })
 
 test('a swipe deletes an income or an expense, and undo brings it back as it was', async ({ page }) => {
@@ -112,4 +134,25 @@ test('a tap on a row opens nothing: rows are deleted by swiping, edited later in
   await income(page).getByRole('listitem', { name: 'Sueldo · día 1' }).click()
   await page.waitForTimeout(600)
   await expect(page.getByRole('dialog')).toHaveCount(0)
+})
+
+test('the first row added shows the swipe hint once, and never again in this browser', async ({ page }) => {
+  await page.goto('/demo/onboarding?paso=4&e2eSeed=1')
+  const form = income(page).getByRole('form', { name: 'Lo que cobras' })
+  await form.getByLabel('Nombre').fill('Propina')
+  await form.getByLabel('Monto').fill('50')
+  await form.getByRole('button', { name: 'Añadir' }).click()
+  const row = income(page).getByRole('listitem', { name: 'Propina · día 1' })
+  await expect(row).toHaveAttribute('data-hint', 'true')
+  await expect(row.locator('.swipe-hint')).toContainText('Desliza para borrar')
+  await expect(row).not.toHaveAttribute('data-hint', { timeout: 6000 })
+
+  await form.getByLabel('Nombre').fill('Extra')
+  await form.getByLabel('Monto').fill('10')
+  await form.getByRole('button', { name: 'Añadir' }).click()
+  await expect(income(page).getByRole('listitem', { name: 'Extra · día 1' })).toBeVisible()
+  await expect(page.locator('li[data-hint]')).toHaveCount(0)
+  await page.reload()
+  await expect(page.locator('section[data-step="4"]')).toBeVisible()
+  expect(await page.evaluate(() => localStorage.getItem('mango:pista-deslizar'))).toBe('1')
 })

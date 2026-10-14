@@ -1580,6 +1580,23 @@ body {
   }
 }
 
+/* A row framed by its own border fades the frame out while its swipe-delete collapses it, so the
+   border does not linger as a floating line. Step 4's list also closes the gap the row leaves. */
+.onboarding-row:has([data-removing]) {
+  opacity: 0;
+  border-color: transparent;
+  transition:
+    opacity 200ms var(--ease-out),
+    border-color 150ms var(--ease-out),
+    margin 220ms ease-in;
+}
+.fixed-row:has([data-removing]):not(:first-child) {
+  margin-top: -0.5rem;
+}
+.fixed-row:has([data-removing]):first-child:not(:last-child) {
+  margin-bottom: -0.5rem;
+}
+
 /* Step 3's reorder mode: a neighbour of the lifted row slides out of its way on --ease-in-out
    (movement on screen), the dashboard's own value; the lifted row itself tracks the pointer. */
 .onboarding-reorder-row {
@@ -1640,6 +1657,191 @@ body {
 }
 .onboarding-button:active:not(:disabled) {
   transform: scale(0.97);
+}
+
+/* Step 4's "Añadir": a quiet muted pill until the row is complete, then it fills in the primary,
+   pops and keeps a ring breathing out of it so it reads as the next tap. On submit it folds into
+   a spinner circle, shows a check once the row landed and opens back up. */
+@keyframes fixed-add-ready {
+  from {
+    scale: 0.85;
+  }
+}
+@keyframes fixed-add-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 55%, transparent);
+  }
+  55%,
+  100% {
+    box-shadow: 0 0 0 10px color-mix(in oklab, var(--primary) 0%, transparent);
+  }
+}
+@keyframes fixed-add-check {
+  from {
+    scale: 0.3;
+    rotate: -20deg;
+    opacity: 0;
+  }
+}
+.fixed-add {
+  width: 7.5rem;
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  transition:
+    width 300ms var(--ease-out),
+    background-color 200ms var(--ease-out),
+    color 200ms var(--ease-out),
+    scale 160ms var(--ease-out);
+}
+.fixed-add[data-ready] {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+.fixed-add[data-ready][data-phase='idle'] {
+  animation:
+    fixed-add-ready 450ms var(--ease-bounce),
+    fixed-add-pulse 2200ms var(--ease-out) 450ms infinite;
+}
+.fixed-add[data-ready]:active {
+  scale: 0.95;
+}
+.fixed-add:not([data-phase='idle']) {
+  width: 2.5rem;
+}
+.fixed-add-label {
+  transition: opacity 150ms var(--ease-out);
+}
+.fixed-add:not([data-phase='idle']) .fixed-add-label {
+  opacity: 0;
+}
+.fixed-add-icon {
+  transition: opacity 200ms var(--ease-out) 150ms;
+}
+@starting-style {
+  .fixed-add-icon {
+    opacity: 0;
+  }
+}
+.fixed-add-check {
+  animation: fixed-add-check 400ms var(--ease-bounce);
+}
+
+/* Step 4's rows: each a card framed in its colour (the category's, or the brand green for income).
+   One added on this visit springs up from the composer and lands tinted and glowing in that colour,
+   which fades out over a second and a half. */
+.fixed-row {
+  position: relative;
+  border-color: var(--row-color);
+}
+@keyframes fixed-row-in {
+  from {
+    opacity: 0;
+    scale: 0.92;
+    translate: 0 16px;
+  }
+}
+@keyframes fixed-row-glow {
+  from,
+  30% {
+    box-shadow:
+      0 0 0 4px color-mix(in oklab, var(--row-color) 35%, transparent),
+      0 12px 32px -8px color-mix(in oklab, var(--row-color) 70%, transparent);
+  }
+}
+/* The tint sits over the row's content, whose swipe surface paints its own card background. */
+@keyframes fixed-row-tint {
+  from,
+  30% {
+    opacity: 1;
+  }
+}
+.fixed-row[data-fresh]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-color: color-mix(in oklab, var(--row-color) 28%, transparent);
+  opacity: 0;
+  animation: fixed-row-tint 1800ms var(--ease-out);
+}
+.fixed-row[data-fresh] {
+  animation:
+    fixed-row-in 500ms var(--ease-spring),
+    fixed-row-glow 1800ms var(--ease-out);
+}
+
+/* The onboarding's one-time swipe hint (`swipe-hint.tsx`), on the first row added to step 3 or 4: once the row has landed (600 ms), a hand
+   presses on its right side and drags left twice; the row's content follows it far enough to
+   uncover the red delete layer under it, and springs back each time. A pill says what it means. */
+@keyframes swipe-hint-fade {
+  0% {
+    opacity: 0;
+  }
+  8%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes swipe-hint-hand {
+  0%,
+  10% {
+    translate: 0 0;
+    scale: 1;
+  }
+  20% {
+    translate: 0 0;
+    scale: 0.85;
+  }
+  55%,
+  65% {
+    translate: -88px 0;
+    scale: 0.85;
+  }
+  80%,
+  100% {
+    translate: 0 0;
+    scale: 1;
+  }
+}
+@keyframes swipe-hint-peek {
+  0%,
+  20% {
+    transform: translateX(0);
+  }
+  55%,
+  65% {
+    transform: translateX(-72px);
+  }
+  80%,
+  100% {
+    transform: translateX(0);
+  }
+}
+.swipe-hint {
+  animation: swipe-hint-fade 3400ms linear 600ms both;
+}
+.swipe-hint-hand {
+  animation: swipe-hint-hand 1500ms var(--ease-in-out) 800ms 2 both;
+}
+/* While the hint plays the row's own text steps back, so the pill and the hand read first. */
+@keyframes swipe-hint-dim {
+  8%,
+  90% {
+    opacity: 0.2;
+  }
+}
+[data-hint] {
+  isolation: isolate;
+}
+[data-hint] [data-swipe-content] > * {
+  animation: swipe-hint-dim 3400ms linear 600ms both;
+}
+/* An animation outranks the content's inline `transform`, so the peek needs no state in the row. */
+[data-hint] [data-swipe-content] {
+  animation: swipe-hint-peek 1500ms var(--ease-in-out) 800ms 2 both;
 }
 
 /* The stagger recipe, 300ms --ease-out from 8px below. */
@@ -1735,6 +1937,27 @@ body {
   }
   .onboarding-button:active:not(:disabled) {
     transform: none;
+  }
+  .fixed-add,
+  .fixed-add-label,
+  .fixed-add-icon {
+    transition: none;
+  }
+  .fixed-add[data-ready][data-phase='idle'],
+  .fixed-add-check {
+    animation: none;
+  }
+  .fixed-add[data-ready]:active {
+    scale: none;
+  }
+  /* The swipe hint holds still: the pill and the hand show and fade, nothing slides. */
+  .swipe-hint-hand,
+  [data-hint] [data-swipe-content] {
+    animation: none;
+  }
+  /* The added row keeps its glow (colour, not movement) and skips the spring. */
+  .fixed-row[data-fresh] {
+    animation: fixed-row-glow 1800ms var(--ease-out);
   }
   .onboarding-suggestion,
   .onboarding-fade-in,

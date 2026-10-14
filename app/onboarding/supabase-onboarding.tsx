@@ -21,7 +21,6 @@ export function SupabaseOnboarding({ data }: { data: OnboardingData }) {
         updateBasics: (basics) => unwrap(actions.updateProfileBasics(basics)),
         setSavingsTarget: (amount) => unwrap(actions.setSavingsTarget(amount)),
         requestWhatsAppLink: () => unwrap(actions.requestWhatsAppLink()),
-        requestWhatsApp: (phone, country) => unwrap(actions.requestWhatsApp(phone, country)),
         setStep: (step) => unwrap(actions.setOnboardingStep(step)),
         complete: () => unwrap(actions.finishOnboarding()),
       },

@@ -1,10 +1,10 @@
 import { useEffect, useState, type FormEvent, type RefObject } from 'react'
-import { Check, Clock, Loader2, MessageCircle, Trash2 } from 'lucide-react'
+import { Check, Clock, Loader2, MessageCircle, Trash2, Unlink } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Collapsible } from '@/components/atoms/collapsible'
 import { BasicsFields, basicsValid, type BasicsDraft } from '@/components/molecules/basics-fields'
-import { PhoneField, phoneValid, type PhoneDraft } from '@/components/molecules/phone-field'
-import { LinkCode, WhatsAppLinkAction } from '@/components/molecules/whatsapp-link'
+import { LinkCode, useLinkPolling, WhatsAppLinkAction, WhatsAppQr } from '@/components/molecules/whatsapp-link'
+import { usePhone } from '@/components/hooks/use-desktop'
 import { SheetShell } from '@/components/organisms/sheet-shell'
 import { cn } from '@/lib/utils'
 import type { DashboardData } from '@/lib/data/dashboard'
@@ -19,22 +19,15 @@ type AccountSheetProps = {
   /** The account menu's own anchor (the avatar or the sidebar card): the menu is gone by the time the sheet opens. */
   opener?: RefObject<HTMLElement | null>
   user: DashboardData['user']
-  /** Saves the basics and, when the person changed it, the typed phone for its country (D9). */
-  onSave: (basics: ProfileBasics, phone: PhoneDraft | null) => Promise<void>
+  onSave: (basics: ProfileBasics) => Promise<void>
   /** "Vincular WhatsApp" with no live code: requests one (D9); absent on the demo (the action is disabled). */
   onRequestLink?: () => Promise<{ code: string }>
   /** The page re-reads the account while the sheet waits for the chat's message. */
   onRefresh?: () => void
+  /** "Desvincular": drops the linked number so another can be linked; absent when the page cannot. */
+  onUnlink?: () => Promise<void>
   /** Deletes the account for good; absent when the page cannot (the row is then hidden). */
   onDelete?: () => Promise<void>
-}
-
-/** Mirrors the profile contract's rejection messages (`lib/data/profile.ts`) without a runtime import. */
-const PHONE_TAKEN = 'phone-taken'
-const INVALID_PHONE = 'invalid-phone'
-
-function phoneOf(user: DashboardData['user']): PhoneDraft {
-  return { country: user.country ?? null, local: user.phone ? formatPhone(user.phone) : '' }
 }
 
 function draftOf(user: DashboardData['user']): BasicsDraft {
@@ -55,18 +48,20 @@ function draftOf(user: DashboardData['user']): BasicsDraft {
  * minus the cycle day, shown as a line, with the mixed-currency note when the account holds
  * movements. Saving goes through the profile operations with the onboarding's validation.
  */
-export function AccountSheet({ open, onOpenChange, opener, user, onSave, onRequestLink, onRefresh, onDelete }: AccountSheetProps) {
+export function AccountSheet({ open, onOpenChange, opener, user, onSave, onRequestLink, onRefresh, onUnlink, onDelete }: AccountSheetProps) {
   const t = useTranslations('cuenta')
   const [wasOpen, setWasOpen] = useState(open)
   const [draft, setDraft] = useState<BasicsDraft>(() => draftOf(user))
   const [snapshot, setSnapshot] = useState(draft)
-  const [phone, setPhone] = useState<PhoneDraft>(() => phoneOf(user))
-  const [phoneSnapshot, setPhoneSnapshot] = useState(phone)
-  const [phoneError, setPhoneError] = useState<'invalid' | 'taken' | null>(null)
   // The WhatsApp section (D9): the code the page loaded or the one just requested, and whether
   // the person opened the chat from here (then the sheet reads "Esperando tu mensaje").
   const [linkCode, setLinkCode] = useState<string | null>(user.whatsapp?.code ?? null)
   const [opened, setOpened] = useState(false)
+  // "Desvincular" opens a confirmation in place; the spinner holds until the re-read shows no channel.
+  const [confirmingUnlink, setConfirmingUnlink] = useState(false)
+  const [unlinking, setUnlinking] = useState(false)
+  const [unlinkError, setUnlinkError] = useState(false)
+  const [wasLinked, setWasLinked] = useState(user.whatsapp?.linked ?? null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -79,12 +74,11 @@ export function AccountSheet({ open, onOpenChange, opener, user, onSave, onReque
       const next = draftOf(user)
       setDraft(next)
       setSnapshot(next)
-      const nextPhone = phoneOf(user)
-      setPhone(nextPhone)
-      setPhoneSnapshot(nextPhone)
-      setPhoneError(null)
       setLinkCode(user.whatsapp?.code ?? null)
       setOpened(false)
+      setConfirmingUnlink(false)
+      setUnlinking(false)
+      setUnlinkError(false)
       setSaving(false)
       setError(false)
       setConfirmingDelete(false)
@@ -94,7 +88,24 @@ export function AccountSheet({ open, onOpenChange, opener, user, onSave, onReque
   }
 
   const whatsapp = user.whatsapp ?? { number: null, code: null, linked: null }
-  const linkPhase: 'idle' | 'waiting' | 'linked' = whatsapp.linked ? 'linked' : opened || (linkCode != null && !whatsapp.number) ? 'waiting' : 'idle'
+  // The channel went away (an unlink landed): the section starts over, ready to link another number.
+  if (whatsapp.linked !== wasLinked) {
+    setWasLinked(whatsapp.linked)
+    if (!whatsapp.linked) {
+      setUnlinking(false)
+      setConfirmingUnlink(false)
+      setOpened(false)
+      setLinkCode(null)
+    }
+  }
+  // A phone opens the chat with the link; a tablet or a computer scans the QR, which is already waiting.
+  const onPhone = usePhone()
+  const showsQr = !onPhone && whatsapp.number != null
+  const linkPhase: 'idle' | 'waiting' | 'linked' = whatsapp.linked
+    ? 'linked'
+    : opened || (linkCode != null && (!whatsapp.number || showsQr))
+      ? 'waiting'
+      : 'idle'
 
   // The code is requested as the sheet opens, so "Vincular WhatsApp" is the `wa.me` link from the
   // first tap: iOS only opens the app on the gesture itself, not after a round trip.
@@ -125,11 +136,25 @@ export function AccountSheet({ open, onOpenChange, opener, user, onSave, onReque
     }
   }, [open, linkPhase, onRefresh])
 
-  const phoneChanged = phone.local.trim() !== phoneSnapshot.local.trim() || phone.country !== phoneSnapshot.country
-  const phoneDirty = phoneChanged && phone.local.trim() !== ''
-  const isDirty = JSON.stringify(draft) !== JSON.stringify(snapshot) || phoneDirty
-  const valid = basicsValid(draft) && (!phoneDirty || phoneValid(phone))
-  const busy = saving || deleting
+  // The QR is scanned with another device: the sheet re-reads the account on a timer.
+  useLinkPolling(open && linkPhase === 'waiting' && showsQr && onRefresh != null, () => onRefresh?.())
+
+  const isDirty = JSON.stringify(draft) !== JSON.stringify(snapshot)
+  const valid = basicsValid(draft)
+  const busy = saving || deleting || unlinking
+
+  async function confirmUnlink() {
+    if (unlinking || !onUnlink) return
+    setUnlinking(true)
+    setUnlinkError(false)
+    try {
+      await onUnlink()
+      onRefresh?.()
+    } catch {
+      setUnlinkError(true)
+      setUnlinking(false)
+    }
+  }
 
   // The redirect replaces the page on success, so the spinner only clears on a failure.
   async function confirmDelete() {
@@ -149,25 +174,18 @@ export function AccountSheet({ open, onOpenChange, opener, user, onSave, onReque
     if (saving || !valid || !draft.country) return
     setSaving(true)
     setError(false)
-    setPhoneError(null)
     try {
-      await onSave(
-        {
+      await onSave({
           name: draft.name.trim(),
           country: draft.country,
           currency: draft.currency,
           timezone: draft.timezone,
           cycleDay: user.cycleDay ?? 1,
           amountFormat: draft.amountFormat,
-        },
-        phoneDirty ? phone : null,
-      )
+      })
       onOpenChange(false)
-    } catch (caught) {
-      const message = caught instanceof Error ? caught.message : ''
-      if (message === PHONE_TAKEN) setPhoneError('taken')
-      else if (message === INVALID_PHONE) setPhoneError('invalid')
-      else setError(true)
+    } catch {
+      setError(true)
     } finally {
       setSaving(false)
     }
@@ -261,34 +279,86 @@ export function AccountSheet({ open, onOpenChange, opener, user, onSave, onReque
           </div>
           {linkPhase !== 'linked' ? (
             <>
-              <WhatsAppLinkAction
-                number={whatsapp.number}
-                code={linkCode}
-                onRequestCode={onRequestLink}
-                onCodeReady={setLinkCode}
-                onOpened={() => setOpened(true)}
-                label={t('whatsapp.vincular')}
-                disabled={busy || !onRequestLink}
-              />
+              {showsQr && whatsapp.number ? (
+                <WhatsAppQr
+                  number={whatsapp.number}
+                  code={linkCode}
+                  labels={{ titulo: t('whatsapp.qrTitulo'), linea: t('whatsapp.qrLinea'), abrirAqui: t('whatsapp.qrAbrirAqui'), qr: t('whatsapp.qr') }}
+                  className="rounded-[18px] border-0 bg-foreground/[0.04]"
+                />
+              ) : (
+                <WhatsAppLinkAction
+                  number={whatsapp.number}
+                  code={linkCode}
+                  onRequestCode={onRequestLink}
+                  onCodeReady={setLinkCode}
+                  onOpened={() => setOpened(true)}
+                  label={t('whatsapp.vincular')}
+                  disabled={busy || !onRequestLink}
+                />
+              )}
               {linkCode != null || !whatsapp.number ? (
                 <LinkCode number={whatsapp.number} code={linkCode} labels={{ codigo: t('whatsapp.codigo'), sinNumero: t('whatsapp.sinNumero', { codigo: linkCode ?? '······' }) }} className="px-1" />
               ) : null}
             </>
           ) : null}
-          <div className="rounded-[18px] bg-foreground/[0.04] px-4 py-3">
-            <PhoneField
-              idPrefix="account"
-              value={phone}
-              onChange={(next) => {
-                setPhone(next)
-                setPhoneError(null)
-              }}
-              labels={{ country: t('whatsapp.pais'), local: t('whatsapp.numeroLocal'), invalid: t('whatsapp.numeroInvalido'), taken: t('whatsapp.numeroEnOtraCuenta') }}
-              error={phoneError}
-              disabled={busy}
-            />
-            <p className="mt-3 text-body-sm text-muted-foreground">{t('whatsapp.paraQue')}</p>
-          </div>
+          {linkPhase === 'linked' && onUnlink ? (
+            <div>
+              {/* Like "Eliminar cuenta": the row opens the confirmation in place, a slip is one tap from "Mejor no". */}
+              <button
+                type="button"
+                onClick={() => setConfirmingUnlink((value) => !value)}
+                disabled={busy}
+                aria-expanded={confirmingUnlink}
+                aria-controls="account-unlink-confirm"
+                className={cn(
+                  'pressable flex min-h-row w-full items-center gap-3 rounded-[18px] px-4 text-left text-body-lg text-foreground transition-[background-color,border-radius] duration-300 ease-out disabled:opacity-50 motion-reduce:transition-none',
+                  confirmingUnlink ? 'rounded-b-none bg-foreground/[0.08]' : 'bg-foreground/[0.04] hover:bg-foreground/[0.08]',
+                )}
+              >
+                <Unlink aria-hidden className="size-5 text-muted-foreground" />
+                <span className="flex-1 font-medium">{t('whatsapp.desvincular')}</span>
+              </button>
+              <Collapsible id="account-unlink-confirm" open={confirmingUnlink}>
+                <div className="rounded-b-[18px] bg-foreground/[0.08] px-4 pb-4 pt-1">
+                  <p className="text-body-lg font-semibold text-foreground">
+                    {t('whatsapp.desvincularTitulo', { numero: whatsapp.linked ? formatPhone(whatsapp.linked) : '' })}
+                  </p>
+                  <p className="mt-1 text-body-sm text-muted-foreground">{t('whatsapp.desvincularDetalle')}</p>
+                  {unlinkError ? (
+                    <p role="alert" className="mt-2 text-body-sm font-medium text-destructive-ink">
+                      {t('whatsapp.errorDesvincular')}
+                    </p>
+                  ) : null}
+                  <div className="mt-4 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingUnlink(false)}
+                      disabled={unlinking}
+                      className="pressable flex h-11 items-center justify-center rounded-[16px] px-4 text-body-md font-medium text-foreground transition-colors hover:bg-foreground/[0.06] disabled:opacity-50"
+                    >
+                      {t('whatsapp.desvincularCancelar')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void confirmUnlink()}
+                      disabled={unlinking}
+                      aria-busy={unlinking || undefined}
+                      className={cn(
+                        'relative flex h-11 flex-1 items-center justify-center overflow-hidden whitespace-nowrap bg-foreground text-body-md font-semibold text-background transition-[flex,width,border-radius,scale] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.98] disabled:opacity-100 motion-reduce:transition-none',
+                        unlinking ? 'w-11 flex-none rounded-[22px]' : 'rounded-[16px]',
+                      )}
+                    >
+                      <span className={cn('transition-opacity duration-150 motion-reduce:transition-none', unlinking && 'opacity-0')}>
+                        {t('whatsapp.desvincularConfirmar')}
+                      </span>
+                      {unlinking ? <Loader2 aria-hidden className="absolute inset-0 m-auto size-5 animate-spin" /> : null}
+                    </button>
+                  </div>
+                </div>
+              </Collapsible>
+            </div>
+          ) : null}
         </section>
         {onDelete ? (
           <div className="mx-inset mt-6">
