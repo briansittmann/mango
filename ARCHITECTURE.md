@@ -265,27 +265,27 @@ El control es **a posteriori**: si `otros` empieza a pesar en la torta, eso mism
  
 El cupo del número de prueba es de **1000 mensajes/mes** y cada gasto cuesta dos: el del usuario y la confirmación del bot. Con 200+ cargas mensuales de Brian solo, la confirmación en texto es la mitad del consumo.
  
-**Decisión:** las primeras **15 cargas de cada usuario** se confirman con mensaje de texto y botón *Deshacer*. A partir de la 16, el bot confirma **reaccionando con un emoji** al mensaje del usuario.
+**Decisión:** las primeras **10 cargas de cada día** (día local de la cuenta) se confirman con mensaje de texto y botón *Deshacer*. A partir de la 11 de ese día, el bot confirma **reaccionando con un emoji** al mensaje del usuario. *(Hasta el 14/10/2026 eran las primeras 15 de la vida de la cuenta; se pasó a 10 por día como prueba, mientras alcance el presupuesto de mensajes.)*
  
 **Por qué reaccionar sale gratis:** una reacción no abre conversación, así que no descuenta del cupo. El consumo por gasto pasa de dos mensajes a uno.
  
-**Por qué las primeras 15 no:** al principio el usuario no sabe si el bot entendió bien, y un emoji no dice *cuánto* ni *en qué categoría* anotó. El texto es lo que enseña el formato y genera confianza. Una vez que la persona ya vio quince veces que el parseo acierta, deja de leer la confirmación y el mensaje pasa a ser puro coste.
+**Por qué las primeras del día no:** al principio el usuario no sabe si el bot entendió bien, y un emoji no dice *cuánto* ni *en qué categoría* anotó. El texto es lo que enseña el formato y genera confianza. Una vez que la persona ya vio quince veces que el parseo acierta, deja de leer la confirmación y el mensaje pasa a ser puro coste.
  
 **Excepción, independiente del contador:** si al parser le falta un dato (*"gasté 50"*), la confirmación de la respuesta va **siempre en texto** con *Deshacer*. Lo mismo un fijo cargado con otro monto, para que se lea que solo cambió ese mes. Y lo mismo una carga desde una nota de voz, con la transcripción adelante, para que se vea qué se oyó (`add-voice-messages`). La reacción es para el camino feliz.
  
-**Deshacer pasa a ser por texto.** La reacción es solo un emoji: no admite botones. A partir de la carga 16, corregir se hace escribiendo *"borrá eso"* o *"no, era 40"*, que ya está previsto en la sección 4 y apunta siempre a la última carga de ese chat (`canales.ultima_carga_id`). Cuesta un mensaje, pero solo cuando hubo un error — que es lo poco frecuente.
+**Deshacer pasa a ser por texto.** La reacción es solo un emoji: no admite botones. Pasadas las 10 del día, corregir se hace escribiendo *"borrá eso"* o *"no, era 40"*, que ya está previsto en la sección 4 y apunta siempre a la última carga de ese chat (`canales.ultima_carga_id`). Cuesta un mensaje, pero solo cuando hubo un error — que es lo poco frecuente.
 
-*(Implementado, `add-bot-conversation`, 1/10/2026.)* El adaptador lee `cargas_confirmadas` y `modo_confirmacion`, elige texto con botón o reacción con el ícono de la confirmación (✅ 💰 🐷 🏦) y suma uno al contador en los dos casos. La confirmación en texto dice qué se anotó y, si la categoría tiene presupuesto en el ciclo en curso, cómo viene: *"Anotado ✅ Súper · 15 € en Comida. Llevás 48 € de 300 € este mes 🟢"* (🟢 menos del 80 %, 🟡 desde el 80 %, 🔴 desde el 100 %, los mismos números que la barra del dashboard).
+*(Implementado, `add-bot-conversation`, 1/10/2026.)* El adaptador lee `cargas_dia`, `cargas_dia_fecha` y `modo_confirmacion` (por día desde la `0034`, 14/10/2026), elige texto con botón o reacción con el ícono de la confirmación (✅ 💰 🐷 🏦) y suma uno al contador en los dos casos. La confirmación en texto dice qué se anotó y, si la categoría tiene presupuesto en el ciclo en curso, cómo viene: *"Anotado ✅ Súper · 15 € en Comida. Llevás 48 € de 300 € este mes 🟢"* (🟢 menos del 80 %, 🟡 desde el 80 %, 🔴 desde el 100 %, los mismos números que la barra del dashboard).
  
 **Dónde vive:** en la capa que decide *cómo* responde el bot, no en la lógica. El adaptador de WhatsApp recibe el resultado de la carga y elige formato; la lógica del bot sigue sin saber nada de WhatsApp.
  
-**Esquema:** en `usuarios`, `cargas_confirmadas` (int, default `0`) y `modo_confirmacion` (`auto` | `texto` | `reaccion`, default `auto`). `auto` aplica la regla del umbral; los otros dos la fuerzan desde ajustes.
+**Esquema:** en `usuarios`, `cargas_dia` (int, default `0`) y `cargas_dia_fecha` (date: si no es hoy en `usuarios.timezone`, el contador vale 0), `cargas_confirmadas` (int, default `0`, total que sigue subiendo pero ya no decide) y `modo_confirmacion` (`auto` | `texto` | `reaccion`, default `auto`). `auto` aplica la regla del umbral; los otros dos la fuerzan desde ajustes.
  
-El umbral (15) es una constante del código, no un campo: si hay que moverlo, se mueve para todos.
+El umbral (10 por día, `DAILY_TEXT_CONFIRMATIONS`) es una constante del código, no un campo: si hay que moverlo, se mueve para todos.
 
 **Solo aplica a WhatsApp.** La confirmación progresiva existe para cuidar el cupo de Meta. En Telegram no hay cupo que cuidar, así que la confirmación es **siempre en texto con Deshacer**. Como el formato lo elige el adaptador (arriba), la regla vive en el de WhatsApp y el de Telegram simplemente no la tiene.
 
-**Con número propio se queda.** El cupo de 1000 desaparece, pero los otros motivos no: pasada la carga 15, la confirmación en texto es ruido que la persona ya no lee, y el consumo de mensajes pasa a medirse en plata, según las tarifas de Meta, en vez de en cupo. Un mensaje menos por gasto sigue valiendo.
+**Con número propio se queda.** El cupo de 1000 desaparece, pero los otros motivos no: pasadas las primeras del día, la confirmación en texto es ruido que la persona ya no lee, y el consumo de mensajes pasa a medirse en plata, según las tarifas de Meta, en vez de en cupo. Un mensaje menos por gasto sigue valiendo.
 
 ### Historial de conversación: solo usuarios VIP
 
@@ -1080,7 +1080,7 @@ Medidas:
 - **Verify token** — solo para el handshake inicial de suscripción del webhook (Meta manda un GET con `hub.challenge`).
 ### Volumen esperado
  
-Brian carga **más de 200 gastos al mes** él solo. Con los tres usuarios, el límite de 1000 mensajes/mes del número de prueba queda justo — y cada gasto puede implicar 2 mensajes (carga + confirmación). La **confirmación progresiva** (sección 3) es la mitigación principal: pasadas las primeras 15 cargas, la confirmación deja de consumir cupo. Si aun así se ajusta, queda pasar a número propio.
+Brian carga **más de 200 gastos al mes** él solo. Con los tres usuarios, el límite de 1000 mensajes/mes del número de prueba queda justo — y cada gasto puede implicar 2 mensajes (carga + confirmación). La **confirmación progresiva** (sección 3) es la mitigación principal: pasadas las primeras 10 cargas del día, la confirmación deja de consumir cupo. Si aun así se ajusta, queda pasar a número propio.
  
 **El techo real es el cupo, no la cantidad de usuarios.** Con cinco personas y confirmación por reacción, los 1000 mensajes alcanzan; con cinco personas y confirmación en texto, no.
 
@@ -1101,7 +1101,7 @@ Todo este cálculo es del número de prueba. Con número propio el cupo desapare
 | Meta reintenta el webhook y duplica el gasto | Guardar `mensaje_id_externo` (antes `wa_message_id`) con constraint único por canal y chequear antes de insertar |
 | Se agota el cupo de 1000 mensajes/mes (número de prueba) | Confirmación progresiva (sección 3); medir consumo desde el mes 1 |
 | Pasar a número propio obliga a reescribir el bot | Nada asume el número de prueba: sin tope de 5 ni cupo de 1000 en el código, número emisor por variable de entorno, la lista de destinatarios vive en el panel de Meta (secciones 1 y 4) |
-| El usuario no ve la reacción y cree que el gasto no se cargó | El umbral de 15 existe para que ya conozca el patrón. Si igual pasa, se fuerza `modo_confirmacion = texto` desde ajustes |
+| El usuario no ve la reacción y cree que el gasto no se cargó | Las 10 en texto de cada día existen para que ya conozca el patrón. Si igual pasa, se fuerza `modo_confirmacion = texto` desde ajustes |
 | Ventana de 24 h de WhatsApp | No afecta: el bot siempre **responde** a un mensaje del usuario. Solo aplicaría a los avisos proactivos de gastos fijos, que necesitarían una *template* aprobada |
 | Un número desconocido le escribe al bot | Una sola respuesta que manda a la web, sin onboarding por chat; rate limiting para que no gaste cupo (sección 10) |
 | Gasto de fin de mes a las 23:00 cae en el mes equivocado | Agrupar por timezone del usuario, no por UTC |

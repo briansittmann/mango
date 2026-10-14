@@ -15,7 +15,7 @@ Charla real por WhatsApp del 1 de octubre de 2026 (ronda de prueba de `add-bot-c
 >
 > **Mango:** ↩️ Deshecho: 3,50 € en Ocio, hoy.
 
-**Qué muestra:** el bot elige la categoría solo (café → Ocio). Las primeras 15 cargas se confirman con texto y un botón para deshacer; después, con una reacción ✅ en tu propio mensaje.
+**Qué muestra:** el bot elige la categoría solo (café → Ocio). Las primeras 10 cargas de cada día se confirman con texto y un botón para deshacer; después, con una reacción ✅ en tu propio mensaje.
 
 ## 2. Un gasto con presupuesto
 
@@ -90,7 +90,7 @@ Charla real por WhatsApp del 1 de octubre de 2026 (ronda de prueba de `add-bot-c
 > **Mango:** Anotado ✅ Comida · 50 €. Llevás 126,02 € de 300 € este mes 🟢  
 > *[botón: Deshacer]*
 
-**Qué muestra:** con solo un monto, el bot pregunta la categoría y espera la respuesta 30 minutos. La respuesta a una pregunta siempre se confirma con texto y Deshacer, aunque ya hayas pasado las primeras 15 cargas.
+**Qué muestra:** con solo un monto, el bot pregunta la categoría y espera la respuesta 30 minutos. La respuesta a una pregunta siempre se confirma con texto y Deshacer, aunque ya hayas pasado las primeras 10 cargas del día.
 
 ## 7. Un gasto fijo que este mes vino distinto
 
@@ -145,7 +145,7 @@ Ronda del 11 de octubre de 2026 (`add-voice-messages`), leída de la tabla `mens
 > **Mango:** 🎤 Escuché: «cobré dos mil cien»  
 > Anotado 💰 Ingreso · 2.100 €.
 
-**Qué muestra:** los montos dichos con palabras se entienden ("doce con cuarenta" → 12,40). Toda respuesta a una nota empieza citando lo que se oyó, y la carga va siempre en texto con *Deshacer*, aunque ya hayan pasado las 15 primeras: si el bot oyó mal, se ve y se deshace en un toque.
+**Qué muestra:** los montos dichos con palabras se entienden ("doce con cuarenta" → 12,40). Toda respuesta a una nota empieza citando lo que se oyó, y la carga va siempre en texto con *Deshacer*, aunque ya hayan pasado las 10 primeras del día: si el bot oyó mal, se ve y se deshace en un toque.
 
 > **Vos:** 🎤 *cómo vengo*
 >

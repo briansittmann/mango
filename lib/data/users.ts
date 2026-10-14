@@ -22,15 +22,19 @@ export async function findUserIdByPhone(phone: string): Promise<string | null> {
 
 export type ConfirmationState = {
   cargas_confirmadas: number
+  /** Loads confirmed on `cargas_dia_fecha`, a local date in `timezone` (0034). */
+  cargas_dia: number
+  cargas_dia_fecha: string | null
   modo_confirmacion: 'auto' | 'texto' | 'reaccion'
   idioma: 'es' | 'en'
+  timezone: string
 }
 
 /** What the adapter needs to confirm a load (progressive confirmation, `add-bot-conversation` D6). */
 export async function readConfirmationState(userId: string): Promise<ConfirmationState> {
   const { data, error } = await supabaseAdmin()
     .from('usuarios')
-    .select('cargas_confirmadas, modo_confirmacion, idioma')
+    .select('cargas_confirmadas, cargas_dia, cargas_dia_fecha, modo_confirmacion, idioma, timezone')
     .eq('id', userId)
     .single<ConfirmationState>()
 
@@ -39,10 +43,14 @@ export async function readConfirmationState(userId: string): Promise<Confirmatio
 }
 
 /**
- * Stores the account's count of confirmed loads. A read-then-write: one account's messages are
- * handled one at a time, and a lost increment only means one extra text confirmation (D6).
+ * Stores the account's count of confirmed loads, in total and on `day`. A read-then-write: one
+ * account's messages are handled one at a time, and a lost increment only means one extra text
+ * confirmation (D6).
  */
-export async function setConfirmedLoads(userId: string, count: number): Promise<void> {
-  const { error } = await supabaseAdmin().from('usuarios').update({ cargas_confirmadas: count }).eq('id', userId)
+export async function setConfirmedLoads(userId: string, count: number, dayCount: number, day: string): Promise<void> {
+  const { error } = await supabaseAdmin()
+    .from('usuarios')
+    .update({ cargas_confirmadas: count, cargas_dia: dayCount, cargas_dia_fecha: day })
+    .eq('id', userId)
   if (error) throw error
 }

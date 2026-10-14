@@ -6,6 +6,7 @@ import {
   type BotReply,
 } from '@/lib/bot/logic'
 import { clearPendingQuestion, linkChannel, readChannelState, registerUnknownContact, setLastLoad, writePendingQuestion } from '@/lib/data/channels'
+import { localDateOf } from '@/lib/data/supabase/cycle'
 import { messageAlreadyProcessed } from '@/lib/data/transactions'
 import { findUserIdByPhone, readConfirmationState, setConfirmedLoads } from '@/lib/data/users'
 import es from '@/messages/es.json'
@@ -18,8 +19,8 @@ import type { WhatsAppMessage } from './payload'
 
 export { maskPhone }
 
-/** Loads confirmed in text before reactions take over, in mode `auto` (§3). One constant for every account. */
-export const TEXT_CONFIRMATIONS = 15
+/** Loads per local day confirmed in text before reactions take over, in mode `auto` (§3). One constant for every account. */
+export const DAILY_TEXT_CONFIRMATIONS = 10
 
 /** An Undo button's id names the row it deletes (`add-bot-conversation` design D2). */
 const UNDO_PREFIX = 'undo:'
@@ -103,16 +104,19 @@ async function handleKnown(userId: string, message: WhatsAppMessage, audio?: Med
 
 /**
  * This is where **how** a load is confirmed gets decided (progressive confirmation, §3, D6): text
- * with an Undo button while the account has fewer than `TEXT_CONFIRMATIONS` loads in mode `auto`,
- * always in mode `texto` or when the logic asks for text, and a reaction with the confirmation's
- * icon otherwise. Every load raises the count, whichever form went out; the sends never throw.
+ * with an Undo button while the account has fewer than `DAILY_TEXT_CONFIRMATIONS` loads today (its
+ * own time zone) in mode `auto`, always in mode `texto` or when the logic asks for text, and a
+ * reaction with the confirmation's icon otherwise. Every load raises the counts, whichever form
+ * went out; the sends never throw.
  */
 async function confirmLoad(userId: string, message: WhatsAppMessage, reply: Extract<BotReply, { kind: 'loaded' }>): Promise<void> {
   const state = await readConfirmationState(userId)
+  const today = localDateOf(new Date(), state.timezone)
+  const loadsToday = state.cargas_dia_fecha === today ? state.cargas_dia : 0
   const asText =
     reply.alwaysText ||
     state.modo_confirmacion === 'texto' ||
-    (state.modo_confirmacion === 'auto' && state.cargas_confirmadas < TEXT_CONFIRMATIONS)
+    (state.modo_confirmacion === 'auto' && loadsToday < DAILY_TEXT_CONFIRMATIONS)
 
   if (asText) {
     const t = createTranslator({ locale: state.idioma, messages: MESSAGES[state.idioma], namespace: 'bot' })
@@ -121,7 +125,7 @@ async function confirmLoad(userId: string, message: WhatsAppMessage, reply: Extr
     await sendReaction(message.phone, message.messageId, reply.icon)
   }
 
-  await setConfirmedLoads(userId, state.cargas_confirmadas + 1)
+  await setConfirmedLoads(userId, state.cargas_confirmadas + 1, loadsToday + 1, today)
 }
 
 /** Every reply that is not a load is plain text, without buttons. */

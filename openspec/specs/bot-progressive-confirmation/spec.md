@@ -1,27 +1,31 @@
 ## Purpose
 
-Decides how the WhatsApp adapter confirms a successful load, text with an Undo button or an emoji reaction, so that confirmations teach the format at first and stop costing a message once the account trusts the bot.
+Decides how the WhatsApp adapter confirms a successful load, text with an Undo button or an emoji reaction, so that confirmations teach the format and stop costing a message once the day's quota of text confirmations is spent.
 
 ## Requirements
 
-### Requirement: The first loads are confirmed in text with Undo, later ones with a reaction
+### Requirement: The first loads of each day are confirmed in text with Undo, later ones with a reaction
 
-A successful load confirmed on WhatsApp SHALL be confirmed in one of two forms. The first is the confirmation text with one reply button labelled Undo in the account's language. The second is an emoji reaction on the user's own message, with the confirmation's icon. With the account's confirmation mode `auto`, a load SHALL be confirmed in text while the account has fewer than 15 counted loads, and with a reaction from then on. Every successful load confirmed on WhatsApp SHALL add one to the account's count, whichever form it was confirmed in. The threshold SHALL be one constant for every account, not a stored value.
+A successful load confirmed on WhatsApp SHALL be confirmed in one of two forms. The first is the confirmation text with one reply button labelled Undo in the account's language. The second is an emoji reaction on the user's own message, with the confirmation's icon. With the account's confirmation mode `auto`, a load SHALL be confirmed in text while the account has fewer than 10 counted loads on the current day, and with a reaction from then on. The day is the account's local calendar day, in its time zone; the day's count starts at 0 on each new day. Every successful load confirmed on WhatsApp SHALL add one to the day's count, whichever form it was confirmed in. The threshold SHALL be one constant for every account, not a stored value.
 
-#### Scenario: First load
-- **WHEN** an account in mode `auto` with a count of 0 sends "nafta 45"
-- **THEN** the reply is the confirmation text with an Undo button and the count becomes 1
+#### Scenario: First load of the day
+- **WHEN** an account in mode `auto` with no loads today sends "nafta 45"
+- **THEN** the reply is the confirmation text with an Undo button and today's count becomes 1
 
-#### Scenario: Fifteenth load
-- **WHEN** the account's count is 14 and it sends "café 3"
-- **THEN** the reply is text with Undo and the count becomes 15
+#### Scenario: Tenth load
+- **WHEN** the account has 9 loads today and it sends "café 3"
+- **THEN** the reply is text with Undo and today's count becomes 10
 
-#### Scenario: Sixteenth load
-- **WHEN** the account's count is 15 and it sends "café 3"
-- **THEN** no text is sent, the user's message receives a ✅ reaction, and the count becomes 16
+#### Scenario: Eleventh load
+- **WHEN** the account has 10 loads today and it sends "café 3"
+- **THEN** no text is sent, the user's message receives a ✅ reaction, and today's count becomes 11
+
+#### Scenario: A new day
+- **WHEN** the account loaded 25 times yesterday and sends "café 3" today, its first load of the day
+- **THEN** the reply is text with Undo and today's count becomes 1
 
 #### Scenario: Income reaction
-- **WHEN** the account's count is 20 and it sends "propina 500"
+- **WHEN** the account has 12 loads today and it sends "propina 500"
 - **THEN** the user's message receives a 💰 reaction
 
 ### Requirement: The mode can force one form
@@ -29,32 +33,32 @@ A successful load confirmed on WhatsApp SHALL be confirmed in one of two forms. 
 With the account's confirmation mode `texto`, every load SHALL be confirmed in text with Undo. With `reaccion`, every load SHALL be confirmed with a reaction, except the loads covered by *Some replies are always text*. The count SHALL keep rising in both forced modes.
 
 #### Scenario: Forced text
-- **WHEN** an account in mode `texto` with a count of 40 loads an expense
+- **WHEN** an account in mode `texto` with 40 loads today loads an expense
 - **THEN** the reply is text with Undo
 
 #### Scenario: Forced reaction
-- **WHEN** an account in mode `reaccion` with a count of 0 loads an expense
+- **WHEN** an account in mode `reaccion` with no loads today loads an expense
 - **THEN** the user's message receives a reaction and no text is sent
 
 ### Requirement: Some replies are always text
 
-A load that answered the bot's category question SHALL always be confirmed in text with Undo, whatever the count and mode. A load that completed a recurring charge at an amount different from its definition SHALL always be confirmed in text, so the note that only this cycle changed is read. A load made from a voice note SHALL always be confirmed in text with Undo, with the transcription quoted first, so the person can check what was heard (`bot-voice-messages`). Every reply that is not a successful load SHALL be plain text without buttons: questions, corrections, deletions, undo, queries, category creation, already-logged, not understood and unavailable.
+A load that answered the bot's category question SHALL always be confirmed in text with Undo, whatever the day's count and mode. A load that completed a recurring charge at an amount different from its definition SHALL always be confirmed in text, so the note that only this cycle changed is read. A load made from a voice note SHALL always be confirmed in text with Undo, with the transcription quoted first, so the person can check what was heard (`bot-voice-messages`). Every reply that is not a successful load SHALL be plain text without buttons: questions, corrections, deletions, undo, queries, category creation, already-logged, not understood and unavailable.
 
 #### Scenario: Answer to a question
-- **WHEN** an account with a count of 30 sends "gasté 50", then "comida"
+- **WHEN** an account with 12 loads today sends "gasté 50", then "comida"
 - **THEN** both replies are text and the second carries Undo
 
 #### Scenario: Differing recurring amount
-- **WHEN** an account with a count of 30 sends "luz 72" and Luz expects 60
+- **WHEN** an account with 12 loads today sends "luz 72" and Luz expects 60
 - **THEN** the reply is text naming 72 and saying the fixed amount stays at 60
 
 #### Scenario: Query
-- **WHEN** an account with a count of 30 sends "¿cómo vengo?"
+- **WHEN** an account with 12 loads today sends "¿cómo vengo?"
 - **THEN** the reply is text without buttons
 
 #### Scenario: Voice load
-- **WHEN** an account with a count of 30 in mode `auto` sends a voice note saying "café tres cincuenta"
-- **THEN** the reply is text with Undo that quotes the transcription, and the count becomes 31
+- **WHEN** an account with 12 loads today in mode `auto` sends a voice note saying "café tres cincuenta"
+- **THEN** the reply is text with Undo that quotes the transcription, and today's count becomes 13
 
 ### Requirement: Progressive confirmation belongs to the WhatsApp adapter
 
