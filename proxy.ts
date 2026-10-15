@@ -2,12 +2,30 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
- * Refreshes the Supabase session on every matched request and keeps
- * `/dashboard` and `/onboarding` behind a login. `/` and `/demo` are outside
- * the matcher, so no Supabase client is created for them. The pages repeat
- * the redirect so they do not depend on this file.
+ * `?lang=es|en` on any matched URL sets the language: the cookie goes on the
+ * request (so this render uses it) and on the response (so the visit keeps it).
+ * It is how a link preview comes out in English: crawlers send no cookie.
+ * `/` and `/demo` only match with `?lang`, and get no Supabase client.
  */
 export async function proxy(request: NextRequest) {
+  const lang = request.nextUrl.searchParams.get('lang')
+  const locale = lang === 'es' || lang === 'en' ? lang : null
+  if (locale) request.cookies.set('locale', locale)
+
+  const pathname = request.nextUrl.pathname
+  const response = pathname === '/' || pathname.startsWith('/demo')
+    ? NextResponse.next({ request })
+    : await refreshSession(request)
+
+  if (locale) response.cookies.set('locale', locale, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
+  return response
+}
+
+/**
+ * Refreshes the Supabase session and keeps `/dashboard` and `/onboarding`
+ * behind a login. The pages repeat the redirect so they do not depend on this file.
+ */
+async function refreshSession(request: NextRequest) {
   let response = NextResponse.next({ request })
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -45,5 +63,12 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/onboarding/:path*', '/login', '/auth/:path*'],
+  matcher: [
+    '/dashboard/:path*',
+    '/onboarding/:path*',
+    '/login',
+    '/auth/:path*',
+    { source: '/', has: [{ type: 'query', key: 'lang' }] },
+    { source: '/demo/:path*', has: [{ type: 'query', key: 'lang' }] },
+  ],
 }

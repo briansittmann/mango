@@ -314,7 +314,8 @@
     "tituloDemo": "Demo",
     "tituloLogin": "Log in",
     "tituloDashboard": "Your month",
-    "tituloPrivacidad": "Privacy"
+    "tituloPrivacidad": "Privacy",
+    "imagenAlt": "Mango: “Your finances, one message away.” An expense logged on WhatsApp and the month's free margin."
   },
   "inicio": {
     "titulo": "Mango",

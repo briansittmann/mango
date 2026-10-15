@@ -54,6 +54,7 @@
   .label i { font-style: normal; color: var(--lime); font-weight: 600; font-size: 15px; background: rgba(132,204,22,0.12); padding: 3px 10px; border-radius: 999px; }
   .big { margin-top: 8px; font-family: Manrope; font-weight: 800; font-size: 76px; letter-spacing: -0.04em; line-height: 1; color: var(--lime); }
   .big small { font-size: 46px; margin-left: 6px; }
+  .big small.first { margin: 0 4px 0 0; }
   .strip { margin-top: 24px; display: flex; gap: 4px; height: 12px; }
   .strip div { border-radius: 999px; }
   .legend { margin-top: 14px; display: flex; gap: 18px; font-size: 14px; color: var(--muted); }
@@ -76,27 +77,27 @@
       <div class="logo"><img src="logo.svg" alt=""></div>
       <span>Mango</span>
     </div>
-    <h1>Tus finanzas,<em>a un mensaje de distancia.</em></h1>
-    <p class="sub">Anota tus gastos por <b>WhatsApp</b> y mira al instante cuánto te queda libre este mes.</p>
+    <h1 data-t="h1">Tus finanzas,<em>a un mensaje de distancia.</em></h1>
+    <p class="sub" data-t="sub">Anota tus gastos por <b>WhatsApp</b> y mira al instante cuánto te queda libre este mes.</p>
     <div class="cta">
-      <span class="pill">Empezar</span>
+      <span class="pill" data-t="pill">Empezar</span>
       <span class="url">usemango.dev</span>
     </div>
   </div>
 
   <div class="stage">
     <div class="card margin">
-      <div class="label">Margen libre <i>Octubre</i></div>
-      <div class="big">864<small>€</small></div>
+      <div class="label" data-t="label">Margen libre <i>Octubre</i></div>
+      <div class="big" data-t="big">864<small>€</small></div>
       <div class="strip">
         <div style="flex: 52; background: rgba(243,244,246,0.2);"></div>
         <div style="flex: 14; background: rgba(132,204,22,0.5);"></div>
         <div style="flex: 34; background: var(--lime);"></div>
       </div>
       <div class="legend">
-        <span style="color:rgba(243,244,246,0.35)"><em style="font-style:normal;color:var(--muted)">Gastado</em></span>
-        <span style="color:rgba(132,204,22,0.55)"><em style="font-style:normal;color:var(--muted)">Ahorrado</em></span>
-        <span style="color:var(--lime)"><em style="font-style:normal;color:var(--muted)">Libre</em></span>
+        <span style="color:rgba(243,244,246,0.35)"><em style="font-style:normal;color:var(--muted)" data-t="spent">Gastado</em></span>
+        <span style="color:rgba(132,204,22,0.55)"><em style="font-style:normal;color:var(--muted)" data-t="saved">Ahorrado</em></span>
+        <span style="color:var(--lime)"><em style="font-style:normal;color:var(--muted)" data-t="free">Libre</em></span>
       </div>
     </div>
 
@@ -105,10 +106,28 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="#0D110E"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9 0-1.4.7-2 1-2.3.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.1 1.3Z"/></svg>
         WhatsApp
       </span>
-      <div class="msg-out">super 15</div>
-      <div class="msg-in">Anotado ✅ <b>Super · 15 €</b> en Comida.<br>Llevas 48 € de 300 € este mes 🟢</div>
+      <div class="msg-out" data-t="out">super 15</div>
+      <div class="msg-in" data-t="in">Anotado ✅ <b>Super · 15 €</b> en Comida.<br>Llevas 48 € de 300 € este mes 🟢</div>
     </div>
   </div>
+
+<script>
+// ?lang=en swaps the copy; the Spanish text above is the default (render.mjs renders both).
+const EN = {
+  h1: 'Your finances,<em>one message away.</em>',
+  sub: 'Log expenses on <b>WhatsApp</b> and instantly see what you have left this month.',
+  pill: 'Get started',
+  label: 'Free margin <i>October</i>',
+  big: '<small class="first">€</small>864',
+  spent: 'Spent', saved: 'Saved', free: 'Free',
+  out: 'groceries 15',
+  in: 'Logged ✅ <b>Groceries · €15</b> in Food.<br>You\'ve spent €48 of €300 this month 🟢',
+};
+if (new URLSearchParams(location.search).get('lang') === 'en') {
+  document.documentElement.lang = 'en';
+  for (const el of document.querySelectorAll('[data-t]')) el.innerHTML = EN[el.dataset.t];
+}
+</script>
 
 <script>
 const FRAG = `

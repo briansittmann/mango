@@ -314,7 +314,8 @@
     "tituloDemo": "Demo",
     "tituloLogin": "Entrar",
     "tituloDashboard": "Tu mes",
-    "tituloPrivacidad": "Privacidad"
+    "tituloPrivacidad": "Privacidad",
+    "imagenAlt": "Mango: «Tus finanzas, a un mensaje de distancia». Un gasto anotado por WhatsApp y el margen libre del mes."
   },
   "inicio": {
     "titulo": "Mango",
