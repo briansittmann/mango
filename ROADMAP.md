@@ -166,7 +166,7 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [x] 👤 Cargar los números en Meta → no hace falta: con número propio (14/10) cualquiera vincula desde la web
 - [ ] 👤 Medir el costo por mensaje en WhatsApp Manager (con número propio ya no hay cupo de 1000)
 - [x] 🤖 Aviso de suscripción por vencer (template de Meta, §14.1) — codigo (2026-10-14): `app/api/cron/recordatorios` a las 11:00 UTC, `lib/bot/reminders.ts`, `sendTemplate`, marca `recordatorio_enviado_para` (`0035`)
-- [ ] 👤 Aplicar `0035`, pedir en Meta la plantilla *Utility* `recordatorio_cobro_es` y desplegar
+- [x] 👤 Aplicar `0035`, pedir en Meta la plantilla *Utility* `recordatorio_cobro_es` y desplegar (2026-10-16: aprobada, `0035` aplicada, prueba recibida)
 - [x] 👤 Pedir en Meta la plantilla del mensaje de vinculación → no hace falta: la vinculación la inicia la persona (3/10)
 - [x] 👤 Decidir cuándo se compra el número propio y cuánto gasto se acepta (rompe el "coste cero") → comprado el 12/10
 - [x] 👤 Número propio para la Cloud API (virtual o fijo, que no esté en WhatsApp) — funcionando el 14/10 — adelantado desde el bloque 14. Plan: número virtual de EE. UU. en Twilio (~1,15 USD/mes, Voice + SMS), verificado en Meta por llamada de voz; si Meta lo rechaza por VoIP, SIM prepago
