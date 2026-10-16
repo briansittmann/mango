@@ -241,7 +241,12 @@
       "azul_electrico": "Azul eléctrico",
       "celeste": "Celeste",
       "turquesa": "Turquesa",
-      "verde_menta": "Verde menta"
+      "verde_menta": "Verde menta",
+      "fucsia": "Fucsia",
+      "amarillo": "Amarillo",
+      "marron": "Marrón",
+      "lila": "Lila",
+      "arcoiris": "Arcoíris"
     },
     "alcanceEliminar": "Hasta dónde",
     "vuelveElMesQueViene": "Vuelve el mes que viene.",
@@ -648,5 +653,34 @@
     "sinIngresos": "No hay ingresos cargados este mes",
     "sinAhorro": "No hay movimientos de ahorro este mes",
     "fila": "{nombre}, {tipo}, {dia}, {monto}"
+  },
+  "tarjetas": {
+    "titulo": "Tarjetas",
+    "vacio": "Anota con qué tarjeta se paga cada fijo",
+    "anadir": "Añadir tarjeta",
+    "gastosFijos": "{n, plural, =0 {Sin gastos fijos} one {# gasto fijo} other {# gastos fijos}}",
+    "etiquetaTarjeta": "{nombre}, {monto} este mes",
+    "nuevaTarjeta": "Nueva tarjeta",
+    "cancelar": "Cancelar",
+    "guardar": "Guardar",
+    "nombre": "Nombre",
+    "color": "Color",
+    "nombreDuplicado": "Ya tienes una tarjeta con ese nombre",
+    "gastosFijosTitulo": "Gastos fijos",
+    "sinFijos": "No tienes gastos fijos activos.",
+    "enTarjeta": "En {tarjeta}",
+    "eliminarTarjeta": "Eliminar tarjeta",
+    "confirmarEliminar": "¿Eliminar la tarjeta «{tarjeta}»?",
+    "quedanSinTarjeta": "{n, plural, one {{nombres} queda sin tarjeta.} other {{nombres} quedan sin tarjeta.}}",
+    "fijosQuedanSinTarjeta": "{n} gastos fijos quedan sin tarjeta.",
+    "eliminar": "Eliminar",
+    "errorGuardar": "No se pudo guardar. Inténtalo de nuevo.",
+    "errorEliminar": "No se pudo eliminar la tarjeta. Inténtalo de nuevo.",
+    "tarjeta": "Tarjeta",
+    "sinTarjeta": "Sin tarjeta",
+    "elegirTarjeta": "Tarjeta: {tarjeta}. Cambiar",
+    "tarjetaAnadida": "Tarjeta añadida",
+    "cambiosGuardados": "Cambios guardados",
+    "tarjetaEliminada": "Tarjeta eliminada"
   }
 }

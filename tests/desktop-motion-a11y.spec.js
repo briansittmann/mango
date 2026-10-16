@@ -80,7 +80,7 @@ test.describe('reduced motion', () => {
           }),
         ),
     )
-    expect(frame.order).toEqual(['weekly', 'monthly', 'calendar', 'distribution'])
+    expect(frame.order).toEqual(['weekly', 'monthly', 'calendar', 'distribution', 'wallet'])
     for (const transform of frame.transforms) expect(['none', 'matrix(1, 0, 0, 1, 0, 0)']).toContain(transform)
   })
 })
@@ -123,7 +123,7 @@ test.describe('motion on', () => {
     // It travels to rest rather than jumping: still away from rest right after release, at rest soon after.
     expect(afterRelease).toBeGreaterThan(1)
     await expect.poll(donutY, { timeout: 2500 }).toBeLessThanOrEqual(1)
-    expect(await widgetOrder(page)).toEqual(['distribution', 'weekly', 'calendar', 'monthly'])
+    expect(await widgetOrder(page)).toEqual(['distribution', 'weekly', 'calendar', 'monthly', 'wallet'])
   })
 })
 

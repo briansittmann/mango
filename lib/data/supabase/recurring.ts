@@ -107,6 +107,17 @@ export function createSupabaseRecurringMutations(ctx: DataContext): RecurringMut
           .select('id'),
       )
     },
+    async setCard(definitionId, cardId) {
+      // The composite FK (0038) rejects another user's card; the check rejects one on income.
+      expectRows(
+        await client
+          .from('movimientos_recurrentes')
+          .update({ tarjeta_id: cardId })
+          .eq('id', definitionId)
+          .eq('usuario_id', usuarioId)
+          .select('id'),
+      )
+    },
     async delete(definitionId) {
       const { error } = await client.rpc('eliminar_movimiento_recurrente', { p_usuario_id: usuarioId, p_id: definitionId })
       if (error) throw new Error(error.message)

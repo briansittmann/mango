@@ -7,8 +7,12 @@ export const CATEGORY_COLORS: CategoryColor[] = [
   'rojo',
   'coral',
   'rosa',
+  'fucsia',
   'naranja_calido',
+  'amarillo',
+  'marron',
   'violeta_metalico',
+  'lila',
   'azul_electrico',
   'azul_apagado',
   'celeste',
@@ -18,6 +22,8 @@ export const CATEGORY_COLORS: CategoryColor[] = [
   'gris_calido',
   'gris_oscuro',
   'blanco',
+  // The easter egg: last, so no "first free colour" lands on it before the other nineteen.
+  'arcoiris',
 ]
 
 export type CategoryDraft = {

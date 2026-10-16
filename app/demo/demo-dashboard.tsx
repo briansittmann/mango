@@ -7,6 +7,7 @@ import { DemoToast } from '@/components/molecules/demo-toast'
 import { DashboardTemplate } from '@/components/templates/dashboard-template'
 import { createDemoExpenseMutations, deriveDemoData, noDemoEdits, shiftDemoMonth } from '@/lib/demo/demo-expenses'
 import { createDemoCategoryMutations, noDemoCategoryEdits } from '@/lib/demo/demo-categories'
+import { applyDemoCardAssignments, applyDemoCardEdits, createDemoCardMutations, noDemoCardEdits } from '@/lib/demo/demo-cards'
 import { createDemoIncomeMutations, noDemoIncomeEdits } from '@/lib/demo/demo-income'
 import { createDemoRecurringMutations, noDemoRecurringEdits } from '@/lib/demo/demo-recurring'
 import { createDemoSavingsMutations, noDemoSavingsEdits } from '@/lib/demo/demo-savings'
@@ -34,6 +35,7 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows: baseBudg
   const [edits, setEdits] = useState(embedded ? { ...noDemoEdits, created: plan.expenses } : noDemoEdits)
   const [categoryEdits, setCategoryEdits] = useState(noDemoCategoryEdits)
   const [recurringEdits, setRecurringEdits] = useState(noDemoRecurringEdits)
+  const [cardEdits, setCardEdits] = useState(noDemoCardEdits)
   const [incomeEdits, setIncomeEdits] = useState(embedded ? { ...noDemoIncomeEdits, created: plan.income } : noDemoIncomeEdits)
   const [savingsEdits, setSavingsEdits] = useState(embedded ? { ...noDemoSavingsEdits, created: plan.savings } : noDemoSavingsEdits)
   const budgetRows = useMemo(() => (embedded ? [...baseBudgetRows, ...plan.budgets] : baseBudgetRows), [embedded, baseBudgetRows, plan])
@@ -42,13 +44,25 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows: baseBudg
   // The sample's month or one of its six projections (D9).
   const [month, setMonth] = useState(data.cycle.month)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const { data: view, definitions } = useMemo(
+  const { data: derived, definitions: derivedDefinitions } = useMemo(
     () => deriveDemoData(data, recurringDefinitions, budgetRows, edits, categoryEdits, recurringEdits, incomeEdits, savingsEdits, month),
     [data, recurringDefinitions, budgetRows, edits, categoryEdits, recurringEdits, incomeEdits, savingsEdits, month],
   )
+  // Cards are not tied to a cycle: they and their assignments lie over every month the same way.
+  const cards = useMemo(() => applyDemoCardEdits(data.cards, cardEdits), [data.cards, cardEdits])
+  const definitions = useMemo(() => applyDemoCardAssignments(derivedDefinitions, cards, cardEdits), [derivedDefinitions, cards, cardEdits])
+  const view = useMemo(() => ({ ...derived, cards }), [derived, cards])
   const charges = useMemo(() => selectUpcomingCharges(view.expenses.groups, definitions), [view, definitions])
   const expenses = useMemo(() => createDemoExpenseMutations(setEdits), [])
-  const recurring = useMemo(() => createDemoRecurringMutations(setRecurringEdits), [])
+  // `?e2e=fail-card-save` makes a card's update and its checklist reject (`card-wallet` → *A failed save changes nothing*).
+  const failCardSave = searchParams.get('e2e') === 'fail-card-save'
+  const recurring = useMemo(() => createDemoRecurringMutations(setRecurringEdits, setCardEdits), [])
+  const cardMutations = useMemo(() => {
+    const base = createDemoCardMutations(cards, definitions, setCardEdits)
+    if (!failCardSave) return base
+    const fail = () => Promise.reject(new Error('e2e-forced-card-save-failure'))
+    return { ...base, update: fail, setFixedCharges: fail }
+  }, [cards, definitions, failCardSave])
   const income = useMemo(() => createDemoIncomeMutations(setIncomeEdits), [])
   // `?e2e=fail-savings-update` makes a savings edit reject (`savings-editing` → *A failed save*).
   const failSavingsUpdate = searchParams.get('e2e') === 'fail-savings-update'
@@ -133,6 +147,7 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows: baseBudg
           expenses,
           categories: noCategoryActions ? undefined : categories,
           recurring,
+          cards: cardMutations,
           income,
           savings,
           // Before the sample there is nothing to show; after it, the projections.

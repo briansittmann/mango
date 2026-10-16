@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { LocalDate } from '@/lib/data/expenses'
 import type { RecurringDefinition, RecurringDraft, RecurringMutations, RecurringTarget, SlotEntry } from '@/lib/data/recurring'
+import type { DemoCardEdits } from './demo-cards'
 
 /**
  * One cycle's slot of a definition (`add-forward-scoped-edits` D1): an override of what that cycle
@@ -45,7 +46,11 @@ export function slotKey(definitionId: string, cycle: LocalDate): string {
 let counter = 0
 let seq = 0
 
-export function createDemoRecurringMutations(setEdits: Dispatch<SetStateAction<DemoRecurringEdits>>): RecurringMutations {
+/** `setCard` writes to the cards' edits, where the card sheet's checklist writes too (`demo-cards.ts`). */
+export function createDemoRecurringMutations(
+  setEdits: Dispatch<SetStateAction<DemoRecurringEdits>>,
+  setCardEdits: Dispatch<SetStateAction<DemoCardEdits>>,
+): RecurringMutations {
   return {
     create(target, draft) {
       counter += 1
@@ -76,6 +81,10 @@ export function createDemoRecurringMutations(setEdits: Dispatch<SetStateAction<D
     },
     setReminder(definitionId, reminder) {
       setEdits((edits) => ({ ...edits, reminders: { ...edits.reminders, [definitionId]: reminder } }))
+      return Promise.resolve()
+    },
+    setCard(definitionId, cardId) {
+      setCardEdits((edits) => ({ ...edits, assignments: { ...edits.assignments, [definitionId]: cardId } }))
       return Promise.resolve()
     },
     delete(definitionId) {

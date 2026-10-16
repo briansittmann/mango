@@ -13,6 +13,7 @@ import { IntegerField, parseInteger } from '@/components/molecules/integer-field
 import { ScopeChoice, type Reach, type Scope } from '@/components/molecules/scope-choice'
 import { SheetShell } from '@/components/organisms/sheet-shell'
 import { cn } from '@/lib/utils'
+import type { Card } from '@/lib/data/cards'
 import type { CategoryColor } from '@/lib/data/dashboard'
 import type { ExpenseDraft, LocalDate } from '@/lib/data/expenses'
 import type { IncomeDraft } from '@/lib/data/income'
@@ -143,7 +144,8 @@ type EntrySheetProps<V> = {
    * `'only'` when nothing changed, null on any other row. `categoryId` is the header's category.
    * `slotChanged` says whether this month's values or category differ from what the sheet opened
    * with; `reminder` is the fixed's new reminder, null when unchanged (`unify-fixed-charge-sheet` D3);
-   * `charged` is the "Cobrado este mes" switch, null when unchanged or not shown.
+   * `charged` is the "Cobrado este mes" switch, null when unchanged or not shown; `card` is the
+   * fixed's new card (`null` = "Sin tarjeta"), undefined when unchanged (`add-card-wallet` D8).
    */
   onSave: (
     values: V,
@@ -153,6 +155,7 @@ type EntrySheetProps<V> = {
       slotChanged: boolean
       reminder: RecurringDefinition['reminder'] | null
       charged: boolean | null
+      card?: string | null
     },
   ) => Promise<void>
   /** A recurring row asks how far first, in a confirmation step (three reaches with `fixed`); any other row passes null. */
@@ -166,6 +169,8 @@ type EntrySheetProps<V> = {
     reminder: boolean
     /** Present only while the definition is active. */
     onStop?: () => Promise<void>
+    /** The user's cards, for a fixed expense's "Tarjeta" row; absent or empty hides it. */
+    cards?: Card[]
   }
   /**
    * The categories alive in the displayed cycle. In edit mode, with a category context, the
@@ -253,6 +258,7 @@ export function EntrySheet<V>({
   const onSaveRecurrence = projected ? undefined : onSaveRecurrenceProp
   const t = useTranslations('hojaGasto')
   const tRecurrente = useTranslations('gastoRecurrente')
+  const tTarjetas = useTranslations('tarjetas')
   const format = useFormatter()
   const { money } = useAmountFormatter()
   const locale = useLocale()
@@ -272,6 +278,9 @@ export function EntrySheet<V>({
   const [reminderDaysBefore, setReminderDaysBefore] = useState(String(fixed?.definition.reminder.daysBefore ?? 1))
   const [reminderTouched, setReminderTouched] = useState(false)
   const [chargedOn, setChargedOn] = useState(fixed?.charged ?? false)
+  const [cardChoice, setCardChoice] = useState<string | null>(fixed?.definition.cardId ?? null)
+  const [cardPickerOpen, setCardPickerOpen] = useState(false)
+  const cardTriggerRef = useRef<HTMLButtonElement>(null)
   const initialCategoryId = context.kind === 'category' ? context.id : null
   const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -319,6 +328,8 @@ export function EntrySheet<V>({
       setReminderDaysBefore(String(fixed?.definition.reminder.daysBefore ?? 1))
       setReminderTouched(false)
       setChargedOn(fixed?.charged ?? false)
+      setCardChoice(fixed?.definition.cardId ?? null)
+      setCardPickerOpen(false)
       setCategoryId(initialCategoryId)
       setPickerOpen(false)
       setDateOpen(false)
@@ -367,7 +378,8 @@ export function EntrySheet<V>({
     fixed.reminder &&
     (reminderActive !== fixed.definition.reminder.active || (reminderActive && daysBeforeValue !== fixed.definition.reminder.daysBefore))
   const chargedDirty = fixed?.charged != null && chargedOn !== fixed.charged
-  const isDirty = slotDirty || reminderDirty || chargedDirty
+  const cardDirty = fixed != null && (fixed.cards?.length ?? 0) > 0 && cardChoice !== fixed.definition.cardId
+  const isDirty = slotDirty || reminderDirty || chargedDirty || cardDirty
   const disabled = status !== 'idle'
   const asksScope = mode === 'edit' && context.kind !== 'savings' && context.recurring
   const showScope = asksScope && slotDirty
@@ -435,6 +447,7 @@ export function EntrySheet<V>({
         slotChanged: slotDirty,
         reminder: reminderDirty ? { active: reminderActive, daysBefore: daysBeforeValue ?? fixed!.definition.reminder.daysBefore } : null,
         charged: chargedDirty ? chargedOn : null,
+        card: cardDirty ? cardChoice : undefined,
       })
       if (onSaveRecurrence && recurrenceOn) {
         // The definition's name and expected amount are the same values just typed into the
@@ -718,6 +731,85 @@ export function EntrySheet<V>({
     )
   }
 
+  // The fixed expense's card (`add-card-wallet` D8): the current one, and a list of the user's cards
+  // and "Sin tarjeta" that unfolds below it, as the header's category control does.
+  function renderCardRow(cards: Card[]) {
+    const current = cards.find((card) => card.id === cardChoice) ?? null
+    const listId = `${formId}-cards`
+    const options: { id: string | null; name: string; color: CategoryColor | null }[] = [
+      ...cards.map((card) => ({ id: card.id, name: card.name, color: card.color })),
+      { id: null, name: tTarjetas('sinTarjeta'), color: null },
+    ]
+    return (
+      <>
+        <div data-fixed-card className="relative flex min-h-row items-center gap-3 px-inset before:absolute before:left-4 before:right-0 before:top-0 before:h-px before:bg-border">
+          <span id={`${listId}-label`} className="flex-1 text-body-lg text-foreground">
+            {tTarjetas('tarjeta')}
+          </span>
+          <button
+            ref={cardTriggerRef}
+            type="button"
+            aria-expanded={cardPickerOpen}
+            aria-controls={listId}
+            aria-label={tTarjetas('elegirTarjeta', { tarjeta: current?.name ?? tTarjetas('sinTarjeta') })}
+            disabled={disabled}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => setCardPickerOpen((value) => !value)}
+            className="pressable -mr-2 flex min-h-target items-center gap-1.5 rounded-full px-3 text-body-lg text-foreground [--press-scale:0.96] hover:bg-foreground/[0.06] disabled:pointer-events-none disabled:opacity-50"
+          >
+            {current ? <CategoryDot color={current.color} className="size-2 shrink-0" /> : null}
+            <span data-fixed-card-current className="max-w-40 truncate">
+              {current?.name ?? tTarjetas('sinTarjeta')}
+            </span>
+            <ChevronDown
+              aria-hidden
+              className={cn('size-3.5 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none', cardPickerOpen && 'rotate-180')}
+            />
+          </button>
+        </div>
+        <Collapsible open={cardPickerOpen}>
+          <div
+            id={listId}
+            role="radiogroup"
+            aria-labelledby={`${listId}-label`}
+            className={cn(
+              'mx-inset mb-2 grid origin-top grid-cols-2 gap-1.5 rounded-[22px] bg-foreground/[0.04] p-1.5 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none',
+              cardPickerOpen ? 'scale-100' : 'scale-95',
+            )}
+          >
+            {options.map((option) => {
+              const selected = option.id === cardChoice
+              return (
+                <button
+                  key={option.id ?? 'none'}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  disabled={disabled}
+                  onClick={() => {
+                    setCardChoice(option.id)
+                    setCardPickerOpen(false)
+                    cardTriggerRef.current?.focus()
+                  }}
+                  className={cn(
+                    'flex min-h-11 min-w-0 items-center gap-2 rounded-2xl px-3 text-label-ui transition-all duration-200 motion-reduce:transition-none',
+                    selected
+                      ? 'bg-primary font-semibold text-primary-foreground shadow-[0_6px_18px_-4px_color-mix(in_oklab,var(--primary)_55%,transparent)]'
+                      : 'text-foreground hover:bg-foreground/[0.06] active:scale-95',
+                  )}
+                >
+                  {option.color ? <CategoryDot color={option.color} className="size-2 shrink-0" /> : null}
+                  <span className="min-w-0 flex-1 truncate text-left">{option.name}</span>
+                  {selected ? <Check aria-hidden className="size-3.5 shrink-0" /> : null}
+                </button>
+              )
+            })}
+          </div>
+        </Collapsible>
+      </>
+    )
+  }
+
   // The fixed's section (`unify-fixed-charge-sheet` D2): what it repeats, then what can be done to it.
   function renderFixedSection(section: NonNullable<typeof fixed>) {
     const { definition } = section
@@ -784,6 +876,7 @@ export function EntrySheet<V>({
             </Collapsible>
           </>
         ) : null}
+        {section.cards && section.cards.length > 0 ? renderCardRow(section.cards) : null}
         {section.onStop ? (
           <>
             <div className="border-t border-border" />

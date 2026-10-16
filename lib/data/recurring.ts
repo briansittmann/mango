@@ -12,6 +12,8 @@ export type RecurringDefinition = {
   reminder: { active: boolean; daysBefore: number }
   /** `null` means "sin final". Non-null is an instalment plan: `done` out of `total`. */
   repetitions: { total: number; done: number } | null
+  /** The card it is charged to (`card-wallet`), or `null`. Always `null` on income. */
+  cardId: string | null
 }
 
 /** What `RecurringMutations.create` moves: an expense with its category, or income with none. */
@@ -50,6 +52,8 @@ export type RecurringDraft = {
  *   nothing else of it (`unify-fixed-charge-sheet` D4). Back to pending after its day, it stays
  *   pending on screen until something confirms it (`no_cobrado`, 0037).
  * - `setReminder` writes only the reminder setting: no charge, no other field (D5).
+ * - `setCard` writes only the expense definition's card, or none: no charge, no other field, in
+ *   every cycle (`add-card-wallet` D2).
  *
  * Three more act on the slot a definition holds in one cycle — `(movimiento_recurrente_id,
  * ciclo_mes)`, a soft-deleted row included — from a row of the entry sheet (`recurring-expenses`
@@ -72,6 +76,7 @@ export type RecurringMutations = {
   delete(definitionId: string): Promise<void>
   setCharged(definitionId: string, cycle: LocalDate, charged: boolean): Promise<void>
   setReminder(definitionId: string, reminder: RecurringDefinition['reminder']): Promise<void>
+  setCard(definitionId: string, cardId: string | null): Promise<void>
   editInCycle(definitionId: string, cycle: LocalDate, entry: SlotEntry, scope: 'only' | 'onward'): Promise<void>
   deleteInCycle(definitionId: string, cycle: LocalDate, scope: 'only' | 'onward'): Promise<void>
   restoreInCycle(definitionId: string, cycle: LocalDate): Promise<void>

@@ -111,6 +111,7 @@ export function ColorSwatchPicker({ value, onChange, labelledBy, disabled }: Col
           >
             <span
               aria-hidden
+              data-swatch={color}
               className={cn('size-7 rounded-full ring-1 ring-border', selected && 'ring-2 ring-foreground')}
               style={{ background: `var(--cat-${color})` }}
             />

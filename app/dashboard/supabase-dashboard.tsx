@@ -4,6 +4,7 @@ import { useMemo, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardTemplate } from '@/components/templates/dashboard-template'
 import { changeLanguage } from '@/app/actions/language'
+import { DUPLICATE_CARD_NAME, type CardMutations } from '@/lib/data/cards'
 import { DUPLICATE_CATEGORY_NAME, type CategoryMutations } from '@/lib/data/categories'
 import type { DashboardData } from '@/lib/data/dashboard'
 import type { ProfileMutations } from '@/lib/data/profile'
@@ -17,9 +18,12 @@ type SupabaseDashboardProps = {
   definitions: RecurringDefinition[]
 }
 
-async function unwrapDuplicateName<T>(result: Promise<{ ok: true; value: T } | { ok: false }>): Promise<T> {
+async function unwrapDuplicateName<T>(
+  result: Promise<{ ok: true; value: T } | { ok: false }>,
+  message = DUPLICATE_CATEGORY_NAME,
+): Promise<T> {
   const settled = await result
-  if (!settled.ok) throw new Error(DUPLICATE_CATEGORY_NAME)
+  if (!settled.ok) throw new Error(message)
   return settled.value
 }
 
@@ -29,6 +33,13 @@ const categories: CategoryMutations = {
   delete: actions.deleteCategory,
   setProgressVisible: actions.setCategoryProgressVisible,
   reorder: actions.reorderCategories,
+}
+
+const cards: CardMutations = {
+  create: (draft) => unwrapDuplicateName(actions.createCard(draft), DUPLICATE_CARD_NAME),
+  update: (cardId, draft) => unwrapDuplicateName(actions.updateCard(cardId, draft), DUPLICATE_CARD_NAME),
+  delete: actions.deleteCard,
+  setFixedCharges: actions.setCardFixedCharges,
 }
 
 /** The account sheet reaches the basics and the WhatsApp operations; the rest belongs to `/onboarding`. */
@@ -71,6 +82,7 @@ const mutations = {
     restore: actions.restoreSavingsMovement,
   },
   categories,
+  cards,
   recurring: {
     create: actions.createRecurring,
     update: actions.updateRecurring,
@@ -78,6 +90,7 @@ const mutations = {
     delete: actions.deleteRecurring,
     setCharged: actions.setRecurringCharged,
     setReminder: actions.setRecurringReminder,
+    setCard: actions.setRecurringCard,
     editInCycle: actions.editRecurringInCycle,
     deleteInCycle: actions.deleteRecurringInCycle,
     restoreInCycle: actions.restoreRecurringInCycle,

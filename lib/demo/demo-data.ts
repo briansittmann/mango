@@ -42,6 +42,8 @@ const NAMES = {
   ahorroMensual: { es: 'Ahorro mensual', en: 'Monthly savings' },
   bonoAhorro: { es: 'Bono ahorro', en: 'Savings bonus' },
   retiroEmergencia: { es: 'Retiro emergencia', en: 'Emergency withdrawal' },
+  debito: { es: 'Débito', en: 'Debit' },
+  credito: { es: 'Crédito', en: 'Credit' },
 } as const satisfies Record<string, Localized>
 
 function name(locale: Locale, key: keyof typeof NAMES): string {
@@ -60,13 +62,14 @@ const RECURRING_DEFINITIONS: {
   day: number
   expectedAmount: number
   repetitions?: { total: number; done: number }
+  cardId?: string
 }[] = [
-  { id: 'def-alquiler', nameKey: 'alquiler', tipo: 'gasto', categoryId: 'vivienda', day: 1, expectedAmount: 820 },
-  { id: 'def-internet', nameKey: 'internet', tipo: 'gasto', categoryId: 'vivienda', day: 3, expectedAmount: 45 },
-  { id: 'def-seguro', nameKey: 'seguro', tipo: 'gasto', categoryId: 'vivienda', day: 8, expectedAmount: 35, repetitions: { total: 10, done: 4 } },
+  { id: 'def-alquiler', nameKey: 'alquiler', tipo: 'gasto', categoryId: 'vivienda', day: 1, expectedAmount: 820, cardId: 'card-debito' },
+  { id: 'def-internet', nameKey: 'internet', tipo: 'gasto', categoryId: 'vivienda', day: 3, expectedAmount: 45, cardId: 'card-debito' },
+  { id: 'def-seguro', nameKey: 'seguro', tipo: 'gasto', categoryId: 'vivienda', day: 8, expectedAmount: 35, repetitions: { total: 10, done: 4 }, cardId: 'card-credito' },
   { id: 'def-parking', nameKey: 'parking', tipo: 'gasto', categoryId: 'transporte', day: 15, expectedAmount: 50 },
   { id: 'def-limpieza', nameKey: 'limpieza', tipo: 'gasto', categoryId: 'hogar', day: 20, expectedAmount: 35 },
-  { id: 'def-gimnasio', nameKey: 'gimnasio', tipo: 'gasto', categoryId: 'salud', day: 22, expectedAmount: 40 },
+  { id: 'def-gimnasio', nameKey: 'gimnasio', tipo: 'gasto', categoryId: 'salud', day: 22, expectedAmount: 40, cardId: 'card-credito' },
   { id: 'def-salario', nameKey: 'salario', tipo: 'ingreso', categoryId: null, day: 1, expectedAmount: 2400 },
 ]
 
@@ -81,6 +84,7 @@ export function buildDemoRecurringDefinitions(locale: Locale): RecurringDefiniti
     active: true,
     reminder: { active: false, daysBefore: 1 },
     repetitions: definition.repetitions ?? null,
+    cardId: definition.cardId ?? null,
   }))
 }
 
@@ -297,6 +301,11 @@ export function buildDemoData(locale: Locale): DashboardData {
     },
     expenses: { total: expensesTotal, groups },
     history,
+    // The two seed cards (`card-wallet` → *The demo's cards stay in memory*); their fixed charges are on the definitions.
+    cards: [
+      { id: 'card-debito', name: name(locale, 'debito'), color: 'azul_apagado' },
+      { id: 'card-credito', name: name(locale, 'credito'), color: 'violeta_metalico' },
+    ],
   }
 
   return deriveDemoData(

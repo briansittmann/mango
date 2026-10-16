@@ -68,6 +68,7 @@ function toDefinition(id: string, target: RecurringTarget, draft: RecurringDraft
     active: true,
     reminder: draft.reminder,
     repetitions: draft.repetitions != null ? { total: draft.repetitions, done: 0 } : null,
+    cardId: null,
   }
 }
 

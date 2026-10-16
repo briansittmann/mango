@@ -42,6 +42,7 @@ type MovimientoRecurrenteRow = {
   dias_antes: number
   repeticiones_totales: number | null
   repeticiones_insertadas: number
+  tarjeta_id: string | null
 }
 type TransaccionRow = {
   id: string
@@ -147,7 +148,7 @@ export async function resumenMensual(
   }
 
   const presupuestosQuery = client.from('presupuestos').select('categoria_id, monto, periodo').eq('usuario_id', usuario.id)
-  const [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores, movimientos, linked] = await Promise.all([
+  const [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores, movimientos, linked, tarjetas] = await Promise.all([
     client
       .from('categorias')
       .select('id, nombre, color, desde_ciclo, hasta_ciclo, mostrar_progreso')
@@ -159,7 +160,7 @@ export async function resumenMensual(
     client
       .from('movimientos_recurrentes')
       .select(
-        'id, nombre, monto_actual, tipo, categoria_id, dia_del_mes, activo, recordatorio_activo, dias_antes, repeticiones_totales, repeticiones_insertadas',
+        'id, nombre, monto_actual, tipo, categoria_id, dia_del_mes, activo, recordatorio_activo, dias_antes, repeticiones_totales, repeticiones_insertadas, tarjeta_id',
       )
       .eq('usuario_id', usuario.id)
       .order('orden')
@@ -200,8 +201,9 @@ export async function resumenMensual(
     // One existence check: whether the user holds any movement at all (the account sheet's warning).
     client.from('transacciones').select('usuario_id', { count: 'exact', head: true }).eq('usuario_id', usuario.id).is('borrado_en', null),
     whatsApp ? linkedChannel(client, 'whatsapp') : Promise.resolve(null),
+    client.from('tarjetas').select('id, nombre, color').eq('usuario_id', usuario.id).order('creada_en'),
   ])
-  for (const result of [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores, movimientos]) {
+  for (const result of [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores, movimientos, tarjetas]) {
     if (result?.error) throw result.error
   }
 
@@ -236,6 +238,7 @@ export async function resumenMensual(
       active: d.activo,
       reminder: { active: d.recordatorio_activo, daysBefore: d.dias_antes },
       repetitions: d.repeticiones_totales == null ? null : { total: d.repeticiones_totales, done: d.repeticiones_insertadas },
+      cardId: d.tarjeta_id,
     }))
 
   // A projected cycle's charges come from `proyectarCiclo` as pending rows with synthetic ids, and
@@ -444,6 +447,11 @@ export async function resumenMensual(
       },
       expenses: { total: expensesTotal, groups },
       history,
+      cards: ((tarjetas.data ?? []) as { id: string; nombre: string; color: CategoryColor }[]).map((t) => ({
+        id: t.id,
+        name: t.nombre,
+        color: t.color,
+      })),
     },
     definitions,
   }

@@ -116,6 +116,55 @@
   --cat-celeste: light-dark(#4F8FDC, #6BA6F0);
   --cat-turquesa: light-dark(#1FAEA5, #2FD0C5);
   --cat-verde_menta: light-dark(#23AE68, #3FD98A);
+  --cat-fucsia: light-dark(#C2188B, #E33BAA);
+  --cat-amarillo: light-dark(#C99A06, #F2C230);
+  --cat-marron: light-dark(#7A4E2D, #A0704A);
+  --cat-lila: light-dark(#9B7FD9, #BBA2F2);
+  /* The rainbow's resting hue, for anything that reads it outside the elements that animate it
+     (see the arcoíris rule at the end of the file). */
+  --cat-arcoiris: light-dark(oklch(0.6 0.19 300), oklch(0.72 0.17 300));
+
+  /* Card faces of the wallet (`add-card-wallet` D6): each palette colour mixed towards black, as far
+     as that colour needs for white text to pass 4.5:1 in both themes, sheen included (the lightest
+     colours go furthest). `to` is the gradient's dark end. */
+  --card-from-naranja_calido: color-mix(in oklch, var(--cat-naranja_calido) 63%, black);
+  --card-to-naranja_calido: color-mix(in oklch, var(--cat-naranja_calido) 38%, black);
+  --card-from-verde_profundo: color-mix(in oklch, var(--cat-verde_profundo) 75%, black);
+  --card-to-verde_profundo: color-mix(in oklch, var(--cat-verde_profundo) 45%, black);
+  --card-from-azul_apagado: color-mix(in oklch, var(--cat-azul_apagado) 69%, black);
+  --card-to-azul_apagado: color-mix(in oklch, var(--cat-azul_apagado) 41%, black);
+  --card-from-gris_calido: color-mix(in oklch, var(--cat-gris_calido) 64%, black);
+  --card-to-gris_calido: color-mix(in oklch, var(--cat-gris_calido) 38%, black);
+  --card-from-violeta_metalico: color-mix(in oklch, var(--cat-violeta_metalico) 71%, black);
+  --card-to-violeta_metalico: color-mix(in oklch, var(--cat-violeta_metalico) 43%, black);
+  --card-from-gris_oscuro: color-mix(in oklch, var(--cat-gris_oscuro) 80%, black);
+  --card-to-gris_oscuro: color-mix(in oklch, var(--cat-gris_oscuro) 48%, black);
+  --card-from-blanco: color-mix(in oklch, var(--cat-blanco) 45%, black);
+  --card-to-blanco: color-mix(in oklch, var(--cat-blanco) 27%, black);
+  --card-from-granate: color-mix(in oklch, var(--cat-granate) 80%, black);
+  --card-to-granate: color-mix(in oklch, var(--cat-granate) 48%, black);
+  --card-from-rojo: color-mix(in oklch, var(--cat-rojo) 74%, black);
+  --card-to-rojo: color-mix(in oklch, var(--cat-rojo) 44%, black);
+  --card-from-coral: color-mix(in oklch, var(--cat-coral) 64%, black);
+  --card-to-coral: color-mix(in oklch, var(--cat-coral) 38%, black);
+  --card-from-rosa: color-mix(in oklch, var(--cat-rosa) 57%, black);
+  --card-to-rosa: color-mix(in oklch, var(--cat-rosa) 34%, black);
+  --card-from-azul_electrico: color-mix(in oklch, var(--cat-azul_electrico) 80%, black);
+  --card-to-azul_electrico: color-mix(in oklch, var(--cat-azul_electrico) 48%, black);
+  --card-from-celeste: color-mix(in oklch, var(--cat-celeste) 61%, black);
+  --card-to-celeste: color-mix(in oklch, var(--cat-celeste) 37%, black);
+  --card-from-turquesa: color-mix(in oklch, var(--cat-turquesa) 56%, black);
+  --card-to-turquesa: color-mix(in oklch, var(--cat-turquesa) 34%, black);
+  --card-from-verde_menta: color-mix(in oklch, var(--cat-verde_menta) 55%, black);
+  --card-to-verde_menta: color-mix(in oklch, var(--cat-verde_menta) 33%, black);
+  --card-from-fucsia: color-mix(in oklch, var(--cat-fucsia) 69%, black);
+  --card-to-fucsia: color-mix(in oklch, var(--cat-fucsia) 41%, black);
+  --card-from-amarillo: color-mix(in oklch, var(--cat-amarillo) 52%, black);
+  --card-to-amarillo: color-mix(in oklch, var(--cat-amarillo) 31%, black);
+  --card-from-marron: color-mix(in oklch, var(--cat-marron) 75%, black);
+  --card-to-marron: color-mix(in oklch, var(--cat-marron) 45%, black);
+  --card-from-lila: color-mix(in oklch, var(--cat-lila) 56%, black);
+  --card-to-lila: color-mix(in oklch, var(--cat-lila) 34%, black);
 }
 
 :root[data-theme="light"] {
@@ -2058,5 +2107,147 @@ body {
   from {
     opacity: 0;
     translate: -16px 0;
+  }
+}
+
+/* A card of the wallet (`add-card-wallet` D6): drawn in CSS in the proportions of a payment card,
+   a gradient from its colour, a sheen across it, an inner rim and a two-layer shadow. No blur. */
+.wallet-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  aspect-ratio: 1.586;
+  border-radius: 18px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--card-from), var(--card-to));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.15),
+    0 2px 6px -2px var(--lift-shadow),
+    0 14px 28px -14px var(--lift-shadow);
+}
+/* The sheen: a soft diagonal light that slides with the tilt. Its peak stays at 8% white, the
+   amount the contrast of every face is measured with. */
+.wallet-card-sheen {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 30%, rgb(255 255 255 / 0.08) 50%, transparent 70%) 0% 50% / 250% 100% no-repeat;
+  background-position: var(--sheen-x, 30%) 50%;
+  transition: background-position 250ms var(--ease-out);
+}
+.wallet-card-chip {
+  width: 34px;
+  height: 25px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.38), rgb(255 255 255 / 0.14));
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.22);
+}
+
+/* The wallet's buttons: a mouse tilts and lifts a card (fine pointer only, so a tap never leaves it
+   tilted); a finger tilts the inner face instead (wallet-widget.tsx). The press is `pressable`'s
+   scale, kept in this rule because its `transition` would lose to the transform's. */
+.wallet-card-button {
+  display: block;
+  width: 100%;
+  border-radius: 18px;
+  -webkit-tap-highlight-color: transparent;
+  transform-origin: 50% 100%;
+  transition: transform 250ms var(--ease-out), scale 160ms var(--ease-out);
+}
+.wallet-card-button:active {
+  scale: 0.98;
+}
+.wallet-card-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+/* Every card after the first sits on the one above, leaving its 56px band in view. A percentage
+   margin is a share of the column's width, which is the card's width: height = width / 1.586. */
+.wallet-stack > * + * {
+  margin-top: calc(56px - 63.05%);
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .wallet-card-button:hover {
+    transform: perspective(800px) rotateX(4deg) rotateY(-6deg) translateY(-4px);
+  }
+  .wallet-card-button:hover .wallet-card-sheen {
+    --sheen-x: 70%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wallet-card-button {
+    transition: none;
+  }
+  .wallet-card-button:active {
+    scale: none;
+  }
+  .wallet-card-sheen {
+    transition: none;
+  }
+}
+
+/* Arcoíris, the palette's easter egg (`add-card-wallet`): a colour whose hue keeps turning, after
+   React Bits' GradientText border, done in CSS. The hue is a registered property animated on each
+   element that paints with it, so `var(--cat-arcoiris)` stays one colour wherever a category colour
+   goes (dots, borders, chart fills, `color-mix`) and every one of them cycles. Under reduced motion
+   it rests on violet. */
+@property --rainbow-hue {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 300;
+}
+@keyframes rainbow-hue {
+  to {
+    --rainbow-hue: 660;
+  }
+}
+[style*="cat-arcoiris"],
+[fill*="cat-arcoiris"],
+[data-wallet-card="arcoiris"] {
+  --cat-arcoiris: light-dark(oklch(0.6 0.19 var(--rainbow-hue)), oklch(0.72 0.17 var(--rainbow-hue)));
+  --card-from-arcoiris: oklch(0.42 0.15 var(--rainbow-hue));
+  --card-to-arcoiris: oklch(0.27 0.11 calc(var(--rainbow-hue) + 70));
+  /* Unregistered, so it inherits the resolved angle down to the card's ring (a pseudo-element). */
+  --rainbow-turn: calc(var(--rainbow-hue) * 1deg);
+  animation: rainbow-hue 8s linear infinite;
+}
+/* The rainbow card's edge: a conic sweep of the whole spectrum that turns with the hue. */
+.wallet-card[data-wallet-card="arcoiris"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 1.5px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--rainbow-turn, 0deg),
+    oklch(0.75 0.17 0),
+    oklch(0.75 0.17 90),
+    oklch(0.75 0.17 180),
+    oklch(0.75 0.17 270),
+    oklch(0.75 0.17 360)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+/* Its swatch shows the whole spectrum at once. */
+[data-swatch="arcoiris"] {
+  background: conic-gradient(
+    from calc(var(--rainbow-hue) * 1deg),
+    oklch(0.72 0.17 0),
+    oklch(0.72 0.17 90),
+    oklch(0.72 0.17 180),
+    oklch(0.72 0.17 270),
+    oklch(0.72 0.17 360)
+  ) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  [style*="cat-arcoiris"],
+  [fill*="cat-arcoiris"],
+  [data-wallet-card="arcoiris"] {
+    animation: none;
   }
 }

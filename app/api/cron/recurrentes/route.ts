@@ -134,6 +134,8 @@ async function runForUser(client: ReturnType<typeof supabaseAdmin>, usuario: Usu
         reminder: { active: d.recordatorio_activo, daysBefore: d.dias_antes },
         repetitions:
           d.repeticiones_totales == null ? null : { total: d.repeticiones_totales, done: d.repeticiones_insertadas },
+        // The card plays no part in generating charges; the cron does not read it.
+        cardId: null,
       }))
 
     const { charges } = proyectarCiclo({

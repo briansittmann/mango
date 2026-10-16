@@ -241,7 +241,12 @@
       "azul_electrico": "Electric blue",
       "celeste": "Sky blue",
       "turquesa": "Turquoise",
-      "verde_menta": "Mint green"
+      "verde_menta": "Mint green",
+      "fucsia": "Fuchsia",
+      "amarillo": "Yellow",
+      "marron": "Brown",
+      "lila": "Lilac",
+      "arcoiris": "Rainbow"
     },
     "alcanceEliminar": "How far",
     "vuelveElMesQueViene": "It comes back next month.",
@@ -648,5 +653,34 @@
     "sinIngresos": "No income entered this month",
     "sinAhorro": "No savings movements this month",
     "fila": "{nombre}, {tipo}, {dia}, {monto}"
+  },
+  "tarjetas": {
+    "titulo": "Cards",
+    "vacio": "Note which card pays each fixed charge",
+    "anadir": "Add card",
+    "gastosFijos": "{n, plural, =0 {No fixed charges} one {# fixed charge} other {# fixed charges}}",
+    "etiquetaTarjeta": "{nombre}, {monto} this month",
+    "nuevaTarjeta": "New card",
+    "cancelar": "Cancel",
+    "guardar": "Save",
+    "nombre": "Name",
+    "color": "Color",
+    "nombreDuplicado": "You already have a card with this name",
+    "gastosFijosTitulo": "Fixed charges",
+    "sinFijos": "You have no active fixed charges.",
+    "enTarjeta": "On {tarjeta}",
+    "eliminarTarjeta": "Delete card",
+    "confirmarEliminar": "Delete the card “{tarjeta}”?",
+    "quedanSinTarjeta": "{n, plural, one {{nombres} is left without a card.} other {{nombres} are left without a card.}}",
+    "fijosQuedanSinTarjeta": "{n} fixed charges are left without a card.",
+    "eliminar": "Delete",
+    "errorGuardar": "Couldn't save. Try again.",
+    "errorEliminar": "Couldn't delete the card. Try again.",
+    "tarjeta": "Card",
+    "sinTarjeta": "No card",
+    "elegirTarjeta": "Card: {tarjeta}. Change",
+    "tarjetaAnadida": "Card added",
+    "cambiosGuardados": "Changes saved",
+    "tarjetaEliminada": "Card deleted"
   }
 }

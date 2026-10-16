@@ -5,6 +5,7 @@ import type { ProfileMutations, WhatsAppState } from './profile'
 import type { RecurringMutations } from './recurring'
 import type { IncomeEntry, IncomeMutations } from './income'
 import type { SavingsMutations } from './savings'
+import type { Card, CardMutations } from './cards'
 
 // = check in supabase/migrations/0004_categorias.sql
 export type CategoryColor =
@@ -23,6 +24,11 @@ export type CategoryColor =
   | 'celeste'
   | 'turquesa'
   | 'verde_menta'
+  | 'fucsia'
+  | 'amarillo'
+  | 'marron'
+  | 'lila'
+  | 'arcoiris'
 
 export type BudgetStatus = {
   amount: number
@@ -71,14 +77,14 @@ export type ExpenseGroup = {
 }
 
 /** The chart widgets of the dashboard, by the id the stored order names (`desktop-shell` → *Widget order is the user's*). */
-export type WidgetId = 'weekly' | 'calendar' | 'monthly' | 'distribution'
+export type WidgetId = 'weekly' | 'calendar' | 'monthly' | 'distribution' | 'wallet'
 
-export const DEFAULT_WIDGET_ORDER: readonly WidgetId[] = ['weekly', 'calendar', 'monthly', 'distribution']
+export const DEFAULT_WIDGET_ORDER: readonly WidgetId[] = ['weekly', 'calendar', 'monthly', 'distribution', 'wallet']
 
 /**
  * A stored order made valid: unknown ids dropped, duplicates collapsed to their first position,
  * missing widgets appended in the default order; null or undefined is the default order. Always
- * returns a fresh array of the four ids.
+ * returns a fresh array of every id.
  */
 export function normalizeWidgetOrder(stored: readonly string[] | null | undefined): WidgetId[] {
   const known = new Set<string>(DEFAULT_WIDGET_ORDER)
@@ -144,6 +150,8 @@ export type DashboardData = {
   }
   expenses: { total: number; groups: ExpenseGroup[] }
   history: { month: string; total: number }[]
+  /** The user's cards in creation order (`card-wallet`); not tied to a cycle. */
+  cards: Card[]
 }
 
 export type DashboardActions = Partial<{
@@ -156,6 +164,8 @@ export type DashboardActions = Partial<{
   recurring: RecurringMutations
   income: IncomeMutations
   savings: SavingsMutations
+  /** The card sheet's operations (`card-wallet`); without them the wallet is read-only. */
+  cards: CardMutations
   /** The account sheet's operations (`dashboard-ui` → *Account avatar and menu*); the demo supplies none. */
   profile: ProfileMutations
   /**

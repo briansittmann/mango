@@ -58,13 +58,16 @@ function foldName(name: string): string {
 /** The palette's neutrals: a border in them reads as no colour, so they come last. */
 const NEUTRAL_COLORS: CategoryColor[] = ['gris_calido', 'gris_oscuro', 'blanco']
 
-const VIVID_COLORS = CATEGORY_COLORS.filter((color) => !NEUTRAL_COLORS.includes(color))
+// Arcoíris is chosen by hand only: no suggestion and no random pick wears it.
+const PICKABLE_COLORS = CATEGORY_COLORS.filter((color) => color !== 'arcoiris')
+
+const VIVID_COLORS = PICKABLE_COLORS.filter((color) => !NEUTRAL_COLORS.includes(color))
 
 /** A colour no category uses yet, picked at random among the vivid ones first; the whole palette once all are taken. */
 function randomColor(categories: DraftCategory[]): CategoryColor {
-  const free = CATEGORY_COLORS.filter((color) => !categories.some((category) => category.color === color))
+  const free = PICKABLE_COLORS.filter((color) => !categories.some((category) => category.color === color))
   const vivid = free.filter((color) => !NEUTRAL_COLORS.includes(color))
-  const pool = vivid.length > 0 ? vivid : free.length > 0 ? free : CATEGORY_COLORS
+  const pool = vivid.length > 0 ? vivid : free.length > 0 ? free : PICKABLE_COLORS
   return pool[Math.floor(Math.random() * pool.length)]
 }
 

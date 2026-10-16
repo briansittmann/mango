@@ -5,7 +5,7 @@ import { goToWeekOne } from './widgets-helpers'
 
 // `desktop-shell` → *Widget order is the user's* and `dashboard-data` → the widget order, on `/demo`.
 
-const DEFAULT = ['weekly', 'calendar', 'monthly', 'distribution']
+const DEFAULT = ['weekly', 'calendar', 'monthly', 'distribution', 'wallet']
 const status = (page) => page.locator('div[role="status"].sr-only')
 
 /** Drags `id`'s grip to 40px above `targetSelector`'s top edge, measured once the grip is in view, and keeps the button down. */
@@ -27,28 +27,29 @@ async function dragGrip(page, id, targetSelector) {
 
 test('grips name their widget and position; Down moves the calendar to third, keeps focus and announces it', async ({ page }) => {
   await loadDesktop(page)
-  await expect(page.locator('[data-widget-grip]')).toHaveText(['', '', '', ''])
+  await expect(page.locator('[data-widget-grip]')).toHaveText(['', '', '', '', ''])
   const labels = await page.locator('[data-widget-grip]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))
   expect(labels).toEqual([
-    'Mover Top gastos de la semana, posición 1 de 4',
-    'Mover Gasto por día, posición 2 de 4',
-    'Mover Gasto mensual, posición 3 de 4',
-    'Mover Distribución, posición 4 de 4',
+    'Mover Top gastos de la semana, posición 1 de 5',
+    'Mover Gasto por día, posición 2 de 5',
+    'Mover Gasto mensual, posición 3 de 5',
+    'Mover Distribución, posición 4 de 5',
+    'Mover Tarjetas, posición 5 de 5',
   ])
   const grip = page.locator('[data-widget-grip="calendar"]')
   await grip.scrollIntoViewIfNeeded()
   await grip.focus()
   await page.keyboard.press('ArrowDown')
   await page.waitForTimeout(400)
-  expect(await widgetOrder(page)).toEqual(['weekly', 'monthly', 'calendar', 'distribution'])
+  expect(await widgetOrder(page)).toEqual(['weekly', 'monthly', 'calendar', 'distribution', 'wallet'])
   expect(await page.evaluate(() => document.activeElement?.getAttribute('data-widget-grip'))).toBe('calendar')
-  await expect(grip).toHaveAttribute('aria-label', 'Mover Gasto por día, posición 3 de 4')
-  await expect(status(page)).toHaveText('Gasto por día movido a la posición 3 de 4')
+  await expect(grip).toHaveAttribute('aria-label', 'Mover Gasto por día, posición 3 de 5')
+  await expect(status(page)).toHaveText('Gasto por día movido a la posición 3 de 5')
   // The ends do nothing.
   await page.locator('[data-widget-grip="weekly"]').focus()
   await page.keyboard.press('ArrowUp')
   await page.waitForTimeout(200)
-  expect(await widgetOrder(page)).toEqual(['weekly', 'monthly', 'calendar', 'distribution'])
+  expect(await widgetOrder(page)).toEqual(['weekly', 'monthly', 'calendar', 'distribution', 'wallet'])
 })
 
 test('the donut dragged by its grip above the first widget lands first; the rest keep their order', async ({ page }) => {
@@ -59,25 +60,25 @@ test('the donut dragged by its grip above the first widget lands first; the rest
   await expect(page.locator('[data-held]')).toHaveCount(1)
   await page.mouse.up()
   await page.waitForTimeout(600)
-  expect(await widgetOrder(page)).toEqual(['distribution', 'weekly', 'calendar', 'monthly'])
+  expect(await widgetOrder(page)).toEqual(['distribution', 'weekly', 'calendar', 'monthly', 'wallet'])
   await expect(page.locator('[data-held]')).toHaveCount(0)
 })
 
-test('the order survives a cycle switch and a projection shows only the donut, first', async ({ page }) => {
+test('the order survives a cycle switch and a projection shows only the donut and the wallet, in order', async ({ page }) => {
   await loadDesktop(page)
   const grip = page.locator('[data-widget-grip="distribution"]')
   await grip.scrollIntoViewIfNeeded()
   await grip.focus()
   for (let i = 0; i < 3; i += 1) await page.keyboard.press('ArrowUp')
   await page.waitForTimeout(400)
-  expect(await widgetOrder(page)).toEqual(['distribution', 'weekly', 'calendar', 'monthly'])
+  expect(await widgetOrder(page)).toEqual(['distribution', 'weekly', 'calendar', 'monthly', 'wallet'])
   await page.locator('[data-desktop-top-bar]').getByRole('button', { name: 'Ciclo siguiente' }).click()
   await page.waitForTimeout(800)
-  expect(await widgetOrder(page)).toEqual(['distribution'])
+  expect(await widgetOrder(page)).toEqual(['distribution', 'wallet'])
   await expect(page.locator('[data-widget-grip]')).toHaveCount(0)
   await page.locator('[data-desktop-top-bar]').getByRole('button', { name: 'Ciclo anterior' }).click()
   await page.waitForTimeout(800)
-  expect(await widgetOrder(page)).toEqual(['distribution', 'weekly', 'calendar', 'monthly'])
+  expect(await widgetOrder(page)).toEqual(['distribution', 'weekly', 'calendar', 'monthly', 'wallet'])
 })
 
 test('a rejected save returns the donut and shows the status message', async ({ page }) => {

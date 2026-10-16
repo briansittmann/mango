@@ -704,7 +704,7 @@ Es la razón por la que no hace falta tutorial ni cartel: la diferencia entre fi
  
 Lo que **no** va en la fila: medio de pago y el resto de la configuración. Eso vive en la hoja de la definición, que se abre al tocar la fila en "Próximos cobros" (sección 7), no en la fila misma.
  
-> **Pendiente de decidir:** el *medio de pago* (con qué tarjeta se paga cada fijo) **no está en el esquema**. Es un campo nuevo en `gastos_fijos` si se quiere.
+> **Decidido (add-card-wallet, 2026-10-16):** el *medio de pago* es una **tarjeta**: un nombre y un color de la paleta de categorías, sin número, dígitos, banco ni red (tabla `tarjetas`, migración `0038`). La tarjeta es un **campo de la definición** (`movimientos_recurrentes.tarjeta_id`, null = sin tarjeta), no de cada cargo: vale en todos los ciclos y no pregunta "Solo este mes / Desde este mes", como el recordatorio. Solo gastos fijos; un ingreso fijo no lleva tarjeta (check). Se asigna desde la fila "Tarjeta" de la hoja del fijo o desde la lista de la hoja de la tarjeta. Borrar una tarjeta deja sus fijos sin tarjeta (`on delete set null (tarjeta_id)`). El widget "Tarjetas" muestra por tarjeta el **total comprometido del ciclo mostrado**: la suma de las filas de fijos de ese ciclo que la llevan (cobradas, pendientes y proyectadas, cada una a su monto), calculada en el cliente (`committedByCard`). Consecuencia aceptada: los ciclos pasados siguen la asignación de hoy. Una tarjeta en los gastos puntuales (`transacciones.tarjeta_id`) queda para más adelante.
  
 ### Reordenar arrastrando *(fase 3)*
  

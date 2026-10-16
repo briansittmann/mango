@@ -39,6 +39,7 @@ import { BackToTop } from '@/components/organisms/back-to-top'
 import { AccountSheet } from '@/components/organisms/account-sheet'
 import { CategoryCard } from '@/components/organisms/category-card'
 import { CategoryPieChart } from '@/components/organisms/category-pie-chart'
+import { CardSheet } from '@/components/organisms/card-sheet'
 import { CategorySheet } from '@/components/organisms/category-sheet'
 import { DesktopSidebar, type SidebarEntry } from '@/components/organisms/desktop-sidebar'
 import { DesktopTopBar } from '@/components/organisms/desktop-top-bar'
@@ -52,12 +53,16 @@ import { SummaryGroup, type SummaryGroupItem } from '@/components/organisms/summ
 import { UpcomingChargesCard } from '@/components/organisms/upcoming-charges-card'
 import { MovementsCard } from '@/components/organisms/movements-card'
 import { WeeklyTopChart } from '@/components/organisms/weekly-top-chart'
+import { WalletWidget } from '@/components/organisms/wallet-widget'
 import { WidgetList } from '@/components/organisms/widget-list'
 import { AnimatedAmount } from '@/components/ui/counter/animated-amount'
 import { AnimatedContent } from '@/components/ui/animated-content'
 import { buildCycleCsv, downloadCsv } from '@/lib/csv'
 import type { DashboardActions, DashboardData, Expense, ExpenseGroup, WidgetId } from '@/lib/data/dashboard'
 import type { CategoryDraft, CategoryUpdateTarget } from '@/lib/data/categories'
+// A pure function over the rows the template already holds, not data access (`add-card-wallet` D4).
+// eslint-disable-next-line @typescript-eslint/no-restricted-imports
+import { committedByCard, type Card } from '@/lib/data/cards'
 
 gsap.registerPlugin(ScrollTrigger, Flip)
 import type { ExpenseDraft } from '@/lib/data/expenses'
@@ -183,6 +188,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   const tEscritorio = useTranslations('escritorio')
   const tMovimientos = useTranslations('movimientos')
   const tGraficos = useTranslations('graficos')
+  const tTarjetas = useTranslations('tarjetas')
   const format = useFormatter()
   const { money } = useAmountFormatter()
   const [openIds, setOpenIds] = useState<Set<string>>(new Set())
@@ -201,6 +207,8 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   const chosenCategoryRef = useRef<string | null>(null)
   // What opened the category and definition sheets: their popover anchor from `sm` to `lg` (D5).
   const categoryOpenerRef = useRef<HTMLElement | null>(null)
+  const cardOpenerRef = useRef<HTMLElement | null>(null)
+  const [cardSheet, setCardSheet] = useState<{ open: boolean; card: Card | null }>({ open: false, card: null })
   // The calendar's day detail; the date stays while the sheet is leaving.
   const [dayDetail, setDayDetail] = useState({ open: false, date: data.cycle.today })
   // The last summary panel opened, kept while the side panel is leaving.
@@ -308,6 +316,11 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
     categoryOpenerRef.current =
       document.querySelector<HTMLElement>(`[data-category-options="${group.id}"]`) ?? (document.activeElement as HTMLElement | null)
     setCategorySheet({ open: true, target: { mode: 'edit', group } })
+  }
+
+  function openCardSheet(card: Card | null, opener: HTMLElement) {
+    cardOpenerRef.current = opener
+    setCardSheet({ open: true, card })
   }
 
   function openCreateCategorySheet() {
@@ -890,7 +903,15 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       slotChanged,
       reminder,
       charged,
-    }: { scope: Scope | null; categoryId: string | null; slotChanged: boolean; reminder: RecurringDefinition['reminder'] | null; charged: boolean | null },
+      card,
+    }: {
+      scope: Scope | null
+      categoryId: string | null
+      slotChanged: boolean
+      reminder: RecurringDefinition['reminder'] | null
+      charged: boolean | null
+      card?: string | null
+    },
   ) {
     if (!sheet.target || sheet.target.kind === 'savings') return
     const definitionId =
@@ -912,12 +933,14 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
         await actions.recurring.setCharged(definitionId, cycleStart, finalCharged!)
       }
       if (reminder) await actions.recurring.setReminder(definitionId, reminder)
+      // The card belongs to the definition, in every cycle: written last, after this month's values.
+      if (card !== undefined) await actions.recurring.setCard(definitionId, card)
       setSheet((prev) => ({ ...prev, open: false }))
       const name = sheet.target.kind === 'expense' && sheet.target.mode === 'edit' ? sheet.target.expense.name : ''
       setStatusMessage(
         slotChanged && scope === 'onward'
           ? tHojaGasto('cambiosDesde', { mes: monthName })
-          : charged != null && !slotChanged && !reminder
+          : charged != null && !slotChanged && !reminder && card === undefined
             ? tHojaGasto(charged ? 'marcadoCobrado' : 'marcadoPendiente', { nombre: name })
             : tHojaGasto('cambiosGuardados'),
       )
@@ -1055,6 +1078,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
           charged: currentCycle ? editedFixed.charged : undefined,
           reminder: editedFixed.expense,
           onStop: editedDefinition.active ? () => handleStopDefinition(editedDefinition.id, editedFixed.name) : undefined,
+          cards: editedFixed.expense ? data.cards : undefined,
         }
       : undefined
   // A row with no definition may become fixed in the cycle in progress; any create may (D7).
@@ -1333,14 +1357,16 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
     { id: SECTION_MOVEMENTS, label: tMovimientos('titulo') },
   ]
 
-  // The widgets in the user's order; a projection keeps only the donut, in place (D6).
+  const committedCards = useMemo(() => committedByCard(data.expenses.groups, definitions), [data.expenses.groups, definitions])
+  // The widgets in the user's order; a projection keeps only the donut and the wallet, in place (D6).
   const widgetOrder = displayedWidgetOrder ?? data.user.widgetOrder
-  const visibleWidgets = projected ? widgetOrder.filter((id) => id === 'distribution') : widgetOrder
+  const visibleWidgets = projected ? widgetOrder.filter((id) => id === 'distribution' || id === 'wallet') : widgetOrder
   const widgetNames: Record<WidgetId, string> = {
     weekly: tGraficos('topSemana'),
     calendar: tGraficos('gastoPorDia'),
     monthly: tGraficos('monthlySpend'),
     distribution: tGraficos('distribution'),
+    wallet: tTarjetas('titulo'),
   }
 
   async function saveWidgetOrder(next: WidgetId[]) {
@@ -1406,6 +1432,19 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
             <CategoryPieChart groups={data.expenses.groups} total={data.expenses.total} currency={currency} onSelectCategory={scrollToCategory} trailing={grip} />
           </AnimatedContent>
         )
+      case 'wallet':
+        return (
+          <AnimatedContent threshold={0.2} distance={24} duration={0.3} delay={projected ? 0.05 : 0.2}>
+            <WalletWidget
+              cards={data.cards}
+              committed={committedCards}
+              currency={currency}
+              onOpen={actions.cards ? (card, opener) => openCardSheet(card, opener) : undefined}
+              onAdd={actions.cards ? (opener) => openCardSheet(null, opener) : undefined}
+              trailing={grip}
+            />
+          </AnimatedContent>
+        )
     }
   }
 
@@ -1414,7 +1453,14 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   // Under a panel's scrim, the account menu or reorder mode, the floating shell drops its blur so
   // no two translucent materials overlap (design-system → *Translucent materials*).
   const pushedBack =
-    reordering || accountMenuOpen || accountSheetOpen || sheet.open || categorySheet.open || summaryPanelOpen || dayDetail.open
+    reordering ||
+    accountMenuOpen ||
+    accountSheetOpen ||
+    sheet.open ||
+    categorySheet.open ||
+    cardSheet.open ||
+    summaryPanelOpen ||
+    dayDetail.open
 
   // The income row the panel's swipe hint plays on: the first one that swipes.
   const firstSwipeableIncomeId = actions.income
@@ -1989,7 +2035,8 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
           order={visibleWidgets}
           names={widgetNames}
           render={renderWidget}
-          onOrderChange={desktop && actions.setWidgetOrder ? handleWidgetOrder : undefined}
+          // A projection shows a subset of the widgets: moving one there would store a partial order.
+          onOrderChange={desktop && !projected && actions.setWidgetOrder ? handleWidgetOrder : undefined}
           gripLabel={(nombre, posicion, total) => tEscritorio('moverWidget', { nombre, posicion, total })}
         />
       </div>
@@ -2140,6 +2187,36 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
         }}
         projected={projected}
       />
+      {actions.cards ? (
+        <CardSheet
+          open={cardSheet.open}
+          onOpenChange={(open) => setCardSheet((prev) => ({ ...prev, open }))}
+          opener={cardOpenerRef}
+          card={cardSheet.card}
+          cards={data.cards}
+          definitions={definitions}
+          currency={currency}
+          initialColor={CATEGORY_COLORS.find((color) => !data.cards.some((card) => card.color === color)) ?? CATEGORY_COLORS[0]}
+          committedFor={(ids) =>
+            committedByCard(
+              data.expenses.groups,
+              definitions.map((definition) => ({ id: definition.id, cardId: ids.has(definition.id) ? 'preview' : null })),
+            ).get('preview') ?? { total: 0, count: 0 }
+          }
+          onCreate={actions.cards.create}
+          onUpdate={actions.cards.update}
+          onSetFixedCharges={actions.cards.setFixedCharges}
+          onDelete={async (cardId) => {
+            await actions.cards!.delete(cardId)
+            setCardSheet((prev) => ({ ...prev, open: false }))
+            setStatusMessage(tTarjetas('tarjetaEliminada'))
+          }}
+          onSaved={(created) => {
+            setCardSheet((prev) => ({ ...prev, open: false }))
+            setStatusMessage(tTarjetas(created ? 'tarjetaAnadida' : 'cambiosGuardados'))
+          }}
+        />
+      ) : null}
       <UndoToast />
       <div role="status" className="sr-only">
         {statusMessage}

@@ -8,6 +8,7 @@ import {
   type CategoryDraft,
   type CategoryUpdateTarget,
 } from "@/lib/data/categories";
+import { DUPLICATE_CARD_NAME, type CardDraft } from "@/lib/data/cards";
 import type { WidgetId } from "@/lib/data/dashboard";
 import type { ExpenseDraft, LocalDate } from "@/lib/data/expenses";
 import type { IncomeDraft } from "@/lib/data/income";
@@ -15,6 +16,7 @@ import { PROFILE_ERRORS, validateBasics, type ProfileBasics } from "@/lib/data/p
 import { createSupabaseProfileMutations } from "@/lib/data/supabase/profile";
 import type { RecurringDefinition, RecurringDraft, RecurringTarget, SlotEntry } from "@/lib/data/recurring";
 import type { SavingsMovementDraft } from "@/lib/data/savings";
+import { createSupabaseCardMutations } from "@/lib/data/supabase/cards";
 import { createSupabaseCategoryMutations } from "@/lib/data/supabase/categories";
 import type { DataContext } from "@/lib/data/supabase/context";
 import { createSupabaseExpenseMutations } from "@/lib/data/supabase/expenses";
@@ -49,7 +51,7 @@ async function catchDuplicateName<T>(operation: () => Promise<T>): Promise<{ ok:
   try {
     return { ok: true, value: await operation() };
   } catch (error) {
-    if (error instanceof Error && error.message === DUPLICATE_CATEGORY_NAME) return { ok: false };
+    if (error instanceof Error && (error.message === DUPLICATE_CATEGORY_NAME || error.message === DUPLICATE_CARD_NAME)) return { ok: false };
     throw error;
   }
 }
@@ -110,6 +112,19 @@ export async function reorderCategories(categoryIds: string[]) {
   await run((ctx) => createSupabaseCategoryMutations(ctx).reorder(categoryIds));
 }
 
+export async function createCard(draft: CardDraft) {
+  return catchDuplicateName(() => run((ctx) => createSupabaseCardMutations(ctx).create(draft)));
+}
+export async function updateCard(cardId: string, draft: CardDraft) {
+  return catchDuplicateName(() => run((ctx) => createSupabaseCardMutations(ctx).update(cardId, draft)));
+}
+export async function deleteCard(cardId: string) {
+  await run((ctx) => createSupabaseCardMutations(ctx).delete(cardId));
+}
+export async function setCardFixedCharges(cardId: string, definitionIds: string[]) {
+  await run((ctx) => createSupabaseCardMutations(ctx).setFixedCharges(cardId, definitionIds));
+}
+
 export async function createRecurring(target: RecurringTarget, draft: RecurringDraft) {
   await run((ctx) => createSupabaseRecurringMutations(ctx).create(target, draft));
 }
@@ -127,6 +142,9 @@ export async function setRecurringCharged(definitionId: string, cycle: LocalDate
 }
 export async function setRecurringReminder(definitionId: string, reminder: RecurringDefinition["reminder"]) {
   await run((ctx) => createSupabaseRecurringMutations(ctx).setReminder(definitionId, reminder));
+}
+export async function setRecurringCard(definitionId: string, cardId: string | null) {
+  await run((ctx) => createSupabaseRecurringMutations(ctx).setCard(definitionId, cardId));
 }
 export async function editRecurringInCycle(definitionId: string, cycle: LocalDate, entry: SlotEntry, scope: "only" | "onward") {
   await run((ctx) => createSupabaseRecurringMutations(ctx).editInCycle(definitionId, cycle, entry, scope));

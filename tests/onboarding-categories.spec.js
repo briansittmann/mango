@@ -15,18 +15,22 @@ function suggestions(page) {
 }
 
 const PALETTE = [
-  'granate', 'rojo', 'coral', 'rosa', 'naranja_calido', 'violeta_metalico', 'azul_electrico', 'azul_apagado',
-  'celeste', 'turquesa', 'verde_menta', 'verde_profundo', 'gris_calido', 'gris_oscuro', 'blanco',
+  'granate', 'rojo', 'coral', 'rosa', 'fucsia', 'naranja_calido', 'amarillo', 'marron', 'violeta_metalico', 'lila',
+  'azul_electrico', 'azul_apagado', 'celeste', 'turquesa', 'verde_menta', 'verde_profundo', 'gris_calido', 'gris_oscuro',
+  'blanco', 'arcoiris',
 ]
+// The vivid ones: neither the three neutrals nor the rainbow, which is picked by hand only.
+const VIVID = PALETTE.slice(0, 16)
 
 test('a suggestion hands its colour to the category it becomes, and leaves the chips', async ({ page }) => {
   await page.goto('/demo/onboarding?paso=3')
   await expect(list(page)).toHaveCount(0)
   // Every chip wears a distinct vivid colour on its border.
+  await expect(suggestions(page).getByRole('button')).toHaveCount(8)
   const chipColours = await suggestions(page).getByRole('button').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-chip-color')))
   expect(chipColours).toHaveLength(8)
   expect(new Set(chipColours).size).toBe(8)
-  for (const colour of chipColours) expect(PALETTE.slice(0, 12)).toContain(colour)
+  for (const colour of chipColours) expect(VIVID).toContain(colour)
   const comidaColour = await suggestions(page).getByRole('button', { name: 'Comida', exact: true }).getAttribute('data-chip-color')
 
   await takeChip(page, 'Comida')

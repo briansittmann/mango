@@ -83,8 +83,8 @@ export function initialDemoOnboardingState({ step, seed, country, format, name, 
       { id: comida, name: 'Comida', color: 'rojo' },
     ],
     definitions: [
-      { id: nextId('recurring'), name: 'Sueldo', expectedAmount: 2000, tipo: 'ingreso', categoryId: null, day: 1, active: true, reminder: { active: false, daysBefore: 0 }, repetitions: null },
-      { id: nextId('recurring'), name: 'Alquiler', expectedAmount: 820, tipo: 'gasto', categoryId: vivienda, day: 1, active: true, reminder: { active: false, daysBefore: 0 }, repetitions: null },
+      { id: nextId('recurring'), name: 'Sueldo', expectedAmount: 2000, tipo: 'ingreso', categoryId: null, day: 1, active: true, reminder: { active: false, daysBefore: 0 }, repetitions: null, cardId: null },
+      { id: nextId('recurring'), name: 'Alquiler', expectedAmount: 820, tipo: 'gasto', categoryId: vivienda, day: 1, active: true, reminder: { active: false, daysBefore: 0 }, repetitions: null, cardId: null },
     ],
     budgets: {},
     whatsapp,
@@ -257,6 +257,7 @@ export function createDemoOnboardingActions(store: DemoOnboardingStore): Onboard
               active: true,
               reminder: draft.reminder,
               repetitions: draft.repetitions == null ? null : { total: draft.repetitions, done: 0 },
+              cardId: null,
             },
           ],
         }))

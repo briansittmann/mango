@@ -15,10 +15,11 @@ type MovimientoRecurrenteRow = {
   dias_antes: number
   repeticiones_totales: number | null
   repeticiones_insertadas: number
+  tarjeta_id: string | null
 }
 
 export const DEFINITION_COLUMNS =
-  'id, nombre, monto_actual, tipo, categoria_id, dia_del_mes, activo, recordatorio_activo, dias_antes, repeticiones_totales, repeticiones_insertadas'
+  'id, nombre, monto_actual, tipo, categoria_id, dia_del_mes, activo, recordatorio_activo, dias_antes, repeticiones_totales, repeticiones_insertadas, tarjeta_id'
 
 export function toDefinition(d: MovimientoRecurrenteRow): RecurringDefinition {
   return {
@@ -31,6 +32,7 @@ export function toDefinition(d: MovimientoRecurrenteRow): RecurringDefinition {
     active: d.activo,
     reminder: { active: d.recordatorio_activo, daysBefore: d.dias_antes },
     repetitions: d.repeticiones_totales == null ? null : { total: d.repeticiones_totales, done: d.repeticiones_insertadas },
+    cardId: d.tarjeta_id,
   }
 }
 
