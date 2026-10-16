@@ -100,7 +100,7 @@ const mutations = {
 /** `/dashboard`'s mount of the shared template (D14): same shape as `DemoDashboard`, server actions as the data source. */
 export function SupabaseDashboard({ data, definitions }: SupabaseDashboardProps) {
   const router = useRouter()
-  const charges = useMemo(() => selectUpcomingCharges(data.expenses.groups, definitions), [data, definitions])
+  const charges = useMemo(() => selectUpcomingCharges(data.expenses.groups, definitions, data.cards), [data, definitions])
   const month = data.cycle.month
   // The new month's data comes from the server; the transition's pending flag spins the month name.
   const [cycleLoading, startCycleTransition] = useTransition()

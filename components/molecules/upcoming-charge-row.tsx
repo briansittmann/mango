@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react'
 import { Fragment } from 'react'
+import { CardThumb } from '@/components/atoms/card-thumb'
 import { Money } from '@/components/atoms/money'
 import type { CategoryColor } from '@/lib/data/dashboard'
 import { cn } from '@/lib/utils'
@@ -7,13 +8,15 @@ import { cn } from '@/lib/utils'
 type UpcomingChargeRowProps = {
   day: number
   name: string
-  /** The muted line's parts: the category's name, then "esperado X" and "4 de 10" when they apply. */
+  /** The muted line's parts: the category's name, then the card's name, "esperado X" and "4 de 10" when they apply. */
   details: string[]
   amount: number
   currency: string
   color: CategoryColor
+  /** The colour of the card the charge leaves from; draws its thumbnail left of the amount. */
+  cardColor?: CategoryColor | null
   charged: boolean
-  /** The full accessible name: name, day, category, amount, state, progress and expected amount. */
+  /** The full accessible name: name, day, category, card, amount, state, progress and expected amount. */
   label: string
   onActivate?: () => void
   first?: boolean
@@ -24,7 +27,7 @@ type UpcomingChargeRowProps = {
  * in the geometry of a "Movimientos" row (design D1–D4): the day on a mark tinted with the category,
  * a check badge once taken, the name over a muted line, and a flat amount.
  */
-export function UpcomingChargeRow({ day, name, details, amount, currency, color, charged, label, onActivate, first }: UpcomingChargeRowProps) {
+export function UpcomingChargeRow({ day, name, details, amount, currency, color, cardColor, charged, label, onActivate, first }: UpcomingChargeRowProps) {
   return (
     <button
       type="button"
@@ -66,8 +69,10 @@ export function UpcomingChargeRow({ day, name, details, amount, currency, color,
           ))}
         </span>
       </span>
-      {/* The "Movimientos" amount box without its chip: same right edge, flat at rest (D4). */}
-      <span className="shrink-0 px-2 py-0.5 text-tabular-numeric-md text-foreground">
+      {/* The "Movimientos" amount box without its chip: same right edge, flat at rest (D4). The card
+          thumbnail rides inside it, a fixed gap from the amount, so it never moves the amount. */}
+      <span className="inline-flex shrink-0 items-center gap-2 px-2 py-0.5 text-tabular-numeric-md text-foreground">
+        {cardColor ? <CardThumb color={cardColor} /> : null}
         <Money amount={amount} currency={currency} />
       </span>
     </button>

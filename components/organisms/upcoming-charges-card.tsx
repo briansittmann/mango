@@ -52,7 +52,7 @@ export function UpcomingChargesCard({ charges, currency, open, onToggle, onOpenC
     const expectedText =
       charge.amount !== charge.expectedAmount ? tRecurrente('esperado', { monto: money(charge.expectedAmount, currency) }) : null
     // The visible muted line is part of the name too (label in name), after what the row is for.
-    const rowLabel = [t('fila', { nombre: charge.name, dia: charge.day }), charge.category, amountText, stateText, progressText, expectedText]
+    const rowLabel = [t('fila', { nombre: charge.name, dia: charge.day }), charge.category, charge.card?.name, amountText, stateText, progressText, expectedText]
       .filter(Boolean)
       .join(', ')
 
@@ -61,10 +61,11 @@ export function UpcomingChargesCard({ charges, currency, open, onToggle, onOpenC
         key={charge.id}
         day={charge.day}
         name={charge.name}
-        details={[charge.category, expectedText, progressText].filter((part): part is string => !!part)}
+        details={[charge.category, charge.card?.name, expectedText, progressText].filter((part): part is string => !!part)}
         amount={charge.amount}
         currency={currency}
         color={charge.color}
+        cardColor={charge.card?.color}
         charged={charge.charged}
         label={rowLabel}
         onActivate={onOpenCharge ? () => onOpenCharge(charge) : undefined}

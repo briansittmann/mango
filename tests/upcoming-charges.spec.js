@@ -6,7 +6,8 @@ import { loadDesktop, openCategory } from './desktop-helpers'
 
 // `upcoming-charges` after `restyle-upcoming-charges-card`, on `/demo` in Spanish: Alquiler (1),
 // Internet (3) and Seguro (8, 4 de 10) are taken; Parking (15), Limpieza (20) and Gimnasio (22)
-// are pending.
+// are pending. Cards (`show-card-on-upcoming-charges`): "Débito" carries Alquiler and Internet,
+// "Crédito" Gimnasio and Seguro.
 
 const header = (page) => page.locator('button[aria-controls="upcoming-charges-panel"]')
 const fold = (page) => page.locator('button[aria-controls="upcoming-charges-taken"]')
@@ -34,6 +35,43 @@ function reachableNames(page) {
 /** Right edge of the amount box (a row's last child) of every row matched by `selector`. */
 function amountEdges(page, selector) {
   return page.locator(selector).evaluateAll((els) => els.map((el) => Math.round(el.lastElementChild.getBoundingClientRect().right)))
+}
+
+const thumb = (page, name) => chargeRow(page, name).locator('[data-card-thumb]')
+
+/** Width, height and gap to its amount of every card thumbnail in the panel. */
+function thumbGeometry(page) {
+  return panel(page)
+    .locator('[data-card-thumb]')
+    .evaluateAll((els) =>
+      els.map((el) => {
+        const box = el.getBoundingClientRect()
+        return { width: Math.round(box.width), height: Math.round(box.height), gap: Math.round(el.nextElementSibling.getBoundingClientRect().left - box.right) }
+      }),
+    )
+}
+
+/** A face's resolved gradient stops: the thumbnail and the wallet card read the same tokens. */
+const faceColours = (locator) =>
+  locator.evaluate((el) => [getComputedStyle(el).getPropertyValue('--card-from').trim(), getComputedStyle(el).getPropertyValue('--card-to').trim()])
+
+const wallet = (page) => page.locator('[data-wallet-widget]')
+const walletFace = (page, name) =>
+  wallet(page)
+    .locator('[data-wallet-entry]')
+    .filter({ has: page.locator('[data-wallet-card-name]', { hasText: new RegExp(`^${name}$`) }) })
+    .locator('.wallet-card')
+
+async function openWalletCard(page, name) {
+  await walletFace(page, name).scrollIntoViewIfNeeded()
+  await walletFace(page, name).click({ position: { x: 40, y: 20 } })
+  await expect(dialog(page)).toBeVisible()
+  return dialog(page)
+}
+
+async function saveSheet(sheet) {
+  await sheet.getByRole('button', { name: 'Guardar' }).click()
+  await expect(sheet).toBeHidden()
 }
 
 async function axeViolations(page) {
@@ -95,7 +133,60 @@ test.describe('on a phone', () => {
     expect(Math.round(box?.width ?? 0)).toBe(32)
     expect(Math.round(box?.height ?? 0)).toBe(32)
     await expect(chargeRow(page, 'Parking').getByText('Transporte', { exact: true })).toBeVisible()
+    await expect(chargeRow(page, 'Parking').locator('span.block span.block').last()).toHaveText('Transporte')
+    await expect(thumb(page, 'Parking')).toHaveCount(0)
     await expect(panel(page).locator('[data-category-dot]')).toHaveCount(0)
+  })
+
+  test('a charge names its card on the muted line and draws its thumbnail left of the amount', async ({ page }) => {
+    await openCard(page)
+    await unfold(page)
+    await expect(chargeRow(page, 'Gimnasio')).toContainText('Salud · Crédito')
+    await expect(chargeRow(page, 'Gimnasio')).toHaveAttribute('aria-label', /Salud, Crédito, 40\s?€/)
+    const gap = await thumb(page, 'Gimnasio').evaluate((el) => {
+      const amount = el.nextElementSibling
+      return amount?.textContent?.includes('40') ? Math.round(amount.getBoundingClientRect().left - el.getBoundingClientRect().right) : null
+    })
+    expect(gap).toBe(8)
+    await expect(thumb(page, 'Gimnasio')).toHaveAttribute('aria-hidden', 'true')
+    for (const name of ['Alquiler', 'Internet']) {
+      await expect(chargeRow(page, name)).toContainText('Vivienda · Débito')
+      await expect(thumb(page, name)).toHaveCount(1)
+      expect(await faceColours(thumb(page, name))).toEqual(await faceColours(walletFace(page, 'Débito')))
+    }
+    expect(await faceColours(thumb(page, 'Gimnasio'))).toEqual(await faceColours(walletFace(page, 'Crédito')))
+    for (const name of ['Parking', 'Limpieza']) {
+      await expect(thumb(page, name)).toHaveCount(0)
+      await expect(chargeRow(page, name)).not.toContainText(/Débito|Crédito/)
+    }
+  })
+
+  test('the card follows an assignment, a rename and a deletion without a reload', async ({ page }) => {
+    const transporte = await openCategory(page, 'transporte')
+    await transporte.getByRole('button', { name: /Parking/ }).first().click()
+    let sheet = dialog(page)
+    await sheet.locator('[data-fixed-card]').getByRole('button').click()
+    await sheet.getByRole('radio', { name: 'Crédito' }).click()
+    await saveSheet(sheet)
+
+    sheet = await openWalletCard(page, 'Crédito')
+    await sheet.getByLabel('Nombre').fill('Visa')
+    await saveSheet(sheet)
+
+    sheet = await openWalletCard(page, 'Débito')
+    await sheet.getByRole('button', { name: 'Eliminar tarjeta' }).click()
+    await sheet.getByRole('button', { name: 'Eliminar', exact: true }).click()
+    await expect(sheet).toBeHidden()
+
+    await openCard(page)
+    await unfold(page)
+    await expect(chargeRow(page, 'Parking')).toContainText('Transporte · Visa')
+    await expect(thumb(page, 'Parking')).toHaveCount(1)
+    await expect(chargeRow(page, 'Gimnasio')).toContainText('Salud · Visa')
+    for (const name of ['Alquiler', 'Internet']) {
+      await expect(thumb(page, name)).toHaveCount(0)
+      await expect(chargeRow(page, name)).not.toContainText('Débito')
+    }
   })
 
   test('expected amount and progress share the muted line', async ({ page }) => {
@@ -109,7 +200,7 @@ test.describe('on a phone', () => {
 
     await openCard(page)
     await unfold(page)
-    await expect(chargeRow(page, 'Seguro')).toContainText(/Vivienda · esperado 35\s?€ · 4 de 10/)
+    await expect(chargeRow(page, 'Seguro')).toContainText(/Vivienda · Crédito · esperado 35\s?€ · 4 de 10/)
     for (const name of ['Alquiler', 'Internet', 'Parking', 'Limpieza', 'Gimnasio']) {
       await expect(chargeRow(page, name)).not.toContainText(/de 10|esperado/)
     }
@@ -140,6 +231,9 @@ test.describe('on a phone', () => {
     expect(new Set(marks)).toEqual(new Set([32]))
     const edges = await amountEdges(page, '#upcoming-charges-panel button[aria-label]')
     expect(new Set(edges).size).toBe(1)
+    const thumbs = await thumbGeometry(page)
+    expect(thumbs).toHaveLength(4)
+    expect(new Set(thumbs.map((t) => `${t.width}x${t.height}+${t.gap}`))).toEqual(new Set(['22x14+8']))
 
     const movements = page.locator('[data-movements-card] button[aria-controls="movements-panel"]')
     await movements.scrollIntoViewIfNeeded()
@@ -219,6 +313,70 @@ test.describe('on a phone', () => {
     expect(sizes.length).toBeLessThanOrEqual(6)
   })
 
+  test('only day marks, card thumbnails and open chevrons carry colour', async ({ page }) => {
+    await openCard(page)
+    await unfold(page)
+    await page.mouse.move(0, 0)
+    await page.waitForTimeout(300)
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate((theme) => document.documentElement.setAttribute('data-theme', theme), theme)
+      await page.waitForTimeout(300)
+      const stray = await panel(page)
+        .locator('xpath=..')
+        .evaluate((card) => {
+          const ctx = document.createElement('canvas').getContext('2d', { willReadFrequently: true })
+          const chromatic = (value) => {
+            ctx.clearRect(0, 0, 1, 1)
+            ctx.fillStyle = '#000'
+            ctx.fillStyle = value
+            ctx.fillRect(0, 0, 1, 1)
+            const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data
+            return a > 0 && Math.max(r, g, b) - Math.min(r, g, b) > 24
+          }
+          const found = []
+          for (const el of [card, ...card.querySelectorAll('*')]) {
+            if (el.closest('[inert]')) continue
+            const cs = getComputedStyle(el)
+            const isMark = el.getAttribute('style')?.includes('--cat-')
+            const isThumb = el.hasAttribute('data-card-thumb')
+            const isOpenChevron = !!el.closest('svg.lucide-chevron-down') && !!el.closest('svg').classList.contains('rotate-180')
+            if (cs.backgroundImage !== 'none' && !isThumb) found.push(`${el.tagName} background-image`)
+            if (chromatic(cs.backgroundColor) && !isMark) found.push(`${el.tagName} background ${cs.backgroundColor}`)
+            if (chromatic(cs.color) && !isOpenChevron) found.push(`${el.tagName} color ${cs.color}`)
+            if (parseFloat(cs.borderTopWidth) > 0 && chromatic(cs.borderTopColor)) found.push(`${el.tagName} border ${cs.borderTopColor}`)
+          }
+          return found
+        })
+      expect(stray, theme).toEqual([])
+    }
+  })
+
+  test('a rainbow card\'s thumbnails turn like its face', async ({ page }) => {
+    const sheet = await openWalletCard(page, 'Crédito')
+    await sheet.getByRole('radio', { name: 'Arcoíris' }).click()
+    await saveSheet(sheet)
+    await openCard(page)
+    await unfold(page)
+    for (const name of ['Gimnasio', 'Seguro']) {
+      const paint = () => thumb(page, name).evaluate((el) => getComputedStyle(el).backgroundImage)
+      const before = await paint()
+      await page.waitForTimeout(600)
+      expect(await paint()).not.toBe(before)
+    }
+  })
+
+  test('reduced motion: a rainbow card\'s thumbnail stays still', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const sheet = await openWalletCard(page, 'Crédito')
+    await sheet.getByRole('radio', { name: 'Arcoíris' }).click()
+    await saveSheet(sheet)
+    await openCard(page)
+    const paint = () => thumb(page, 'Gimnasio').evaluate((el) => getComputedStyle(el).backgroundImage)
+    const before = await paint()
+    await page.waitForTimeout(600)
+    expect(await paint()).toBe(before)
+  })
+
   test('a projected cycle has nothing taken: no fold line', async ({ page }) => {
     const title = page.locator('[data-month-picker-trigger]').last()
     const before = await title.textContent()
@@ -227,6 +385,8 @@ test.describe('on a phone', () => {
     await openCard(page)
     await expect(fold(page)).toHaveCount(0)
     expect(await reachableNames(page)).toEqual(['Alquiler', 'Internet', 'Seguro', 'Parking', 'Limpieza', 'Gimnasio'])
+    await expect(chargeRow(page, 'Alquiler')).toContainText('Vivienda · Débito')
+    expect(await faceColours(thumb(page, 'Alquiler'))).toEqual(await faceColours(walletFace(page, 'Débito')))
   })
 
   test('no axe violation in either theme, unfolded', async ({ page }) => {
@@ -249,5 +409,6 @@ test.describe('on a laptop', () => {
     expect(new Set(edges).size).toBe(1)
     const movementEdges = await amountEdges(page, '[data-movement-row]')
     expect(movementEdges[0]).toBe(edges[0])
+    expect(new Set((await thumbGeometry(page)).map((t) => `${t.width}x${t.height}+${t.gap}`))).toEqual(new Set(['22x14+8']))
   })
 })

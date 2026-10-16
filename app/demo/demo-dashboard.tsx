@@ -52,7 +52,7 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows: baseBudg
   const cards = useMemo(() => applyDemoCardEdits(data.cards, cardEdits), [data.cards, cardEdits])
   const definitions = useMemo(() => applyDemoCardAssignments(derivedDefinitions, cards, cardEdits), [derivedDefinitions, cards, cardEdits])
   const view = useMemo(() => ({ ...derived, cards }), [derived, cards])
-  const charges = useMemo(() => selectUpcomingCharges(view.expenses.groups, definitions), [view, definitions])
+  const charges = useMemo(() => selectUpcomingCharges(view.expenses.groups, definitions, cards), [view, definitions, cards])
   const expenses = useMemo(() => createDemoExpenseMutations(setEdits), [])
   // `?e2e=fail-card-save` makes a card's update and its checklist reject (`card-wallet` → *A failed save changes nothing*).
   const failCardSave = searchParams.get('e2e') === 'fail-card-save'
