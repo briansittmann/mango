@@ -11,9 +11,9 @@ import { messageAlreadyProcessed } from '@/lib/data/transactions'
 import { findUserIdByPhone, readConfirmationState, setConfirmedLoads } from '@/lib/data/users'
 import es from '@/messages/es.json'
 import en from '@/messages/en.json'
-import { handleIncoming, type AdapterTexts } from './handle-message'
+import { DEPOSIT_BUTTONS, UNDO_PREFIX, buttonAction, handleIncoming, type AdapterTexts } from './handle-message'
 import { downloadMedia, type MediaResult } from './media'
-import { maskPhone, sendReaction, sendText, sendUndoButton } from './send'
+import { maskPhone, sendButtons, sendReaction, sendText } from './send'
 
 import type { WhatsAppMessage } from './payload'
 
@@ -21,10 +21,6 @@ export { maskPhone }
 
 /** Loads per local day confirmed in text before reactions take over, in mode `auto` (§3). One constant for every account. */
 export const DAILY_TEXT_CONFIRMATIONS = 10
-
-/** An Undo button's id names the row it deletes (`add-bot-conversation` design D2). */
-const UNDO_PREFIX = 'undo:'
-const UNDO_ID = /^undo:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
 
 const MESSAGES = { es, en }
 
@@ -69,13 +65,14 @@ export async function handleMessages(messages: WhatsAppMessage[]): Promise<void>
 
 /** The known flow once the retry, media and linking checks passed (`handle-message.ts`). */
 async function handleKnown(userId: string, message: WhatsAppMessage, audio?: MediaResult): Promise<void> {
-  const undoId = message.buttonId === undefined ? undefined : UNDO_ID.exec(message.buttonId)?.[1]
-  if (message.buttonId !== undefined && !undoId) {
-    console.info(`[whatsapp] unknown button discarded: ${message.messageId}`)
+  const { pending, lastLoadId } = await readChannelState('whatsapp', message.phone)
+
+  // An Undo, or an answer to a deposit question still pending; any other press is dropped (D10).
+  const button = message.buttonId === undefined ? null : buttonAction(message.buttonId, pending)
+  if (message.buttonId !== undefined && !button) {
+    console.info(`[whatsapp] button discarded: ${message.messageId}`)
     return
   }
-
-  const { pending, lastLoadId } = await readChannelState('whatsapp', message.phone)
 
   const reply = await processMessage({
     userId,
@@ -85,7 +82,8 @@ async function handleKnown(userId: string, message: WhatsAppMessage, audio?: Med
     channel: 'whatsapp',
     pending: pending ?? undefined,
     lastLoadId: lastLoadId ?? undefined,
-    undoId,
+    undoId: button && 'undoId' in button ? button.undoId : undefined,
+    answer: button && 'answer' in button ? button.answer : undefined,
   })
 
   if (reply.kind === 'ask') {
@@ -120,7 +118,7 @@ async function confirmLoad(userId: string, message: WhatsAppMessage, reply: Extr
 
   if (asText) {
     const t = createTranslator({ locale: state.idioma, messages: MESSAGES[state.idioma], namespace: 'bot' })
-    await sendUndoButton(message.phone, reply.text, `${UNDO_PREFIX}${reply.transactionId}`, t('deshacer'))
+    await sendButtons(message.phone, reply.text, [{ id: `${UNDO_PREFIX}${reply.transactionId}`, title: t('deshacer') }])
   } else {
     await sendReaction(message.phone, message.messageId, reply.icon)
   }
@@ -128,8 +126,12 @@ async function confirmLoad(userId: string, message: WhatsAppMessage, reply: Extr
   await setConfirmedLoads(userId, state.cargas_confirmadas + 1, loadsToday + 1, today)
 }
 
-/** Every reply that is not a load is plain text, without buttons. */
+/** Every reply that is not a load is plain text, except a question that offers answer buttons. */
 async function sendReply(phone: string, reply: BotReply): Promise<void> {
   if (reply.kind === 'none') return
+  if (reply.kind === 'ask' && reply.buttons) {
+    await sendButtons(phone, reply.text, reply.buttons.map(({ answer, label }) => ({ id: DEPOSIT_BUTTONS[answer], title: label })))
+    return
+  }
   await sendText(phone, reply.text)
 }

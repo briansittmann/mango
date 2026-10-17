@@ -1,5 +1,6 @@
 import type { AmountFormat } from './amount-format.ts'
 import type { WidgetId } from './dashboard.ts'
+import type { PaymentMethod } from './payment-method.ts'
 import { CURRENCIES, countryOf } from './countries.ts'
 
 /**
@@ -42,6 +43,8 @@ export type ProfileMutations = {
   setStep(step: number): Promise<void>
   complete(): Promise<void>
   setWidgetOrder?(order: WidgetId[]): Promise<void>
+  /** Writes only `usuarios.medio_pago_default` (`payment-method` → *An account default payment method*); null = "Ninguno". */
+  setDefaultPaymentMethod?(method: PaymentMethod | null): Promise<void>
 }
 
 /** How long a linking code is live from its request time (`whatsapp-linking`). */

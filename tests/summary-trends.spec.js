@@ -108,8 +108,8 @@ test.describe('summary trends', () => {
     const foldedHeight = () => page.locator('#free-margin-composition').evaluate((el) => el.getBoundingClientRect().height)
     await expect(toggle).toHaveAttribute('aria-expanded', 'false')
     await expect.poll(foldedHeight).toBeLessThan(1)
-    // Nothing on screen says the card opens: no chevron, no icon.
-    await expect(card.locator('svg')).toHaveCount(0)
+    // Nothing on screen says the card opens: no chevron, no icon (the pocket blocks' icons are theirs, `payment-method`).
+    await expect(card.locator('svg:not([data-pockets] svg)')).toHaveCount(0)
     await card.click({ position: { x: 300, y: 40 } })
     await expect(toggle).toHaveAttribute('aria-expanded', 'true')
     await expect(strip).toBeVisible()

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { Drawer } from '@base-ui/react/drawer'
-import { Ban, Check, ChevronDown, Loader2, Trash2 } from 'lucide-react'
+import { Ban, Banknote, Check, ChevronDown, CreditCard, Loader2, Trash2 } from 'lucide-react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { useAmountFormatter } from '@/components/atoms/amount-format'
 import { CategoryDot } from '@/components/atoms/category-dot'
@@ -17,30 +17,31 @@ import type { Card } from '@/lib/data/cards'
 import type { CategoryColor } from '@/lib/data/dashboard'
 import type { ExpenseDraft, LocalDate } from '@/lib/data/expenses'
 import type { IncomeDraft } from '@/lib/data/income'
+import type { PaymentMethod } from '@/lib/data/payment-method'
 import type { RecurringDefinition, RecurringDraft } from '@/lib/data/recurring'
 import type { SavingsMovementDraft } from '@/lib/data/savings'
 import type esMessages from '@/messages/es.json'
 
 type FieldKind = 'amount' | 'text' | 'date'
-type HojaGastoKey = keyof typeof esMessages.hojaGasto
+type HojaMovimientoKey = keyof typeof esMessages.hojaMovimiento
 
 export type TextFieldDescriptor<V> = {
   name: keyof V & string
   kind: FieldKind
-  labelKey: HojaGastoKey
-  placeholderKey?: HojaGastoKey
+  labelKey: HojaMovimientoKey
+  placeholderKey?: HojaMovimientoKey
   optional?: boolean
   /** Shown when a required field (no `optional: true`) is empty after trim. */
-  invalidMessageKey?: HojaGastoKey
+  invalidMessageKey?: HojaMovimientoKey
 }
 
 /** A pill radiogroup, its value a plain string in `fieldState`. Options carry already-resolved
- * labels — the caller resolves them (they live outside `hojaGasto`), not a `HojaGastoKey`. */
+ * labels — the caller resolves them (they live outside `hojaMovimiento`), not a `HojaMovimientoKey`. */
 export type ChoiceFieldDescriptor<V> = {
   name: keyof V & string
   kind: 'choice'
-  /** The radiogroup's accessible name — read from `hojaGasto`, unlike `options[].label`. */
-  labelKey: HojaGastoKey
+  /** The radiogroup's accessible name — read from `hojaMovimiento`, unlike `options[].label`. */
+  labelKey: HojaMovimientoKey
   options: { value: string; label: string }[]
 }
 
@@ -49,8 +50,8 @@ export type ChoiceFieldDescriptor<V> = {
 export type ToggleFieldDescriptor<V> = {
   name: keyof V & string
   kind: 'toggle'
-  labelKey: HojaGastoKey
-  hintKey: HojaGastoKey
+  labelKey: HojaMovimientoKey
+  hintKey: HojaMovimientoKey
   shownWhen: { field: keyof V & string; value: string }
 }
 
@@ -59,21 +60,31 @@ export type ToggleFieldDescriptor<V> = {
  * create mode only, and only when the sheet is given `onSaveRecurrence`. */
 export type RecurrenceFieldDescriptor = { kind: 'recurrence' }
 
-export type FieldDescriptor<V> = TextFieldDescriptor<V> | ChoiceFieldDescriptor<V> | ToggleFieldDescriptor<V> | RecurrenceFieldDescriptor
+/** "Efectivo" / "Tarjeta" (`payment-method`, D6): two optional chips, none marked = no method. Its
+ * value is `''` or a `PaymentMethod` in `fieldState`, and `null` or the method in the draft. */
+export type PaymentMethodFieldDescriptor<V> = { name: keyof V & string; kind: 'paymentMethod' }
+
+export type FieldDescriptor<V> =
+  | TextFieldDescriptor<V>
+  | ChoiceFieldDescriptor<V>
+  | ToggleFieldDescriptor<V>
+  | PaymentMethodFieldDescriptor<V>
+  | RecurrenceFieldDescriptor
 
 export type EntryConfig<V> = {
   fields: FieldDescriptor<V>[]
   /** A new entry starts at its name; an edit at the amount, the field that usually changes. */
   initialFocus: { create: keyof V & string; edit: keyof V & string }
-  titleKeys: { create: HojaGastoKey; edit: HojaGastoKey }
-  submitKeys: { create: HojaGastoKey; edit: HojaGastoKey }
-  deleteKey: HojaGastoKey
+  titleKeys: { create: HojaMovimientoKey; edit: HojaMovimientoKey }
+  submitKeys: { create: HojaMovimientoKey; edit: HojaMovimientoKey }
+  deleteKey: HojaMovimientoKey
 }
 
 export const expenseEntry: EntryConfig<ExpenseDraft> = {
   fields: [
     { name: 'description', kind: 'text', labelKey: 'descripcion', placeholderKey: 'opcional', optional: true },
     { name: 'amount', kind: 'amount', labelKey: 'importe' },
+    { name: 'paymentMethod', kind: 'paymentMethod' },
     { name: 'date', kind: 'date', labelKey: 'fecha' },
     { kind: 'recurrence' },
   ],
@@ -87,6 +98,7 @@ export const incomeEntry: EntryConfig<IncomeDraft> = {
   fields: [
     { name: 'description', kind: 'text', labelKey: 'descripcion', placeholderKey: 'opcional', optional: true },
     { name: 'amount', kind: 'amount', labelKey: 'importe' },
+    { name: 'paymentMethod', kind: 'paymentMethod' },
     { name: 'date', kind: 'date', labelKey: 'fecha' },
     { kind: 'recurrence' },
   ],
@@ -97,7 +109,7 @@ export const incomeEntry: EntryConfig<IncomeDraft> = {
 }
 
 /** Built by the caller, not exported as a static config like `expenseEntry`/`incomeEntry`: the
- * type labels come from `resumen.deposito` / `resumen.retiro` (D4), outside `hojaGasto`, so the
+ * type labels come from `resumen.deposito` / `resumen.retiro` (D4), outside `hojaMovimiento`, so the
  * caller resolves them and passes them in. "Ya lo tenía ahorrado" is offered for a deposit only. */
 export function savingsEntry(typeOptions: { deposit: string; withdrawal: string }): EntryConfig<SavingsMovementDraft> {
   return {
@@ -211,6 +223,8 @@ function buildFieldState<V>(config: EntryConfig<V>, values: Partial<V>, locale: 
       state[field.name] = typeof raw === 'number' ? formatAmountForEdit(raw, locale) : ''
     } else if (field.kind === 'toggle') {
       state[field.name] = raw === true ? 'true' : ''
+    } else if (field.kind === 'paymentMethod') {
+      state[field.name] = typeof raw === 'string' ? raw : ''
     } else {
       state[field.name] = typeof raw === 'string' ? raw : ''
     }
@@ -225,6 +239,7 @@ function buildValues<V>(config: EntryConfig<V>, state: FieldState, amount: numbe
     if (field.kind === 'amount') result[field.name] = amount
     else if (field.kind === 'text') result[field.name] = state[field.name].trim()
     else if (field.kind === 'toggle') result[field.name] = state[field.name] === 'true' && state[field.shownWhen.field] === field.shownWhen.value
+    else if (field.kind === 'paymentMethod') result[field.name] = state[field.name] || null
     else result[field.name] = state[field.name]
   }
   return result as V
@@ -233,7 +248,7 @@ function buildValues<V>(config: EntryConfig<V>, state: FieldState, amount: numbe
 const RECURRENCE_ENDINGS = ['none', 'count'] as const
 type RecurrenceEnding = (typeof RECURRENCE_ENDINGS)[number]
 
-function isTextField<V>(field: FieldDescriptor<V>): field is TextFieldDescriptor<V> | ChoiceFieldDescriptor<V> | ToggleFieldDescriptor<V> {
+function isTextField<V>(field: FieldDescriptor<V>): field is Exclude<FieldDescriptor<V>, RecurrenceFieldDescriptor> {
   return field.kind !== 'recurrence'
 }
 
@@ -256,9 +271,10 @@ export function EntrySheet<V>({
   allowCategoryChange = false,
 }: EntrySheetProps<V>) {
   const onSaveRecurrence = projected ? undefined : onSaveRecurrenceProp
-  const t = useTranslations('hojaGasto')
+  const t = useTranslations('hojaMovimiento')
   const tRecurrente = useTranslations('gastoRecurrente')
   const tTarjetas = useTranslations('tarjetas')
+  const tMedio = useTranslations('medioPago')
   const format = useFormatter()
   const { money } = useAmountFormatter()
   const locale = useLocale()
@@ -461,6 +477,7 @@ export function EntrySheet<V>({
           day: recurrenceDayNumber ?? 1,
           reminder: { active: false, daysBefore: 1 },
           repetitions: recurrenceEnding === 'count' ? parseInteger(recurrenceCount, { min: 1 }) : null,
+          paymentMethod: (values as unknown as { paymentMethod?: ExpenseDraft['paymentMethod'] }).paymentMethod ?? null,
         })
       }
     } catch {
@@ -664,6 +681,35 @@ export function EntrySheet<V>({
             {t(field.hintKey)}
           </p>
         </Collapsible>
+      )
+    }
+
+    if (field.kind === 'paymentMethod') {
+      // Not a radiogroup: none marked is a valid value, and a radiogroup cannot be emptied (D6).
+      return (
+        <div role="group" aria-label={tMedio('grupo')} data-payment-chips className="flex gap-2 px-inset pb-3">
+          {(['efectivo', 'tarjeta'] satisfies PaymentMethod[]).map((method) => {
+            const pressed = value === method
+            const Icon = pressed ? Check : method === 'efectivo' ? Banknote : CreditCard
+            return (
+              <button
+                key={method}
+                type="button"
+                aria-pressed={pressed}
+                disabled={disabled}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => updateField(field.name, pressed ? '' : method)}
+                className={cn(
+                  'pressable flex min-h-target flex-1 items-center justify-center gap-1.5 rounded-full border px-3 text-body-sm',
+                  pressed ? 'border-transparent bg-primary font-semibold text-primary-foreground' : 'border-border font-medium text-foreground',
+                )}
+              >
+                <Icon aria-hidden className="size-4 shrink-0" />
+                {tMedio(method)}
+              </button>
+            )
+          })}
+        </div>
       )
     }
 

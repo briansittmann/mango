@@ -40,7 +40,7 @@ type ComposerProps = {
 /** The last row of each list: name, amount, day and, for an expense, the category (D9). */
 function Composer({ tipo, categories, currency, actions, categoryId, onCategoryChange, onAdded, onStatus }: ComposerProps) {
   const t = useTranslations('onboarding')
-  const tAmount = useTranslations('hojaGasto')
+  const tAmount = useTranslations('hojaMovimiento')
   const tDay = useTranslations('gastoRecurrente')
   const toasts = Toast.useToastManager()
   const id = useId()
@@ -71,7 +71,7 @@ function Composer({ tipo, categories, currency, actions, categoryId, onCategoryC
     try {
       await actions.create(
         tipo === 'gasto' && category ? { tipo: 'gasto', categoryId: category.id } : { tipo: 'ingreso' },
-        { name: name.trim(), expectedAmount: amountValue, day: dayValue, reminder: { active: false, daysBefore: 0 }, repetitions: null },
+        { name: name.trim(), expectedAmount: amountValue, day: dayValue, reminder: { active: false, daysBefore: 0 }, repetitions: null, paymentMethod: null },
       )
       onStatus(t('fijos.anadido'))
       setName('')
@@ -218,6 +218,7 @@ export function FixedStep({ categories, definitions, currency, actions, onCatego
                 day: definition.day,
                 reminder: definition.reminder,
                 repetitions: definition.repetitions?.total ?? null,
+                paymentMethod: definition.paymentMethod,
               },
             )
             toasts.close(id)

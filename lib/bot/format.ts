@@ -4,6 +4,7 @@
  */
 
 import { formatAmount, type AmountFormat } from '../data/amount-format.ts'
+import type { PaymentMethod } from '../data/payment-method.ts'
 import { normalizeName } from '../data/supabase/bot.ts'
 
 /** A translator of the `bot` namespace, as `createTranslator` builds it. */
@@ -18,7 +19,11 @@ const LIGHTS = { ok: '🟢', warning: '🟡', exceeded: '🔴' } as const
 /** A category's budget bar: the fields of `BudgetStatus` the confirmation shows. */
 export type LoadBudget = { amount: number; spent: number; level: keyof typeof LIGHTS }
 
-/** What a load wrote, as its confirmation names it. `amount` is signed for savings (negative = withdrawal). */
+/**
+ * What a load wrote, as its confirmation names it. `amount` is signed for savings (negative =
+ * withdrawal). `method` is set only when the message said it: a method taken from the account's
+ * default is not named (`bot-transaction-logging` → *A load carries its payment method*).
+ */
 export type LoadSummary = { amount: number; date: string } & (
   | {
       tipo: 'gasto'
@@ -26,15 +31,19 @@ export type LoadSummary = { amount: number; date: string } & (
       category: string
       /** The category's budget in the cycle in progress after the write; null for none or another cycle. */
       budget: LoadBudget | null
+      method?: PaymentMethod
     }
-  | { tipo: 'ingreso'; name: string | null }
+  | { tipo: 'ingreso'; name: string | null; method?: PaymentMethod }
   | { tipo: 'ahorro' }
+  /** A transfer between the pockets: `into` is where the money went. */
+  | { tipo: 'transferencia'; into: PaymentMethod }
 )
 
 /** The icon a confirmation carries after "Anotado", and the reaction that replaces it. */
 export function loadIcon(load: Pick<LoadSummary, 'tipo' | 'amount'>): string {
   if (load.tipo === 'ingreso') return '💰'
   if (load.tipo === 'ahorro') return load.amount < 0 ? '🏦' : '🐷'
+  if (load.tipo === 'transferencia') return '🔁'
   return '✅'
 }
 
@@ -47,12 +56,14 @@ export function confirmationText({ locale, currency, amountFormat, today, t }: B
   const monto = formatBotAmount(locale, currency, Math.abs(load.amount), amountFormat)
   const when = { cuando: load.date === today ? 'hoy' : 'otro', dia: formatBotDay(locale, today, load.date, t) }
 
-  if (load.tipo === 'ingreso') return t('confirmacionIngreso', { nombre: load.name ?? t('ingreso'), monto, ...when })
+  if (load.tipo === 'transferencia') return t('confirmacionTransferencia', { direccion: load.into, monto, ...when })
   if (load.tipo === 'ahorro') return t(load.amount < 0 ? 'confirmacionRetiro' : 'confirmacionAhorro', { monto, ...when })
+  const medio = load.method ?? 'ninguno'
+  if (load.tipo === 'ingreso') return t('confirmacionIngreso', { nombre: load.name ?? t('ingreso'), monto, medio, ...when })
 
   const nombre = load.name ?? load.category
   const conCategoria = normalizeName(nombre) === normalizeName(load.category) ? 'no' : 'si'
-  const text = t('confirmacionGasto', { nombre, monto, conCategoria, categoria: load.category, ...when })
+  const text = t('confirmacionGasto', { nombre, monto, conCategoria, categoria: load.category, medio, ...when })
   if (!load.budget) return text
 
   return `${text} ${t('lineaPresupuesto', {

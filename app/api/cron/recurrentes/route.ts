@@ -136,6 +136,8 @@ async function runForUser(client: ReturnType<typeof supabaseAdmin>, usuario: Usu
           d.repeticiones_totales == null ? null : { total: d.repeticiones_totales, done: d.repeticiones_insertadas },
         // The card plays no part in generating charges; the cron does not read it.
         cardId: null,
+        // `generar_ciclo` copies the method from the definition itself (0041), not from `p_cargos`.
+        paymentMethod: null,
       }))
 
     const { charges } = proyectarCiclo({

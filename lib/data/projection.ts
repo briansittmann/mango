@@ -1,5 +1,6 @@
 import type { BudgetRow } from './budget'
 import type { LocalDate } from './expenses'
+import type { PaymentMethod } from './payment-method'
 import type { RecurringDefinition } from './recurring'
 
 // What a cycle holds before (or instead of) its rows existing — `cycle-projection` → *A future
@@ -14,6 +15,8 @@ export type ProjectedCharge = {
   name: string
   amount: number
   date: LocalDate
+  /** The definition's, for display; `generar_ciclo` copies it from the definition, not from here. */
+  paymentMethod: PaymentMethod | null
 }
 
 export type CycleProjection = {
@@ -74,6 +77,7 @@ export function proyectarCiclo({
       name: d.name,
       amount: d.expectedAmount,
       date: fechaEnCiclo(start, d.day),
+      paymentMethod: d.paymentMethod ?? null,
     }))
     .sort((a, b) => a.date.localeCompare(b.date))
 

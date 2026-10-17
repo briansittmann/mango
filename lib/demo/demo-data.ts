@@ -1,11 +1,13 @@
 import type { BudgetRow } from '@/lib/data/budget'
 import { DEFAULT_WIDGET_ORDER, type CategoryColor, type DashboardData, type ExpenseGroup } from '@/lib/data/dashboard'
+import type { PaymentMethod } from '@/lib/data/payment-method'
 import type { RecurringDefinition } from '@/lib/data/recurring'
 import { deriveDemoData, noDemoEdits, shiftDemoMonth, type DemoExpenseEdits } from '@/lib/demo/demo-expenses'
 import { noDemoCategoryEdits } from '@/lib/demo/demo-categories'
 import { noDemoIncomeEdits, type DemoIncomeEdits } from '@/lib/demo/demo-income'
 import { noDemoRecurringEdits } from '@/lib/demo/demo-recurring'
 import { noDemoSavingsEdits, type DemoSavingsEdits } from '@/lib/demo/demo-savings'
+import { DEMO_POCKET_OPENING, DEMO_TRANSFER_SEED, noDemoTransferEdits, resolveDemoTransfers } from '@/lib/demo/demo-transfers'
 
 type Locale = 'es' | 'en'
 type Localized = { es: string; en: string }
@@ -63,14 +65,25 @@ const RECURRING_DEFINITIONS: {
   expectedAmount: number
   repetitions?: { total: number; done: number }
   cardId?: string
+  paymentMethod?: PaymentMethod
 }[] = [
-  { id: 'def-alquiler', nameKey: 'alquiler', tipo: 'gasto', categoryId: 'vivienda', day: 1, expectedAmount: 820, cardId: 'card-debito' },
-  { id: 'def-internet', nameKey: 'internet', tipo: 'gasto', categoryId: 'vivienda', day: 3, expectedAmount: 45, cardId: 'card-debito' },
-  { id: 'def-seguro', nameKey: 'seguro', tipo: 'gasto', categoryId: 'vivienda', day: 8, expectedAmount: 35, repetitions: { total: 10, done: 4 }, cardId: 'card-credito' },
+  { id: 'def-alquiler', nameKey: 'alquiler', tipo: 'gasto', categoryId: 'vivienda', day: 1, expectedAmount: 820, cardId: 'card-debito', paymentMethod: 'tarjeta' },
+  { id: 'def-internet', nameKey: 'internet', tipo: 'gasto', categoryId: 'vivienda', day: 3, expectedAmount: 45, cardId: 'card-debito', paymentMethod: 'tarjeta' },
+  {
+    id: 'def-seguro',
+    nameKey: 'seguro',
+    tipo: 'gasto',
+    categoryId: 'vivienda',
+    day: 8,
+    expectedAmount: 35,
+    repetitions: { total: 10, done: 4 },
+    cardId: 'card-credito',
+    paymentMethod: 'tarjeta',
+  },
   { id: 'def-parking', nameKey: 'parking', tipo: 'gasto', categoryId: 'transporte', day: 15, expectedAmount: 50 },
   { id: 'def-limpieza', nameKey: 'limpieza', tipo: 'gasto', categoryId: 'hogar', day: 20, expectedAmount: 35 },
   { id: 'def-gimnasio', nameKey: 'gimnasio', tipo: 'gasto', categoryId: 'salud', day: 22, expectedAmount: 40, cardId: 'card-credito' },
-  { id: 'def-salario', nameKey: 'salario', tipo: 'ingreso', categoryId: null, day: 1, expectedAmount: 2400 },
+  { id: 'def-salario', nameKey: 'salario', tipo: 'ingreso', categoryId: null, day: 1, expectedAmount: 2400, paymentMethod: 'tarjeta' },
 ]
 
 export function buildDemoRecurringDefinitions(locale: Locale): RecurringDefinition[] {
@@ -85,6 +98,7 @@ export function buildDemoRecurringDefinitions(locale: Locale): RecurringDefiniti
     reminder: { active: false, daysBefore: 1 },
     repetitions: definition.repetitions ?? null,
     cardId: definition.cardId ?? null,
+    paymentMethod: definition.paymentMethod ?? null,
   }))
 }
 
@@ -111,11 +125,11 @@ export function buildDemoPlan(locale: Locale): {
   const expense = (id: string, categoryId: string, text: Localized, amount: number, date: string) => ({
     id: `plan-${id}`,
     categoryId,
-    draft: { description: text[locale], amount, date },
+    draft: { description: text[locale], amount, date, paymentMethod: null },
   })
   const income = (id: string, text: Localized, amount: number, date: string) => ({
     id: `plan-${id}`,
-    draft: { description: text[locale], amount, date },
+    draft: { description: text[locale], amount, date, paymentMethod: null },
   })
 
   return {
@@ -152,13 +166,20 @@ function buildCategory(
   id: string,
   nameKey: keyof typeof NAMES,
   color: CategoryColor,
-  items: { nameKey: keyof typeof NAMES; amount: number; date: string; fixed?: { definitionId: string; day: number; charged: boolean } }[],
+  items: {
+    nameKey: keyof typeof NAMES
+    amount: number
+    date: string
+    paymentMethod?: PaymentMethod
+    fixed?: { definitionId: string; day: number; charged: boolean }
+  }[],
 ): ExpenseGroup {
   const expenses = items.map((item, index) => ({
     id: `${id}-${index}`,
     name: name(locale, item.nameKey),
     amount: item.amount,
     date: item.date,
+    paymentMethod: item.paymentMethod ?? null,
     ...(item.fixed ? { fixed: item.fixed } : {}),
   }))
   const total = expenses.reduce((sum, expense) => sum + expense.amount, 0)
@@ -179,9 +200,9 @@ function buildCategory(
 export function buildDemoData(locale: Locale): DashboardData {
   const categoryGroups: ExpenseGroup[] = [
     buildCategory(locale, 'vivienda', 'vivienda', 'gris_oscuro', [
-      { nameKey: 'alquiler', amount: 820, date: '2026-09-01T09:00:00Z', fixed: { definitionId: 'def-alquiler', day: 1, charged: true } },
-      { nameKey: 'internet', amount: 45, date: '2026-09-03T09:00:00Z', fixed: { definitionId: 'def-internet', day: 3, charged: true } },
-      { nameKey: 'seguro', amount: 35, date: '2026-09-08T09:00:00Z', fixed: { definitionId: 'def-seguro', day: 8, charged: true } },
+      { nameKey: 'alquiler', paymentMethod: 'tarjeta', amount: 820, date: '2026-09-01T09:00:00Z', fixed: { definitionId: 'def-alquiler', day: 1, charged: true } },
+      { nameKey: 'internet', paymentMethod: 'tarjeta', amount: 45, date: '2026-09-03T09:00:00Z', fixed: { definitionId: 'def-internet', day: 3, charged: true } },
+      { nameKey: 'seguro', paymentMethod: 'tarjeta', amount: 35, date: '2026-09-08T09:00:00Z', fixed: { definitionId: 'def-seguro', day: 8, charged: true } },
     ]),
     buildCategory(locale, 'salud', 'salud', 'verde_profundo', [
       { nameKey: 'gimnasio', amount: 40, date: '2026-09-22T11:00:00Z', fixed: { definitionId: 'def-gimnasio', day: 22, charged: false } },
@@ -191,16 +212,16 @@ export function buildDemoData(locale: Locale): DashboardData {
       { nameKey: 'decoracion', amount: 60, date: '2026-09-09T10:00:00Z' },
     ]),
     buildCategory(locale, 'comida', 'comida', 'naranja_calido', [
-      { nameKey: 'supermercado', amount: 180, date: '2026-09-03T12:00:00Z' },
-      { nameKey: 'restaurante', amount: 67.6, date: '2026-09-07T20:00:00Z' },
-      { nameKey: 'cafe', amount: 62.4, date: '2026-09-02T23:30:00Z' },
+      { nameKey: 'supermercado', paymentMethod: 'tarjeta', amount: 180, date: '2026-09-03T12:00:00Z' },
+      { nameKey: 'restaurante', paymentMethod: 'tarjeta', amount: 67.6, date: '2026-09-07T20:00:00Z' },
+      { nameKey: 'cafe', paymentMethod: 'efectivo', amount: 62.4, date: '2026-09-02T23:30:00Z' },
     ]),
     buildCategory(locale, 'ocio', 'ocio', 'violeta_metalico', [
-      { nameKey: 'cine', amount: 45, date: '2026-09-05T19:00:00Z' },
+      { nameKey: 'cine', paymentMethod: 'efectivo', amount: 45, date: '2026-09-05T19:00:00Z' },
       { nameKey: 'conciertos', amount: 85, date: '2026-09-08T21:00:00Z' },
     ]),
     buildCategory(locale, 'transporte', 'transporte', 'azul_apagado', [
-      { nameKey: 'gasolina', amount: 80, date: '2026-09-04T08:00:00Z' },
+      { nameKey: 'gasolina', paymentMethod: 'tarjeta', amount: 80, date: '2026-09-04T08:00:00Z' },
       { nameKey: 'parking', amount: 50, date: '2026-09-15T08:00:00Z', fixed: { definitionId: 'def-parking', day: 15, charged: false } },
     ]),
     buildCategory(locale, 'compras', 'compras', 'granate', [
@@ -213,8 +234,15 @@ export function buildDemoData(locale: Locale): DashboardData {
   const expensesTotal = groups.reduce((sum, group) => sum + group.total, 0)
 
   const incomeEntries = [
-    { id: 'salario', nameKey: 'salario' as const, amount: 2400, date: '2026-09-01T09:00:00Z', recurring: { definitionId: 'def-salario', day: 1 } },
-    { id: 'freelance', nameKey: 'freelance' as const, amount: 420, date: '2026-09-05T09:00:00Z' },
+    {
+      id: 'salario',
+      nameKey: 'salario' as const,
+      amount: 2400,
+      date: '2026-09-01T09:00:00Z',
+      paymentMethod: 'tarjeta' as const,
+      recurring: { definitionId: 'def-salario', day: 1, charged: true },
+    },
+    { id: 'freelance', nameKey: 'freelance' as const, amount: 420, date: '2026-09-05T09:00:00Z', paymentMethod: 'tarjeta' as const },
   ]
   const incomeTotal = incomeEntries.reduce((sum, entry) => sum + entry.amount, 0)
 
@@ -268,6 +296,9 @@ export function buildDemoData(locale: Locale): DashboardData {
       // The demo's channel state: never linked, no code, no number to write to (`whatsapp-linking`).
       whatsapp: { number: null, code: null, linked: null },
       widgetOrder: [...DEFAULT_WIDGET_ORDER],
+      // The demo's default is "Ninguno"; `?e2e=default-*` starts it at a method (D11).
+      defaultPaymentMethod: null,
+      hasMarkedMovements: false,
     },
     // The sample is the demo's last generated cycle; the controls reach six projections past it.
     cycle: {
@@ -283,11 +314,12 @@ export function buildDemoData(locale: Locale): DashboardData {
     freeMargin: 0,
     income: {
       total: incomeTotal,
-      entries: incomeEntries.map(({ id, nameKey, amount, date, recurring }) => ({
+      entries: incomeEntries.map(({ id, nameKey, amount, date, paymentMethod, recurring }) => ({
         id,
         name: name(locale, nameKey),
         amount,
         date,
+        paymentMethod,
         ...(recurring ? { recurring } : {}),
       })),
       history: incomeHistory,
@@ -306,6 +338,7 @@ export function buildDemoData(locale: Locale): DashboardData {
       { id: 'card-debito', name: name(locale, 'debito'), color: 'azul_apagado' },
       { id: 'card-credito', name: name(locale, 'credito'), color: 'violeta_metalico' },
     ],
+    pockets: null,
   }
 
   return deriveDemoData(
@@ -317,5 +350,6 @@ export function buildDemoData(locale: Locale): DashboardData {
     noDemoRecurringEdits,
     noDemoIncomeEdits,
     noDemoSavingsEdits,
+    { transfers: resolveDemoTransfers(DEMO_TRANSFER_SEED, noDemoTransferEdits), opening: DEMO_POCKET_OPENING },
   ).data
 }

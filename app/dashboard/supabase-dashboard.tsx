@@ -58,6 +58,7 @@ const profile: ProfileMutations = {
   setStep: unsupported,
   complete: unsupported,
   setWidgetOrder: actions.setWidgetOrder,
+  setDefaultPaymentMethod: actions.setDefaultPaymentMethod,
 }
 
 const mutations = {
@@ -80,6 +81,12 @@ const mutations = {
     update: actions.updateSavingsMovement,
     softDelete: actions.softDeleteSavingsMovement,
     restore: actions.restoreSavingsMovement,
+  },
+  transfers: {
+    create: actions.createTransfer,
+    update: actions.updateTransfer,
+    softDelete: actions.softDeleteTransfer,
+    restore: actions.restoreTransfer,
   },
   categories,
   cards,

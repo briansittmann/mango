@@ -30,7 +30,8 @@ test('two columns on a laptop: the tiles above both, the widgets beside the card
   expect(await widgetOrder(page)).toEqual(WIDGETS)
   // On a laptop the hero is a tile: no strip and no control; the donut's legend sits under it.
   await expect(page.locator('.hero-card [data-composition-strip]')).toHaveCount(0)
-  await expect(page.locator('.hero-card').getByRole('button')).toHaveCount(0)
+  // The pocket blocks and their swap button are controls of their own (`payment-method`).
+  await expect(page.locator('.hero-card button:not([data-pockets] button)')).toHaveCount(0)
   const donut = await rect(page, '[data-donut]')
   const legend = await rect(page, '[data-distribution-chart] ul')
   expect(legend.top).toBeGreaterThanOrEqual(donut.bottom - 1)

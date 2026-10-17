@@ -6,6 +6,7 @@ import type { RecurringMutations } from './recurring'
 import type { IncomeEntry, IncomeMutations } from './income'
 import type { SavingsMutations } from './savings'
 import type { Card, CardMutations } from './cards'
+import type { PaymentMethod, Pockets, TransferMutations } from './payment-method'
 
 // = check in supabase/migrations/0004_categorias.sql
 export type CategoryColor =
@@ -45,6 +46,8 @@ export type Expense = {
   name: string
   amount: number
   date: string
+  /** How it was paid (`payment-method`); a projected charge carries its definition's. */
+  paymentMethod: PaymentMethod | null
   /**
    * Present only on a charge linked to a recurring definition (§7): `movimientos_recurrentes.id`
    * and its `dia_del_mes`. `charged` is true when `transacciones.estado` is `confirmada` or the
@@ -117,6 +120,10 @@ export type DashboardData = {
     hasMovements?: boolean
     /** The WhatsApp channel's state for the account sheet (`whatsapp-linking`); absent on a mount with no profile. */
     whatsapp?: WhatsAppState
+    /** `usuarios.medio_pago_default`: preselects the entry sheet's chips in create mode; null = "Ninguno". */
+    defaultPaymentMethod: PaymentMethod | null
+    /** Whether any expense, income or transfer row, in any cycle, carries a method (`payment-method` → *Who uses the feature*). */
+    hasMarkedMovements: boolean
   }
   cycle: {
     start: string
@@ -152,6 +159,8 @@ export type DashboardData = {
   history: { month: string; total: number }[]
   /** The user's cards in creation order (`card-wallet`); not tied to a cycle. */
   cards: Card[]
+  /** The pocket balances and the cycle's transfers; null while the user holds no marked movement, and in a projection. */
+  pockets: Pockets | null
 }
 
 export type DashboardActions = Partial<{
@@ -166,6 +175,8 @@ export type DashboardActions = Partial<{
   savings: SavingsMutations
   /** The card sheet's operations (`card-wallet`); without them the wallet is read-only. */
   cards: CardMutations
+  /** "Mover plata" and the transfers of the pocket list (`payment-method`); without them neither is offered. */
+  transfers: TransferMutations
   /** The account sheet's operations (`dashboard-ui` → *Account avatar and menu*); the demo supplies none. */
   profile: ProfileMutations
   /**

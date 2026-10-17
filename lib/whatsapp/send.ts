@@ -7,16 +7,17 @@ export async function sendText(phone: string, text: string): Promise<void> {
 }
 
 /**
- * The confirmation text with one reply button (`add-bot-conversation` design D2). `buttonId`
- * comes back in the press; `label` is at most 20 characters. Never throws, like `sendText`.
+ * A text with reply buttons (`add-bot-conversation` D2, `add-payment-method` D10): at most three,
+ * Meta's limit. Each `id` comes back in the press; each `title` is at most 20 characters. Never
+ * throws, like `sendText`.
  */
-export async function sendUndoButton(phone: string, text: string, buttonId: string, label: string): Promise<void> {
+export async function sendButtons(phone: string, text: string, buttons: { id: string; title: string }[]): Promise<void> {
   await send(phone, 'button', {
     type: 'interactive',
     interactive: {
       type: 'button',
       body: { text },
-      action: { buttons: [{ type: 'reply', reply: { id: buttonId, title: label } }] },
+      action: { buttons: buttons.slice(0, 3).map(({ id, title }) => ({ type: 'reply', reply: { id, title } })) },
     },
   })
 }

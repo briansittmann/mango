@@ -142,7 +142,7 @@
     "cerrarAviso": "Dismiss notice",
     "accionNoDisponible": "This action isn't available in the demo"
   },
-  "hojaGasto": {
+  "hojaMovimiento": {
     "nuevoGasto": "New expense",
     "editarGasto": "Edit expense",
     "cancelar": "Cancel",
@@ -590,8 +590,12 @@
     }
   },
   "bot": {
-    "confirmacionGasto": "Logged ✅ {nombre} · {monto}{conCategoria, select, si { in {categoria}} other {}}{cuando, select, hoy {} other {, {dia}}}.",
-    "confirmacionIngreso": "Logged 💰 {nombre} · {monto}{cuando, select, hoy {} other {, {dia}}}.",
+    "confirmacionGasto": "Logged ✅ {nombre} · {monto}{conCategoria, select, si { in {categoria}} other {}}{cuando, select, hoy {} other {, {dia}}}{medio, select, efectivo {, in cash} tarjeta {, by card} other {}}.",
+    "confirmacionIngreso": "Logged 💰 {nombre} · {monto}{cuando, select, hoy {} other {, {dia}}}{medio, select, efectivo {, in cash} tarjeta {, by card} other {}}.",
+    "confirmacionTransferencia": "Logged 🔁 {direccion, select, efectivo {Card to cash} other {Cash to card}} · {monto}{cuando, select, hoy {} other {, {dia}}}.",
+    "preguntaDeposito": "🤔 Did you move those {monto} from cash, or is it new income?",
+    "botonDesdeEfectivo": "Moved from cash",
+    "botonIngresoNuevo": "It's new income",
     "confirmacionAhorro": "Logged 🐷 Savings · {monto}{cuando, select, hoy {} other {, {dia}}}.",
     "confirmacionRetiro": "Logged 🏦 Savings withdrawal · {monto}{cuando, select, hoy {} other {, {dia}}}.",
     "ingreso": "Income",
@@ -602,9 +606,9 @@
     "ayer": "yesterday",
     "preguntaCategoria": "🤔 Which category is it? Reply with one: {categorias}.",
     "yaCargado": "📌 {nombre} is already logged this cycle. If it was another payment, add it on the web.",
-    "borrado": "🗑️ Deleted {monto} {tipo, select, gasto {in {categoria}} ingreso {of income} other {of savings}}, {dia}.",
-    "corregido": "✏️ Corrected: {monto} {tipo, select, gasto {in {categoria}} ingreso {of income} other {of savings}}, {dia}.",
-    "deshecho": "↩️ Undone: {monto} {tipo, select, gasto {in {categoria}} ingreso {of income} other {of savings}}, {dia}.",
+    "borrado": "🗑️ Deleted {monto} {tipo, select, gasto {in {categoria}} ingreso {of income} transferencia {{direccion, select, efectivo {moved card to cash} other {moved cash to card}}} other {of savings}}, {dia}.",
+    "corregido": "✏️ Corrected: {monto} {tipo, select, gasto {in {categoria}} ingreso {of income} transferencia {{direccion, select, efectivo {moved card to cash} other {moved cash to card}}} other {of savings}}, {dia}.",
+    "deshecho": "↩️ Undone: {monto} {tipo, select, gasto {in {categoria}} ingreso {of income} transferencia {{direccion, select, efectivo {moved card to cash} other {moved cash to card}}} other {of savings}}, {dia}.",
     "yaDeshecho": "↩️ That was already undone.",
     "nadaQueCorregir": "🤷 There is no recent entry from this chat to change. Older ones are edited on the web.",
     "soloGastosCategoria": "🤷 Only expenses have a category. To change anything else, use the web.",
@@ -682,5 +686,35 @@
     "tarjetaAnadida": "Card added",
     "cambiosGuardados": "Changes saved",
     "tarjetaEliminada": "Card deleted"
+  },
+  "medioPago": {
+    "grupo": "Payment method",
+    "efectivo": "Cash",
+    "tarjeta": "Card",
+    "sufijoEfectivo": ", in cash",
+    "sufijoTarjeta": ", by card",
+    "moverPlata": "Move money",
+    "saleDe": "From",
+    "entraA": "To",
+    "intercambiar": "Swap from and to",
+    "mover": "Move {monto}",
+    "despues": "After the move",
+    "margenNoCambia": "Your free margin doesn't change",
+    "editarMovimiento": "Edit transfer",
+    "eliminarMovimiento": "Delete transfer",
+    "movimientoEliminado": "Transfer deleted",
+    "plataMovida": "Money moved",
+    "cambiosGuardados": "Changes saved",
+    "errorGuardar": "Couldn't move the money. Try again.",
+    "errorEliminar": "Couldn't delete the transfer",
+    "tarjetaAEfectivo": "Card to cash",
+    "efectivoATarjeta": "Cash to card",
+    "entroSalio": "In {entro} · Out {salio}",
+    "volver": "Back",
+    "vacio": "No movements this month",
+    "verBolsillo": "{bolsillo}: {saldo}. See movements",
+    "fila": "{nombre}, {dia}, {monto}",
+    "porDefecto": "Default payment method",
+    "ninguno": "None"
   }
 }

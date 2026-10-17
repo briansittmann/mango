@@ -3,8 +3,11 @@ import { categoriaViva } from '../categories.ts'
 
 export type BotCategory = { id: string; nombre: string }
 export type BotRecurring = { id: string; nombre: string; monto_actual: number; categoria_id: string }
-/** `cycle` is the first day of the cycle in progress (`periodo_presupuesto`). */
-export type BotContext = { cycle: string; categories: BotCategory[]; recurring: BotRecurring[] }
+/**
+ * `cycle` is the first day of the cycle in progress (`periodo_presupuesto`). `hasMarkedMovements`:
+ * whether any row carries a payment method (`payment-method` → *Who uses the feature*).
+ */
+export type BotContext = { cycle: string; categories: BotCategory[]; recurring: BotRecurring[]; hasMarkedMovements: boolean }
 
 type CategoriaRow = BotCategory & { desde_ciclo: string | null; hasta_ciclo: string | null }
 
@@ -29,7 +32,7 @@ export async function loadBotContext(client: SupabaseClient, usuarioId: string):
   const cycle = await client.rpc('periodo_presupuesto', { p_usuario_id: usuarioId, p_periodo: null })
   if (cycle.error) throw cycle.error
 
-  const [categories, hidden, recurring] = await Promise.all([
+  const [categories, hidden, recurring, marked] = await Promise.all([
     client
       .from('categorias')
       .select('id, nombre, desde_ciclo, hasta_ciclo')
@@ -45,9 +48,16 @@ export async function loadBotContext(client: SupabaseClient, usuarioId: string):
       .eq('activo', true)
       .order('orden')
       .order('nombre'),
+    client
+      .from('transacciones')
+      .select('usuario_id', { count: 'exact', head: true })
+      .eq('usuario_id', usuarioId)
+      .not('medio_pago', 'is', null)
+      .is('borrado_en', null),
   ])
 
   if (categories.error) throw categories.error
+  if (marked.error) throw marked.error
   if (hidden.error) throw hidden.error
   if (recurring.error) throw recurring.error
 
@@ -59,6 +69,7 @@ export async function loadBotContext(client: SupabaseClient, usuarioId: string):
       cycle.data as string,
     ),
     recurring: (recurring.data as BotRecurring[]).map((row) => ({ ...row, monto_actual: Number(row.monto_actual) })),
+    hasMarkedMovements: (marked.count ?? 0) > 0,
   }
 }
 

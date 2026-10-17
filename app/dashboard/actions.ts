@@ -12,6 +12,7 @@ import { DUPLICATE_CARD_NAME, type CardDraft } from "@/lib/data/cards";
 import type { WidgetId } from "@/lib/data/dashboard";
 import type { ExpenseDraft, LocalDate } from "@/lib/data/expenses";
 import type { IncomeDraft } from "@/lib/data/income";
+import type { PaymentMethod, TransferDraft } from "@/lib/data/payment-method";
 import { PROFILE_ERRORS, validateBasics, type ProfileBasics } from "@/lib/data/profile";
 import { createSupabaseProfileMutations } from "@/lib/data/supabase/profile";
 import type { RecurringDefinition, RecurringDraft, RecurringTarget, SlotEntry } from "@/lib/data/recurring";
@@ -23,6 +24,7 @@ import { createSupabaseExpenseMutations } from "@/lib/data/supabase/expenses";
 import { createSupabaseIncomeMutations } from "@/lib/data/supabase/income";
 import { createSupabaseRecurringMutations } from "@/lib/data/supabase/recurring";
 import { createSupabaseSavingsMutations } from "@/lib/data/supabase/savings";
+import { createSupabaseTransferMutations } from "@/lib/data/supabase/transfers";
 import { findCurrentUsuario } from "@/lib/data/supabase/user";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -93,6 +95,19 @@ export async function softDeleteSavingsMovement(movementId: string) {
 }
 export async function restoreSavingsMovement(movementId: string) {
   await run((ctx) => createSupabaseSavingsMutations(ctx).restore(movementId));
+}
+
+export async function createTransfer(draft: TransferDraft) {
+  await run((ctx) => createSupabaseTransferMutations(ctx).create(draft));
+}
+export async function updateTransfer(transferId: string, draft: TransferDraft) {
+  await run((ctx) => createSupabaseTransferMutations(ctx).update(transferId, draft));
+}
+export async function softDeleteTransfer(transferId: string) {
+  await run((ctx) => createSupabaseTransferMutations(ctx).softDelete(transferId));
+}
+export async function restoreTransfer(transferId: string) {
+  await run((ctx) => createSupabaseTransferMutations(ctx).restore(transferId));
 }
 
 export async function createCategory(draft: CategoryDraft, cycle: LocalDate, scope: 'only' | 'onward') {
@@ -167,6 +182,10 @@ export async function updateProfileBasics(
 }
 
 /** The desktop widget order, saved whole on every drop or key move (`desktop-shell` → *Widget order is the user's*). */
+export async function setDefaultPaymentMethod(method: PaymentMethod | null) {
+  await run((ctx) => createSupabaseProfileMutations(ctx).setDefaultPaymentMethod!(method));
+}
+
 export async function setWidgetOrder(order: WidgetId[]) {
   await run((ctx) => createSupabaseProfileMutations(ctx).setWidgetOrder!(order));
 }

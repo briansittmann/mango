@@ -20,6 +20,12 @@
     { "mensaje": "sí", "esperado": { "accion": "no_entendido" }, "nota": "Sin nada pendiente, un sí suelto no se entiende." },
     { "mensaje": "libre", "esperado": { "accion": "consultar", "consulta": "margen_libre" } },
     { "mensaje": "¿cómo vengo?", "esperado": { "accion": "consultar", "consulta": "mes" } },
-    { "mensaje": "asdasda", "esperado": { "accion": "no_entendido" }, "nota": "Responde que no entendió." }
+    { "mensaje": "asdasda", "esperado": { "accion": "no_entendido" }, "nota": "Responde que no entendió." },
+    { "mensaje": "pagué 15 en efectivo de cervezas", "esperado": { "accion": "cargar", "tipo": "gasto", "monto": 15, "categoria": "Ocio", "medio_pago": "efectivo" }, "nota": "El medio que dice el mensaje (add-payment-method)." },
+    { "mensaje": "nafta 45", "esperado": { "accion": "cargar", "tipo": "gasto", "monto": 45, "categoria": "Transporte", "medio_pago": null }, "nota": "Sin medio dicho: null, nunca uno por defecto." },
+    { "mensaje": "saqué 200", "esperado": { "accion": "cargar", "tipo": "transferencia", "monto": 200, "medio_pago": "efectivo", "categoria": null, "recurrente": null }, "nota": "Cajero: de tarjeta a efectivo." },
+    { "mensaje": "deposité las propinas, 120", "esperado": { "accion": "cargar", "tipo": "transferencia", "monto": 120, "medio_pago": "tarjeta" }, "nota": "Efectivo al banco." },
+    { "mensaje": "saqué 100 del ahorro", "esperado": { "accion": "cargar", "tipo": "ahorro", "monto": -100, "medio_pago": null }, "nota": "Sacar del ahorro sigue siendo ahorro, no transferencia." },
+    { "mensaje": "ingresé 200 en el banco", "esperado": { "accion": "repreguntar", "falta": "deposito", "tipo": "ingreso", "monto": 200 }, "nota": "Ingreso o depósito desde el efectivo: el bot pregunta." }
   ]
 }

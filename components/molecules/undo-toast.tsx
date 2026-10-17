@@ -5,7 +5,8 @@ export function UndoToast() {
 
   return (
     <Toast.Portal>
-      <Toast.Viewport className="fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex justify-center">
+      {/* Above the sheets (z-50): a row deleted inside a sheet, the pocket list's, keeps its "Deshacer" in reach. */}
+      <Toast.Viewport className="fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[60] flex justify-center">
         {toasts.map((toast) => (
           <Toast.Root
             key={toast.id}

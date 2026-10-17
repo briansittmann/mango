@@ -1,4 +1,5 @@
 import type { LocalDate } from './expenses'
+import type { PaymentMethod } from './payment-method'
 
 export type RecurringDefinition = {
   id: string
@@ -14,6 +15,8 @@ export type RecurringDefinition = {
   repetitions: { total: number; done: number } | null
   /** The card it is charged to (`card-wallet`), or `null`. Always `null` on income. */
   cardId: string | null
+  /** Copied onto every charge it produces (`recurring-expenses` → *A recurring definition carries a payment method*). Independent of `cardId`. */
+  paymentMethod: PaymentMethod | null
 }
 
 /** What `RecurringMutations.create` moves: an expense with its category, or income with none. */
@@ -30,6 +33,7 @@ export type RecurringDraft = {
   day: number // 1-31
   reminder: { active: boolean; daysBefore: number } // daysBefore >= 0, meaningful only while active
   repetitions: number | null // total repetitions; null = "sin final"
+  paymentMethod: PaymentMethod | null // stored on the definition and the row the same save created
 }
 
 /**
@@ -59,10 +63,10 @@ export type RecurringDraft = {
  * ciclo_mes)`, a soft-deleted row included — from a row of the entry sheet (`recurring-expenses`
  * → *A definition's slot in a cycle can be changed on its own*, `add-forward-scoped-edits` D1–D3).
  * `cycle` is the first day of the cycle the row is shown in, the one in progress or later:
- * - `editInCycle` with `'only'` writes that slot (the linked row, or a new pending one). With
+ * - `editInCycle` with `'only'` writes that slot (its payment method included) (the linked row, or a new pending one). With
  *   `'onward'` it first writes, for every cycle between the one in progress and `cycle` holding
  *   no slot, a pending row with what that cycle showed (`congelarCiclos`); then the definition's
- *   amount, day, name and category from `entry`; then every pending slot of `cycle` and later.
+ *   amount, day, name, category and payment method from `entry`; then every pending slot of `cycle` and later.
  * - `deleteInCycle` with `'only'` soft-deletes that slot (writing it soft-deleted when there is
  *   none), so nothing re-inserts it. With `'onward'` it freezes the cycles in between as above,
  *   soft-deletes the slots of `cycle` and later, and stops the definition.
@@ -83,4 +87,10 @@ export type RecurringMutations = {
 }
 
 /** A row of a definition as the entry sheet saves it; `categoryId` is `null` for income. */
-export type SlotEntry = { amount: number; description: string; date: LocalDate; categoryId: string | null }
+export type SlotEntry = {
+  amount: number
+  description: string
+  date: LocalDate
+  categoryId: string | null
+  paymentMethod: PaymentMethod | null
+}

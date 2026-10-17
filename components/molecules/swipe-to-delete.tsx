@@ -37,7 +37,7 @@ function wait(ms: number) {
 }
 
 export function SwipeToDelete({ onDelete, rowId, hint = false, onHintDismiss, children }: SwipeToDeleteProps) {
-  const t = useTranslations('hojaGasto')
+  const t = useTranslations('hojaMovimiento')
   const tOnboarding = useTranslations('onboarding')
   const [offset, setOffset] = useState(0)
   const [dragging, setDragging] = useState(false)

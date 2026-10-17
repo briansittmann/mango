@@ -49,6 +49,7 @@ export function createSupabaseRecurringMutations(ctx: DataContext): RecurringMut
         p_recordatorio: draft.reminder.active,
         p_dias_antes: draft.reminder.daysBefore,
         p_repeticiones: draft.repetitions,
+        p_medio_pago: draft.paymentMethod,
       })
       if (error) throw new Error(error.message)
     },
@@ -134,6 +135,7 @@ export function createSupabaseRecurringMutations(ctx: DataContext): RecurringMut
         p_categoria_id: entry.categoryId,
         p_alcance: SCOPE[scope],
         p_congelar: congelar,
+        p_medio_pago: entry.paymentMethod,
       })
       if (error) throw new Error(error.message)
     },

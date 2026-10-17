@@ -1,4 +1,5 @@
 import type { LocalDate } from '@/lib/data/expenses'
+import type { PaymentMethod } from '@/lib/data/payment-method'
 import type { RecurringDefinition } from '@/lib/data/recurring'
 import type { DataContext } from './context'
 import { PROJECTION_HORIZON, cycleMonthOf, cycleRange, localDateOf, type CycleRange } from './cycle'
@@ -16,10 +17,11 @@ type MovimientoRecurrenteRow = {
   repeticiones_totales: number | null
   repeticiones_insertadas: number
   tarjeta_id: string | null
+  medio_pago: PaymentMethod | null
 }
 
 export const DEFINITION_COLUMNS =
-  'id, nombre, monto_actual, tipo, categoria_id, dia_del_mes, activo, recordatorio_activo, dias_antes, repeticiones_totales, repeticiones_insertadas, tarjeta_id'
+  'id, nombre, monto_actual, tipo, categoria_id, dia_del_mes, activo, recordatorio_activo, dias_antes, repeticiones_totales, repeticiones_insertadas, tarjeta_id, medio_pago'
 
 export function toDefinition(d: MovimientoRecurrenteRow): RecurringDefinition {
   return {
@@ -33,6 +35,7 @@ export function toDefinition(d: MovimientoRecurrenteRow): RecurringDefinition {
     reminder: { active: d.recordatorio_activo, daysBefore: d.dias_antes },
     repetitions: d.repeticiones_totales == null ? null : { total: d.repeticiones_totales, done: d.repeticiones_insertadas },
     cardId: d.tarjeta_id,
+    paymentMethod: d.medio_pago,
   }
 }
 

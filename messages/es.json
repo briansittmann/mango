@@ -142,7 +142,7 @@
     "cerrarAviso": "Cerrar aviso",
     "accionNoDisponible": "Esta acción no está disponible en la demo"
   },
-  "hojaGasto": {
+  "hojaMovimiento": {
     "nuevoGasto": "Nuevo gasto",
     "editarGasto": "Editar gasto",
     "cancelar": "Cancelar",
@@ -590,8 +590,12 @@
     }
   },
   "bot": {
-    "confirmacionGasto": "Anotado ✅ {nombre} · {monto}{conCategoria, select, si { en {categoria}} other {}}{cuando, select, hoy {} other {, {dia}}}.",
-    "confirmacionIngreso": "Anotado 💰 {nombre} · {monto}{cuando, select, hoy {} other {, {dia}}}.",
+    "confirmacionGasto": "Anotado ✅ {nombre} · {monto}{conCategoria, select, si { en {categoria}} other {}}{cuando, select, hoy {} other {, {dia}}}{medio, select, efectivo {, en efectivo} tarjeta {, con tarjeta} other {}}.",
+    "confirmacionIngreso": "Anotado 💰 {nombre} · {monto}{cuando, select, hoy {} other {, {dia}}}{medio, select, efectivo {, en efectivo} tarjeta {, con tarjeta} other {}}.",
+    "confirmacionTransferencia": "Anotado 🔁 {direccion, select, efectivo {Tarjeta a efectivo} other {Efectivo a tarjeta}} · {monto}{cuando, select, hoy {} other {, {dia}}}.",
+    "preguntaDeposito": "🤔 ¿Esos {monto} los pasaste desde el efectivo o es un ingreso nuevo?",
+    "botonDesdeEfectivo": "Lo pasé del efectivo",
+    "botonIngresoNuevo": "Es un ingreso nuevo",
     "confirmacionAhorro": "Anotado 🐷 Ahorro · {monto}{cuando, select, hoy {} other {, {dia}}}.",
     "confirmacionRetiro": "Anotado 🏦 Retiro del ahorro · {monto}{cuando, select, hoy {} other {, {dia}}}.",
     "ingreso": "Ingreso",
@@ -602,9 +606,9 @@
     "ayer": "ayer",
     "preguntaCategoria": "🤔 ¿En qué categoría va? Respondeme con una: {categorias}.",
     "yaCargado": "📌 {nombre} ya está anotado en este ciclo. Si fue otro pago, cargalo desde la web.",
-    "borrado": "🗑️ Borré {monto} {tipo, select, gasto {en {categoria}} ingreso {de ingreso} other {del ahorro}}, {dia}.",
-    "corregido": "✏️ Corregido: {monto} {tipo, select, gasto {en {categoria}} ingreso {de ingreso} other {del ahorro}}, {dia}.",
-    "deshecho": "↩️ Deshecho: {monto} {tipo, select, gasto {en {categoria}} ingreso {de ingreso} other {del ahorro}}, {dia}.",
+    "borrado": "🗑️ Borré {monto} {tipo, select, gasto {en {categoria}} ingreso {de ingreso} transferencia {{direccion, select, efectivo {de tarjeta a efectivo} other {de efectivo a tarjeta}}} other {del ahorro}}, {dia}.",
+    "corregido": "✏️ Corregido: {monto} {tipo, select, gasto {en {categoria}} ingreso {de ingreso} transferencia {{direccion, select, efectivo {de tarjeta a efectivo} other {de efectivo a tarjeta}}} other {del ahorro}}, {dia}.",
+    "deshecho": "↩️ Deshecho: {monto} {tipo, select, gasto {en {categoria}} ingreso {de ingreso} transferencia {{direccion, select, efectivo {de tarjeta a efectivo} other {de efectivo a tarjeta}}} other {del ahorro}}, {dia}.",
     "yaDeshecho": "↩️ Esa carga ya estaba deshecha.",
     "nadaQueCorregir": "🤷 No tengo una carga reciente de este chat para cambiar. Lo anterior se edita desde la web.",
     "soloGastosCategoria": "🤷 Solo los gastos tienen categoría. Si querés cambiar otra cosa, hacelo desde la web.",
@@ -682,5 +686,35 @@
     "tarjetaAnadida": "Tarjeta añadida",
     "cambiosGuardados": "Cambios guardados",
     "tarjetaEliminada": "Tarjeta eliminada"
+  },
+  "medioPago": {
+    "grupo": "Medio de pago",
+    "efectivo": "Efectivo",
+    "tarjeta": "Tarjeta",
+    "sufijoEfectivo": ", en efectivo",
+    "sufijoTarjeta": ", con tarjeta",
+    "moverPlata": "Mover plata",
+    "saleDe": "Sale de",
+    "entraA": "Entra a",
+    "intercambiar": "Intercambiar origen y destino",
+    "mover": "Mover {monto}",
+    "despues": "Después del movimiento",
+    "margenNoCambia": "El margen libre no cambia",
+    "editarMovimiento": "Editar movimiento",
+    "eliminarMovimiento": "Eliminar movimiento",
+    "movimientoEliminado": "Movimiento eliminado",
+    "plataMovida": "Plata movida",
+    "cambiosGuardados": "Cambios guardados",
+    "errorGuardar": "No se pudo mover la plata. Inténtalo de nuevo.",
+    "errorEliminar": "No se pudo eliminar el movimiento",
+    "tarjetaAEfectivo": "Tarjeta a efectivo",
+    "efectivoATarjeta": "Efectivo a tarjeta",
+    "entroSalio": "Entró {entro} · Salió {salio}",
+    "volver": "Volver",
+    "vacio": "No hay movimientos este mes",
+    "verBolsillo": "{bolsillo}: {saldo}. Ver movimientos",
+    "fila": "{nombre}, {dia}, {monto}",
+    "porDefecto": "Medio de pago por defecto",
+    "ninguno": "Ninguno"
   }
 }

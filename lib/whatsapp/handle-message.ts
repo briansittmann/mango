@@ -21,6 +21,27 @@ export type LinkResult = { ok: true; userId: string } | { ok: false; error: 'cod
 
 export type UnknownReply = { kind: 'text'; text: string } | { kind: 'none' }
 
+/** An Undo button's id names the row it deletes (`add-bot-conversation` design D2). */
+export const UNDO_PREFIX = 'undo:'
+const UNDO_ID = /^undo:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
+
+/** The deposit question's buttons (`add-payment-method` D10), by the answer each stands for. */
+export const DEPOSIT_BUTTONS = { transfer: 'deposito:transferencia', income: 'deposito:ingreso' } as const
+
+/**
+ * What a pressed button asks the logic for: the row an Undo names, or an answer to the deposit
+ * question, only while that question is pending on the channel. Null discards the press.
+ */
+export function buttonAction(
+  buttonId: string,
+  pending: { pregunta: string } | null,
+): { undoId: string } | { answer: keyof typeof DEPOSIT_BUTTONS } | null {
+  const undoId = UNDO_ID.exec(buttonId)?.[1]
+  if (undoId) return { undoId }
+  const answer = (Object.keys(DEPOSIT_BUTTONS) as (keyof typeof DEPOSIT_BUTTONS)[]).find((key) => DEPOSIT_BUTTONS[key] === buttonId)
+  return answer && pending?.pregunta === 'deposito' ? { answer } : null
+}
+
 export type HandlerDeps = {
   findUserIdByPhone(phone: string): Promise<string | null>
   linkChannel(channel: Channel, code: string, externalId: string): Promise<LinkResult>

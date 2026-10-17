@@ -15,7 +15,7 @@ type SavingsStepProps = {
  */
 export function SavingsStep({ value, onChange, currency, invalid, disabled }: SavingsStepProps) {
   const t = useTranslations('onboarding')
-  const tAmount = useTranslations('hojaGasto')
+  const tAmount = useTranslations('hojaMovimiento')
 
   return (
     <div className="flex flex-col gap-4">

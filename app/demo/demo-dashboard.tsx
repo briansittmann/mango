@@ -11,9 +11,18 @@ import { applyDemoCardAssignments, applyDemoCardEdits, createDemoCardMutations, 
 import { createDemoIncomeMutations, noDemoIncomeEdits } from '@/lib/demo/demo-income'
 import { createDemoRecurringMutations, noDemoRecurringEdits } from '@/lib/demo/demo-recurring'
 import { createDemoSavingsMutations, noDemoSavingsEdits } from '@/lib/demo/demo-savings'
+import {
+  DEMO_POCKET_OPENING,
+  DEMO_TRANSFER_SEED,
+  createDemoTransferMutations,
+  noDemoTransferEdits,
+  resolveDemoTransfers,
+  withoutPaymentMethods,
+} from '@/lib/demo/demo-transfers'
 import { selectUpcomingCharges } from '@/lib/data/upcoming-charges'
 import type { BudgetRow } from '@/lib/data/budget'
 import { DEFAULT_WIDGET_ORDER, type DashboardData, type WidgetId } from '@/lib/data/dashboard'
+import type { PaymentMethod } from '@/lib/data/payment-method'
 import type { RecurringDefinition } from '@/lib/data/recurring'
 import type { buildDemoPlan } from '@/lib/demo/demo-data'
 
@@ -25,8 +34,15 @@ type DemoDashboardProps = {
   changeLanguage: (l: 'es' | 'en') => Promise<void>
 }
 
-export function DemoDashboard({ data, recurringDefinitions, budgetRows: baseBudgetRows, plan, changeLanguage }: DemoDashboardProps) {
+export function DemoDashboard({ data: sampleData, recurringDefinitions: sampleDefinitions, budgetRows: baseBudgetRows, plan, changeLanguage }: DemoDashboardProps) {
   const searchParams = useSearchParams()
+  const e2e = searchParams.get('e2e')
+  // `?e2e=no-payment-methods`: an account that never marked a movement, so no pockets (D11).
+  const unmarked = e2e === 'no-payment-methods'
+  const { data, definitions: recurringDefinitions } = useMemo(
+    () => (unmarked ? withoutPaymentMethods(sampleData, sampleDefinitions) : { data: sampleData, definitions: sampleDefinitions }),
+    [unmarked, sampleData, sampleDefinitions],
+  )
   // The landing's phone frames this page with `?embed=1` and tells it, as the visitor scrolls,
   // which of its story's expenses have been sent so far; the list replaces the visitor's edits.
   // Embedded, the projected months also carry what Ana planned ahead (`buildDemoPlan`), so they
@@ -38,6 +54,14 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows: baseBudg
   const [cardEdits, setCardEdits] = useState(noDemoCardEdits)
   const [incomeEdits, setIncomeEdits] = useState(embedded ? { ...noDemoIncomeEdits, created: plan.income } : noDemoIncomeEdits)
   const [savingsEdits, setSavingsEdits] = useState(embedded ? { ...noDemoSavingsEdits, created: plan.savings } : noDemoSavingsEdits)
+  const [transferEdits, setTransferEdits] = useState(noDemoTransferEdits)
+  const pocketSource = useMemo(
+    () => ({
+      transfers: resolveDemoTransfers(unmarked ? [] : DEMO_TRANSFER_SEED, transferEdits),
+      opening: unmarked ? [] : DEMO_POCKET_OPENING,
+    }),
+    [unmarked, transferEdits],
+  )
   const budgetRows = useMemo(() => (embedded ? [...baseBudgetRows, ...plan.budgets] : baseBudgetRows), [embedded, baseBudgetRows, plan])
   const router = useRouter()
   const [messageOpen, setMessageOpen] = useState(false)
@@ -45,8 +69,9 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows: baseBudg
   const [month, setMonth] = useState(data.cycle.month)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { data: derived, definitions: derivedDefinitions } = useMemo(
-    () => deriveDemoData(data, recurringDefinitions, budgetRows, edits, categoryEdits, recurringEdits, incomeEdits, savingsEdits, month),
-    [data, recurringDefinitions, budgetRows, edits, categoryEdits, recurringEdits, incomeEdits, savingsEdits, month],
+    () =>
+      deriveDemoData(data, recurringDefinitions, budgetRows, edits, categoryEdits, recurringEdits, incomeEdits, savingsEdits, pocketSource, month),
+    [data, recurringDefinitions, budgetRows, edits, categoryEdits, recurringEdits, incomeEdits, savingsEdits, pocketSource, month],
   )
   // Cards are not tied to a cycle: they and their assignments lie over every month the same way.
   const cards = useMemo(() => applyDemoCardEdits(data.cards, cardEdits), [data.cards, cardEdits])
@@ -70,6 +95,14 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows: baseBudg
     const base = createDemoSavingsMutations(setSavingsEdits)
     return failSavingsUpdate ? { ...base, update: () => Promise.reject(new Error('e2e-forced-savings-update-failure')) } : base
   }, [failSavingsUpdate])
+  // `?e2e=fail-transfer` makes "Mover plata" reject (`payment-method` → *A failed transfer*).
+  const failTransfer = e2e === 'fail-transfer'
+  const transfers = useMemo(() => {
+    const base = createDemoTransferMutations(setTransferEdits)
+    if (!failTransfer) return base
+    const fail = () => Promise.reject(new Error('e2e-forced-transfer-failure'))
+    return { ...base, create: fail, update: fail }
+  }, [failTransfer])
   // Test-only seam for Playwright coverage of the reorder failure path (11.3): the demo has no
   // network layer to intercept, so `?e2eFailReorder=1` makes `reorder` reject deterministically.
   const [failReorder] = useState(
@@ -92,7 +125,6 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows: baseBudg
   // user's*, design D6); `?e2e=fail-widget-order` makes the save reject, like `failReorder` above.
   const [widgetOrder, setWidgetOrderState] = useState<WidgetId[]>(() => [...DEFAULT_WIDGET_ORDER])
   // `?e2e=no-widget-order` mounts without the operation (*No grips without the operation*).
-  const e2e = searchParams.get('e2e')
   const setWidgetOrder = useMemo(
     () =>
       e2e === 'no-widget-order'
@@ -102,7 +134,12 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows: baseBudg
           : async (order: WidgetId[]) => setWidgetOrderState(order),
     [e2e],
   )
-  const viewWithOrder = useMemo(() => ({ ...view, user: { ...view.user, widgetOrder } }), [view, widgetOrder])
+  // The demo's "Cuenta" sheet is disabled, so `?e2e=default-efectivo|default-tarjeta` sets the default (D11).
+  const defaultPaymentMethod: PaymentMethod | null = e2e === 'default-efectivo' ? 'efectivo' : e2e === 'default-tarjeta' ? 'tarjeta' : null
+  const viewWithOrder = useMemo(
+    () => ({ ...view, user: { ...view.user, widgetOrder, defaultPaymentMethod } }),
+    [view, widgetOrder, defaultPaymentMethod],
+  )
 
   useEffect(() => {
     return () => {
@@ -120,7 +157,11 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows: baseBudg
         ...noDemoEdits,
         created: [
           ...plan.expenses,
-          ...entries.map(({ id, categoryId, description, amount }) => ({ id, categoryId, draft: { description, amount, date: today } })),
+          ...entries.map(({ id, categoryId, description, amount }) => ({
+            id,
+            categoryId,
+            draft: { description, amount, date: today, paymentMethod: null },
+          })),
         ],
       })
     }
@@ -150,6 +191,7 @@ export function DemoDashboard({ data, recurringDefinitions, budgetRows: baseBudg
           cards: cardMutations,
           income,
           savings,
+          transfers,
           // Before the sample there is nothing to show; after it, the projections.
           previousCycle: () => (month > data.cycle.month ? setMonth(shiftDemoMonth(month, -1)) : showUnavailable()),
           nextCycle: () => {

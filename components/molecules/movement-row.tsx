@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, PiggyBank } from 'lucide-react'
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, PiggyBank } from 'lucide-react'
 import type { Ref } from 'react'
 import { CategoryDot } from '@/components/atoms/category-dot'
 import { Money } from '@/components/atoms/money'
@@ -6,7 +6,8 @@ import type { CategoryColor } from '@/lib/data/dashboard'
 import { cn } from '@/lib/utils'
 
 type MovementRowProps = {
-  kind: 'expense' | 'income' | 'savings'
+  /** `transfer` is a row of the pocket list only (`payment-method` → *The pocket list*): muted, unsigned. */
+  kind: 'expense' | 'income' | 'savings' | 'transfer'
   name: string
   /** The muted line: the category's name, "Ingreso", "Depósito" or "Retiro". */
   kindLabel: string
@@ -20,6 +21,8 @@ type MovementRowProps = {
   onActivate?: () => void
   first?: boolean
   rowRef?: Ref<HTMLElement>
+  /** The pocket list signs expenses "−" too, so what left the pocket reads as leaving it. */
+  signedExpense?: boolean
 }
 
 /**
@@ -27,8 +30,8 @@ type MovementRowProps = {
  * kind, the description over a muted line that names the kind, and the amount. Income carries a
  * "+" in the brand ink; savings carry "+" or "−" in the regular ink; expenses are unsigned.
  */
-export function MovementRow({ kind, name, kindLabel, amount, currency, color, label, onActivate, first, rowRef }: MovementRowProps) {
-  const sign = kind === 'expense' ? null : amount < 0 ? '−' : '+'
+export function MovementRow({ kind, name, kindLabel, amount, currency, color, label, onActivate, first, rowRef, signedExpense }: MovementRowProps) {
+  const sign = kind === 'transfer' ? null : kind === 'expense' ? (signedExpense ? '−' : null) : amount < 0 ? '−' : '+'
   const content = (
     <>
       <span
@@ -40,6 +43,8 @@ export function MovementRow({ kind, name, kindLabel, amount, currency, color, la
           <CategoryDot color={color} />
         ) : kind === 'income' ? (
           <ArrowDownLeft className="size-4 text-brand-ink" />
+        ) : kind === 'transfer' ? (
+          <ArrowLeftRight className="size-4 text-muted-foreground" />
         ) : amount < 0 ? (
           <ArrowUpRight className="size-4 text-foreground" />
         ) : (
@@ -47,14 +52,14 @@ export function MovementRow({ kind, name, kindLabel, amount, currency, color, la
         )}
       </span>
       <span className="block min-w-0 flex-1">
-        <span className="block truncate text-body-lg text-foreground">{name}</span>
+        <span className={cn('block truncate text-body-lg', kind === 'transfer' ? 'text-muted-foreground' : 'text-foreground')}>{name}</span>
         <span className="block truncate text-body-sm text-muted-foreground">{kindLabel}</span>
       </span>
       <span
         className={cn(
           // Same padding with or without the chip, so every amount ends on one line.
           'shrink-0 rounded-lg px-2 py-0.5 text-tabular-numeric-md',
-          kind === 'income' ? 'text-brand-ink' : 'text-foreground',
+          kind === 'income' ? 'text-brand-ink' : kind === 'transfer' ? 'text-muted-foreground' : 'text-foreground',
           onActivate && 'bg-muted',
         )}
       >

@@ -16,6 +16,7 @@ export function createSupabaseIncomeMutations({ client, usuarioId, currency, ori
             moneda: currency,
             fecha: `${draft.date}T12:00:00Z`,
             descripcion: draft.description || null,
+            medio_pago: draft.paymentMethod,
             ...originColumns(origin),
           })
           .select('id'),
@@ -29,6 +30,7 @@ export function createSupabaseIncomeMutations({ client, usuarioId, currency, ori
           .update({
             monto: draft.amount,
             descripcion: draft.description || null,
+            medio_pago: draft.paymentMethod,
             fecha: `${draft.date}T12:00:00Z`,
             estado: 'confirmada',
           })

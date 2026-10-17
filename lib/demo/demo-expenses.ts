@@ -3,6 +3,7 @@ import { getBudgetStatus, getFreeMargin, type BudgetRow } from '@/lib/data/budge
 import type { CategoryColor, DashboardData, Expense, ExpenseGroup } from '@/lib/data/dashboard'
 import type { ExpenseDraft, ExpenseMutations, LocalDate } from '@/lib/data/expenses'
 import type { IncomeDraft, IncomeEntry } from '@/lib/data/income'
+import { countedRows, pocketBalances, type CountedRow, type Transfer } from '@/lib/data/payment-method'
 import { mezclarProyeccion, proyectarCiclo } from '@/lib/data/projection'
 import type { RecurringDefinition, RecurringDraft, RecurringTarget } from '@/lib/data/recurring'
 import { splitSavings } from '@/lib/data/savings'
@@ -25,7 +26,14 @@ export const noDemoEdits: DemoExpenseEdits = { created: [], updated: {}, deleted
 type Placed = { categoryId: string; expense: Expense }
 
 function toExpense(id: string, draft: ExpenseDraft, fixed?: Expense['fixed']): Expense {
-  return { id, name: draft.description, amount: draft.amount, date: `${draft.date}T12:00:00Z`, ...(fixed ? { fixed } : {}) }
+  return {
+    id,
+    name: draft.description,
+    amount: draft.amount,
+    date: `${draft.date}T12:00:00Z`,
+    paymentMethod: draft.paymentMethod,
+    ...(fixed ? { fixed } : {}),
+  }
 }
 
 // A created row belongs to the cycle its effective date falls in, a calendar month in the demo
@@ -69,6 +77,7 @@ function toDefinition(id: string, target: RecurringTarget, draft: RecurringDraft
     reminder: draft.reminder,
     repetitions: draft.repetitions != null ? { total: draft.repetitions, done: 0 } : null,
     cardId: null,
+    paymentMethod: draft.paymentMethod,
   }
 }
 
@@ -101,13 +110,14 @@ function definitionsAt(definitions: RecurringDefinition[], edits: DemoRecurringE
     const changed = changes.reduce<RecurringDefinition>((current, { sheet, onward }) => {
       if (sheet) return { ...current, name: sheet.name, expectedAmount: sheet.expectedAmount, day: sheet.day, reminder: sheet.reminder }
       if (!onward!.entry) return { ...current, active: false }
-      const { amount, description, date, categoryId } = onward!.entry
+      const { amount, description, date, categoryId, paymentMethod } = onward!.entry
       return {
         ...current,
         name: description || current.name,
         expectedAmount: amount,
         day: Number(date.slice(8, 10)),
         categoryId: current.tipo === 'gasto' ? categoryId : null,
+        paymentMethod,
       }
     }, definition)
     // The reminder set from the row's sheet touches nothing else (`unify-fixed-charge-sheet` D5).
@@ -198,6 +208,7 @@ function attachCreatedDefinitions(
           name: draft.name,
           amount: draft.expectedAmount,
           date: `${monthPrefix}${String(draft.day).padStart(2, '0')}T12:00:00Z`,
+          paymentMethod: draft.paymentMethod,
           fixed: { definitionId: id, day: draft.day, charged: draft.day <= currentDay },
         }),
       )
@@ -206,7 +217,14 @@ function attachCreatedDefinitions(
 }
 
 function toIncomeEntry(id: string, draft: IncomeDraft, recurring?: IncomeEntry['recurring']): IncomeEntry {
-  return { id, name: draft.description, amount: draft.amount, date: `${draft.date}T12:00:00Z`, ...(recurring ? { recurring } : {}) }
+  return {
+    id,
+    name: draft.description,
+    amount: draft.amount,
+    date: `${draft.date}T12:00:00Z`,
+    paymentMethod: draft.paymentMethod,
+    ...(recurring ? { recurring } : {}),
+  }
 }
 
 function resolveIncome(base: IncomeEntry[], edits: DemoIncomeEdits, month: string): IncomeEntry[] {
@@ -224,7 +242,12 @@ function resolveIncome(base: IncomeEntry[], edits: DemoIncomeEdits, month: strin
 // income entry create (same name, amount and day) tags that entry rather than producing a
 // second row. Only 'ingreso' targets are considered — a 'gasto' recurring create never
 // produces an income row.
-function attachCreatedIncomeDefinition(entries: IncomeEntry[], created: DemoRecurringEdits['created'], cycleStart: string): IncomeEntry[] {
+function attachCreatedIncomeDefinition(
+  entries: IncomeEntry[],
+  created: DemoRecurringEdits['created'],
+  currentDay: number,
+  cycleStart: string,
+): IncomeEntry[] {
   const incomeCreated = created.filter((c): c is { id: string; target: { tipo: 'ingreso' }; draft: RecurringDraft } => c.target.tipo === 'ingreso')
   const claimed = new Set<string>()
 
@@ -236,7 +259,7 @@ function attachCreatedIncomeDefinition(entries: IncomeEntry[], created: DemoRecu
     )
     if (!match) return entry
     claimed.add(match.id)
-    return { ...entry, recurring: { definitionId: match.id, day: match.draft.day } }
+    return { ...entry, recurring: { definitionId: match.id, day: match.draft.day, charged: match.draft.day <= currentDay } }
   })
 
   const monthPrefix = cycleStart.slice(0, 8) // 'YYYY-MM-'
@@ -248,7 +271,8 @@ function attachCreatedIncomeDefinition(entries: IncomeEntry[], created: DemoRecu
         name: draft.name,
         amount: draft.expectedAmount,
         date: `${monthPrefix}${String(draft.day).padStart(2, '0')}T12:00:00Z`,
-        recurring: { definitionId: id, day: draft.day },
+        paymentMethod: draft.paymentMethod,
+        recurring: { definitionId: id, day: draft.day, charged: draft.day <= currentDay },
       }),
     )
   return [...tagged, ...additions]
@@ -332,6 +356,8 @@ export function deriveDemoData(
   recurringEdits: DemoRecurringEdits,
   incomeEdits: DemoIncomeEdits,
   savingsEdits: DemoSavingsEdits,
+  /** Every transfer in any month, and the marked rows before the sample (`DEMO_POCKET_OPENING`). */
+  pocketSource: { transfers: Transfer[]; opening: CountedRow[] },
   shownMonth: string = base.cycle.month,
 ): { data: DashboardData; definitions: RecurringDefinition[] } {
   const today = Number(base.cycle.today.slice(8, 10))
@@ -387,12 +413,19 @@ export function deriveDemoData(
       if (!slot) return [placed]
       if (slot.deleted) return []
       if (!slot.entry) return [placed]
-      const { amount, description, date, categoryId } = slot.entry
+      const { amount, description, date, categoryId, paymentMethod } = slot.entry
       return [
         {
           categoryId: categoryId ?? placed.categoryId,
           // Saved from its row in the cycle in progress, a charge is confirmed (0024).
-          expense: { ...placed.expense, amount, name: description, date: `${date}T12:00:00Z`, fixed: { ...placed.expense.fixed!, charged: true } },
+          expense: {
+            ...placed.expense,
+            amount,
+            name: description,
+            date: `${date}T12:00:00Z`,
+            paymentMethod,
+            fixed: { ...placed.expense.fixed!, charged: true },
+          },
         },
       ]
     })
@@ -492,7 +525,17 @@ export function deriveDemoData(
       if (!slot) return [entry]
       if (slot.deleted) return []
       if (!slot.entry) return [entry]
-      return [{ ...entry, amount: slot.entry.amount, name: slot.entry.description, date: `${slot.entry.date}T12:00:00Z` }]
+      return [
+        {
+          ...entry,
+          amount: slot.entry.amount,
+          name: slot.entry.description,
+          date: `${slot.entry.date}T12:00:00Z`,
+          paymentMethod: slot.entry.paymentMethod,
+          // Saved from its row, an entry is confirmed (0024).
+          ...(entry.recurring ? { recurring: { ...entry.recurring, charged: true } } : {}),
+        },
+      ]
     })
 
   // 7. The sample cycle.
@@ -505,7 +548,7 @@ export function deriveDemoData(
   //    has that entry to find and tag, rather than being resolved onto the untouched base list and
   //    then having `resolveIncome` add the same entry a second time.
   const incomeResolved = resolveIncome(base.income.entries, incomeEdits, base.cycle.month)
-  const incomeEntries = withSlot(attachCreatedIncomeDefinition(incomeResolved, recurringEdits.created, sampleStart), sampleStart)
+  const incomeEntries = withSlot(attachCreatedIncomeDefinition(incomeResolved, recurringEdits.created, currentDay, sampleStart), sampleStart)
   const incomeTotal = incomeEntries.reduce((sum, entry) => sum + entry.amount, 0)
   const incomeHistory = base.income.history.map((entry) => (entry.month === base.cycle.month ? { ...entry, total: incomeTotal } : entry))
 
@@ -533,8 +576,27 @@ export function deriveDemoData(
     entry.month === base.cycle.month ? { ...entry, accumulated: savingsAccumulated } : entry,
   )
 
+  // 10. The pockets (`payment-method` → *A pocket's balance*): the sample's rows, the opening before
+  //     it and every transfer, as the sample's today sees them. Shown once anything is marked, in
+  //     any month (*Who uses the feature*).
+  const pocketRows = [...pocketSource.opening, ...countedRows(groups, incomeEntries)]
+  const hasMarkedMovements =
+    pocketSource.transfers.length > 0 ||
+    pocketRows.some((row) => row.paymentMethod != null) ||
+    expenseEdits.created.some(({ id, draft }) => !expenseEdits.deletedIds.includes(id) && (expenseEdits.updated[id] ?? draft).paymentMethod != null) ||
+    incomeEdits.created.some(({ id, draft }) => !incomeEdits.deletedIds.includes(id) && (incomeEdits.updated[id] ?? draft).paymentMethod != null) ||
+    Object.values(recurringEdits.slots).some((slot) => !slot.deleted && slot.entry?.paymentMethod != null)
+  const pockets = hasMarkedMovements
+    ? {
+        ...pocketBalances({ rows: pocketRows, transfers: pocketSource.transfers, cycle: base.cycle, timeZone: base.user.timezone }),
+        transfers: pocketSource.transfers.filter((transfer) => transfer.date.slice(0, 7) === base.cycle.month).sort(byDate),
+      }
+    : null
+
   const sample: DashboardData = {
     ...base,
+    user: { ...base.user, hasMarkedMovements },
+    pockets,
     expenses: { total, groups },
     income: { total: incomeTotal, entries: incomeEntries, history: incomeHistory },
     savings: { ...base.savings, cycle: savingsCycle, accumulated: savingsAccumulated, history: savingsHistory, movements },
@@ -548,7 +610,7 @@ export function deriveDemoData(
 
   if (shownMonth <= base.cycle.month) return { data: sample, definitions: storedDefinitions }
 
-  // 10. A cycle after the sample, computed through `proyectarCiclo` with the sample as the last
+  // 11. A cycle after the sample, computed through `proyectarCiclo` with the sample as the last
   //     generated cycle (D9), from the definitions as that cycle sees them. A slot the visitor
   //     wrote there (an edit, or a swipe) holds it: an edited slot is listed as a row, a deleted
   //     one as nothing. The rows entered in that month are merged as `resumenMensual` merges real rows.
@@ -574,16 +636,16 @@ export function deriveDemoData(
     if (!slot || (!slot.deleted && !slot.entry)) continue
     held.push(definition.id)
     if (slot.deleted || !slot.entry) continue
-    const { amount, description, date, categoryId } = slot.entry
+    const { amount, description, date, categoryId, paymentMethod } = slot.entry
     const day = Number(date.slice(8, 10))
     const id = `slot:${slotKey(definition.id, cycle)}`
     if (definition.tipo === 'gasto') {
       slotExpenses.push({
         categoryId: categoryId ?? definition.categoryId!,
-        expense: { id, name: description, amount, date: `${date}T12:00:00Z`, fixed: { definitionId: definition.id, day, charged: false } },
+        expense: { id, name: description, amount, date: `${date}T12:00:00Z`, paymentMethod, fixed: { definitionId: definition.id, day, charged: false } },
       })
     } else {
-      slotIncome.push({ id, name: description, amount, date: `${date}T12:00:00Z`, recurring: { definitionId: definition.id, day } })
+      slotIncome.push({ id, name: description, amount, date: `${date}T12:00:00Z`, paymentMethod, recurring: { definitionId: definition.id, day, charged: false } })
     }
   }
   const charges = mezclarProyeccion({
@@ -603,6 +665,7 @@ export function deriveDemoData(
           name: charge.name,
           amount: charge.amount,
           date: `${charge.date}T12:00:00Z`,
+          paymentMethod: charge.paymentMethod,
           fixed: { definitionId: charge.definitionId, day: dayOf.get(charge.definitionId)!, charged: false },
           projected: true as const,
         },
@@ -623,7 +686,8 @@ export function deriveDemoData(
         name: charge.name,
         amount: charge.amount,
         date: `${charge.date}T12:00:00Z`,
-        recurring: { definitionId: charge.definitionId, day: dayOf.get(charge.definitionId)! },
+        paymentMethod: charge.paymentMethod,
+        recurring: { definitionId: charge.definitionId, day: dayOf.get(charge.definitionId)!, charged: false },
         projected: true as const,
       })),
     ...slotIncome,
@@ -650,6 +714,8 @@ export function deriveDemoData(
     data: {
       ...sample,
       cycle: { ...sample.cycle, start: cycle, end: projectedEnd, today: cycle, month: shownMonth, inProgress: false, projected: true },
+      // No money has moved in a projection (`cycle-projection` → *Payment methods in a projected cycle*).
+      pockets: null,
       freeMargin: getFreeMargin({
         income: projectedIncome,
         savings: projectedSavings,

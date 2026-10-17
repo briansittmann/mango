@@ -31,7 +31,7 @@ function shiftMonth(month: string, delta: number) {
  * outside `min`–`max` are disabled, and so are the arrows past them.
  */
 export function DateCalendar({ id, open, value, min, max, onSelect, onClose }: DateCalendarProps) {
-  const t = useTranslations('hojaGasto')
+  const t = useTranslations('hojaMovimiento')
   const format = useFormatter()
   const locale = useLocale()
   const [wasOpen, setWasOpen] = useState(open)

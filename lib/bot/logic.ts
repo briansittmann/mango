@@ -23,6 +23,8 @@ import { resumenMensual } from '@/lib/data/supabase/dashboard'
 import { createSupabaseExpenseMutations } from '@/lib/data/supabase/expenses'
 import { createSupabaseIncomeMutations } from '@/lib/data/supabase/income'
 import { createSupabaseSavingsMutations } from '@/lib/data/supabase/savings'
+import { createSupabaseTransferMutations } from '@/lib/data/supabase/transfers'
+import type { PaymentMethod } from '@/lib/data/payment-method'
 import { findUsuarioById, type Usuario } from '@/lib/data/supabase/user'
 import { SITE_URL } from '@/lib/metadata'
 import es from '@/messages/es.json'
@@ -63,7 +65,15 @@ export type IncomingMessage = {
   lastLoadId?: string
   /** The row an Undo button names (design D2): the parser is skipped and that row is deleted. */
   undoId?: string
+  /**
+   * A pressed answer to the pending deposit question (`payment-method`, D10): the parser is skipped
+   * and the pending amount is written as a transfer from cash or as a new income.
+   */
+  answer?: DepositAnswer
 }
+
+/** What the deposit question's two buttons stand for: cash moved into the bank, or new money. */
+export type DepositAnswer = 'transfer' | 'income'
 
 export type BotReply = (
   | { kind: 'text'; text: string }
@@ -78,6 +88,8 @@ export type BotReply = (
       kind: 'ask'
       text: string
       pending: PendingQuestion
+      /** Reply buttons, by the answer each stands for (the deposit question); the adapter builds the platform's. */
+      buttons?: { answer: DepositAnswer; label: string }[]
     }
   | {
       /**
@@ -103,6 +115,7 @@ const UNDO_TEXT = '↩︎ Deshacer'
 const MESSAGES = { es, en }
 
 type Cargar = Extract<Action, { accion: 'cargar' }>
+type Repreguntar = Extract<Action, { accion: 'repreguntar' }>
 type Corregir = Extract<Action, { accion: 'corregir' }>
 type CrearCategoria = Extract<Action, { accion: 'crear_categoria' }>
 
@@ -152,6 +165,12 @@ export async function processMessage(message: IncomingMessage): Promise<BotReply
   if (message.undoId) {
     const reply = await undo(turn, message.undoId)
     await remember(turn, UNDO_TEXT, reply)
+    return reply
+  }
+
+  if (message.answer) {
+    const reply = await answerDeposit(turn, message.answer)
+    await remember(turn, t(message.answer === 'transfer' ? 'botonDesdeEfectivo' : 'botonIngresoNuevo'), reply)
     return reply
   }
 
@@ -210,6 +229,7 @@ async function act(turn: Turn, action: ParseResult): Promise<BotReply> {
     case 'cargar':
       return load(turn, action)
     case 'repreguntar':
+      if (action.falta === 'deposito') return askDeposit(turn, action)
       return ask(turn, { pregunta: 'categoria', tipo: action.tipo, monto: action.monto, diasAtras: action.dias_atras })
     case 'no_entendido':
       return { kind: 'text', text: t('noEntendi') }
@@ -252,17 +272,67 @@ function ask({ t, context }: Turn, pending: PendingQuestion): BotReply {
   return { kind: 'ask', text: t('preguntaCategoria', { categorias }), pending }
 }
 
+/**
+ * "Ingresé 200 en el banco" (`bot-transaction-logging` → *An ambiguous deposit asks with two
+ * buttons*): asked only of an account using the feature; anyone else gets a plain income.
+ */
+function askDeposit(turn: Turn, action: Repreguntar): BotReply | Promise<BotReply> {
+  const { usuario, context, fmt, t } = turn
+  const descripcion = action.descripcion ?? null
+  if (!context.hasMarkedMovements && usuario.medio_pago_default == null) {
+    return load(turn, { accion: 'cargar', tipo: 'ingreso', monto: action.monto, categoria: null, descripcion, dias_atras: action.dias_atras, recurrente: null, medio_pago: null })
+  }
+  return {
+    kind: 'ask',
+    text: t('preguntaDeposito', { monto: formatBotAmount(fmt.locale, fmt.currency, action.monto, fmt.amountFormat) }),
+    pending: { pregunta: 'deposito', monto: action.monto, diasAtras: action.dias_atras, descripcion },
+    buttons: [
+      { answer: 'transfer', label: t('botonDesdeEfectivo') },
+      { answer: 'income', label: t('botonIngresoNuevo') },
+    ],
+  }
+}
+
+/** A pressed deposit answer: the pending amount into the bank, as cash moved there or as new income. */
+function answerDeposit(turn: Turn, answer: DepositAnswer): Promise<BotReply> | BotReply {
+  const pending = turn.message.pending
+  // The adapter only passes an answer with the question pending; anything else is dropped.
+  if (pending?.pregunta !== 'deposito') return { kind: 'none' }
+  return load(turn, {
+    accion: 'cargar',
+    tipo: answer === 'transfer' ? 'transferencia' : 'ingreso',
+    monto: pending.monto,
+    categoria: null,
+    descripcion: answer === 'income' ? pending.descripcion : null,
+    dias_atras: pending.diasAtras,
+    recurrente: null,
+    medio_pago: 'tarjeta',
+  })
+}
+
 async function load(turn: Turn, action: Cargar): Promise<BotReply> {
-  const { data, fmt, message } = turn
+  const { data, fmt, message, usuario } = turn
   const date = daysBefore(fmt.today, action.dias_atras)
   const amount = Math.abs(action.monto)
-  // A load with the pending question's type and amount is its answer: confirmed in text (spec).
+  // A load that answers the pending question is confirmed in text (spec): the category question
+  // with its type and amount, or the deposit question with its amount, as a transfer or an income.
   const pending = message.pending
-  const answered = pending?.pregunta === 'categoria' && pending.tipo === action.tipo && pending.monto === action.monto
+  const answered =
+    (pending?.pregunta === 'categoria' && pending.tipo === action.tipo && pending.monto === action.monto) ||
+    (pending?.pregunta === 'deposito' && pending.monto === action.monto && (action.tipo === 'transferencia' || action.tipo === 'ingreso'))
+  // The method the message said, else the account's default; only a said one is named (D10).
+  const said: PaymentMethod | undefined = action.medio_pago ?? undefined
+  const method = action.medio_pago ?? usuario.medio_pago_default
+
+  if (action.tipo === 'transferencia') {
+    const into = action.medio_pago!
+    await createSupabaseTransferMutations(data).create({ amount, into, date })
+    return loaded(turn, { tipo: 'transferencia', amount, date, into }, await writtenRowId(turn), answered)
+  }
 
   if (action.tipo === 'ingreso') {
-    await createSupabaseIncomeMutations(data).create({ amount, date, description: action.descripcion ?? '' })
-    return loaded(turn, { tipo: 'ingreso', amount, date, name: action.descripcion }, await writtenRowId(turn), answered)
+    await createSupabaseIncomeMutations(data).create({ amount, date, description: action.descripcion ?? '', paymentMethod: method })
+    return loaded(turn, { tipo: 'ingreso', amount, date, name: action.descripcion, method: said }, await writtenRowId(turn), answered)
   }
 
   if (action.tipo === 'ahorro') {
@@ -281,7 +351,7 @@ async function load(turn: Turn, action: Cargar): Promise<BotReply> {
 
   const definition = action.recurrente ? findByName(turn.context.recurring, action.recurrente) : undefined
   if (definition) {
-    const reply = await completeRecurring(turn, definition, amount, date, answered)
+    const reply = await completeRecurring(turn, definition, amount, date, answered, said)
     if (reply) return reply
   }
 
@@ -293,7 +363,7 @@ async function load(turn: Turn, action: Cargar): Promise<BotReply> {
   if (!category) return ask(turn, { pregunta: 'categoria', tipo: 'gasto', monto: action.monto, diasAtras: action.dias_atras })
 
   const name = definition?.nombre ?? action.descripcion
-  await createSupabaseExpenseMutations(data).create(category.id, { amount, date, description: name ?? '' })
+  await createSupabaseExpenseMutations(data).create(category.id, { amount, date, description: name ?? '', paymentMethod: method })
   const summary: LoadSummary = {
     tipo: 'gasto',
     amount,
@@ -301,6 +371,7 @@ async function load(turn: Turn, action: Cargar): Promise<BotReply> {
     name,
     category: category.nombre,
     budget: await budgetOf(turn, category.id, date),
+    method: said,
   }
   return loaded(turn, summary, await writtenRowId(turn), answered)
 }
@@ -308,7 +379,8 @@ async function load(turn: Turn, action: Cargar): Promise<BotReply> {
 /**
  * Completes this cycle's charge of `definition` (design D6). Null when the plan ended or the
  * definition is gone, so the caller loads an ordinary expense. An amount that differs from the
- * definition's changes only this charge, and the reply says so (`recurring-expenses`).
+ * definition's changes only this charge, and the reply says so (`recurring-expenses`). The charge
+ * keeps its definition's method unless the message said one, written on this charge only.
  */
 async function completeRecurring(
   turn: Turn,
@@ -316,6 +388,7 @@ async function completeRecurring(
   amount: number,
   date: string,
   answered: boolean,
+  said: PaymentMethod | undefined,
 ): Promise<BotReply | null> {
   const { usuario, data, message, context, fmt, t } = turn
   const range = await cycleRange(data.client, {
@@ -332,6 +405,7 @@ async function completeRecurring(
     p_fecha: date,
     p_canal: message.channel,
     p_mensaje_id_externo: message.messageId,
+    p_medio_pago: said ?? null,
   })
 
   if (error) {
@@ -347,6 +421,7 @@ async function completeRecurring(
     name: definition.nombre,
     category: context.categories.find((c) => c.id === definition.categoria_id)?.nombre ?? definition.nombre,
     budget: await budgetOf(turn, definition.categoria_id, date),
+    method: said,
   }
   const differs = amount !== definition.monto_actual
   const note = differs
@@ -398,7 +473,9 @@ async function budgetOf({ data, usuario }: Turn, categoryId: string, date: strin
 
 type LoadRow = {
   id: string
-  tipo: 'gasto' | 'ingreso' | 'ahorro'
+  tipo: 'gasto' | 'ingreso' | 'ahorro' | 'transferencia'
+  /** Kept by a correction; on a transfer, the pocket it went into. */
+  medio_pago: PaymentMethod | null
   monto: number
   fecha: string
   descripcion: string | null
@@ -416,7 +493,7 @@ async function readLoad({ data }: Turn, id: string | undefined): Promise<LoadRow
   if (!id) return null
   const { data: row, error } = await data.client
     .from('transacciones')
-    .select('id, tipo, monto, fecha, descripcion, categoria_id, movimiento_recurrente_id, ciclo_mes, categoria:categorias(nombre)')
+    .select('id, tipo, monto, fecha, descripcion, categoria_id, movimiento_recurrente_id, ciclo_mes, medio_pago, categoria:categorias(nombre)')
     .eq('id', id)
     .eq('usuario_id', data.usuarioId)
     .eq('estado', 'confirmada')
@@ -459,6 +536,7 @@ async function deleteLoad({ data }: Turn, row: LoadRow): Promise<void> {
 
   if (row.tipo === 'gasto') await createSupabaseExpenseMutations(data).softDelete(row.id)
   else if (row.tipo === 'ingreso') await createSupabaseIncomeMutations(data).softDelete(row.id)
+  else if (row.tipo === 'transferencia') await createSupabaseTransferMutations(data).softDelete(row.id)
   else await createSupabaseSavingsMutations(data).softDelete(row.id)
 }
 
@@ -468,6 +546,7 @@ function describeLoad({ fmt, usuario }: Turn, row: LoadRow, amount = Math.abs(ro
     monto: formatBotAmount(fmt.locale, fmt.currency, amount, fmt.amountFormat),
     tipo: row.tipo,
     categoria,
+    direccion: row.medio_pago ?? 'tarjeta',
     dia: formatBotDay(fmt.locale, fmt.today, localDateOf(row.fecha, usuario.timezone), fmt.t),
   }
 }
@@ -505,7 +584,9 @@ async function correct(turn: Turn, action: Corregir): Promise<BotReply> {
   if (!row) return { kind: 'text', text: t('nadaQueCorregir'), lastLoad: null }
 
   const amount = action.monto ?? Math.abs(row.monto)
-  const draft = { amount, date: localDateOf(row.fecha, usuario.timezone), description: row.descripcion ?? '' }
+  // A correction never changes the method (`bot-transaction-logging` → *A load carries its payment method*).
+  const date = localDateOf(row.fecha, usuario.timezone)
+  const draft = { amount, date, description: row.descripcion ?? '', paymentMethod: row.medio_pago }
   let categoria = row.categoria?.nombre ?? ''
 
   if (action.categoria !== undefined) {
@@ -516,6 +597,8 @@ async function correct(turn: Turn, action: Corregir): Promise<BotReply> {
     }
     await createSupabaseExpenseMutations(data).update(row.id, draft, category.id)
     categoria = category.nombre
+  } else if (row.tipo === 'transferencia') {
+    await createSupabaseTransferMutations(data).update(row.id, { amount, into: row.medio_pago!, date })
   } else if (row.movimiento_recurrente_id || row.tipo === 'ahorro') {
     expectRows(
       await data.client

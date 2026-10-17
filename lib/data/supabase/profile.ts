@@ -100,5 +100,8 @@ export function createSupabaseProfileMutations(ctx: DataContext): ProfileMutatio
     async setWidgetOrder(order) {
       await update({ orden_widgets: order })
     },
+    async setDefaultPaymentMethod(method) {
+      await update({ medio_pago_default: method })
+    },
   }
 }

@@ -19,7 +19,8 @@ test('four tiles in one row, equal height, the free margin the largest text, no 
   expect(boxes[3].right).toBeLessThanOrEqual(1280 - 24)
   await expect(page.locator('.hero-card')).toContainText(/864\s?€/)
   await expect(page.locator('.hero-card [data-composition-strip]')).toHaveCount(0)
-  await expect(page.locator('.hero-card button')).toHaveCount(0)
+  // The card itself is no control; the pocket blocks and their swap button are their own (`payment-method`).
+  await expect(page.locator('.hero-card button:not([data-pockets] button)')).toHaveCount(0)
   const sizes = await page.evaluate(() => {
     const hero = parseFloat(getComputedStyle(/** @type {Element} */ (document.querySelector('.hero-value'))).fontSize)
     let max = 0

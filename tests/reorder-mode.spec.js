@@ -12,7 +12,7 @@ async function enterReorderMode(page, { failReorder = false } = {}) {
 
 async function handleNames(page) {
   // The handle's only visible content is decorative bars; its name is the aria-label, not text.
-  return page.getByRole('button', { name: /^Mover/ }).evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')))
+  return page.getByRole('button', { name: /^Mover .+, posición/ }).evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')))
 }
 
 test.describe('reorder mode', () => {
@@ -24,12 +24,12 @@ test.describe('reorder mode', () => {
     await page.getByRole('button', { name: /^Opciones de Comida$/ }).click()
     await page.getByRole('button', { name: /^Reordenar/ }).click()
 
-    await expect(page.getByRole('button', { name: /^Mover/ })).toHaveCount(7)
+    await expect(page.getByRole('button', { name: /^Mover .+, posición/ })).toHaveCount(7)
     await expect(page.getByRole('button', { name: 'Listo' })).toBeVisible()
 
     await page.getByRole('button', { name: 'Listo' }).click()
 
-    await expect(page.getByRole('button', { name: /^Mover/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /^Mover .+, posición/ })).toHaveCount(0)
     // Leaving restores the card's own open state and its amount.
     // Scoped to the card: the distribution legend shows "310 €" too since modernize-dashboard-widgets.
     await expect(page.locator('#category-panel-comida').locator('..').getByText('310 €', { exact: false }).first()).toBeVisible()
@@ -86,7 +86,7 @@ test.describe('reorder mode', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await enterReorderMode(page)
 
-    await expect(page.getByRole('button', { name: /^Mover/ })).toHaveCount(7)
+    await expect(page.getByRole('button', { name: /^Mover .+, posición/ })).toHaveCount(7)
 
     await page.getByRole('button', { name: /^Mover Comida, posición 4 de 7$/ }).focus()
     await page.keyboard.press('ArrowDown')

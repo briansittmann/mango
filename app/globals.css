@@ -772,6 +772,10 @@ body {
 .hero-card[data-toggle]:active {
   scale: 0.98;
 }
+/* A press on the pockets block is that block's, not the card's (`payment-method`, D7). */
+.hero-card[data-toggle]:has([data-pockets]:active) {
+  scale: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .hero-card[data-toggle]:active {
     scale: none;

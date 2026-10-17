@@ -17,6 +17,7 @@ export function createSupabaseExpenseMutations({ client, usuarioId, currency, ti
             moneda: currency,
             fecha: `${draft.date}T12:00:00Z`,
             descripcion: draft.description || null,
+            medio_pago: draft.paymentMethod,
             es_fijo: false,
             ...originColumns(origin),
           })
@@ -44,6 +45,7 @@ export function createSupabaseExpenseMutations({ client, usuarioId, currency, ti
           .update({
             monto: draft.amount,
             descripcion: draft.description || null,
+            medio_pago: draft.paymentMethod,
             fecha: `${draft.date}T12:00:00Z`,
             categoria_id: categoryId,
             estado: 'confirmada',

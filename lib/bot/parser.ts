@@ -13,12 +13,15 @@ const diasAtras = z.number().int().min(0).default(0)
 const CargarSchema = z
   .strictObject({
     accion: z.literal('cargar'),
-    tipo,
+    // `transferencia` moves money between the pockets (`payment-method`, design D10).
+    tipo: z.enum(['gasto', 'ingreso', 'ahorro', 'transferencia']),
     monto: z.number(),
     categoria: z.string().min(1).nullable().default(null),
     descripcion: z.string().min(1).nullable().default(null),
     dias_atras: diasAtras,
     recurrente: z.string().min(1).nullable().default(null),
+    /** What the message said, never a default; for a transfer, the pocket the money goes into. */
+    medio_pago: z.enum(['efectivo', 'tarjeta']).nullable().default(null),
   })
   .superRefine((value, ctx) => {
     if (value.tipo === 'ahorro' ? value.monto === 0 : value.monto <= 0) {
@@ -28,15 +31,30 @@ const CargarSchema = z
         message: value.tipo === 'ahorro' ? 'ahorro needs a non-zero monto' : `${value.tipo} needs a positive monto`,
       })
     }
+    if (value.tipo === 'transferencia') {
+      if (value.medio_pago == null) ctx.addIssue({ code: 'custom', path: ['medio_pago'], message: 'transferencia needs medio_pago, the pocket it goes into' })
+      if (value.categoria != null) ctx.addIssue({ code: 'custom', path: ['categoria'], message: 'transferencia has no categoria' })
+      if (value.recurrente != null) ctx.addIssue({ code: 'custom', path: ['recurrente'], message: 'transferencia has no recurrente' })
+    }
+    if (value.tipo === 'ahorro' && value.medio_pago != null) {
+      ctx.addIssue({ code: 'custom', path: ['medio_pago'], message: 'ahorro has no medio_pago' })
+    }
   })
 
-const RepreguntarSchema = z.strictObject({
-  accion: z.literal('repreguntar'),
-  falta: z.literal('categoria'),
-  tipo,
-  monto: z.number().positive(),
-  dias_atras: diasAtras,
-})
+const RepreguntarSchema = z
+  .strictObject({
+    accion: z.literal('repreguntar'),
+    // `deposito`: money into the bank that may be new income or cash moved from the cash pocket.
+    falta: z.enum(['categoria', 'deposito']),
+    tipo,
+    monto: z.number().positive(),
+    dias_atras: diasAtras,
+    descripcion: z.string().min(1).nullable().optional(),
+  })
+  .refine((value) => value.falta !== 'deposito' || value.tipo === 'ingreso', {
+    path: ['tipo'],
+    message: 'a deposito question is about an ingreso',
+  })
 
 const NoEntendidoSchema = z.strictObject({ accion: z.literal('no_entendido') })
 
@@ -97,6 +115,8 @@ export type ParseResult = (Action & { transcripcion?: string }) | { accion: 'no_
 export type PendingQuestion =
   | { pregunta: 'categoria'; tipo: 'gasto' | 'ingreso' | 'ahorro'; monto: number; diasAtras: number }
   | { pregunta: 'crear_categoria'; nombre: string; presupuesto: number | null; parecida: string }
+  /** Income or cash moved from the cash pocket, for an amount put into the bank (`payment-method`, D10). */
+  | { pregunta: 'deposito'; monto: number; diasAtras: number; descripcion: string | null }
 
 export type AudioInput = { data: Uint8Array; mimeType: string }
 
@@ -121,10 +141,14 @@ export type Model = (request: ModelRequest) => Promise<string>
 
 const EXAMPLES: Record<ParseInput['locale'], [string, object][]> = {
   es: [
-    ['nafta 45 ayer', { accion: 'cargar', tipo: 'gasto', monto: 45, categoria: 'Transporte', descripcion: 'Nafta', dias_atras: 1, recurrente: null }],
-    ['cafe 3,5.', { accion: 'cargar', tipo: 'gasto', monto: 3.5, categoria: 'Ocio', descripcion: 'Café', dias_atras: 0, recurrente: null }],
-    ['propina 500', { accion: 'cargar', tipo: 'ingreso', monto: 500, categoria: null, descripcion: 'Propina', dias_atras: 0, recurrente: null }],
-    ['saqué 100 del ahorro', { accion: 'cargar', tipo: 'ahorro', monto: -100, categoria: null, descripcion: null, dias_atras: 0, recurrente: null }],
+    ['nafta 45 ayer', { accion: 'cargar', tipo: 'gasto', monto: 45, categoria: 'Transporte', descripcion: 'Nafta', dias_atras: 1, recurrente: null, medio_pago: null }],
+    ['cafe 3,5.', { accion: 'cargar', tipo: 'gasto', monto: 3.5, categoria: 'Ocio', descripcion: 'Café', dias_atras: 0, recurrente: null, medio_pago: null }],
+    ['pagué 15 en efectivo de cervezas', { accion: 'cargar', tipo: 'gasto', monto: 15, categoria: 'Ocio', descripcion: 'Cervezas', dias_atras: 0, recurrente: null, medio_pago: 'efectivo' }],
+    ['propina 500', { accion: 'cargar', tipo: 'ingreso', monto: 500, categoria: null, descripcion: 'Propina', dias_atras: 0, recurrente: null, medio_pago: null }],
+    ['saqué 100 del ahorro', { accion: 'cargar', tipo: 'ahorro', monto: -100, categoria: null, descripcion: null, dias_atras: 0, recurrente: null, medio_pago: null }],
+    ['saqué 200', { accion: 'cargar', tipo: 'transferencia', monto: 200, categoria: null, descripcion: null, dias_atras: 0, recurrente: null, medio_pago: 'efectivo' }],
+    ['deposité las propinas, 120', { accion: 'cargar', tipo: 'transferencia', monto: 120, categoria: null, descripcion: null, dias_atras: 0, recurrente: null, medio_pago: 'tarjeta' }],
+    ['ingresé 200 en el banco', { accion: 'repreguntar', falta: 'deposito', tipo: 'ingreso', monto: 200, dias_atras: 0 }],
     ['gasté 50', { accion: 'repreguntar', falta: 'categoria', tipo: 'gasto', monto: 50, dias_atras: 0 }],
     ['no, era 40', { accion: 'corregir', monto: 40 }],
     ['osea esos 30 eran salud', { accion: 'corregir', categoria: 'Salud' }],
@@ -135,10 +159,14 @@ const EXAMPLES: Record<ParseInput['locale'], [string, object][]> = {
     ['asdasda', { accion: 'no_entendido' }],
   ],
   en: [
-    ['gas 45 yesterday', { accion: 'cargar', tipo: 'gasto', monto: 45, categoria: 'Transport', descripcion: 'Gas', dias_atras: 1, recurrente: null }],
-    ['coffee 3.5', { accion: 'cargar', tipo: 'gasto', monto: 3.5, categoria: 'Leisure', descripcion: 'Coffee', dias_atras: 0, recurrente: null }],
-    ['tip 500', { accion: 'cargar', tipo: 'ingreso', monto: 500, categoria: null, descripcion: 'Tip', dias_atras: 0, recurrente: null }],
-    ['took 100 out of savings', { accion: 'cargar', tipo: 'ahorro', monto: -100, categoria: null, descripcion: null, dias_atras: 0, recurrente: null }],
+    ['gas 45 yesterday', { accion: 'cargar', tipo: 'gasto', monto: 45, categoria: 'Transport', descripcion: 'Gas', dias_atras: 1, recurrente: null, medio_pago: null }],
+    ['coffee 3.5', { accion: 'cargar', tipo: 'gasto', monto: 3.5, categoria: 'Leisure', descripcion: 'Coffee', dias_atras: 0, recurrente: null, medio_pago: null }],
+    ['paid 15 in cash for beers', { accion: 'cargar', tipo: 'gasto', monto: 15, categoria: 'Leisure', descripcion: 'Beers', dias_atras: 0, recurrente: null, medio_pago: 'efectivo' }],
+    ['tip 500', { accion: 'cargar', tipo: 'ingreso', monto: 500, categoria: null, descripcion: 'Tip', dias_atras: 0, recurrente: null, medio_pago: null }],
+    ['took 100 out of savings', { accion: 'cargar', tipo: 'ahorro', monto: -100, categoria: null, descripcion: null, dias_atras: 0, recurrente: null, medio_pago: null }],
+    ['took 200 out of the ATM', { accion: 'cargar', tipo: 'transferencia', monto: 200, categoria: null, descripcion: null, dias_atras: 0, recurrente: null, medio_pago: 'efectivo' }],
+    ['deposited the tips, 120', { accion: 'cargar', tipo: 'transferencia', monto: 120, categoria: null, descripcion: null, dias_atras: 0, recurrente: null, medio_pago: 'tarjeta' }],
+    ['put 200 in the bank', { accion: 'repreguntar', falta: 'deposito', tipo: 'ingreso', monto: 200, dias_atras: 0 }],
     ['spent 50', { accion: 'repreguntar', falta: 'categoria', tipo: 'gasto', monto: 50, dias_atras: 0 }],
     ['no, it was 40', { accion: 'corregir', monto: 40 }],
     ['i mean those 30 were health', { accion: 'corregir', categoria: 'Health' }],
@@ -172,10 +200,10 @@ export function buildPrompt(input: ParseInput): string {
     `Sos el intérprete de un bot de finanzas personales. Convertís UN mensaje de chat en UN objeto JSON con una acción. Devolvé solo el objeto JSON, sin texto alrededor.
 
 ACCIONES Y CAMPOS (ningún campo fuera de estos):
-- {"accion":"cargar","tipo":"gasto"|"ingreso"|"ahorro","monto":número,"categoria":string|null,"descripcion":string|null,"dias_atras":entero>=0,"recurrente":string|null${T}}
-  Registrar un movimiento. monto positivo en gasto e ingreso. En ahorro, positivo es un depósito y negativo un retiro ("saqué 100 del ahorro" → -100); nunca 0.
-- {"accion":"repreguntar","falta":"categoria","tipo":"gasto","monto":número,"dias_atras":entero>=0${T}}
-  Solo cuando el mensaje da un monto de gasto y NADA que describa en qué fue ("gasté 50").
+- {"accion":"cargar","tipo":"gasto"|"ingreso"|"ahorro"|"transferencia","monto":número,"categoria":string|null,"descripcion":string|null,"dias_atras":entero>=0,"recurrente":string|null,"medio_pago":"efectivo"|"tarjeta"|null${T}}
+  Registrar un movimiento. monto positivo en gasto, ingreso y transferencia. En ahorro, positivo es un depósito y negativo un retiro ("saqué 100 del ahorro" → -100); nunca 0.
+- {"accion":"repreguntar","falta":"categoria"|"deposito","tipo":"gasto"|"ingreso","monto":número,"dias_atras":entero>=0,"descripcion"?:string${T}}
+  falta "categoria" (tipo "gasto"): solo cuando el mensaje da un monto de gasto y NADA que describa en qué fue ("gasté 50"). falta "deposito" (tipo "ingreso"): ver la regla de transferencia.
 - {"accion":"no_entendido"${T}}  El mensaje no es ninguna de las otras acciones.
 - {"accion":"consultar","consulta":"margen_libre"|"mes"${T}}  "libre" o cuánto le queda → margen_libre; cómo viene el mes → mes.
 - {"accion":"corregir","monto"?:número,"categoria"?:string${T}}  Corrige la última carga; al menos uno de los dos.
@@ -196,7 +224,10 @@ Gastos fijos activos: ${recurring}`,
 - monto: número JSON, nunca string. La coma es separador decimal ("3,5" → 3.5); ignorá la puntuación final.
 - dias_atras: 0 si el mensaje no nombra un día; "ayer" → 1; "anteayer" → 2; "hace N días" → N. "date" es una cita (Ocio), no una fecha.
 - corregir: cualquier forma de decir que la última carga estaba mal, aunque sea suelta ("osea lo que gasté esos 50 eran comida" → corregir con categoria "Comida"; "no, eran 80" → corregir con monto 80). Un monto que solo repite el de la carga para identificarla no es un monto nuevo.
-- Un "sí", "dale" u "ok" suelto, sin una pregunta pendiente que confirme, es no_entendido.`,
+- Un "sí", "dale" u "ok" suelto, sin una pregunta pendiente que confirme, es no_entendido.
+- medio_pago: en gasto e ingreso, el que dice el mensaje ("en efectivo", "cash" → "efectivo"; "con tarjeta", "con débito", "by card" → "tarjeta"); null si no lo dice. Nunca lo adivines ni pongas uno por defecto. En ahorro siempre null.
+- transferencia: mover plata entre el efectivo y el banco, sin gastar ni cobrar nada. Sacar plata del banco o del cajero ("saqué 200", "saqué del cajero", "retiré 100") → tipo "transferencia" con medio_pago "efectivo". Poner efectivo en el banco ("deposité las propinas", "ingresé el efectivo al banco") → tipo "transferencia" con medio_pago "tarjeta". En transferencia, categoria, descripcion y recurrente son null y medio_pago nunca es null. Sacar del ahorro ("saqué 100 del ahorro") NO es transferencia: es ahorro con monto negativo.
+- Plata que entra al banco sin decir si vino del efectivo o es plata nueva ("ingresé 200 en el banco", "metí 200 en la cuenta") → repreguntar con falta "deposito", tipo "ingreso" y el monto. Si el mensaje lo dice, no preguntes: "cobré 200 en el banco" es ingreso con medio_pago "tarjeta"; "deposité 200 del efectivo" es transferencia con medio_pago "tarjeta". Nunca preguntes el medio de pago en otro caso.`,
   ]
 
   if (voice) {
@@ -225,6 +256,11 @@ En el turno anterior el bot preguntó qué categoría corresponde a un ${tipo} d
     const campos = { accion: 'crear_categoria', nombre, ...(presupuesto ? { presupuesto } : {}), confirmada: true }
     sections.push(`${PENDING_HEADER}
 En el turno anterior el bot preguntó si crea la categoría "${nombre}" aunque ya existe "${parecida}". Si este mensaje lo confirma ("sí", "dale", "creala"), devolvé ${JSON.stringify(campos)}. Si el mensaje es otra cosa, interpretalo por sí solo e ignorá la pregunta; confirmada solo es true en esa confirmación.`)
+  } else if (input.pending?.pregunta === 'deposito') {
+    const { monto, diasAtras, descripcion } = input.pending
+    const base = { accion: 'cargar', monto, categoria: null, dias_atras: diasAtras, recurrente: null, medio_pago: 'tarjeta' }
+    sections.push(`${PENDING_HEADER}
+En el turno anterior el bot preguntó si los ${monto} que entraron al banco (dias_atras ${diasAtras}) los pasó desde el efectivo o son un ingreso nuevo. Si este mensaje dice que vinieron del efectivo ("del efectivo", "lo pasé", "eran las propinas"), devolvé ${JSON.stringify({ ...base, tipo: 'transferencia', descripcion: null })}. Si dice que es plata nueva ("es nuevo", "me pagaron", "es un ingreso"), devolvé ${JSON.stringify({ ...base, tipo: 'ingreso', descripcion })}. Si el mensaje es otra cosa, interpretalo por sí solo e ignorá la pregunta.`)
   }
 
   sections.push(

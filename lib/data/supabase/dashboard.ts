@@ -5,6 +5,7 @@ import { categoriaViva } from '@/lib/data/categories'
 import { normalizeWidgetOrder, type CategoryColor, type DashboardData, type Expense, type ExpenseGroup } from '@/lib/data/dashboard'
 import type { LocalDate } from '@/lib/data/expenses'
 import type { IncomeEntry } from '@/lib/data/income'
+import { pocketBalances, type CountedRow, type PaymentMethod, type Pockets, type Transfer } from '@/lib/data/payment-method'
 import { mezclarProyeccion, proyectarCiclo } from '@/lib/data/projection'
 import type { RecurringDefinition } from '@/lib/data/recurring'
 import { splitSavings } from '@/lib/data/savings'
@@ -43,6 +44,7 @@ type MovimientoRecurrenteRow = {
   repeticiones_totales: number | null
   repeticiones_insertadas: number
   tarjeta_id: string | null
+  medio_pago: PaymentMethod | null
 }
 type TransaccionRow = {
   id: string
@@ -50,10 +52,12 @@ type TransaccionRow = {
   fecha: string
   categoria_id: string | null
   descripcion: string | null
-  tipo: 'gasto' | 'ingreso' | 'ahorro'
+  tipo: 'gasto' | 'ingreso' | 'ahorro' | 'transferencia'
   movimiento_recurrente_id: string | null
   ciclo_mes: LocalDate | null
   estado: 'pendiente' | 'confirmada'
+  /** How it was paid (0041); on a transfer, the pocket it enters. */
+  medio_pago: PaymentMethod | null
   /** A charge marked not charged after its day (0037); absent on computed charges. */
   no_cobrado?: boolean
   /** A savings deposit the user already had (0033); absent on computed charges. */
@@ -86,7 +90,7 @@ function inRange(fecha: string, range: CycleRange): boolean {
  * marked it not charged (`no_cobrado`, 0037).
  * `actualizar_movimiento_recurrente` (0021) rewrites only the charges this returns false for.
  */
-function isCharged(row: TransaccionRow, timezone: string, today: LocalDate): boolean {
+function isCharged(row: Pick<TransaccionRow, 'estado' | 'no_cobrado' | 'fecha'>, timezone: string, today: LocalDate): boolean {
   return row.estado === 'confirmada' || (!row.no_cobrado && localDateOf(row.fecha, timezone) <= today)
 }
 
@@ -148,7 +152,7 @@ export async function resumenMensual(
   }
 
   const presupuestosQuery = client.from('presupuestos').select('categoria_id, monto, periodo').eq('usuario_id', usuario.id)
-  const [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores, movimientos, linked, tarjetas] = await Promise.all([
+  const [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores, movimientos, linked, tarjetas, marcados] = await Promise.all([
     client
       .from('categorias')
       .select('id, nombre, color, desde_ciclo, hasta_ciclo, mostrar_progreso')
@@ -160,14 +164,14 @@ export async function resumenMensual(
     client
       .from('movimientos_recurrentes')
       .select(
-        'id, nombre, monto_actual, tipo, categoria_id, dia_del_mes, activo, recordatorio_activo, dias_antes, repeticiones_totales, repeticiones_insertadas, tarjeta_id',
+        'id, nombre, monto_actual, tipo, categoria_id, dia_del_mes, activo, recordatorio_activo, dias_antes, repeticiones_totales, repeticiones_insertadas, tarjeta_id, medio_pago',
       )
       .eq('usuario_id', usuario.id)
       .order('orden')
       .order('nombre'),
     client
       .from('transacciones')
-      .select('id, monto, fecha, categoria_id, descripcion, tipo, movimiento_recurrente_id, ciclo_mes, estado, no_cobrado, ahorro_previo')
+      .select('id, monto, fecha, categoria_id, descripcion, tipo, movimiento_recurrente_id, ciclo_mes, estado, no_cobrado, ahorro_previo, medio_pago')
       .eq('usuario_id', usuario.id)
       .is('borrado_en', null)
       .gte('fecha', oldest.inicio.toISOString())
@@ -202,8 +206,15 @@ export async function resumenMensual(
     client.from('transacciones').select('usuario_id', { count: 'exact', head: true }).eq('usuario_id', usuario.id).is('borrado_en', null),
     whatsApp ? linkedChannel(client, 'whatsapp') : Promise.resolve(null),
     client.from('tarjetas').select('id, nombre, color').eq('usuario_id', usuario.id).order('creada_en'),
+    // Whether the user holds a marked movement in any cycle (`payment-method` → *Who uses the feature*).
+    client
+      .from('transacciones')
+      .select('usuario_id', { count: 'exact', head: true })
+      .eq('usuario_id', usuario.id)
+      .not('medio_pago', 'is', null)
+      .is('borrado_en', null),
   ])
-  for (const result of [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores, movimientos, tarjetas]) {
+  for (const result of [categorias, ocultas, presupuestos, definiciones, transacciones, ahorros, borrados, posteriores, movimientos, tarjetas, marcados]) {
     if (result?.error) throw result.error
   }
 
@@ -239,6 +250,7 @@ export async function resumenMensual(
       reminder: { active: d.recordatorio_activo, daysBefore: d.dias_antes },
       repetitions: d.repeticiones_totales == null ? null : { total: d.repeticiones_totales, done: d.repeticiones_insertadas },
       cardId: d.tarjeta_id,
+      paymentMethod: d.medio_pago,
     }))
 
   // A projected cycle's charges come from `proyectarCiclo` as pending rows with synthetic ids, and
@@ -281,6 +293,7 @@ export async function resumenMensual(
             movimiento_recurrente_id: charge.definitionId,
             ciclo_mes: start,
             estado: 'pendiente',
+            medio_pago: charge.paymentMethod,
             projected: true,
           }),
         ),
@@ -298,6 +311,7 @@ export async function resumenMensual(
         name: row.descripcion ?? '',
         amount: Number(row.monto),
         date: row.fecha,
+        paymentMethod: row.medio_pago,
         ...(row.movimiento_recurrente_id
           ? {
               fixed: {
@@ -337,8 +351,15 @@ export async function resumenMensual(
       name: row.descripcion ?? '',
       amount: Number(row.monto),
       date: row.fecha,
+      paymentMethod: row.medio_pago,
       ...(row.movimiento_recurrente_id
-        ? { recurring: { definitionId: row.movimiento_recurrente_id, day: dayOf.get(row.movimiento_recurrente_id)! } }
+        ? {
+            recurring: {
+              definitionId: row.movimiento_recurrente_id,
+              day: dayOf.get(row.movimiento_recurrente_id)!,
+              charged: projected ? row.estado === 'confirmada' : isCharged(row, timezone, today),
+            },
+          }
         : {}),
       ...(row.projected ? { projected: true as const } : {}),
     }))
@@ -399,6 +420,41 @@ export async function resumenMensual(
       .reduce((sum, row) => sum + Number(row.monto), 0),
   }))
 
+  // The pockets (`payment-method` → *A pocket's balance*, D4): every marked row up to the shown
+  // cycle's end, earlier cycles included. Not in a projection, and not until the first mark.
+  const hasMarkedMovements = (marcados.count ?? 0) > 0
+  let pockets: Pockets | null = null
+  if (hasMarkedMovements && !projected) {
+    const { data: marked, error } = await client
+      .from('transacciones')
+      .select('id, tipo, monto, medio_pago, fecha, movimiento_recurrente_id, estado, no_cobrado')
+      .eq('usuario_id', usuario.id)
+      .not('medio_pago', 'is', null)
+      .is('borrado_en', null)
+      .lt('fecha', shownRange.fin.toISOString())
+    if (error) throw error
+    type MarkedRow = Pick<TransaccionRow, 'id' | 'tipo' | 'monto' | 'medio_pago' | 'fecha' | 'movimiento_recurrente_id' | 'estado' | 'no_cobrado'>
+    const countedRows: CountedRow[] = []
+    const allTransfers: Transfer[] = []
+    for (const row of (marked ?? []) as MarkedRow[]) {
+      if (row.tipo === 'transferencia') {
+        allTransfers.push({ id: row.id, amount: Number(row.monto), into: row.medio_pago!, date: row.fecha })
+      } else if (row.tipo === 'gasto' || row.tipo === 'ingreso') {
+        countedRows.push({
+          kind: row.tipo === 'gasto' ? 'expense' : 'income',
+          amount: Number(row.monto),
+          date: row.fecha,
+          paymentMethod: row.medio_pago,
+          ...(row.movimiento_recurrente_id ? { charged: isCharged(row, timezone, today) } : {}),
+        })
+      }
+    }
+    pockets = {
+      ...pocketBalances({ rows: countedRows, transfers: allTransfers, cycle: { start, end, today }, timeZone: timezone }),
+      transfers: allTransfers.filter((transfer) => inRange(transfer.date, shownRange)),
+    }
+  }
+
   return {
     data: {
       user: {
@@ -412,6 +468,8 @@ export async function resumenMensual(
         amountFormat: effectiveAmountFormat(usuario),
         cycleDay: usuario.dia_inicio_ciclo,
         hasMovements: (movimientos.count ?? 0) > 0,
+        defaultPaymentMethod: usuario.medio_pago_default,
+        hasMarkedMovements,
         ...(whatsApp
           ? {
               whatsapp: {
@@ -452,6 +510,7 @@ export async function resumenMensual(
         name: t.nombre,
         color: t.color,
       })),
+      pockets,
     },
     definitions,
   }

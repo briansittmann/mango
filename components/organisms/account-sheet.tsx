@@ -3,11 +3,13 @@ import { Check, Clock, Loader2, MessageCircle, Trash2, Unlink } from 'lucide-rea
 import { useTranslations } from 'next-intl'
 import { Collapsible } from '@/components/atoms/collapsible'
 import { BasicsFields, basicsValid, type BasicsDraft } from '@/components/molecules/basics-fields'
+import { SegmentedControl } from '@/components/molecules/segmented-control'
 import { LinkCode, useLinkPolling, WhatsAppLinkAction, WhatsAppQr } from '@/components/molecules/whatsapp-link'
 import { usePhone } from '@/components/hooks/use-desktop'
 import { SheetShell } from '@/components/organisms/sheet-shell'
 import { cn } from '@/lib/utils'
 import type { DashboardData } from '@/lib/data/dashboard'
+import type { PaymentMethod } from '@/lib/data/payment-method'
 import type { ProfileBasics } from '@/lib/data/profile'
 // A pure formatter over the stored number, not data access (add-whatsapp-linking D8).
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
@@ -20,6 +22,8 @@ type AccountSheetProps = {
   opener?: RefObject<HTMLElement | null>
   user: DashboardData['user']
   onSave: (basics: ProfileBasics) => Promise<void>
+  /** "Medio de pago por defecto" (D13): written after the basics, only when it changed; absent hides the control. */
+  onSaveDefault?: (method: PaymentMethod | null) => Promise<void>
   /** "Vincular WhatsApp" with no live code: requests one (D9); absent on the demo (the action is disabled). */
   onRequestLink?: () => Promise<{ code: string }>
   /** The page re-reads the account while the sheet waits for the chat's message. */
@@ -29,6 +33,8 @@ type AccountSheetProps = {
   /** Deletes the account for good; absent when the page cannot (the row is then hidden). */
   onDelete?: () => Promise<void>
 }
+
+type DefaultChoice = PaymentMethod | 'ninguno'
 
 function draftOf(user: DashboardData['user']): BasicsDraft {
   return {
@@ -48,11 +54,25 @@ function draftOf(user: DashboardData['user']): BasicsDraft {
  * minus the cycle day, shown as a line, with the mixed-currency note when the account holds
  * movements. Saving goes through the profile operations with the onboarding's validation.
  */
-export function AccountSheet({ open, onOpenChange, opener, user, onSave, onRequestLink, onRefresh, onUnlink, onDelete }: AccountSheetProps) {
+export function AccountSheet({
+  open,
+  onOpenChange,
+  opener,
+  user,
+  onSave,
+  onSaveDefault,
+  onRequestLink,
+  onRefresh,
+  onUnlink,
+  onDelete,
+}: AccountSheetProps) {
   const t = useTranslations('cuenta')
+  const tMedio = useTranslations('medioPago')
   const [wasOpen, setWasOpen] = useState(open)
   const [draft, setDraft] = useState<BasicsDraft>(() => draftOf(user))
   const [snapshot, setSnapshot] = useState(draft)
+  const storedDefault: DefaultChoice = user.defaultPaymentMethod ?? 'ninguno'
+  const [defaultChoice, setDefaultChoice] = useState<DefaultChoice>(storedDefault)
   // The WhatsApp section (D9): the code the page loaded or the one just requested, and whether
   // the person opened the chat from here (then the sheet reads "Esperando tu mensaje").
   const [linkCode, setLinkCode] = useState<string | null>(user.whatsapp?.code ?? null)
@@ -74,6 +94,7 @@ export function AccountSheet({ open, onOpenChange, opener, user, onSave, onReque
       const next = draftOf(user)
       setDraft(next)
       setSnapshot(next)
+      setDefaultChoice(storedDefault)
       setLinkCode(user.whatsapp?.code ?? null)
       setOpened(false)
       setConfirmingUnlink(false)
@@ -139,7 +160,9 @@ export function AccountSheet({ open, onOpenChange, opener, user, onSave, onReque
   // The QR is scanned with another device: the sheet re-reads the account on a timer.
   useLinkPolling(open && linkPhase === 'waiting' && showsQr && onRefresh != null, () => onRefresh?.())
 
-  const isDirty = JSON.stringify(draft) !== JSON.stringify(snapshot)
+  const basicsDirty = JSON.stringify(draft) !== JSON.stringify(snapshot)
+  const defaultDirty = defaultChoice !== storedDefault
+  const isDirty = basicsDirty || defaultDirty
   const valid = basicsValid(draft)
   const busy = saving || deleting || unlinking
 
@@ -175,14 +198,19 @@ export function AccountSheet({ open, onOpenChange, opener, user, onSave, onReque
     setSaving(true)
     setError(false)
     try {
-      await onSave({
+      // Two writes, each only when its part changed (D13): a retry after the second failed
+      // rewrites the same basics, which is harmless.
+      if (basicsDirty || !defaultDirty) {
+        await onSave({
           name: draft.name.trim(),
           country: draft.country,
           currency: draft.currency,
           timezone: draft.timezone,
           cycleDay: user.cycleDay ?? 1,
           amountFormat: draft.amountFormat,
-      })
+        })
+      }
+      if (defaultDirty && onSaveDefault) await onSaveDefault(defaultChoice === 'ninguno' ? null : defaultChoice)
       onOpenChange(false)
     } catch {
       setError(true)
@@ -242,6 +270,24 @@ export function AccountSheet({ open, onOpenChange, opener, user, onSave, onReque
         <p data-cycle-day className="relative flex min-h-row items-center px-inset text-body-lg text-foreground before:absolute before:left-4 before:right-0 before:top-0 before:h-px before:bg-border">
           {t('diaInicio', { dia: user.cycleDay ?? 1 })}
         </p>
+        {onSaveDefault ? (
+          // The drawer's swipe would take the pointer and the segments would never get the click.
+          <div data-default-payment data-base-ui-swipe-ignore className="relative flex flex-col gap-2 px-inset py-3 before:absolute before:left-4 before:right-0 before:top-0 before:h-px before:bg-border">
+            <span id="account-default-payment" className="text-body-lg text-foreground">
+              {tMedio('porDefecto')}
+            </span>
+            <SegmentedControl<DefaultChoice>
+              label={tMedio('porDefecto')}
+              value={defaultChoice}
+              onChange={setDefaultChoice}
+              options={[
+                { value: 'ninguno', label: tMedio('ninguno') },
+                { value: 'efectivo', label: tMedio('efectivo') },
+                { value: 'tarjeta', label: tMedio('tarjeta') },
+              ]}
+            />
+          </div>
+        ) : null}
 
         {/* The WhatsApp section (`dashboard-ui` → *Account avatar and menu*, D9): the channel's
             state, the link, the code and the optional number for Meta's recipient list. */}

@@ -49,6 +49,8 @@ import { MonthlyBarsChart } from '@/components/organisms/monthly-bars-chart'
 import { SheetShell } from '@/components/organisms/sheet-shell'
 import { SpendCalendar } from '@/components/organisms/spend-calendar'
 import { DaySheet } from '@/components/organisms/day-sheet'
+import { MoveMoneySheet } from '@/components/organisms/move-money-sheet'
+import { PocketSheet } from '@/components/organisms/pocket-sheet'
 import { SummaryGroup, type SummaryGroupItem } from '@/components/organisms/summary-group'
 import { UpcomingChargesCard } from '@/components/organisms/upcoming-charges-card'
 import { MovementsCard } from '@/components/organisms/movements-card'
@@ -67,6 +69,9 @@ import { committedByCard, type Card } from '@/lib/data/cards'
 gsap.registerPlugin(ScrollTrigger, Flip)
 import type { ExpenseDraft } from '@/lib/data/expenses'
 import type { IncomeEntry } from '@/lib/data/income'
+// Pure selection over the rows the dashboard already holds, like `userMovements`.
+// eslint-disable-next-line @typescript-eslint/no-restricted-imports
+import { pocketRows, type PaymentMethod, type Transfer, type TransferDraft } from '@/lib/data/payment-method'
 import type { RecurringDefinition, RecurringDraft } from '@/lib/data/recurring'
 import type { SavingsMovementDraft } from '@/lib/data/savings'
 import type { UpcomingCharge } from '@/lib/data/upcoming-charges'
@@ -182,13 +187,14 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   const tMenu = useTranslations('menuCuenta')
   const locale = useLocale()
   const router = useRouter()
-  const tHojaGasto = useTranslations('hojaGasto')
+  const tHojaMovimiento = useTranslations('hojaMovimiento')
   const tHojaCategoria = useTranslations('hojaCategoria')
   const tReordenar = useTranslations('modoReordenar')
   const tEscritorio = useTranslations('escritorio')
   const tMovimientos = useTranslations('movimientos')
   const tGraficos = useTranslations('graficos')
   const tTarjetas = useTranslations('tarjetas')
+  const tMedio = useTranslations('medioPago')
   const format = useFormatter()
   const { money } = useAmountFormatter()
   const [openIds, setOpenIds] = useState<Set<string>>(new Set())
@@ -211,6 +217,11 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   const [cardSheet, setCardSheet] = useState<{ open: boolean; card: Card | null }>({ open: false, card: null })
   // The calendar's day detail; the date stays while the sheet is leaving.
   const [dayDetail, setDayDetail] = useState({ open: false, date: data.cycle.today })
+  // A pocket's list and "Mover plata" (`payment-method`); the pocket and the transfer stay while leaving.
+  const [pocketSheet, setPocketSheet] = useState<{ open: boolean; method: PaymentMethod }>({ open: false, method: 'efectivo' })
+  const [moveSheet, setMoveSheet] = useState<{ open: boolean; transfer: Transfer | null }>({ open: false, transfer: null })
+  const pocketOpenerRef = useRef<HTMLElement | null>(null)
+  const moveOpenerRef = useRef<HTMLElement | null>(null)
   // The last summary panel opened, kept while the side panel is leaving.
   const [lastSummaryKey, setLastSummaryKey] = useState<SummaryKey | null>(null)
   // The widget order shown while a save is in flight or being reverted (D6), like `displayedOrder`.
@@ -335,6 +346,16 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       const expense = group.expenses.find((candidate) => candidate.id === charge.id)
       if (expense) return openEditSheet(group, expense)
     }
+  }
+
+  function openPocket(method: PaymentMethod, opener: HTMLElement) {
+    pocketOpenerRef.current = opener
+    setPocketSheet({ open: true, method })
+  }
+
+  function openMoveMoney(transfer: Transfer | null, opener: HTMLElement | null) {
+    moveOpenerRef.current = opener
+    setMoveSheet({ open: true, transfer })
   }
 
   function handleEnterReorder() {
@@ -730,9 +751,9 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   function showUndo(expense: Expense) {
     toasts.close()
     const id = toasts.add({
-      title: tHojaGasto('gastoEliminado'),
+      title: tHojaMovimiento('gastoEliminado'),
       priority: 'low',
-      actionProps: { children: tHojaGasto('deshacer'), onClick: () => void undoDelete(id, expense) },
+      actionProps: { children: tHojaMovimiento('deshacer'), onClick: () => void undoDelete(id, expense) },
     })
   }
 
@@ -743,7 +764,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       markRestored(expense.id)
       toasts.close(id)
     } catch {
-      toasts.update(id, { title: tHojaGasto('errorDeshacer'), priority: 'high', actionProps: undefined })
+      toasts.update(id, { title: tHojaMovimiento('errorDeshacer'), priority: 'high', actionProps: undefined })
     }
   }
 
@@ -756,9 +777,9 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   function showSlotUndo(definitionId: string, rowId: string) {
     toasts.close()
     const id = toasts.add({
-      title: tHojaGasto('eliminadoSoloEsteMes'),
+      title: tHojaMovimiento('eliminadoSoloEsteMes'),
       priority: 'low',
-      actionProps: { children: tHojaGasto('deshacer'), onClick: () => void undoSlotDelete(id, definitionId, rowId) },
+      actionProps: { children: tHojaMovimiento('deshacer'), onClick: () => void undoSlotDelete(id, definitionId, rowId) },
     })
   }
 
@@ -769,7 +790,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       markRestored(rowId)
       toasts.close(id)
     } catch {
-      toasts.update(id, { title: tHojaGasto('errorDeshacer'), priority: 'high', actionProps: undefined })
+      toasts.update(id, { title: tHojaMovimiento('errorDeshacer'), priority: 'high', actionProps: undefined })
     }
   }
 
@@ -782,15 +803,15 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       throw error
     }
     if (scope === 'only') showSlotUndo(definitionId, rowId)
-    else setStatusMessage(tHojaGasto('eliminadoDesde', { mes: monthName }))
+    else setStatusMessage(tHojaMovimiento('eliminadoDesde', { mes: monthName }))
   }
 
   function showSavingsUndo(movementId: string) {
     toasts.close()
     const id = toasts.add({
-      title: tHojaGasto('movimientoEliminado'),
+      title: tHojaMovimiento('movimientoEliminado'),
       priority: 'low',
-      actionProps: { children: tHojaGasto('deshacer'), onClick: () => void undoSavingsDelete(id, movementId) },
+      actionProps: { children: tHojaMovimiento('deshacer'), onClick: () => void undoSavingsDelete(id, movementId) },
     })
   }
 
@@ -801,7 +822,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       markRestored(movementId)
       toasts.close(id)
     } catch {
-      toasts.update(id, { title: tHojaGasto('errorDeshacer'), priority: 'high', actionProps: undefined })
+      toasts.update(id, { title: tHojaMovimiento('errorDeshacer'), priority: 'high', actionProps: undefined })
     }
   }
 
@@ -811,19 +832,19 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       await actions.savings.softDelete(movementId)
       showSavingsUndo(movementId)
     } catch (error) {
-      toasts.add({ title: tHojaGasto('errorEliminarMovimiento'), priority: 'high' })
+      toasts.add({ title: tHojaMovimiento('errorEliminarMovimiento'), priority: 'high' })
       throw error
     }
   }
 
   async function handleDeleteExpense(expense: Expense) {
-    if (expense.fixed && actions.recurring) return deleteSlot(expense.fixed.definitionId, expense.id, 'only', tHojaGasto('errorEliminar'))
+    if (expense.fixed && actions.recurring) return deleteSlot(expense.fixed.definitionId, expense.id, 'only', tHojaMovimiento('errorEliminar'))
     if (!actions.expenses) return
     try {
       await actions.expenses.softDelete(expense.id)
       showUndo(expense)
     } catch (error) {
-      toasts.add({ title: tHojaGasto('errorEliminar'), priority: 'high' })
+      toasts.add({ title: tHojaMovimiento('errorEliminar'), priority: 'high' })
       throw error
     }
   }
@@ -831,9 +852,9 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   function showIncomeUndo(entry: IncomeEntry) {
     toasts.close()
     const id = toasts.add({
-      title: tHojaGasto('ingresoEliminado'),
+      title: tHojaMovimiento('ingresoEliminado'),
       priority: 'low',
-      actionProps: { children: tHojaGasto('deshacer'), onClick: () => void undoIncomeDelete(id, entry) },
+      actionProps: { children: tHojaMovimiento('deshacer'), onClick: () => void undoIncomeDelete(id, entry) },
     })
   }
 
@@ -844,20 +865,69 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       markRestored(entry.id)
       toasts.close(id)
     } catch {
-      toasts.update(id, { title: tHojaGasto('errorDeshacer'), priority: 'high', actionProps: undefined })
+      toasts.update(id, { title: tHojaMovimiento('errorDeshacer'), priority: 'high', actionProps: undefined })
     }
   }
 
   async function handleDeleteIncome(entry: IncomeEntry) {
-    if (entry.recurring && actions.recurring) return deleteSlot(entry.recurring.definitionId, entry.id, 'only', tHojaGasto('errorEliminarIngreso'))
+    if (entry.recurring && actions.recurring) return deleteSlot(entry.recurring.definitionId, entry.id, 'only', tHojaMovimiento('errorEliminarIngreso'))
     if (!actions.income) return
     try {
       await actions.income.softDelete(entry.id)
       showIncomeUndo(entry)
     } catch (error) {
-      toasts.add({ title: tHojaGasto('errorEliminarIngreso'), priority: 'high' })
+      toasts.add({ title: tHojaMovimiento('errorEliminarIngreso'), priority: 'high' })
       throw error
     }
+  }
+
+  function showTransferUndo(transferId: string) {
+    toasts.close()
+    const id = toasts.add({
+      title: tMedio('movimientoEliminado'),
+      priority: 'low',
+      actionProps: { children: tHojaMovimiento('deshacer'), onClick: () => void undoTransferDelete(id, transferId) },
+    })
+  }
+
+  async function undoTransferDelete(id: string, transferId: string) {
+    if (!actions.transfers) return
+    try {
+      await actions.transfers.restore(transferId)
+      markRestored(transferId)
+      toasts.close(id)
+    } catch {
+      toasts.update(id, { title: tHojaMovimiento('errorDeshacer'), priority: 'high', actionProps: undefined })
+    }
+  }
+
+  async function handleDeleteTransfer(transfer: Transfer) {
+    if (!actions.transfers) return
+    try {
+      await actions.transfers.softDelete(transfer.id)
+      showTransferUndo(transfer.id)
+    } catch (error) {
+      toasts.add({ title: tMedio('errorEliminar'), priority: 'high' })
+      throw error
+    }
+  }
+
+  async function handleSaveTransfer(draft: TransferDraft) {
+    if (!actions.transfers) return
+    const editing = moveSheet.transfer
+    if (editing) await actions.transfers.update(editing.id, draft)
+    else await actions.transfers.create(draft)
+    setMoveSheet((prev) => ({ ...prev, open: false }))
+    setStatusMessage(tMedio(editing ? 'cambiosGuardados' : 'plataMovida'))
+  }
+
+  // The sheet's "Eliminar movimiento": the same undo toast as a swipe.
+  async function handleMoveSheetDelete() {
+    const transfer = moveSheet.transfer
+    if (!actions.transfers || !transfer) return
+    await actions.transfers.softDelete(transfer.id)
+    setMoveSheet((prev) => ({ ...prev, open: false }))
+    showTransferUndo(transfer.id)
   }
 
   async function handleSheetDelete(reach: Reach | null) {
@@ -869,7 +939,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       const name = sheet.target.kind === 'income' ? sheet.target.entry.name : sheet.target.expense.name
       await actions.recurring.delete(definitionId)
       setSheet((prev) => ({ ...prev, open: false }))
-      setStatusMessage(tHojaGasto('eliminadoConHistorial', { nombre: name }))
+      setStatusMessage(tHojaMovimiento('eliminadoConHistorial', { nombre: name }))
       return
     }
     const scope = reach === 'all' ? null : reach
@@ -877,7 +947,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       await actions.recurring.deleteInCycle(definitionId, cycleStart, scope ?? 'only')
       setSheet((prev) => ({ ...prev, open: false }))
       if ((scope ?? 'only') === 'only') showSlotUndo(definitionId, sheet.target.kind === 'income' ? sheet.target.entry.id : sheet.target.expense.id)
-      else setStatusMessage(tHojaGasto('eliminadoDesde', { mes: monthName }))
+      else setStatusMessage(tHojaMovimiento('eliminadoDesde', { mes: monthName }))
       return
     }
     if (sheet.target.kind === 'income') {
@@ -939,10 +1009,10 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       const name = sheet.target.kind === 'expense' && sheet.target.mode === 'edit' ? sheet.target.expense.name : ''
       setStatusMessage(
         slotChanged && scope === 'onward'
-          ? tHojaGasto('cambiosDesde', { mes: monthName })
+          ? tHojaMovimiento('cambiosDesde', { mes: monthName })
           : charged != null && !slotChanged && !reminder && card === undefined
-            ? tHojaGasto(charged ? 'marcadoCobrado' : 'marcadoPendiente', { nombre: name })
-            : tHojaGasto('cambiosGuardados'),
+            ? tHojaMovimiento(charged ? 'marcadoCobrado' : 'marcadoPendiente', { nombre: name })
+            : tHojaMovimiento('cambiosGuardados'),
       )
       return
     }
@@ -954,7 +1024,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
         await actions.income.update(sheet.target.entry.id, values)
       }
       setSheet((prev) => ({ ...prev, open: false }))
-      setStatusMessage(sheet.target.mode === 'create' ? tHojaGasto('ingresoAnadido') : tHojaGasto('cambiosGuardados'))
+      setStatusMessage(sheet.target.mode === 'create' ? tHojaMovimiento('ingresoAnadido') : tHojaMovimiento('cambiosGuardados'))
       return
     }
     if (!actions.expenses) return
@@ -966,7 +1036,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       await actions.expenses.update(sheet.target.expense.id, values, categoryId ?? sheet.target.group.id)
     }
     setSheet((prev) => ({ ...prev, open: false }))
-    setStatusMessage(sheet.target.mode === 'create' ? tHojaGasto('gastoAnadido') : tHojaGasto('cambiosGuardados'))
+    setStatusMessage(sheet.target.mode === 'create' ? tHojaMovimiento('gastoAnadido') : tHojaMovimiento('cambiosGuardados'))
   }
 
   async function handleSaveSavingsEntry(values: SavingsMovementDraft) {
@@ -974,12 +1044,12 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
     if (sheet.target.mode === 'edit') {
       await actions.savings.update(sheet.target.movement.id, values)
       setSheet((prev) => ({ ...prev, open: false }))
-      setStatusMessage(tHojaGasto('cambiosGuardados'))
+      setStatusMessage(tHojaMovimiento('cambiosGuardados'))
       return
     }
     await actions.savings.addSavingsMovement(values)
     setSheet((prev) => ({ ...prev, open: false }))
-    setStatusMessage(tHojaGasto('movimientoAhorroAnadido'))
+    setStatusMessage(tHojaMovimiento('movimientoAhorroAnadido'))
   }
 
   // The sheet's "Eliminar movimiento": no confirmation step, the same undo toast as a swipe.
@@ -1004,7 +1074,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
     if (!actions.recurring) return
     await actions.recurring.stop(definitionId)
     setSheet((prev) => ({ ...prev, open: false }))
-    setStatusMessage(tHojaGasto('yaNoSeRepite', { nombre: name }))
+    setStatusMessage(tHojaMovimiento('yaNoSeRepite', { nombre: name }))
   }
 
   const sheetIsIncome = sheet.target?.kind === 'income'
@@ -1026,13 +1096,31 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
             amount: sheet.target.entry.amount,
             description: sheet.target.entry.name,
             date: localDateOf(sheet.target.entry.date, data.user.timezone),
+            paymentMethod: sheet.target.entry.paymentMethod,
           }
         : {
             amount: sheet.target.expense.amount,
             description: sheet.target.expense.name,
             date: localDateOf(sheet.target.expense.date, data.user.timezone),
+            paymentMethod: sheet.target.expense.paymentMethod,
           }
-      : { date: clampDate(data.cycle.today, data.cycle.start, data.cycle.end) }
+      : // A new row starts at the account's default (`payment-method` → *An account default payment method*).
+        { date: clampDate(data.cycle.today, data.cycle.start, data.cycle.end), paymentMethod: data.user.defaultPaymentMethod }
+
+  const shownPocketRows = useMemo(
+    () =>
+      data.pockets
+        ? pocketRows({
+            method: pocketSheet.method,
+            groups: data.expenses.groups,
+            entries: data.income.entries,
+            transfers: data.pockets.transfers,
+            today: data.cycle.today,
+            timeZone: data.user.timezone,
+          })
+        : [],
+    [data, pocketSheet.method],
+  )
 
   const savingsTarget = sheet.target?.kind === 'savings' ? sheet.target : null
   const savingsInitialValues: Partial<SavingsMovementDraft> =
@@ -1482,13 +1570,14 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
               const editable = actions.income && (!entry.projected || actions.recurring)
               const row = (
                 <ExpenseRow
-                  name={entry.name || tHojaGasto('ingreso')}
+                  name={entry.name || tHojaMovimiento('ingreso')}
                   date={entry.date}
                   amount={entry.amount}
                   currency={currency}
                   timeZone={data.user.timezone}
                   onActivate={editable ? () => openIncomeEditSheet(entry) : undefined}
                   first={index === 0}
+                  paymentMethod={entry.paymentMethod}
                 />
               )
               return editable ? (
@@ -1795,6 +1884,9 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
           income={data.income.total}
           savings={data.savings.cycle}
           presentation={desktop ? 'tile' : 'card'}
+          pockets={data.pockets ? { efectivo: data.pockets.efectivo.balance, tarjeta: data.pockets.tarjeta.balance } : undefined}
+          onOpenPocket={openPocket}
+          onMoveMoney={actions.transfers ? (opener) => openMoveMoney(null, opener) : undefined}
         />
       </AnimatedContent>
       <AnimatedContent className="mt-stack lg:col-span-3 lg:mt-0 xl:col-span-1" distance={24} delay={0.32}>
@@ -2082,6 +2174,57 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
             : undefined
         }
       />
+      <PocketSheet
+        open={pocketSheet.open && data.pockets != null}
+        onClose={() => setPocketSheet((prev) => ({ ...prev, open: false }))}
+        method={pocketSheet.method}
+        pocket={data.pockets?.[pocketSheet.method] ?? { balance: 0, cameIn: 0, wentOut: 0 }}
+        rows={shownPocketRows}
+        currency={currency}
+        timeZone={data.user.timezone}
+        opener={pocketOpenerRef}
+        onOpenExpense={
+          actions.expenses
+            ? (group, expense) => {
+                setPocketSheet((prev) => ({ ...prev, open: false }))
+                openEditSheet(group, expense)
+              }
+            : undefined
+        }
+        onOpenIncome={
+          actions.income
+            ? (entry) => {
+                setPocketSheet((prev) => ({ ...prev, open: false }))
+                openIncomeEditSheet(entry)
+              }
+            : undefined
+        }
+        onOpenTransfer={
+          actions.transfers
+            ? (transfer) => {
+                setPocketSheet((prev) => ({ ...prev, open: false }))
+                openMoveMoney(transfer, pocketOpenerRef.current)
+              }
+            : undefined
+        }
+        onDeleteExpense={actions.expenses ? handleDeleteExpense : undefined}
+        onDeleteIncome={actions.income ? handleDeleteIncome : undefined}
+        onDeleteTransfer={actions.transfers ? handleDeleteTransfer : undefined}
+      />
+      {actions.transfers ? (
+        <MoveMoneySheet
+          open={moveSheet.open}
+          onOpenChange={(open) => setMoveSheet((prev) => ({ ...prev, open }))}
+          transfer={moveSheet.transfer}
+          balances={{ efectivo: data.pockets?.efectivo.balance ?? 0, tarjeta: data.pockets?.tarjeta.balance ?? 0 }}
+          cycle={data.cycle}
+          transferDay={moveSheet.transfer ? localDateOf(moveSheet.transfer.date, data.user.timezone) : null}
+          currency={currency}
+          opener={moveOpenerRef}
+          onSave={handleSaveTransfer}
+          onDelete={moveSheet.transfer ? handleMoveSheetDelete : undefined}
+        />
+      ) : null}
       <AccountMenu
         user={data.user}
         actions={actions}
@@ -2128,6 +2271,14 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
             await actions.profile!.updateBasics(basics)
             setStatusMessage(tCuenta('guardado'))
           }}
+          onSaveDefault={
+            actions.profile.setDefaultPaymentMethod
+              ? async (method) => {
+                  await actions.profile!.setDefaultPaymentMethod!(method)
+                  setStatusMessage(tCuenta('guardado'))
+                }
+              : undefined
+          }
           onRequestLink={actions.profile.requestWhatsAppLink}
           onRefresh={() => router.refresh()}
           onUnlink={actions.profile.unlinkWhatsApp}

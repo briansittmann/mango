@@ -156,6 +156,7 @@ export function CategoryCard({
                 timeZone={timeZone}
                 onActivate={onEditExpense ? () => onEditExpense(expense) : undefined}
                 first={index === 0}
+                paymentMethod={expense.paymentMethod}
               />
             )
             return onDeleteExpense ? (
