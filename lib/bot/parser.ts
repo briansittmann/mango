@@ -134,6 +134,8 @@ export type ParseInput = {
   pending?: PendingQuestion
   /** A VIP account's recent messages, oldest first (`bot-conversation-history`). */
   history?: { direction: 'entrante' | 'saliente'; text: string }[]
+  /** Whether the account is offered the payment-method feature (D14); without it the prompt has no method, transfer or deposit rule. */
+  paymentMethods?: boolean
 }
 
 export type ModelRequest = { prompt: string; audio?: AudioInput }
@@ -185,14 +187,39 @@ export const HISTORY_HEADER = 'CONVERSACIÓN RECIENTE'
 /** Marks the voice-note rules, present only when the input is audio (`add-voice-messages` D4). */
 export const VOICE_HEADER = 'NOTA DE VOZ'
 
+/** The method, transfer and deposit rules: only for an account offered the feature (D14). */
+const PAYMENT_RULES = `
+- medio_pago: en gasto e ingreso, el que dice el mensaje ("en efectivo", "cash" → "efectivo"; "con tarjeta", "con débito", "by card" → "tarjeta"); null si no lo dice. Nunca lo adivines ni pongas uno por defecto. En ahorro siempre null.
+- transferencia: mover plata entre el efectivo y el banco, sin gastar ni cobrar nada. Sacar plata del banco o del cajero ("saqué 200", "saqué del cajero", "retiré 100") → tipo "transferencia" con medio_pago "efectivo". Poner efectivo en el banco ("deposité las propinas", "ingresé el efectivo al banco") → tipo "transferencia" con medio_pago "tarjeta". En transferencia, categoria, descripcion y recurrente son null y medio_pago nunca es null. Sacar del ahorro ("saqué 100 del ahorro") NO es transferencia: es ahorro con monto negativo.
+- Plata que entra al banco sin decir si vino del efectivo o es plata nueva ("ingresé 200 en el banco", "metí 200 en la cuenta") → repreguntar con falta "deposito", tipo "ingreso" y el monto. Si el mensaje lo dice, no preguntes: "cobré 200 en el banco" es ingreso con medio_pago "tarjeta"; "deposité 200 del efectivo" es transferencia con medio_pago "tarjeta". Nunca preguntes el medio de pago en otro caso.`
+
+/** An example about the payment method, a transfer or the deposit question: only for an account offered the feature. */
+function paymentExample(action: object): boolean {
+  const a = action as { tipo?: string; falta?: string; medio_pago?: string | null }
+  return a.tipo === 'transferencia' || a.falta === 'deposito' || a.medio_pago != null
+}
+
+/** Without the feature the examples carry no `medio_pago` at all, so nothing in the prompt names it. */
+function withoutMethod(action: object): object {
+  const rest: Record<string, unknown> = { ...action }
+  delete rest.medio_pago
+  return rest
+}
+
 export function buildPrompt(input: ParseInput): string {
   const voice = input.audio !== undefined
+  const payments = input.paymentMethods !== false
   const language = input.locale === 'en' ? 'inglés' : 'español'
   const recurring = input.recurringNames.length > 0 ? input.recurringNames.join(', ') : '(ninguno)'
   // With audio, every action carries the transcription: the list and the examples show it.
   const T = voice ? ',"transcripcion":string' : ''
   const examples = [
-    ...EXAMPLES[input.locale].map(([message, action]) => `Mensaje: ${message}\nJSON: ${JSON.stringify(voice ? { ...action, transcripcion: message } : action)}`),
+    ...EXAMPLES[input.locale]
+      .filter(([, action]) => payments || !paymentExample(action))
+      .map(([message, example]) => {
+        const action = payments ? example : withoutMethod(example)
+        return `Mensaje: ${message}\nJSON: ${JSON.stringify(voice ? { ...action, transcripcion: message } : action)}`
+      }),
     ...(voice ? [`Nota de voz: (silencio, ruido de fondo o nada inteligible)\nJSON: ${JSON.stringify({ accion: 'no_entendido', transcripcion: '' })}`] : []),
   ].join('\n\n')
 
@@ -200,10 +227,17 @@ export function buildPrompt(input: ParseInput): string {
     `Sos el intérprete de un bot de finanzas personales. Convertís UN mensaje de chat en UN objeto JSON con una acción. Devolvé solo el objeto JSON, sin texto alrededor.
 
 ACCIONES Y CAMPOS (ningún campo fuera de estos):
-- {"accion":"cargar","tipo":"gasto"|"ingreso"|"ahorro"|"transferencia","monto":número,"categoria":string|null,"descripcion":string|null,"dias_atras":entero>=0,"recurrente":string|null,"medio_pago":"efectivo"|"tarjeta"|null${T}}
+${
+      payments
+        ? `- {"accion":"cargar","tipo":"gasto"|"ingreso"|"ahorro"|"transferencia","monto":número,"categoria":string|null,"descripcion":string|null,"dias_atras":entero>=0,"recurrente":string|null,"medio_pago":"efectivo"|"tarjeta"|null${T}}
   Registrar un movimiento. monto positivo en gasto, ingreso y transferencia. En ahorro, positivo es un depósito y negativo un retiro ("saqué 100 del ahorro" → -100); nunca 0.
 - {"accion":"repreguntar","falta":"categoria"|"deposito","tipo":"gasto"|"ingreso","monto":número,"dias_atras":entero>=0,"descripcion"?:string${T}}
-  falta "categoria" (tipo "gasto"): solo cuando el mensaje da un monto de gasto y NADA que describa en qué fue ("gasté 50"). falta "deposito" (tipo "ingreso"): ver la regla de transferencia.
+  falta "categoria" (tipo "gasto"): solo cuando el mensaje da un monto de gasto y NADA que describa en qué fue ("gasté 50"). falta "deposito" (tipo "ingreso"): ver la regla de transferencia.`
+        : `- {"accion":"cargar","tipo":"gasto"|"ingreso"|"ahorro","monto":número,"categoria":string|null,"descripcion":string|null,"dias_atras":entero>=0,"recurrente":string|null${T}}
+  Registrar un movimiento. monto positivo en gasto e ingreso. En ahorro, positivo es un depósito y negativo un retiro ("saqué 100 del ahorro" → -100); nunca 0.
+- {"accion":"repreguntar","falta":"categoria","tipo":"gasto","monto":número,"dias_atras":entero>=0${T}}
+  Solo cuando el mensaje da un monto de gasto y NADA que describa en qué fue ("gasté 50").`
+    }
 - {"accion":"no_entendido"${T}}  El mensaje no es ninguna de las otras acciones.
 - {"accion":"consultar","consulta":"margen_libre"|"mes"${T}}  "libre" o cuánto le queda → margen_libre; cómo viene el mes → mes.
 - {"accion":"corregir","monto"?:número,"categoria"?:string${T}}  Corrige la última carga; al menos uno de los dos.
@@ -224,10 +258,7 @@ Gastos fijos activos: ${recurring}`,
 - monto: número JSON, nunca string. La coma es separador decimal ("3,5" → 3.5); ignorá la puntuación final.
 - dias_atras: 0 si el mensaje no nombra un día; "ayer" → 1; "anteayer" → 2; "hace N días" → N. "date" es una cita (Ocio), no una fecha.
 - corregir: cualquier forma de decir que la última carga estaba mal, aunque sea suelta ("osea lo que gasté esos 50 eran comida" → corregir con categoria "Comida"; "no, eran 80" → corregir con monto 80). Un monto que solo repite el de la carga para identificarla no es un monto nuevo.
-- Un "sí", "dale" u "ok" suelto, sin una pregunta pendiente que confirme, es no_entendido.
-- medio_pago: en gasto e ingreso, el que dice el mensaje ("en efectivo", "cash" → "efectivo"; "con tarjeta", "con débito", "by card" → "tarjeta"); null si no lo dice. Nunca lo adivines ni pongas uno por defecto. En ahorro siempre null.
-- transferencia: mover plata entre el efectivo y el banco, sin gastar ni cobrar nada. Sacar plata del banco o del cajero ("saqué 200", "saqué del cajero", "retiré 100") → tipo "transferencia" con medio_pago "efectivo". Poner efectivo en el banco ("deposité las propinas", "ingresé el efectivo al banco") → tipo "transferencia" con medio_pago "tarjeta". En transferencia, categoria, descripcion y recurrente son null y medio_pago nunca es null. Sacar del ahorro ("saqué 100 del ahorro") NO es transferencia: es ahorro con monto negativo.
-- Plata que entra al banco sin decir si vino del efectivo o es plata nueva ("ingresé 200 en el banco", "metí 200 en la cuenta") → repreguntar con falta "deposito", tipo "ingreso" y el monto. Si el mensaje lo dice, no preguntes: "cobré 200 en el banco" es ingreso con medio_pago "tarjeta"; "deposité 200 del efectivo" es transferencia con medio_pago "tarjeta". Nunca preguntes el medio de pago en otro caso.`,
+- Un "sí", "dale" u "ok" suelto, sin una pregunta pendiente que confirme, es no_entendido.${payments ? PAYMENT_RULES : ''}`,
   ]
 
   if (voice) {
@@ -256,7 +287,7 @@ En el turno anterior el bot preguntó qué categoría corresponde a un ${tipo} d
     const campos = { accion: 'crear_categoria', nombre, ...(presupuesto ? { presupuesto } : {}), confirmada: true }
     sections.push(`${PENDING_HEADER}
 En el turno anterior el bot preguntó si crea la categoría "${nombre}" aunque ya existe "${parecida}". Si este mensaje lo confirma ("sí", "dale", "creala"), devolvé ${JSON.stringify(campos)}. Si el mensaje es otra cosa, interpretalo por sí solo e ignorá la pregunta; confirmada solo es true en esa confirmación.`)
-  } else if (input.pending?.pregunta === 'deposito') {
+  } else if (input.pending?.pregunta === 'deposito' && payments) {
     const { monto, diasAtras, descripcion } = input.pending
     const base = { accion: 'cargar', monto, categoria: null, dias_atras: diasAtras, recurrente: null, medio_pago: 'tarjeta' }
     sections.push(`${PENDING_HEADER}

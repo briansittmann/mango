@@ -10,6 +10,9 @@ import { loadDesktop, openCategory } from './desktop-helpers'
 // −62,40 on the 2nd, the 100 € transfer on the 4th, "Cine" −45 on the 5th, plus 150 € of August tips),
 // card 1.492,40 €.
 
+// The sample is a European account, not offered the feature (D14): this flag mounts it offered.
+const DEMO = '/demo?e2e=payment-methods'
+
 const dialog = (page) => page.locator('div[role="dialog"][data-open]').last()
 const pockets = (page) => page.locator('[data-pockets]')
 const pocket = (page, method) => page.locator(`[data-pocket="${method}"]`)
@@ -62,9 +65,12 @@ async function save(sheet, name = /^(Guardar|Añadir)$/) {
 }
 
 async function openPocket(page, method) {
-  await pocket(page, method).click()
   const sheet = dialog(page)
-  await expect(sheet.locator(`[data-pocket-sheet="${method}"]`)).toBeVisible()
+  // A tap that lands before hydration does nothing (WebKit, under load): tap again only then.
+  await expect(async () => {
+    if ((await sheet.locator(`[data-pocket-sheet="${method}"]`).count()) === 0) await pocket(page, method).click()
+    await expect(sheet.locator(`[data-pocket-sheet="${method}"]`)).toBeVisible({ timeout: 3000 })
+  }).toPass({ timeout: 15000 })
   return sheet
 }
 
@@ -115,9 +121,23 @@ const fontSize = (locator) => locator.evaluate((el) => parseFloat(getComputedSty
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 
+  test('plain /demo is not offered the feature: no chip, icon or pocket', async ({ page }) => {
+    await page.goto('/demo')
+    await expectFigure(page, 'Margen libre', '864')
+    await expect(pockets(page)).toHaveCount(0)
+    await expect(moveButton(page)).toHaveCount(0)
+    const comida = await openCategory(page, 'comida')
+    await expect(comida.locator('[data-payment-method]')).toHaveCount(0)
+    await expect(comida.getByRole('button', { name: /^Café/ })).not.toHaveAccessibleName(/en efectivo/)
+    await comida.getByRole('button', { name: 'Añadir gasto' }).click()
+    const sheet = dialog(page)
+    await expect(sheet.getByText('Nuevo gasto')).toBeVisible()
+    await expect(chips(sheet)).toHaveCount(0)
+  })
+
   test.describe('chips in the entry sheet', () => {
     test('a new expense shows both chips right after the amount, neither pressed', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const sheet = await addExpenseSheet(page, 'ocio')
       await expect(chips(sheet)).toHaveAttribute('role', 'group')
       await expect(chips(sheet)).toHaveAttribute('aria-label', 'Medio de pago')
@@ -129,7 +149,7 @@ test.describe('on a phone', () => {
     })
 
     test('marking, switching and unmarking', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const sheet = await addExpenseSheet(page, 'ocio')
       await chip(sheet, 'Efectivo').click()
       await expect(chip(sheet, 'Efectivo')).toHaveAttribute('aria-pressed', 'true')
@@ -164,7 +184,7 @@ test.describe('on a phone', () => {
     })
 
     test('a fixed charge asks how far a changed method reaches before writing', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const sheet = await openExpense(page, 'vivienda', 'Alquiler')
       await expect(chip(sheet, 'Tarjeta')).toHaveAttribute('aria-pressed', 'true')
       const scopeShown = () => sheet.getByText('Solo este mes').evaluate((el) => el.closest('[inert]') == null)
@@ -176,7 +196,7 @@ test.describe('on a phone', () => {
     })
 
     test('the method moves no figure but the pockets', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const comida = page.locator('[aria-controls="category-panel-comida"]')
       const comidaBefore = await visibleText(comida)
 
@@ -200,7 +220,7 @@ test.describe('on a phone', () => {
     })
 
     test('cash tips: an income in cash moves the income, the margin and the cash pocket only', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       await page.getByRole('button', { name: /^Ingresos/ }).click()
       await page.locator('#summary-group-panel').getByRole('button', { name: 'Añadir ingreso' }).click()
       const sheet = dialog(page)
@@ -218,7 +238,7 @@ test.describe('on a phone', () => {
     })
 
     test('the savings sheet has no payment method', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       await page.locator('[aria-controls="summary-group-panel"]').filter({ hasText: /^Ahorro/ }).click()
       const panel = page.locator('#summary-group-panel')
       await panel.getByRole('button', { name: 'Añadir movimiento de ahorro' }).click()
@@ -237,7 +257,7 @@ test.describe('on a phone', () => {
 
   test.describe('rows', () => {
     test('cash and card rows show their icon before the date, named in words', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const panel = await openCategory(page, 'comida')
       const cafe = panel.getByRole('button', { name: /^Café/ })
       const restaurante = panel.getByRole('button', { name: /^Restaurante/ })
@@ -259,7 +279,7 @@ test.describe('on a phone', () => {
     })
 
     test('a row with no method is unchanged: its date starts where its name does', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const panel = await openCategory(page, 'compras')
       const ropa = panel.getByRole('button', { name: /^Ropa/ })
       await expect(ropa.locator('[data-payment-method]')).toHaveCount(0)
@@ -275,8 +295,9 @@ test.describe('on a phone', () => {
     })
 
     test('a transfer appears in no card, panel or widget', async ({ page }) => {
-      await page.goto('/demo')
-      await expect(page.getByText('Tarjeta a efectivo')).toHaveCount(0)
+      await page.goto(DEMO)
+      // Visible text only: a slow load can hold streamed markup the page has not shown yet.
+      await expect(page.getByText('Tarjeta a efectivo').locator('visible=true')).toHaveCount(0)
       await page.getByRole('button', { name: /^Ingresos/ }).click()
       await expect(page.locator('#summary-group-panel')).not.toContainText('Tarjeta a efectivo')
     })
@@ -284,7 +305,7 @@ test.describe('on a phone', () => {
 
   test.describe('the pockets block', () => {
     test('seeded balances under the free margin, smaller, with the swap button on the boundary', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       await expectFigure(page, 'Margen libre', '864')
       await expectPockets(page, '142,60', '1.492,40')
       await expect(pockets(page)).toHaveCSS('border-top-style', 'solid')
@@ -304,7 +325,7 @@ test.describe('on a phone', () => {
     })
 
     test('the blocks stay with the strip folded or open, and never toggle it', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const toggle = page.locator('[aria-controls="free-margin-composition"]')
       await expect(toggle).toHaveAttribute('aria-expanded', 'false')
       await expect(pockets(page)).toBeVisible()
@@ -324,7 +345,7 @@ test.describe('on a phone', () => {
     })
 
     test('no block in a projection', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       await expect(pockets(page)).toBeVisible()
       const title = page.locator('[data-month-picker-trigger]').last()
       await page.locator('button[aria-label="Ciclo siguiente"]').last().click()
@@ -354,7 +375,7 @@ test.describe('on a phone', () => {
     })
 
     test('the pockets are opaque', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       for (const theme of ['light', 'dark']) {
         await page.evaluate((theme) => document.documentElement.setAttribute('data-theme', theme), theme)
         for (const method of ['efectivo', 'tarjeta']) {
@@ -372,7 +393,7 @@ test.describe('on a phone', () => {
 
   test.describe('"Mover plata"', () => {
     test('a withdrawal moves only the pockets', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const sheet = await openMoveMoney(page)
       await expect(sheet.getByText('Mover plata', { exact: true })).toBeVisible()
       await expect(sheet.locator('[data-move-box="from"]')).toContainText('Tarjeta')
@@ -394,7 +415,7 @@ test.describe('on a phone', () => {
     })
 
     test('swapping the direction flips the boxes and the preview', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const sheet = await openMoveMoney(page)
       await sheet.getByLabel('Importe').fill('50')
       await sheet.getByRole('button', { name: 'Intercambiar origen y destino' }).click()
@@ -408,7 +429,7 @@ test.describe('on a phone', () => {
     })
 
     test('nothing but amount, direction and date; the date stays in the cycle', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const sheet = await openMoveMoney(page)
       await expect(sheet.getByLabel('Descripción')).toHaveCount(0)
       await expect(sheet.getByRole('switch')).toHaveCount(0)
@@ -435,7 +456,7 @@ test.describe('on a phone', () => {
     })
 
     test('a reload resets the demo', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const sheet = await openMoveMoney(page)
       await sheet.getByLabel('Importe').fill('50')
       await sheet.getByRole('button', { name: /^Mover 50\s?€$/ }).click()
@@ -448,7 +469,7 @@ test.describe('on a phone', () => {
 
   test.describe('the pocket list', () => {
     test('the cash list: header and rows, newest first, the transfer muted and unsigned', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const sheet = await openPocket(page, 'efectivo')
       const header = sheet.locator('[data-pocket-header]')
       await expect(sheet.getByText('Efectivo', { exact: true }).first()).toBeVisible()
@@ -479,7 +500,7 @@ test.describe('on a phone', () => {
     })
 
     test('an expense opens its entry sheet with its method marked', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const list = await openPocket(page, 'efectivo')
       await pocketRowsOf(list).filter({ hasText: 'Café' }).click()
       const sheet = dialog(page)
@@ -490,7 +511,7 @@ test.describe('on a phone', () => {
     })
 
     test('editing a transfer', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const list = await openPocket(page, 'efectivo')
       await pocketRowsOf(list).filter({ hasText: 'Tarjeta a efectivo' }).click()
       const sheet = dialog(page)
@@ -505,7 +526,7 @@ test.describe('on a phone', () => {
     })
 
     test('deleting a transfer from its sheet, with undo', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const list = await openPocket(page, 'efectivo')
       await pocketRowsOf(list).filter({ hasText: 'Tarjeta a efectivo' }).click()
       const sheet = dialog(page)
@@ -518,7 +539,7 @@ test.describe('on a phone', () => {
     })
 
     test('swiping a transfer away, with undo', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const list = await openPocket(page, 'efectivo')
       const transfer = pocketRowsOf(list).filter({ hasText: 'Tarjeta a efectivo' })
       await longSwipe(page, transfer, list)
@@ -545,7 +566,7 @@ test.describe('on a phone', () => {
 
   test.describe('look and motion', () => {
     test('targets: chips, blocks, swap buttons and back are 44px; list rows 48px', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       for (const method of ['efectivo', 'tarjeta']) {
         const b = await target(pocket(page, method))
         expect(b.height, method).toBeGreaterThanOrEqual(44)
@@ -575,7 +596,7 @@ test.describe('on a phone', () => {
     })
 
     test('a marked chip differs by more than colour, in both themes', async ({ page }) => {
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const sheet = await addExpenseSheet(page, 'ocio')
       await chip(sheet, 'Efectivo').click()
       for (const theme of ['light', 'dark']) {
@@ -588,7 +609,7 @@ test.describe('on a phone', () => {
 
     test('reduced motion: the sheets are at rest at once and the balances change without counting', async ({ page }) => {
       await page.emulateMedia({ reducedMotion: 'reduce' })
-      await page.goto('/demo')
+      await page.goto(DEMO)
       const atRest = async () => {
         const first = await page.evaluate(
           () =>
@@ -621,7 +642,7 @@ test.describe('on a phone', () => {
 
     test('no axe violation on the card and both sheets, in either theme', async ({ page }) => {
       await page.emulateMedia({ reducedMotion: 'reduce' })
-      await page.goto('/demo')
+      await page.goto(DEMO)
       expect(await axeViolations(page, '[data-pockets]')).toEqual([])
 
       const move = await openMoveMoney(page)
@@ -638,7 +659,7 @@ test.describe('on a phone', () => {
 
 test.describe('on a laptop', () => {
   test('the pockets sit inside the first tile, under the income line', async ({ page }) => {
-    await loadDesktop(page)
+    await loadDesktop(page, { path: DEMO })
     await expect(pockets(page)).toBeVisible()
     await expectPockets(page, '142,60', '1.492,40')
     const tile = await box(pockets(page).locator('xpath=..'))
@@ -649,8 +670,19 @@ test.describe('on a laptop', () => {
     await expect(page.locator('[aria-controls="free-margin-composition"]')).toHaveCount(0)
   })
 
-  test('"Mover plata" is a side panel and moves the money', async ({ page }) => {
+  test('with the pockets the other tiles show their trend; without them they do not', async ({ page }) => {
+    await loadDesktop(page, { path: DEMO })
+    for (const key of ['income', 'expenses', 'savings']) {
+      await expect(page.locator(`[data-summary-column="${key}"] [data-summary-trend]`)).toHaveCount(1)
+      await expect(page.locator(`[data-summary-column="${key}"] [data-sparkline]`)).toHaveCount(1)
+    }
     await loadDesktop(page)
+    await expect(pockets(page)).toHaveCount(0)
+    await expect(page.locator('[data-summary-tiles] [data-summary-trend]')).toHaveCount(0)
+  })
+
+  test('"Mover plata" is a side panel and moves the money', async ({ page }) => {
+    await loadDesktop(page, { path: DEMO })
     await moveButton(page).click()
     const sheet = dialog(page)
     await expect(sheet.locator('[data-move-money-sheet]')).toBeVisible()
@@ -663,7 +695,7 @@ test.describe('on a laptop', () => {
   })
 
   test('the cash list lists its rows and opens an expense', async ({ page }) => {
-    await loadDesktop(page)
+    await loadDesktop(page, { path: DEMO })
     const list = await openPocket(page, 'efectivo')
     await expect(pocketRowsOf(list)).toHaveCount(3)
     await pocketRowsOf(list).filter({ hasText: 'Café' }).click()
@@ -673,7 +705,7 @@ test.describe('on a laptop', () => {
   })
 
   test('no axe violation on the tile and the side panels, in either theme', async ({ page }) => {
-    await loadDesktop(page)
+    await loadDesktop(page, { path: DEMO })
     expect(await axeViolations(page, '[data-pockets]')).toEqual([])
     await openMoveMoney(page)
     expect(await axeViolations(page, 'div[role="dialog"][data-open]')).toEqual([])

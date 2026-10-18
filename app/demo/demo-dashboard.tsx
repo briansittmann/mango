@@ -34,11 +34,16 @@ type DemoDashboardProps = {
   changeLanguage: (l: 'es' | 'en') => Promise<void>
 }
 
+/** The test flags that mount the sample offered the payment-method feature (`dashboard-ui` → *The demo's payment methods*). */
+const PAYMENT_FLAGS = ['payment-methods', 'fail-transfer', 'no-payment-methods', 'default-efectivo', 'default-tarjeta']
+
 export function DemoDashboard({ data: sampleData, recurringDefinitions: sampleDefinitions, budgetRows: baseBudgetRows, plan, changeLanguage }: DemoDashboardProps) {
   const searchParams = useSearchParams()
   const e2e = searchParams.get('e2e')
-  // `?e2e=no-payment-methods`: an account that never marked a movement, so no pockets (D11).
-  const unmarked = e2e === 'no-payment-methods'
+  // The sample is a European account, not offered the payment-method feature (D14); these flags
+  // mount it offered. `?e2e=no-payment-methods`: offered, but nothing marked yet, so no pockets (D11).
+  const offered = e2e != null && PAYMENT_FLAGS.includes(e2e)
+  const unmarked = !offered || e2e === 'no-payment-methods'
   const { data, definitions: recurringDefinitions } = useMemo(
     () => (unmarked ? withoutPaymentMethods(sampleData, sampleDefinitions) : { data: sampleData, definitions: sampleDefinitions }),
     [unmarked, sampleData, sampleDefinitions],
@@ -137,8 +142,8 @@ export function DemoDashboard({ data: sampleData, recurringDefinitions: sampleDe
   // The demo's "Cuenta" sheet is disabled, so `?e2e=default-efectivo|default-tarjeta` sets the default (D11).
   const defaultPaymentMethod: PaymentMethod | null = e2e === 'default-efectivo' ? 'efectivo' : e2e === 'default-tarjeta' ? 'tarjeta' : null
   const viewWithOrder = useMemo(
-    () => ({ ...view, user: { ...view.user, widgetOrder, defaultPaymentMethod } }),
-    [view, widgetOrder, defaultPaymentMethod],
+    () => ({ ...view, user: { ...view.user, widgetOrder, defaultPaymentMethod, paymentMethodsOffered: offered } }),
+    [view, widgetOrder, defaultPaymentMethod, offered],
   )
 
   useEffect(() => {

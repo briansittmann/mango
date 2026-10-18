@@ -109,7 +109,8 @@ export function FreeMarginCard({
         <div
           data-pockets
           onClick={(event: MouseEvent) => event.stopPropagation()}
-          className="relative mt-5 grid grid-cols-2 gap-3 border-t border-border pt-4"
+          // The `lg` tile is ~170px wide: there the blocks stack and the swap button sits on the divider.
+          className={cn('relative mt-5 grid gap-3 border-t border-border pt-4', tile ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-2')}
         >
           {(['efectivo', 'tarjeta'] satisfies PaymentMethod[]).map((method) => {
             const Icon = POCKET_ICONS[method]
@@ -122,7 +123,11 @@ export function FreeMarginCard({
                 onClick={(event) => onOpenPocket?.(method, event.currentTarget)}
                 className={cn(
                   'pressable flex min-h-target min-w-0 flex-col gap-1 rounded-inner bg-muted px-3 py-2.5 [--press-scale:0.97]',
-                  method === 'efectivo' ? 'items-start pr-7 text-left' : 'items-end pl-7 text-right',
+                  method === 'efectivo'
+                    ? 'items-start pr-7 text-left'
+                    : tile
+                      ? 'items-start text-left xl:items-end xl:pl-7 xl:text-right'
+                      : 'items-end pl-7 text-right',
                 )}
               >
                 <span className="flex items-center gap-1.5 text-body-sm text-muted-foreground">
@@ -143,7 +148,12 @@ export function FreeMarginCard({
               aria-label={tMedio('moverPlata')}
               data-move-money
               onClick={(event) => onMoveMoney(event.currentTarget)}
-              className="pressable absolute left-1/2 top-[calc(50%+0.5rem)] grid size-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-primary bg-card text-foreground shadow-sm [--press-scale:0.96]"
+              className={cn(
+                'pressable absolute grid size-11 -translate-y-1/2 place-items-center rounded-full border-2 border-primary bg-card text-foreground shadow-sm [--press-scale:0.96]',
+                tile
+                  ? 'right-0 top-0 xl:right-auto xl:left-1/2 xl:top-[calc(50%+0.5rem)] xl:-translate-x-1/2'
+                  : 'left-1/2 top-[calc(50%+0.5rem)] -translate-x-1/2',
+              )}
             >
               <ArrowLeftRight aria-hidden className="size-4" />
             </button>

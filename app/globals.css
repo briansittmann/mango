@@ -567,13 +567,14 @@
   }
 }
 
+/* Drawn left to right by a clip, not a dash: with `vector-effect` and a stretched box the dash is
+   measured short and the line stops before its end dot. */
 .sparkline-stroke {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  transition: stroke-dashoffset 600ms var(--ease-out);
+  clip-path: inset(-4px 100% -4px -4px);
+  transition: clip-path 600ms var(--ease-out);
 }
 .sparkline-stroke[data-revealed] {
-  stroke-dashoffset: 0;
+  clip-path: inset(-4px -4px -4px -4px);
 }
 .sparkline-dot {
   opacity: 0;

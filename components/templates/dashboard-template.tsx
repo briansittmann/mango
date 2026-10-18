@@ -1105,7 +1105,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
             paymentMethod: sheet.target.expense.paymentMethod,
           }
       : // A new row starts at the account's default (`payment-method` → *An account default payment method*).
-        { date: clampDate(data.cycle.today, data.cycle.start, data.cycle.end), paymentMethod: data.user.defaultPaymentMethod }
+        { date: clampDate(data.cycle.today, data.cycle.start, data.cycle.end), paymentMethod: data.user.paymentMethodsOffered ? data.user.defaultPaymentMethod : null }
 
   const shownPocketRows = useMemo(
     () =>
@@ -1554,6 +1554,9 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
   const firstSwipeableIncomeId = actions.income
     ? sortedIncomeEntries.find((entry) => !entry.projected || actions.recurring)?.id
     : undefined
+  // The tiles show their trend while the pockets make the first tile taller, so the extra height
+  // carries a real figure instead of empty space (`payment-method` D7); otherwise only with the flag.
+  const showTrends = SHOW_SUMMARY_TRENDS || (desktop && data.user.paymentMethodsOffered && data.pockets != null)
   const summaryItems: SummaryGroupItem[] = [
     {
       key: 'income',
@@ -1561,7 +1564,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       total: data.income.total,
       caption: tEscritorio('entradas', { n: data.income.entries.length }),
       opens: true,
-      ...(SHOW_SUMMARY_TRENDS ? { trend: { points: data.income.history.map((entry) => entry.total), upIsGood: true } } : {}),
+      ...(showTrends ? { trend: { points: data.income.history.map((entry) => entry.total), upIsGood: true } } : {}),
       panel: (
         <>
           <div className="flex flex-col">
@@ -1577,7 +1580,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
                   timeZone={data.user.timezone}
                   onActivate={editable ? () => openIncomeEditSheet(entry) : undefined}
                   first={index === 0}
-                  paymentMethod={entry.paymentMethod}
+                  paymentMethod={data.user.paymentMethodsOffered ? entry.paymentMethod : null}
                 />
               )
               return editable ? (
@@ -1605,7 +1608,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
       total: data.expenses.total,
       caption: tEscritorio('categoriasActivas', { n: data.expenses.groups.length }),
       opens: false,
-      ...(SHOW_SUMMARY_TRENDS ? { trend: { points: data.history.map((entry) => entry.total), upIsGood: false } } : {}),
+      ...(showTrends ? { trend: { points: data.history.map((entry) => entry.total), upIsGood: false } } : {}),
       panel: (
         <>
           <div className="flex flex-col">
@@ -1640,7 +1643,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
           ? tEscritorio('metaMensual', { monto: money(data.savings.target, currency) })
           : tEscritorio('acumulado', { monto: money(data.savings.accumulated, currency) }),
       opens: true,
-      ...(SHOW_SUMMARY_TRENDS ? { trend: { points: data.savings.history.map((entry) => entry.accumulated), upIsGood: true } } : {}),
+      ...(showTrends ? { trend: { points: data.savings.history.map((entry) => entry.accumulated), upIsGood: true } } : {}),
       panel: (
         <>
           <div className="flex flex-col">
@@ -1884,7 +1887,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
           income={data.income.total}
           savings={data.savings.cycle}
           presentation={desktop ? 'tile' : 'card'}
-          pockets={data.pockets ? { efectivo: data.pockets.efectivo.balance, tarjeta: data.pockets.tarjeta.balance } : undefined}
+          pockets={data.user.paymentMethodsOffered && data.pockets ? { efectivo: data.pockets.efectivo.balance, tarjeta: data.pockets.tarjeta.balance } : undefined}
           onOpenPocket={openPocket}
           onMoveMoney={actions.transfers ? (opener) => openMoveMoney(null, opener) : undefined}
         />
@@ -2011,6 +2014,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
                   showProgress={progressShown(group)}
                   // The empty bar lasts until the category holds a real row (D3).
                   projected={projected && !group.expenses.some((expense) => !expense.projected)}
+                  showPaymentMethods={data.user.paymentMethodsOffered}
                 />
                 {reordering ? (
                   <div
@@ -2272,7 +2276,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
             setStatusMessage(tCuenta('guardado'))
           }}
           onSaveDefault={
-            actions.profile.setDefaultPaymentMethod
+            actions.profile.setDefaultPaymentMethod && data.user.paymentMethodsOffered
               ? async (method) => {
                   await actions.profile!.setDefaultPaymentMethod!(method)
                   setStatusMessage(tCuenta('guardado'))
@@ -2301,6 +2305,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
         projected={projected}
         categories={data.expenses.groups.map(({ id, name, color }) => ({ id, name, color }))}
         allowCategoryChange={sheet.target?.kind === 'expense' && sheet.target.mode === 'create' && sheet.target.pickCategory === true}
+        paymentMethods={data.user.paymentMethodsOffered}
       />
       <EntrySheet
         config={savingsEntry({ deposit: tResumen('deposito'), withdrawal: tResumen('retiro') })}

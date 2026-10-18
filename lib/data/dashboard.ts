@@ -122,8 +122,10 @@ export type DashboardData = {
     whatsapp?: WhatsAppState
     /** `usuarios.medio_pago_default`: preselects the entry sheet's chips in create mode; null = "Ninguno". */
     defaultPaymentMethod: PaymentMethod | null
-    /** Whether any expense, income or transfer row, in any cycle, carries a method (`payment-method` → *Who uses the feature*). */
+    /** Whether any expense, income or transfer row, in any cycle, carries a method (`payment-method` → *Who uses the feature*); false when not offered. */
     hasMarkedMovements: boolean
+    /** Whether the account is offered the payment-method feature at all (`paymentMethodsOffered`, D14). */
+    paymentMethodsOffered: boolean
   }
   cycle: {
     start: string

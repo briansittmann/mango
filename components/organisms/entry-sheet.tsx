@@ -193,6 +193,11 @@ type EntrySheetProps<V> = {
   /** Create mode opened without a card ("Añadir gasto" in the desktop bar, design D7): the header's category control is enabled too. */
   allowCategoryChange?: boolean
   /**
+   * Whether the account is offered the payment-method feature (D14). Without it the chips are not
+   * shown and the row's stored method passes through unchanged, so an edit never clears a mark.
+   */
+  paymentMethods?: boolean
+  /**
    * Present only when the page supplies `actions.recurring` and the row may become fixed: any create,
    * or an edit of a row with no definition in the cycle in progress (`unify-fixed-charge-sheet` D7).
    * Its presence is what makes the recurrence field render at all. Called after `onSave` resolves,
@@ -269,6 +274,7 @@ export function EntrySheet<V>({
   projected = false,
   categories,
   allowCategoryChange = false,
+  paymentMethods = true,
 }: EntrySheetProps<V>) {
   const onSaveRecurrence = projected ? undefined : onSaveRecurrenceProp
   const t = useTranslations('hojaMovimiento')
@@ -685,6 +691,7 @@ export function EntrySheet<V>({
     }
 
     if (field.kind === 'paymentMethod') {
+      if (!paymentMethods) return null
       // Not a radiogroup: none marked is a valid value, and a radiogroup cannot be emptied (D6).
       return (
         <div role="group" aria-label={tMedio('grupo')} data-payment-chips className="flex gap-2 px-inset pb-3">

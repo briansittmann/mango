@@ -30,9 +30,31 @@ An account SHALL hold a default payment method: none ("Ninguno", the starting va
 - **WHEN** the default is "Tarjeta" and a definition with no method gets its next cycle's charge generated
 - **THEN** that charge carries no method
 
+### Requirement: The feature is offered by country
+
+An account SHALL be **offered** the payment-method feature when its admin switch (`usuarios.medio_pago_habilitado`) is on, or when the switch is unset and its country is Argentina, Uruguay, Mexico or Colombia. An account whose switch is off, or whose switch is unset and whose country is any other or none, SHALL NOT be offered it. The switch SHALL be set only by an administrator, outside the app.
+
+For an account not offered the feature, the dashboard SHALL show no payment chips, no payment icon on any row, no pockets block, no swap button, no pocket list and no default selector, and the bot SHALL neither read a method, nor load a transfer, nor ask the deposit question (`bot-transaction-logging`). Methods, transfers and the default already stored SHALL stay stored and unchanged: an edit from the entry sheet SHALL keep the row's method, and offering the feature again SHALL show them as before. Every other requirement of this capability applies only to an account offered the feature.
+
+#### Scenario: Spain is not offered
+- **WHEN** an account in Spain with the switch unset opens the dashboard and adds an expense
+- **THEN** the entry sheet shows no "Efectivo" / "Tarjeta" chips and the free-margin card no pockets
+
+#### Scenario: Argentina is offered
+- **WHEN** an account in Argentina with the switch unset adds an expense
+- **THEN** the entry sheet shows the chips after the amount
+
+#### Scenario: The admin switch wins
+- **WHEN** the administrator turns the switch on for an account in Spain, and off for one in Argentina
+- **THEN** the first is offered the feature and the second is not
+
+#### Scenario: Editing keeps a hidden mark
+- **WHEN** an account no longer offered the feature edits the amount of an expense stored with "Efectivo"
+- **THEN** the row keeps "Efectivo"
+
 ### Requirement: Who uses the feature
 
-An account SHALL count as **holding marked movements** while at least one of its expense, income or transfer rows, not soft-deleted, in any cycle, carries a payment method. An account SHALL count as **using the feature** while it holds marked movements or its default is not "Ninguno". The pocket balances, their block and the pocket list SHALL be offered only to an account holding marked movements. The bot's deposit question SHALL be asked only of an account using the feature (`bot-transaction-logging`). The payment chips of the entry sheet and the default selector of the "Cuenta" sheet SHALL be offered to every account, as the two ways in.
+An account SHALL count as **holding marked movements** while at least one of its expense, income or transfer rows, not soft-deleted, in any cycle, carries a payment method. An account SHALL count as **using the feature** while it holds marked movements or its default is not "Ninguno". The pocket balances, their block and the pocket list SHALL be offered only to an account holding marked movements. The bot's deposit question SHALL be asked only of an account using the feature (`bot-transaction-logging`). The payment chips of the entry sheet and the default selector of the "Cuenta" sheet SHALL be offered to every account offered the feature (*The feature is offered by country*), as the two ways in. An account not offered the feature SHALL count as neither holding marked movements nor using the feature.
 
 #### Scenario: A new account sees no pockets
 - **WHEN** an account with no row carrying a method and the default "Ninguno" opens the dashboard

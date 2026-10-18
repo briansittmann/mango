@@ -24,7 +24,7 @@ import { createSupabaseExpenseMutations } from '@/lib/data/supabase/expenses'
 import { createSupabaseIncomeMutations } from '@/lib/data/supabase/income'
 import { createSupabaseSavingsMutations } from '@/lib/data/supabase/savings'
 import { createSupabaseTransferMutations } from '@/lib/data/supabase/transfers'
-import type { PaymentMethod } from '@/lib/data/payment-method'
+import { paymentMethodsOffered, type PaymentMethod } from '@/lib/data/payment-method'
 import { findUsuarioById, type Usuario } from '@/lib/data/supabase/user'
 import { SITE_URL } from '@/lib/metadata'
 import es from '@/messages/es.json'
@@ -207,6 +207,7 @@ async function answer(turn: Turn, history: StoredMessage[] | undefined): Promise
       today: fmt.today,
       pending: message.pending,
       history,
+      paymentMethods: offersPaymentMethods(turn),
     },
     createGeminiModel(),
   )
@@ -223,10 +224,20 @@ async function answer(turn: Turn, history: StoredMessage[] | undefined): Promise
   return { reply: reply.kind === 'loaded' ? { ...reply, text, alwaysText: true } : { ...reply, text }, heard }
 }
 
+/** Whether the account is offered the payment-method feature (`payment-method` → *The feature is offered by country*, D14). */
+function offersPaymentMethods({ usuario }: Turn): boolean {
+  return paymentMethodsOffered(usuario.pais, usuario.medio_pago_habilitado)
+}
+
 async function act(turn: Turn, action: ParseResult): Promise<BotReply> {
   const { t } = turn
   switch (action.accion) {
     case 'cargar':
+      // Not offered: no method is read and no transfer is loaded, whatever the model returned.
+      if (!offersPaymentMethods(turn)) {
+        if (action.tipo === 'transferencia') return { kind: 'text', text: t('noEntendi') }
+        return load(turn, { ...action, medio_pago: null })
+      }
       return load(turn, action)
     case 'repreguntar':
       if (action.falta === 'deposito') return askDeposit(turn, action)
@@ -279,7 +290,7 @@ function ask({ t, context }: Turn, pending: PendingQuestion): BotReply {
 function askDeposit(turn: Turn, action: Repreguntar): BotReply | Promise<BotReply> {
   const { usuario, context, fmt, t } = turn
   const descripcion = action.descripcion ?? null
-  if (!context.hasMarkedMovements && usuario.medio_pago_default == null) {
+  if (!offersPaymentMethods(turn) || (!context.hasMarkedMovements && usuario.medio_pago_default == null)) {
     return load(turn, { accion: 'cargar', tipo: 'ingreso', monto: action.monto, categoria: null, descripcion, dias_atras: action.dias_atras, recurrente: null, medio_pago: null })
   }
   return {
@@ -297,7 +308,7 @@ function askDeposit(turn: Turn, action: Repreguntar): BotReply | Promise<BotRepl
 function answerDeposit(turn: Turn, answer: DepositAnswer): Promise<BotReply> | BotReply {
   const pending = turn.message.pending
   // The adapter only passes an answer with the question pending; anything else is dropped.
-  if (pending?.pregunta !== 'deposito') return { kind: 'none' }
+  if (pending?.pregunta !== 'deposito' || !offersPaymentMethods(turn)) return { kind: 'none' }
   return load(turn, {
     accion: 'cargar',
     tipo: answer === 'transfer' ? 'transferencia' : 'ingreso',
@@ -322,7 +333,7 @@ async function load(turn: Turn, action: Cargar): Promise<BotReply> {
     (pending?.pregunta === 'deposito' && pending.monto === action.monto && (action.tipo === 'transferencia' || action.tipo === 'ingreso'))
   // The method the message said, else the account's default; only a said one is named (D10).
   const said: PaymentMethod | undefined = action.medio_pago ?? undefined
-  const method = action.medio_pago ?? usuario.medio_pago_default
+  const method = action.medio_pago ?? (offersPaymentMethods(turn) ? usuario.medio_pago_default : null)
 
   if (action.tipo === 'transferencia') {
     const into = action.medio_pago!

@@ -35,8 +35,17 @@
 
 - [x] 5.1 New `tests/payment-method.spec.js` on `/demo` at 390px and 1280px: chips and preselection (with `?e2e=default-tarjeta`), marking, switching and unmarking, icon on rows, pockets shown and hidden (a fresh demo state with no marks via `?e2e=no-payment-methods`), seeded balances, "Mover plata" (withdrawal, swap, preview, failure), editing and deleting a transfer with undo, the cash list's rows and order, the projection with no pockets, the free margin unchanged throughout, reduced motion, targets, and axe on the card and both sheets in both themes; run in Chromium, then Firefox and WebKit
 - [x] 5.2 Re-run the specs that read the free-margin card, the entry sheet, the account sheet and the income panel (`desktop-tiles`, `desktop-motion-a11y`, `widgets-motion-a11y` for the six font sizes, `fixed-sheet`, `recurring-scope`, `income-*`, `savings-edit`, `movements`); fix what this change broke and report what was already failing
-- [ ] 5.3 Full `npm test` in Chromium and then the three browsers, plus `npm run test:unit`, `npm run lint` and `npx tsc --noEmit`; report failures with their output and whether this change caused them
+- [x] 5.3 Full `npm test` in Chromium and then the three browsers, plus `npm run test:unit`, `npm run lint` and `npx tsc --noEmit`; report failures with their output and whether this change caused them
 - [ ] 5.4 Round on `/dashboard` against the real database at 390px and 1280px: mark two of Brian's rows, check that the pockets appear and the free margin does not move, move money both ways, edit and delete the transfer, set the default in "Cuenta" (check that the next entry sheet and the bot use it) and clear it; leave nothing behind
+
+## 7. Country restriction (D14)
+
+- [x] 7.1 `supabase/migrations/0042_medio_pago_habilitado.sql` (`usuarios.medio_pago_habilitado boolean`, nullable), applied to the real database before the deploy with Brian's confirmation; verify by reading the column
+- [x] 7.2 `paymentMethodsOffered` and `PAYMENT_METHOD_COUNTRIES` in `payment-method.ts` with tests; `USUARIO_COLUMNS`, `DashboardData.user.paymentMethodsOffered`, `resumenMensual` skipping the pockets reads when not offered; verify `npm run test:unit` and `npx tsc --noEmit`
+- [x] 7.3 UI: chips, row icons, pockets, swap button and the "Cuenta" selector only when offered; the entry sheet passes the stored method back when it shows no chips; verify on `/demo` (none of them) and `/demo?e2e=payment-methods` (all of them)
+- [x] 7.4 Demo not offered by default; `?e2e=payment-methods` and the other payment flags offer it; `tests/payment-method.spec.js` on `?e2e=payment-methods`, plus a test that plain `/demo` shows no chip, icon or pocket; rerun the specs touched in 5.2
+- [x] 7.5 Bot: `ParseInput.paymentMethods`; without it the prompt has no method, transfer or deposit rule or example, `medio_pago` is ignored and a transfer is answered as not understood; the deposit question only for an account offered and using the feature; verify `parser.test.mjs` and `npm run test:parser` twice
+- [x] 7.6 Docs: ARCHITECTURE.md §8 and §9, CLAUDE.md *Estado actual*, the debt item on `usuarios_update_propio`
 
 ## 6. Docs
 

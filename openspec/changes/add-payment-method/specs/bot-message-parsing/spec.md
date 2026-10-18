@@ -1,3 +1,13 @@
+## ADDED Requirements
+
+### Requirement: The prompt names methods only when offered
+
+The parser SHALL be told whether the account is offered the payment-method feature. Without it, the prompt SHALL contain no rule or example about the payment method, transfers or the deposit question, and `medio_pago` SHALL be null in every action it returns; with it, the prompt SHALL be as the rest of this capability states.
+
+#### Scenario: A prompt without the feature
+- **WHEN** the prompt is built for an account not offered the feature
+- **THEN** it contains no example with "efectivo", "transferencia" or "deposito"
+
 ## MODIFIED Requirements
 
 ### Requirement: A message becomes exactly one action from the seven

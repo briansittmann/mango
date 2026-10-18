@@ -41,7 +41,6 @@ export function Sparkline({ points, revealed = true, className }: SparklineProps
           strokeLinejoin="round"
           strokeLinecap="round"
           vectorEffect="non-scaling-stroke"
-          pathLength={1}
           className="sparkline-stroke"
           data-revealed={revealed ? '' : undefined}
         />

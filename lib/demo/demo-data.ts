@@ -299,6 +299,7 @@ export function buildDemoData(locale: Locale): DashboardData {
       // The demo's default is "Ninguno"; `?e2e=default-*` starts it at a method (D11).
       defaultPaymentMethod: null,
       hasMarkedMovements: false,
+      paymentMethodsOffered: false,
     },
     // The sample is the demo's last generated cycle; the controls reach six projections past it.
     cycle: {

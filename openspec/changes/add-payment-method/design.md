@@ -136,6 +136,15 @@ A new namespace `medioPago` holds the chips, the pockets, both sheets, the list,
 
 *Alternative:* adding the default to `ProfileBasics` so one `updateBasics` writes all seven (rejected: it drags the onboarding's validation and its step into a setting the onboarding does not ask).
 
+### D14. Only where cash is used, plus an admin switch (Brian, 2026-10-18)
+In Europe almost nobody pays cash, so the chips there are a question on every load that nobody needs. The feature is **offered** to an account when `usuarios.medio_pago_habilitado` is `true`, or when it is `null` (the default) and `usuarios.pais` is one of `PAYMENT_METHOD_COUNTRIES` (`AR`, `UY`, `MX`, `CO`; adding one is a line). `false` turns it off whatever the country. The column is set by hand, by the admin, in the SQL editor or the MCP: there is no UI. Migration `0042_medio_pago_habilitado.sql`, additive. `paymentMethodsOffered(pais, override)` in `payment-method.ts` is the one rule, pure, with a test; `DashboardData.user.paymentMethodsOffered` carries it and the bot reads it from the `usuarios` row.
+
+Not offered means: no chips (the sheet keeps the row's stored method and passes it back unchanged, so an edit never clears a mark), no row icons, no pockets and no swap button (`resumenMensual` skips both reads), no default selector in "Cuenta", and the bot neither reads a method, nor loads a transfer, nor asks the deposit question: its prompt drops those rules and examples, and a transfer the model returns anyway is answered as not understood. Stored methods, transfers and the default stay in the database untouched, so turning it on again brings everything back.
+
+The demo is a European sample, so it is not offered: no chip, icon or pocket anywhere. `/demo?e2e=payment-methods` mounts it offered, with the methods of `dashboard-ui` → *The demo's payment methods*; the other payment flags (`fail-transfer`, `no-payment-methods`, `default-efectivo`, `default-tarjeta`) imply it.
+
+*Risk:* `usuarios_update_propio` has no column list, so an account could switch the feature on for itself through the API. Harmless (it only shows a feature), and it joins the existing debt item.
+
 ## Risks / Trade-offs
 
 - [No opening balance] Cash reads negative until the user records what they had. → D5. The balance is honest about what Mango knows, and one "Mover plata" fixes it. It goes to *Deuda tecnica*.

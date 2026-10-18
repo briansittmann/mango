@@ -55,3 +55,15 @@ For an account not using the feature the action SHALL ask nothing: it SHALL writ
 #### Scenario: Someone who does not use the feature
 - **WHEN** an account with no marked movement and the default "Ninguno" sends "ingresé 200 en el banco"
 - **THEN** no question is asked and one income of 200 with no method is stored
+
+### Requirement: Only for accounts offered the feature
+
+For an account not offered the payment-method feature (`payment-method` → *The feature is offered by country*), the bot SHALL load every expense and income with no method, whatever the message says and whatever the stored default, SHALL NOT load a transfer (a message the model reads as one is answered as not understood, with nothing written), and SHALL NOT ask the deposit question: money put in the bank is a plain income, as before this change.
+
+#### Scenario: Cash in Spain
+- **WHEN** an account in Spain with the switch unset sends "pagué 15 en efectivo de cervezas"
+- **THEN** the expense is stored with no method and the confirmation does not name one
+
+#### Scenario: No transfer in Spain
+- **WHEN** that account sends "ingresé 200 en el banco"
+- **THEN** no question is asked and a plain income of 200 is loaded

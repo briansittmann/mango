@@ -27,6 +27,8 @@ type CategoryCardProps = {
   showProgress?: boolean
   /** A projected cycle with no real row in this category: the header shows the budget alone and the bar stays empty. */
   projected?: boolean
+  /** Whether rows show their payment icon: only for an account offered the feature (D14). */
+  showPaymentMethods?: boolean
 }
 
 export function CategoryCard({
@@ -42,6 +44,7 @@ export function CategoryCard({
   reordering = false,
   showProgress = true,
   projected = false,
+  showPaymentMethods = false,
 }: CategoryCardProps) {
   const t = useTranslations('dashboard')
   const tCategoria = useTranslations('categoria')
@@ -156,7 +159,7 @@ export function CategoryCard({
                 timeZone={timeZone}
                 onActivate={onEditExpense ? () => onEditExpense(expense) : undefined}
                 first={index === 0}
-                paymentMethod={expense.paymentMethod}
+                paymentMethod={showPaymentMethods ? expense.paymentMethod : null}
               />
             )
             return onDeleteExpense ? (

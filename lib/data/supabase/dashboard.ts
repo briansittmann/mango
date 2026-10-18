@@ -5,7 +5,7 @@ import { categoriaViva } from '@/lib/data/categories'
 import { normalizeWidgetOrder, type CategoryColor, type DashboardData, type Expense, type ExpenseGroup } from '@/lib/data/dashboard'
 import type { LocalDate } from '@/lib/data/expenses'
 import type { IncomeEntry } from '@/lib/data/income'
-import { pocketBalances, type CountedRow, type PaymentMethod, type Pockets, type Transfer } from '@/lib/data/payment-method'
+import { paymentMethodsOffered, pocketBalances, type CountedRow, type PaymentMethod, type Pockets, type Transfer } from '@/lib/data/payment-method'
 import { mezclarProyeccion, proyectarCiclo } from '@/lib/data/projection'
 import type { RecurringDefinition } from '@/lib/data/recurring'
 import { splitSavings } from '@/lib/data/savings'
@@ -421,8 +421,10 @@ export async function resumenMensual(
   }))
 
   // The pockets (`payment-method` → *A pocket's balance*, D4): every marked row up to the shown
-  // cycle's end, earlier cycles included. Not in a projection, and not until the first mark.
-  const hasMarkedMovements = (marcados.count ?? 0) > 0
+  // cycle's end, earlier cycles included. Not in a projection, not until the first mark, and never
+  // for an account not offered the feature (D14), whose stored marks stay hidden.
+  const offered = paymentMethodsOffered(usuario.pais, usuario.medio_pago_habilitado)
+  const hasMarkedMovements = offered && (marcados.count ?? 0) > 0
   let pockets: Pockets | null = null
   if (hasMarkedMovements && !projected) {
     const { data: marked, error } = await client
@@ -470,6 +472,7 @@ export async function resumenMensual(
         hasMovements: (movimientos.count ?? 0) > 0,
         defaultPaymentMethod: usuario.medio_pago_default,
         hasMarkedMovements,
+        paymentMethodsOffered: offered,
         ...(whatsApp
           ? {
               whatsapp: {

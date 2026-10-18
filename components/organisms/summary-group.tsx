@@ -53,7 +53,8 @@ export function SummaryGroup({ items, openKey, onToggle, currency, layout = 'acc
 
   const panelItem = items.find((item) => item.key === lastKey)
 
-  function trendSlot(item: SummaryGroupItem) {
+  // In a tile the line takes the room the row leaves under the figures (the pockets make it taller).
+  function trendSlot(item: SummaryGroupItem, tile = false) {
     if (!item.trend) return null
     const points = item.trend.points
     const current = points[points.length - 1] ?? item.total
@@ -65,7 +66,7 @@ export function SummaryGroup({ items, openKey, onToggle, currency, layout = 'acc
         <span className="mt-1.5 flex h-[18px] w-full items-center" data-summary-trend>
           <TrendDelta current={current} previous={previous} upIsGood={item.trend.upIsGood} label={tResumen('vsCicloAnterior')} />
         </span>
-        <Sparkline points={points} revealed={revealed} className="mt-1 h-5" />
+        <Sparkline points={points} revealed={revealed} className={tile ? 'mt-auto h-12 min-h-8 pt-3' : 'mt-1 h-5'} />
       </>
     )
   }
@@ -81,7 +82,10 @@ export function SummaryGroup({ items, openKey, onToggle, currency, layout = 'acc
             aria-haspopup={item.opens ? 'dialog' : undefined}
             aria-expanded={item.opens ? openKey === item.key : undefined}
             data-summary-column={item.key}
-            className="pressable summary-tile flex min-w-0 flex-col items-start justify-center rounded-card border border-border bg-card px-inset py-5 text-left [--press-scale:0.99]"
+            className={cn(
+              'pressable summary-tile flex min-w-0 flex-col items-start rounded-card border border-border bg-card px-inset py-5 text-left [--press-scale:0.99]',
+              item.trend ? 'justify-start' : 'justify-center',
+            )}
           >
             {/* Label and caption step up one size at `xl`; at exactly 1024px each tile is ~170px wide. */}
             <span className="w-full truncate text-body-md text-muted-foreground xl:text-body-lg">{item.label}</span>
@@ -91,7 +95,7 @@ export function SummaryGroup({ items, openKey, onToggle, currency, layout = 'acc
               className={cn('mt-2 whitespace-nowrap text-foreground', item.total >= 100000 ? 'text-headline-md' : 'text-headline-lg')}
             />
             {item.caption ? <span className="mt-2 w-full truncate text-body-md text-muted-foreground xl:text-body-lg">{item.caption}</span> : null}
-            {trendSlot(item)}
+            {trendSlot(item, true)}
           </button>
         ))}
       </div>

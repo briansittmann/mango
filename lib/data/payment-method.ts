@@ -11,6 +11,18 @@ export type PaymentMethod = 'efectivo' | 'tarjeta'
 
 export const PAYMENT_METHODS: readonly PaymentMethod[] = ['efectivo', 'tarjeta']
 
+/** Where cash is used every day: the feature is offered there unless the admin says otherwise (D14). */
+export const PAYMENT_METHOD_COUNTRIES: readonly string[] = ['AR', 'UY', 'MX', 'CO']
+
+/**
+ * Whether an account is offered the feature (`payment-method` → *The feature is offered by
+ * country*): the admin's switch (`usuarios.medio_pago_habilitado`, 0042) when set, else its country.
+ */
+export function paymentMethodsOffered(country: string | null | undefined, adminSwitch: boolean | null | undefined): boolean {
+  if (adminSwitch != null) return adminSwitch
+  return country != null && PAYMENT_METHOD_COUNTRIES.includes(country)
+}
+
 /** `into` is the pocket the money enters; the other one is where it leaves from. */
 export type TransferDraft = { amount: number; into: PaymentMethod; date: LocalDate }
 

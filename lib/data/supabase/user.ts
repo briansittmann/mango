@@ -35,10 +35,12 @@ export type Usuario = {
   orden_widgets: string[] | null
   /** The account's default payment method (0041); null = "Ninguno". */
   medio_pago_default: PaymentMethod | null
+  /** The admin's switch for the payment-method feature (0042); null = by country (`paymentMethodsOffered`). */
+  medio_pago_habilitado: boolean | null
 }
 
 export const USUARIO_COLUMNS =
-  'id, nombre, telefono, foto_url, pais, moneda_default, timezone, dia_inicio_ciclo, meta_ahorro_mensual, ciclo_generado_hasta, idioma, onboarding_completo, onboarding_paso, formato_montos, whatsapp_solicitado_en, codigo_vinculacion, vip, cargas_confirmadas, modo_confirmacion, orden_widgets, medio_pago_default'
+  'id, nombre, telefono, foto_url, pais, moneda_default, timezone, dia_inicio_ciclo, meta_ahorro_mensual, ciclo_generado_hasta, idioma, onboarding_completo, onboarding_paso, formato_montos, whatsapp_solicitado_en, codigo_vinculacion, vip, cargas_confirmadas, modo_confirmacion, orden_widgets, medio_pago_default, medio_pago_habilitado'
 
 /**
  * The `usuarios` row linked to the session's auth user, or null when none is linked. RLS
