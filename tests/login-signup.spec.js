@@ -25,13 +25,20 @@ function trackSupabase(page) {
   return requests
 }
 
+// The field opens behind "Continuar con email" (add-google-login: Google or e-mail first).
+async function openEmail(page, name = 'Continuar con email') {
+  await page.getByRole('button', { name }).click()
+}
+
 async function submit(page, email) {
+  await openEmail(page)
   await page.getByLabel('Correo electrónico').fill(email)
   await page.getByRole('button', { name: 'Enviar código' }).click()
 }
 
 test('the e-mail step says a first-time address gets an account', async ({ page }) => {
   await page.goto('/login')
+  await openEmail(page)
   await expect(page.getByText('Si es tu primera vez, creamos tu cuenta con este mail.')).toBeVisible()
 })
 
@@ -52,6 +59,7 @@ test('the request carries the address, the language and the timezone', async ({ 
   await page.context().addCookies([{ name: 'locale', value: 'en', url: 'http://localhost:3000' }])
   const bodies = stubRequestCode(page, (body) => ({ status: 'sent', email: body.email }))
   await page.goto('/login')
+  await openEmail(page, 'Continue with email')
   await expect(page.getByText("First time here? We'll create your account with this e-mail.")).toBeVisible()
   await page.getByLabel('Email').fill(NEW_ADDRESS)
   await page.getByRole('button', { name: 'Send code' }).click()

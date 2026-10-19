@@ -394,14 +394,15 @@
   "privacidad": {
     "titulo": "Privacidad",
     "intro": "Mango guarda lo mínimo para funcionar y no vende ni comparte tus datos con fines publicitarios.",
-    "actualizado": "Última actualización: 1 de octubre de 2026",
+    "actualizado": "Última actualización: 16 de octubre de 2026",
     "volver": "Volver al inicio",
     "secciones": [
       { "titulo": "Qué guardamos", "texto": "Tu correo, para que entres a tu cuenta. Si vinculas WhatsApp, tu número de teléfono. Y lo que cargas: gastos, ingresos, ahorro, categorías, presupuestos y gastos fijos." },
+      { "titulo": "Si entras con Google", "texto": "Google nos pasa tu nombre y tu correo, y nada más: ni tus contactos, ni tu calendario, ni tu foto. El nombre lo puedes cambiar al crear tu cuenta. Mango no publica nada en tu cuenta de Google." },
       { "titulo": "Tus mensajes", "texto": "Cuando escribes al bot, el texto del mensaje se envía a un modelo de lenguaje (Gemini, de Google, en una cuenta de pago cuyo contenido Google no usa para entrenar) para extraer el importe, la descripción y la categoría. Mango guarda el movimiento que resulta. El texto del mensaje no se guarda, salvo en cuentas con historial de conversación activado, donde se conserva 30 días para que el bot recuerde el contexto reciente." },
       { "titulo": "Sin acceso a tu banco", "texto": "Mango no se conecta a tu banco ni pide claves. Solo sabe lo que tú anotas." },
       { "titulo": "Dónde viven los datos", "texto": "La base de datos está en Supabase y la web en Vercel. Los correos con el código de acceso salen por Resend y los mensajes de WhatsApp pasan por la API oficial de Meta. Ninguno recibe tus datos para otra cosa que prestar ese servicio." },
-      { "titulo": "Cookies", "texto": "Solo las necesarias: la de tu sesión y la que recuerda tu idioma. Sin cookies de publicidad ni de seguimiento." },
+      { "titulo": "Cookies", "texto": "Solo las necesarias: la de tu sesión, la que recuerda tu idioma y, si entras con Google, una que dura diez minutos para llevar tu idioma y tu zona horaria a la cuenta nueva. Sin cookies de publicidad ni de seguimiento." },
       { "titulo": "Tus derechos", "texto": "Puedes pedir una copia de tus datos o que se borre tu cuenta con todo lo que contiene. Escribe a {correo} y se hace en pocos días." }
     ]
   },
@@ -426,6 +427,11 @@
     "sesionAbierta": "Tu sesión queda abierta en este navegador.",
     "irAMiMes": "Ir a mi mes",
     "enlaceInvalido": "El enlace venció o ya se usó. Pide uno nuevo.",
+    "continuarConGoogle": "Continuar con Google",
+    "volver": "Volver",
+    "continuarConEmail": "Continuar con email",
+    "o": "o",
+    "errorGoogle": "No se pudo entrar con Google. Inténtalo de nuevo o entra con tu mail.",
     "cuentaSinVincular": "Tu sesión está abierta, pero esta cuenta todavía no está vinculada a ningún usuario de Mango.",
     "cerrarSesion": "Cerrar sesión"
   },

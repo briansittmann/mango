@@ -61,32 +61,27 @@ const NEUTRAL_COLORS: CategoryColor[] = ['gris_calido', 'gris_oscuro', 'blanco']
 // Arcoíris is chosen by hand only: no suggestion and no random pick wears it.
 const PICKABLE_COLORS = CATEGORY_COLORS.filter((color) => color !== 'arcoiris')
 
-const VIVID_COLORS = PICKABLE_COLORS.filter((color) => !NEUTRAL_COLORS.includes(color))
+/**
+ * Each suggestion's own colour, by its place in `onboarding.sugerencias` (the same order in both
+ * languages): Comida, Vivienda, Transporte, Ocio, Salud, Suscripciones, Compras, Otros. Fixed, so
+ * two suggestions never share one, and far apart in hue.
+ */
+const SUGGESTION_COLORS: CategoryColor[] = ['naranja_calido', 'azul_electrico', 'amarillo', 'violeta_metalico', 'verde_menta', 'rosa', 'turquesa', 'marron']
 
-/** A colour no category uses yet, picked at random among the vivid ones first; the whole palette once all are taken. */
+/**
+ * A colour no category uses yet, at random: first among the vivid ones no suggestion keeps, so a
+ * category written by hand never takes a suggestion's colour; the whole palette once all are taken.
+ */
 function randomColor(categories: DraftCategory[]): CategoryColor {
   const free = PICKABLE_COLORS.filter((color) => !categories.some((category) => category.color === color))
   const vivid = free.filter((color) => !NEUTRAL_COLORS.includes(color))
-  const pool = vivid.length > 0 ? vivid : free.length > 0 ? free : PICKABLE_COLORS
+  const unreserved = vivid.filter((color) => !SUGGESTION_COLORS.includes(color))
+  const pool = unreserved.length > 0 ? unreserved : vivid.length > 0 ? vivid : free.length > 0 ? free : PICKABLE_COLORS
   return pool[Math.floor(Math.random() * pool.length)]
 }
 
-/**
- * Each suggestion chip wears a vivid colour of its own, derived from its name so the server and
- * the browser paint the same one (no hydration flash), distinct across the row.
- */
 function chipColors(names: string[]): Record<string, CategoryColor> {
-  const used = new Set<CategoryColor>()
-  const result: Record<string, CategoryColor> = {}
-  for (const name of names) {
-    let hash = 0
-    for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) >>> 0
-    let index = hash % VIVID_COLORS.length
-    while (used.has(VIVID_COLORS[index]) && used.size < VIVID_COLORS.length) index = (index + 1) % VIVID_COLORS.length
-    used.add(VIVID_COLORS[index])
-    result[name] = VIVID_COLORS[index]
-  }
-  return result
+  return Object.fromEntries(names.map((name, index) => [name, SUGGESTION_COLORS[index % SUGGESTION_COLORS.length]]))
 }
 
 function prefersReducedMotion(): boolean {

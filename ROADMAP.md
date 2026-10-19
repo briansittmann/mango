@@ -209,8 +209,8 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [ ] Reordenar gastos dentro de su categoría
 - [ ] Bot y parser en inglés
 - [ ] Movimiento lento del fondo de metal cepillado
-- [ ] 👤 Crear credenciales OAuth en Google Cloud y activar el proveedor Google en Supabase — pasado desde el bloque 8: el código por mail alcanza para el registro abierto
-- [ ] 🤖 Login con Google, con el código por mail como alternativa
+- [ ] 👤 Crear credenciales OAuth en Google Cloud y activar el proveedor Google en Supabase — pasado desde el bloque 8: el código por mail alcanza para el registro abierto. Pasos en D6 de `openspec/changes/add-google-login/design.md`; aplicar `0040` antes del deploy
+- [ ] 🤖 Login con Google, con el código por mail como alternativa — código hecho el 2026-10-16 (`add-google-login`: botón en `/login`, `POST /auth/google`, `0040` con el nombre de Google); falta la vuelta contra la base real cuando esté el proveedor
 
 ## 14 · Fase 4 — pagos (a futuro)
 

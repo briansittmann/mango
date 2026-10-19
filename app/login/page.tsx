@@ -23,7 +23,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
     <main className="vivid-background flex flex-1 flex-col items-center justify-center gap-6 px-4">
       <ForceDarkTheme />
       <StarBorder className="w-full max-w-sm">
-        <LoginSteps initialEmail={address} linkError={error === "enlace"} />
+        <LoginSteps initialEmail={address} linkError={error === "enlace"} googleError={error === "google"} />
       </StarBorder>
     </main>
   );

@@ -1,13 +1,19 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
+import { decodeSignupPrefs, SIGNUP_PREFS_COOKIE } from "@/lib/auth/signup-prefs";
 import { supabaseServer } from "@/lib/supabase/server";
 
 /**
- * Target of the magic-link e-mail (D5). Two shapes:
+ * Target of the magic-link e-mail (D5) and of the return from Google (add-google-login D2). Shapes:
  * - `?token_hash=&type=` from a custom template: verified server-side, works in any browser
- * - `?code=` from Supabase's default template (no custom SMTP): exchanged with the PKCE verifier
- *   cookie, so only in the browser that requested the link
+ * - `?code=` from Supabase's default template (no custom SMTP) or from Google: exchanged with the
+ *   PKCE verifier cookie, so only in the browser that started it
+ * - `?error=` when Google's consent was cancelled or failed
+ *
+ * The `mango-alta` cookie marks a sign-in started from the Google button: its failures read as
+ * "Google did not work", not as a bad link, and its language and timezone reach a new account.
  */
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -15,12 +21,36 @@ export async function GET(request: NextRequest) {
   const tokenHash = params.get("token_hash");
   const type = params.get("type") as EmailOtpType | null;
 
+  const cookieStore = await cookies();
+  const signup = cookieStore.get(SIGNUP_PREFS_COOKIE);
+  if (signup) cookieStore.delete({ name: SIGNUP_PREFS_COOKIE, path: "/auth" });
+
+  if (params.has("error")) redirect("/login?error=google");
   if (!code && !(tokenHash && type)) redirect("/login?error=enlace");
 
   const supabase = await supabaseServer();
-  const { error } = code
-    ? await supabase.auth.exchangeCodeForSession(code)
-    : await supabase.auth.verifyOtp({ token_hash: tokenHash!, type: type! });
 
+  if (code) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) redirect(signup ? "/login?error=google" : "/login?error=enlace");
+
+    // Once, and only on an account whose onboarding has not started: a later sign-in from a page in
+    // another language must not flip an existing account (D3).
+    const prefs = decodeSignupPrefs(signup?.value);
+    if (prefs.idioma || prefs.timezone) {
+      const { data: rows } = await supabase
+        .from("usuarios")
+        .update(prefs)
+        .eq("auth_user_id", data.user.id)
+        .eq("onboarding_completo", false)
+        .eq("onboarding_paso", 1)
+        .select("id");
+      // The code mail reads the language from the auth metadata, as the language switch keeps it.
+      if (rows?.length && prefs.idioma) await supabase.auth.updateUser({ data: { idioma: prefs.idioma } });
+    }
+    redirect("/dashboard");
+  }
+
+  const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash!, type: type! });
   redirect(error ? "/login?error=enlace" : "/dashboard");
 }

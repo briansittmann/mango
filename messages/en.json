@@ -394,14 +394,15 @@
   "privacidad": {
     "titulo": "Privacy",
     "intro": "Mango stores the minimum it needs to work and never sells or shares your data for advertising.",
-    "actualizado": "Last updated: October 1, 2026",
+    "actualizado": "Last updated: October 16, 2026",
     "volver": "Back to home",
     "secciones": [
       { "titulo": "What we store", "texto": "Your e-mail, so you can sign in. If you link WhatsApp, your phone number. And what you log: expenses, income, savings, categories, budgets and fixed costs." },
+      { "titulo": "If you sign in with Google", "texto": "Google gives us your name and your e-mail, and nothing else: not your contacts, your calendar or your photo. You can change the name when you create your account. Mango never posts anything to your Google account." },
       { "titulo": "Your messages", "texto": "When you text the bot, the message is sent to a language model (Google's Gemini, on a paid account whose content Google does not use for training) to extract the amount, the description and the category. Mango stores the resulting entry. The message text is not kept, except on accounts with conversation history enabled, where it is kept for 30 days so the bot remembers recent context." },
       { "titulo": "No access to your bank", "texto": "Mango does not connect to your bank or ask for credentials. It only knows what you log." },
       { "titulo": "Where the data lives", "texto": "The database runs on Supabase and the website on Vercel. Sign-in codes are sent through Resend and WhatsApp messages go through Meta's official API. None of them receive your data for anything other than providing that service." },
-      { "titulo": "Cookies", "texto": "Only the necessary ones: your session and the one that remembers your language. No advertising or tracking cookies." },
+      { "titulo": "Cookies", "texto": "Only the necessary ones: your session, the one that remembers your language and, if you sign in with Google, one that lasts ten minutes to carry your language and timezone to the new account. No advertising or tracking cookies." },
       { "titulo": "Your rights", "texto": "You can ask for a copy of your data or have your account deleted with everything in it. Write to {correo} and it is done within a few days." }
     ]
   },
@@ -426,6 +427,11 @@
     "sesionAbierta": "Your session stays open in this browser.",
     "irAMiMes": "Go to my month",
     "enlaceInvalido": "The link expired or was already used. Request a new one.",
+    "continuarConGoogle": "Continue with Google",
+    "volver": "Back",
+    "continuarConEmail": "Continue with email",
+    "o": "or",
+    "errorGoogle": "Couldn't sign in with Google. Try again or use your e-mail.",
     "cuentaSinVincular": "You're signed in, but this account isn't linked to a Mango user yet.",
     "cerrarSesion": "Log out"
   },

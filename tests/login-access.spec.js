@@ -3,6 +3,8 @@ import { test, expect } from '@playwright/test'
 
 test('/login renders the e-mail field and the submit button', async ({ page }) => {
   await page.goto('/login')
+  // The field opens behind "Continuar con email" (add-google-login).
+  await page.getByRole('button', { name: 'Continuar con email' }).click()
   await expect(page.getByLabel('Correo electrónico')).toHaveAttribute('type', 'email')
   await expect(page.getByRole('button', { name: 'Enviar código' })).toBeVisible()
 })
@@ -14,6 +16,7 @@ test('a malformed e-mail is refused without a request', async ({ page }) => {
     if (request.method() === 'POST') posts.push(request.url())
   })
 
+  await page.getByRole('button', { name: 'Continuar con email' }).click()
   const email = page.getByLabel('Correo electrónico')
   await email.fill('brian')
   await page.getByRole('button', { name: 'Enviar código' }).click()

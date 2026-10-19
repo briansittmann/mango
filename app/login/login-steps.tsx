@@ -12,7 +12,7 @@ import { sendCode } from "./request-code";
  * `/login` is the e-mail step and `/login?email=` the code step (D1). The URL is replaced, not
  * navigated, so the step survives a reload and opening it never sends a code.
  */
-export function LoginSteps({ initialEmail, linkError }: { initialEmail: string | null; linkError: boolean }) {
+export function LoginSteps({ initialEmail, linkError, googleError }: { initialEmail: string | null; linkError: boolean; googleError: boolean }) {
   const router = useRouter();
   const locale = useLocale();
   const [email, setEmail] = useState(initialEmail);
@@ -42,7 +42,7 @@ export function LoginSteps({ initialEmail, linkError }: { initialEmail: string |
     setEmail(address);
   }, []);
 
-  if (!email) return <LoginForm linkError={linkError} defaultEmail={previous} onSent={onSent} />;
+  if (!email) return <LoginForm linkError={linkError} googleError={googleError} defaultEmail={previous} onSent={onSent} />;
 
   return (
     <CodeEntry
