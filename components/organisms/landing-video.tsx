@@ -79,12 +79,12 @@ export function LandingVideo() {
       <RevealTitle
         id="landing-video"
         text={t('videoTitulo')}
-        className="text-balance text-center font-display text-[32px] font-bold leading-[1.05] tracking-[-0.035em] text-foreground md:text-[52px]"
+        className="landing-video-intro text-balance text-center font-display text-[32px] font-bold leading-[1.05] tracking-[-0.035em] text-foreground md:text-[52px]"
       />
       <div
         ref={cardRef}
         data-ready={ready}
-        className="landing-video relative mt-8 aspect-[9/16] w-[min(100%,calc(min(68svh,700px)*0.5625))] overflow-hidden rounded-[36px] md:mt-12 md:rounded-[44px]"
+        className="landing-video landing-video-intro relative mt-8 aspect-[9/16] w-[min(100%,calc(min(68svh,700px)*0.5625))] overflow-hidden rounded-[36px] md:mt-12 md:rounded-[44px]"
       >
         <video
           ref={videoRef}

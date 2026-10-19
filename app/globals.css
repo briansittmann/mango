@@ -1048,6 +1048,18 @@ body {
     translate: 0 14px;
     filter: blur(8px);
   }
+  /* The promo's title (and on a tall screen its card) sits there now: same wait, same arrival. */
+  .landing-video-intro {
+    transition: opacity 600ms var(--ease-out), translate 800ms var(--ease-spring), filter 600ms var(--ease-out);
+    & + .landing-video-intro {
+      transition-delay: 120ms;
+    }
+  }
+  .landing:not([data-hero-settled]) .landing-video-intro {
+    opacity: 0;
+    translate: 0 14px;
+    filter: blur(8px);
+  }
 }
 
 .landing-dots {
