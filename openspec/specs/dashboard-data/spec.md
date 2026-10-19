@@ -121,7 +121,7 @@ Its progress SHALL be computed from the category's total spending in the cycle, 
 - **THEN** the database rejects it and nothing is stored
 
 ### Requirement: Every dashboard operation persists
-Each operation of the injected contracts SHALL be durable — its result is visible after a reload — and after it completes the dashboard SHALL show figures recomputed from the stored rows. The outcomes SHALL be the ones the contracts and the `expense-editing`, `income-editing`, `savings-editing`, `category-editing`, `category-creation` and `category-reordering` capabilities promise, with these database specifics:
+Each operation of the injected contracts SHALL be durable — its result is visible after a reload — and after it completes the dashboard SHALL show figures recomputed from the stored rows. The outcomes SHALL be the ones the contracts and the `expense-editing`, `income-editing`, `savings-editing`, `category-editing`, `category-creation`, `category-reordering` and `onboarding` capabilities promise, with these database specifics:
 - creating an expense, an income entry or a savings movement SHALL insert one confirmed row of that type, in the user's default currency, whose local date is the chosen calendar day; a withdrawal SHALL be stored with a negative amount. The day MAY fall in a projected cycle: the row SHALL then be inserted the same way, with no link to any definition, no cycle mark, no budget entry and no change to the generation marker, and it SHALL be supplied with that cycle from then on
 - updating SHALL change only the amount, the description and the date of that row, and SHALL confirm it when it is a pending recurring charge (`recurring-charge-generation` → *A charge entered for a definition completes the pending one*)
 - soft-deleting SHALL mark the row and restoring SHALL clear the mark; no operation SHALL delete a movement row
@@ -134,7 +134,11 @@ Each operation of the injected contracts SHALL be durable — its result is visi
 - stopping a definition SHALL set it inactive and nothing else
 - deleting a definition SHALL soft-delete every charge it produced and SHALL remove the definition
 - when the charges of a cycle are generated (`recurring-charge-generation`), a row the user entered in that cycle SHALL be left as it is, and a definition whose slot in that cycle a row already holds SHALL NOT be inserted or counted again
+- storing the charges of the cycle in progress for the account's definitions (`onboarding` → *Income and fixed expenses step, and the charges of the cycle in progress*) SHALL insert one pending row per active definition that has none in that cycle, with the columns the generation writes, SHALL count that definition's repetition only when the cycle was already generated, and SHALL leave the generation marker as it is; it SHALL be callable only for the cycle in progress or a later one, as the signed-in user, and SHALL reject a charge dated outside the cycle
+- the profile operations SHALL write the user's own row only: the basics (name, country code, currency, timezone, cycle start day, amount format), rejecting a cycle-day change while the user has any category, definition, budget row or movement; the savings target, or its absence; the pending step; the completion mark; and the WhatsApp request (phone in E.164, code, time), rejecting a phone another account holds
 - any failure SHALL leave the stored rows as they were and reject the operation
+
+The data supplied to the dashboard SHALL carry, with the user's name, phone, photo, currency and timezone, the user's country code, the amount format in effect, the cycle start day, and whether the user holds any movement.
 
 #### Scenario: An expense survives a reload
 - **WHEN** the user adds 20 described as "Panadería" to "comida" and reloads `/dashboard`
@@ -184,6 +188,35 @@ Each operation of the injected contracts SHALL be durable — its result is visi
 #### Scenario: Duplicate name
 - **WHEN** the user creates a category named " comida " while "Comida" exists
 - **THEN** the sheet shows the duplicate-name message and no category is created
+
+#### Scenario: Pending charges stored from the onboarding
+- **WHEN** an account with no generated cycle holds the definitions "Sueldo" (income, 2 000, day 1) and "Alquiler" (expense, 820, day 1, Vivienda) and the charges of the cycle in progress are stored for it
+- **THEN** the cycle holds one pending "Sueldo" row and one pending "Alquiler" row in Vivienda, dated day 1 inside the cycle, the generation marker is still empty, and storing them again inserts nothing
+- **AND** the dashboard lists "Alquiler" in "Próximos cobros" and counts 820 in Vivienda's total and the free margin
+
+#### Scenario: Pending charges in a generated cycle
+- **WHEN** the cycle in progress was already generated with no definitions, "Alquiler" is then created and the charges of the cycle in progress are stored
+- **THEN** one pending "Alquiler" row exists and the definition's count of produced charges is 1
+
+#### Scenario: Charge outside the cycle
+- **WHEN** the charges stored for the cycle in progress name a date in the next cycle
+- **THEN** the operation rejects and no row is inserted
+
+#### Scenario: Basics stored
+- **WHEN** the account stores name "Ana", country `AR`, currency `ARS`, timezone `America/Argentina/Buenos_Aires`, cycle day 1 and the abbreviated format, with no category, definition, budget or movement
+- **THEN** after a reload the dashboard data carries name "Ana", currency `ARS`, country `AR`, the abbreviated format in effect and cycle day 1
+
+#### Scenario: Cycle day locked
+- **WHEN** the account holds one category and the basics are stored with cycle day 15 instead of 1
+- **THEN** the operation rejects and the row is unchanged
+
+#### Scenario: Phone taken
+- **WHEN** the WhatsApp request stores a phone another account holds
+- **THEN** the operation rejects and neither row changes
+
+#### Scenario: Savings target stored
+- **WHEN** the account stores a savings target of 300 and reloads `/dashboard`
+- **THEN** the dashboard data carries 300 as the savings target
 
 ### Requirement: The demo stays in memory
 `/demo` SHALL keep rendering from its in-memory sample through the in-memory implementations. It SHALL NOT import or instantiate a Supabase client, SHALL NOT read the session, and SHALL make no request to a Supabase host, whether or not the visitor is signed in.

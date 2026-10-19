@@ -27,7 +27,7 @@
 
 - [x] 5.1 From local, a new Google account (not Brian's) with the page in English: lands in the onboarding, `usuarios` row with its Google name, `idioma = 'en'` and the browser's timezone; delete the test auth user and row afterwards with Brian's confirmation. Verify by reading the row.
 - [x] 5.2 Brian signs in with Google with `brianrebadj@gmail.com`: his own dashboard, no new `usuarios` row, no column of his row changed (compare a read before and after), and the code still works for the same address.
-- [ ] 5.3 An address that asked for a code and never typed it, then signs in with Google: one auth user, a `usuarios` row created, signed in. Verify in `auth.users` / `auth.identities` and clean up.
+- [x] 5.3 (Run by hand by Brian on 2026-10-19, fine.) An address that asked for a code and never typed it, then signs in with Google: one auth user, a `usuarios` row created, signed in. Verify in `auth.users` / `auth.identities` and clean up.
 - [x] 5.4 Cancel on Google's consent: back on `/login` with the Google message and no session.
-- [ ] 5.5 👤 Publish the consent screen (D6.3) after the deploy, and repeat 5.4 and a sign-in from production.
+- [x] 5.5 👤 Publish the consent screen (D6.3) after the deploy, and repeat 5.4 and a sign-in from production.
 - [ ] 5.6 👤 Brand verification (free; optional, so the consent screen says "Mango" with its logo): verify `usemango.dev` in Search Console with a TXT in Vercel DNS, upload the 120×120 logo in Branding (from `app/apple-icon.png`), and after 5.5 submit in Verification Center. Verify on production that the consent screen shows the name and logo. The paid alternative (Supabase custom domain, Pro + 10 USD/month) was declined on 2026-10-18.
