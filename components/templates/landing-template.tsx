@@ -11,6 +11,7 @@ import { ArrowRight, CheckCheck, ChevronDown } from 'lucide-react'
 import { LandingFeatures } from '@/components/organisms/landing-features'
 import { LandingPace } from '@/components/organisms/landing-pace'
 import { LandingStory } from '@/components/organisms/landing-story'
+import { LandingVideo } from '@/components/organisms/landing-video'
 import { useDarkTheme } from '@/components/theme/dynamic-background'
 import { BlurTitle } from '@/components/ui/blur-title'
 import { DotField } from '@/components/ui/dot-field'
@@ -457,6 +458,7 @@ export function LandingTemplate({ changeLanguage }: LandingTemplateProps) {
       <Nav changeLanguage={changeLanguage} />
       <main>
         <Hero />
+        <LandingVideo key={locale} />
         <LandingStory />
         {/* The glow dims between the stage sections, so the examples and the chart sit on a calm ground. */}
         <div className="landing-calm">

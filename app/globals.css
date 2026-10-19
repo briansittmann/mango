@@ -1351,6 +1351,27 @@ body {
   will-change: transform;
 }
 
+/* The promo card: the phone's shadow and edge, so it reads as a screen. Its play button springs in
+   once the card has grown to full size (`data-ready`), and holds still under reduced motion. */
+.landing-video {
+  background: #0b0d0b;
+  box-shadow: var(--landing-phone-shadow), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  will-change: transform;
+}
+.landing-video-button {
+  opacity: 0;
+  scale: 0.6;
+  transition: opacity 250ms ease-out, scale 500ms var(--ease-spring);
+  .landing-video[data-ready='true'] & {
+    opacity: 1;
+    scale: 1;
+  }
+  .landing-video-play:focus-visible & {
+    outline: 2px solid var(--ring);
+    outline-offset: 4px;
+  }
+}
+
 /* Chat: the message springs in from its side, the reply types for a beat, then lands. */
 .landing-chat-out,
 .landing-chat-in {
@@ -1398,6 +1419,16 @@ body {
 .landing-chat[data-visible='true'] .landing-reply {
   opacity: 1;
   transition: opacity 400ms var(--ease-out) 1050ms;
+}
+
+/* The voice note plays as it lands: each bar takes the brand colour in turn. */
+.landing-wave {
+  background: color-mix(in oklab, var(--muted-foreground) 55%, transparent);
+  transition: background-color 120ms linear;
+}
+.landing-chat[data-visible='true'] .landing-wave {
+  background: var(--brand-ink);
+  transition-delay: calc(450ms + var(--i) * 28ms);
 }
 
 @keyframes landing-typing-window {
@@ -1575,6 +1606,22 @@ body {
     p + p {
       color: color-mix(in oklab, var(--primary-foreground) 65%, transparent);
     }
+    /* The voice note on green: the button inverts, and the waveform plays in the green's ink. */
+    [data-voice-play] {
+      background: var(--primary-foreground);
+      svg {
+        color: var(--primary);
+      }
+    }
+    [data-voice-meta] {
+      color: color-mix(in oklab, var(--primary-foreground) 65%, transparent);
+    }
+    .landing-wave {
+      background: color-mix(in oklab, var(--primary-foreground) 30%, transparent);
+    }
+  }
+  .landing-chat[data-visible='true'] .landing-chat-out .landing-wave {
+    background: var(--primary-foreground);
   }
   .landing-chat-in {
     background: light-dark(#FFFFFF, #222A23);
@@ -1621,6 +1668,7 @@ body {
   .landing-chat-out,
   .landing-chat-in,
   .landing-reply,
+  .landing-wave,
   .landing-wire,
   .landing-bar,
   .landing-entry,

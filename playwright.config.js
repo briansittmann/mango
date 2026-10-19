@@ -29,6 +29,9 @@ export default defineConfig({
     /* Base URL to use in actions like `await page.goto('')`. */
     baseURL: 'http://localhost:3000',
 
+    /* Without a `locale` cookie the site follows the browser (English unless it asks for Spanish): the specs read Spanish. */
+    locale: 'es-ES',
+
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },

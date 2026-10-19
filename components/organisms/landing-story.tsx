@@ -5,12 +5,13 @@ import { useTranslations } from 'next-intl'
 import { gsap } from 'gsap'
 import { Observer } from 'gsap/Observer'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { BatteryFull, CheckCheck, Signal, Wifi } from 'lucide-react'
+import { BatteryFull, CheckCheck, Mic, Play, Signal, Wifi } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 gsap.registerPlugin(ScrollTrigger, Observer)
 
-type StoryMessage = { texto: string; descripcion: string; categoria: string; monto: number; respuesta: string }
+// `audio` (its length) makes the message a voice note, and `texto` what it says.
+type StoryMessage = { texto: string; audio?: string; descripcion: string; categoria: string; monto: number; respuesta: string }
 
 // The phone shows `/demo` at an iPhone's CSS size, scaled to fit the stage.
 const SCREEN_WIDTH = 390
@@ -60,7 +61,44 @@ function Skeleton() {
   )
 }
 
-function ChatBubbles({ message, side, visible }: { message: StoryMessage; side: 'left' | 'right'; visible: boolean }) {
+// A voice note's waveform: fixed heights, so the server and the browser draw the same bars.
+const WAVE = [5, 9, 14, 8, 18, 22, 12, 7, 16, 24, 19, 10, 6, 13, 21, 17, 9, 14, 20, 11, 7, 15, 10, 6, 9, 5]
+
+// WhatsApp's voice bubble: play button, waveform, length. Once it lands, it plays: the bars fill
+// from the left over the note's length (shortened), before the reply types.
+function VoiceNote({ message, label }: { message: StoryMessage; label: string }) {
+  return (
+    <div className="flex w-[216px] max-w-full items-center gap-2.5">
+      <span className="sr-only">{label}</span>
+      <span aria-hidden data-voice-play className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+        <Play className="ms-0.5 size-4 fill-current" />
+      </span>
+      <span aria-hidden className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="flex h-6 items-center gap-[2px]">
+          {WAVE.map((height, index) => (
+            <span
+              key={index}
+              className="landing-wave w-[3px] shrink-0 rounded-full"
+              style={{ height, '--i': index } as React.CSSProperties}
+            />
+          ))}
+        </span>
+        <span data-voice-meta className="flex items-center justify-between text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1 tabular-nums">
+            <Mic className="size-3 text-brand-ink" />
+            {message.audio}
+          </span>
+          <span className="flex items-center gap-1">
+            {CLOCK}
+            <CheckCheck className="size-3.5 text-brand-ink" />
+          </span>
+        </span>
+      </span>
+    </div>
+  )
+}
+
+function ChatBubbles({ message, side, visible, voiceLabel }: { message: StoryMessage; side: 'left' | 'right'; visible: boolean; voiceLabel: string }) {
   return (
     <div
       data-visible={visible}
@@ -68,12 +106,18 @@ function ChatBubbles({ message, side, visible }: { message: StoryMessage; side: 
       className={cn('landing-chat flex w-[min(62vw,264px)] flex-col gap-2', side === 'left' ? 'items-end' : 'items-start')}
       style={{ '--from-x': side === 'left' ? '-28px' : '28px' } as React.CSSProperties}
     >
-      <div className="landing-chat-out liquid-glass rounded-[20px] rounded-br-md px-4 py-2.5">
-        <p className="text-body-lg font-medium text-foreground">{message.texto}</p>
-        <p className="mt-0.5 flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
-          {CLOCK}
-          <CheckCheck className="size-3.5 text-brand-ink" aria-hidden />
-        </p>
+      <div className={cn('landing-chat-out liquid-glass rounded-[20px] rounded-br-md', message.audio ? 'px-3 py-2.5' : 'px-4 py-2.5')}>
+        {message.audio ? (
+          <VoiceNote message={message} label={voiceLabel} />
+        ) : (
+          <>
+            <p className="text-body-lg font-medium text-foreground">{message.texto}</p>
+            <p className="mt-0.5 flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
+              {CLOCK}
+              <CheckCheck className="size-3.5 text-brand-ink" aria-hidden />
+            </p>
+          </>
+        )}
       </div>
       <div className="landing-chat-in relative flex max-w-full items-start gap-2 rounded-[20px] rounded-bl-md border border-border bg-card/80 px-3 py-2.5 shadow-lg backdrop-blur-md">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -85,7 +129,7 @@ function ChatBubbles({ message, side, visible }: { message: StoryMessage; side: 
           <span className="size-1.5 rounded-full bg-muted-foreground" />
           <span className="size-1.5 rounded-full bg-muted-foreground" />
         </span>
-        <p className="landing-reply pt-0.5 text-body-md text-foreground">{message.respuesta}</p>
+        <p className="landing-reply whitespace-pre-line pt-0.5 text-body-md text-foreground">{message.respuesta}</p>
       </div>
     </div>
   )
@@ -369,7 +413,7 @@ export function LandingStory() {
                 )}
                 style={{ '--slot-top': `${[20, 44, 66][index]}%` } as React.CSSProperties}
               >
-                <ChatBubbles message={message} side={side} visible={step > index} />
+                <ChatBubbles message={message} side={side} visible={step > index} voiceLabel={t('historiaNotaDeVoz', { duracion: message.audio ?? '', texto: message.texto })} />
                 <span
                   aria-hidden
                   data-visible={step > index}
