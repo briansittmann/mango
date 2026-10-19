@@ -458,7 +458,7 @@ export function LandingTemplate({ changeLanguage }: LandingTemplateProps) {
       <Nav changeLanguage={changeLanguage} />
       <main>
         <Hero />
-        <LandingVideo key={locale} />
+        <LandingVideo />
         <LandingStory />
         {/* The glow dims between the stage sections, so the examples and the chart sit on a calm ground. */}
         <div className="landing-calm">

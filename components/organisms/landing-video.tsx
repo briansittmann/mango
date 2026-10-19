@@ -13,8 +13,10 @@ gsap.registerPlugin(ScrollTrigger)
 const READY_AT = 0.92
 const DURATION = '0:44'
 
-// The promo in the page's language (the template remounts it on a switch, back to the poster). Nothing but the poster loads until a press: the video is
-// ~3.6 MB, and only the visitor who wants it pays for it, in one language.
+// The promo in the page's language. Nothing but the poster loads until a press: the video is
+// ~3.6 MB, and only the visitor who wants it pays for it, in one language. A language switch
+// swaps the file in place and goes back to the poster: remounting would insert this section
+// before the story's, which GSAP has moved into its pin spacer, and React's `insertBefore` throws.
 export function LandingVideo() {
   const t = useTranslations('inicio')
   const locale = useLocale()
@@ -22,7 +24,9 @@ export function LandingVideo() {
   const cardRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [ready, setReady] = useState(false)
-  const [state, setState] = useState<'idle' | 'loading' | 'playing'>('idle')
+  const [playback, setPlayback] = useState<{ locale: string; state: 'idle' | 'loading' | 'playing' }>({ locale, state: 'idle' })
+  const state = playback.locale === locale ? playback.state : 'idle'
+  const setState = (next: 'idle' | 'loading' | 'playing') => setPlayback({ locale, state: next })
 
   // The card starts small under the title and grows with the scroll, reaching its full size as
   // the title and the card sit centred on screen. No pin: the page never stops to play it.
@@ -84,6 +88,8 @@ export function LandingVideo() {
       >
         <video
           ref={videoRef}
+          // Setting `src` reruns the media load, so a switch drops the other language's file.
+          src={`/promo/mango-${locale}.mp4`}
           preload="none"
           poster={`/promo/mango-${locale}.jpg`}
           playsInline
@@ -92,9 +98,7 @@ export function LandingVideo() {
           onPlaying={() => setState('playing')}
           onEnded={() => setState('idle')}
           className="size-full object-cover"
-        >
-          <source src={`/promo/mango-${locale}.mp4`} type="video/mp4" />
-        </video>
+        />
         {state !== 'playing' ? (
           <button
             type="button"
