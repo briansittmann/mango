@@ -11,18 +11,32 @@ import type { RecurringDefinition } from '../data/recurring.ts'
 import { formatBotAmount } from './format.ts'
 
 /**
- * The approved template per account language, sent with that language as its code. Its body:
- * `📅 Recordatorio: {{1}} se te cobra {{2}}, por {{3}}.` — name, when, amount.
+ * The approved templates per account language, sent with that language as its code. `plain`:
+ * `📅 Recordatorio: {{1}} se te cobra {{2}}, por {{3}}.` — name, when, amount. `card`, for a fixed
+ * expense charged to a card (`card-wallet`), is longer — Meta rejects four values in a short text:
+ * `📅 Recordatorio de Mango: {{1}} se te cobra {{2}}, por un monto de {{3}}.` then
+ * `💳 Se va a debitar de tu tarjeta {{4}}, …`. Meta takes no empty value, so the card cannot be an
+ * optional `{{4}}` of one template.
  */
-export const REMINDER_TEMPLATES = { es: 'recordatorio_cobro_es', en: 'recordatorio_cobro_en' } as const
+export const REMINDER_TEMPLATES = {
+  es: { plain: 'recordatorio_cobro_es', card: 'recordatorio_cobro_tarjeta_es' },
+  en: { plain: 'recordatorio_cobro_en', card: 'recordatorio_cobro_tarjeta_en' },
+} as const
 
-/** A definition with its reminder marker: the date of the last charge already reminded. */
-export type ReminderDefinition = RecurringDefinition & { remindedFor: LocalDate | null }
+/** A definition with its reminder marker (the date of the last charge already reminded) and its card's name. */
+export type ReminderDefinition = RecurringDefinition & { remindedFor: LocalDate | null; card: string | null }
 
 /** A definition's row in a cycle; it holds the slot, so it replaces the projected charge. */
 export type SlotRow = { definitionId: string; cycle: LocalDate; pending: boolean; amount: number; date: LocalDate }
 
-export type DueReminder = { definitionId: string; name: string; amount: number; date: LocalDate; remindedFor: LocalDate | null }
+export type DueReminder = {
+  definitionId: string
+  name: string
+  amount: number
+  date: LocalDate
+  card: string | null
+  remindedFor: LocalDate | null
+}
 
 /** Whole days from `from` to `to` (both `YYYY-MM-DD`), on UTC calendar arithmetic. */
 function daysFrom(from: LocalDate, to: LocalDate): number {
@@ -69,18 +83,24 @@ export function dueReminders({
         return c.definitionId === d.id && days >= 0 && days <= d.reminder.daysBefore && (d.remindedFor == null || c.date > d.remindedFor)
       })
       .sort((a, b) => a.date.localeCompare(b.date))
-    return next ? [{ definitionId: d.id, name: d.name, amount: next.amount, date: next.date, remindedFor: d.remindedFor }] : []
+    return next
+      ? [{ definitionId: d.id, name: d.name, amount: next.amount, date: next.date, card: d.card, remindedFor: d.remindedFor }]
+      : []
   })
 }
 
-/** `{{1}}`, `{{2}}`, `{{3}}`: the name, "hoy" / "mañana" / "dentro de 3 días", and the amount as the bot writes it. */
+/**
+ * `{{1}}`, `{{2}}`, `{{3}}`: the name, "hoy" / "mañana" / "dentro de 3 días", and the amount as
+ * the bot writes it; `{{4}}`, the card's name, only when there is one (the `card` template).
+ */
 export function reminderParams(
   { locale, currency, amountFormat, today }: { locale: string; currency: string; amountFormat: AmountFormat; today: LocalDate },
-  reminder: Pick<DueReminder, 'name' | 'amount' | 'date'>,
-): [string, string, string] {
+  reminder: Pick<DueReminder, 'name' | 'amount' | 'date' | 'card'>,
+): string[] {
   return [
     reminder.name,
     new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(daysFrom(today, reminder.date), 'day'),
     formatBotAmount(locale, currency, reminder.amount, amountFormat),
+    ...(reminder.card == null ? [] : [reminder.card]),
   ]
 }

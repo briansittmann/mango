@@ -14,7 +14,8 @@ import { safeCompare } from '@/lib/whatsapp/signature'
  * Daily reminder job (ARCHITECTURE.md §14.1), scheduled by `vercel.json` apart from the charges
  * job so it runs at an hour that is daytime in Spain and in Argentina. Per account with a WhatsApp
  * channel: the expense definitions with their reminder on, the charges `dueReminders` picks, and
- * per charge the `recordatorio_cobro_<idioma>` template. The marker
+ * per charge the `recordatorio_cobro_<idioma>` template, or `recordatorio_cobro_tarjeta_<idioma>`
+ * when the fixed expense has a card (falling back to the plain one if that send fails). The marker
  * (`recordatorio_enviado_para`, migration 0035) is claimed before the send and given back if it
  * fails, so a repeated run never reminds twice and a failed send is retried the next day.
  */
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
 async function runForUser(client: ReturnType<typeof supabaseAdmin>, usuario: Usuario, phone: string): Promise<UserReport> {
   const { data, error } = await client
     .from('movimientos_recurrentes')
-    .select(`${DEFINITION_COLUMNS}, recordatorio_enviado_para`)
+    .select(`${DEFINITION_COLUMNS}, recordatorio_enviado_para, tarjetas(nombre)`)
     .eq('usuario_id', usuario.id)
     .eq('tipo', 'gasto')
     .eq('activo', true)
@@ -81,7 +82,12 @@ async function runForUser(client: ReturnType<typeof supabaseAdmin>, usuario: Usu
   if (error) throw new Error(error.message)
   if (!data?.length) return { id: usuario.id, sent: 0, failed: 0 }
 
-  const definitions: ReminderDefinition[] = data.map((d) => ({ ...toDefinition(d), remindedFor: d.recordatorio_enviado_para }))
+  const definitions: ReminderDefinition[] = data.map((d) => ({
+    ...toDefinition(d),
+    remindedFor: d.recordatorio_enviado_para,
+    // To-one (the definition's FK): PostgREST returns an object, the untyped client says array.
+    card: (d.tarjetas as unknown as { nombre: string } | null)?.nombre ?? null,
+  }))
   const today = localDateOf(new Date(), usuario.timezone)
   const furthest = definitions.reduce<LocalDate>((last, d) => {
     const day = daysBefore(today, -d.reminder.daysBefore)
@@ -128,8 +134,13 @@ async function runForUser(client: ReturnType<typeof supabaseAdmin>, usuario: Usu
     if (claim.error) throw new Error(claim.error.message)
     if (claim.data.length === 0) continue
 
-    const template = REMINDER_TEMPLATES[usuario.idioma]
-    if (await sendTemplate(phone, template, usuario.idioma, reminderParams(format, reminder))) {
+    const templates = REMINDER_TEMPLATES[usuario.idioma]
+    const params = reminderParams(format, reminder)
+    // Without the card template (not approved yet, or missing in this language) the plain one still warns.
+    const delivered =
+      (reminder.card != null && (await sendTemplate(phone, templates.card, usuario.idioma, params))) ||
+      (await sendTemplate(phone, templates.plain, usuario.idioma, params.slice(0, 3)))
+    if (delivered) {
       sent++
       continue
     }
