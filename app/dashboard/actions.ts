@@ -13,7 +13,7 @@ import type { WidgetId } from "@/lib/data/dashboard";
 import type { ExpenseDraft, LocalDate } from "@/lib/data/expenses";
 import type { IncomeDraft } from "@/lib/data/income";
 import type { PaymentMethod, TransferDraft } from "@/lib/data/payment-method";
-import { PROFILE_ERRORS, validateBasics, type ProfileBasics } from "@/lib/data/profile";
+import { PROFILE_ERRORS, validateBasics, type ConnectedApp, type ProfileBasics } from "@/lib/data/profile";
 import { createSupabaseProfileMutations } from "@/lib/data/supabase/profile";
 import type { RecurringDefinition, RecurringDraft, RecurringTarget, SlotEntry } from "@/lib/data/recurring";
 import type { SavingsMovementDraft } from "@/lib/data/savings";
@@ -198,6 +198,26 @@ export async function requestWhatsAppLink(): Promise<{ code: string }> {
 /** The account sheet's "Desvincular" (0036): drops the account's WhatsApp channel and its phone. */
 export async function unlinkWhatsApp(): Promise<void> {
   await run((ctx) => createSupabaseProfileMutations(ctx).unlinkWhatsApp!());
+}
+
+/**
+ * The account sheet's "Claude y ChatGPT" (add-mcp-server D11): the OAuth grants of the session's
+ * user, newest first. Supabase Auth keeps them; nothing of Mango's database is read.
+ */
+export async function listConnectedApps(): Promise<ConnectedApp[]> {
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.auth.oauth.listGrants();
+  if (error) throw new Error(error.message);
+  return (data ?? [])
+    .map((grant) => ({ clientId: grant.client.id, name: grant.client.name, connectedAt: grant.granted_at }))
+    .sort((a, b) => b.connectedAt.localeCompare(a.connectedAt));
+}
+
+/** "Desconectar": revoking the grant deletes the assistant's session, so its next call gets 401. */
+export async function disconnectApp(clientId: string): Promise<void> {
+  const supabase = await supabaseServer();
+  const { error } = await supabase.auth.oauth.revokeGrant({ clientId });
+  if (error) throw new Error(error.message);
 }
 
 async function knownRejections(

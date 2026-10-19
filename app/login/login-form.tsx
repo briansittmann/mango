@@ -37,11 +37,14 @@ export function LoginForm({
   linkError,
   googleError,
   defaultEmail,
+  next,
   onSent,
 }: {
   linkError: boolean;
   googleError: boolean;
   defaultEmail?: string;
+  /** Where to land after signing in (add-mcp-server D10); travels with Google in its cookie. */
+  next: string | null;
   onSent: (email: string) => void;
 }) {
   const t = useTranslations("acceso");
@@ -75,7 +78,7 @@ export function LoginForm({
       const divider = form.querySelector(":scope > [data-divider]")!;
       gsap.to(slot, { y: middle(divider) - middle(slot), duration: 0.45, delay: 0.05, ease: "power3.inOut" });
     }
-    const url = await startGoogle(locale);
+    const url = await startGoogle(locale, next);
     if (url) {
       window.location.assign(url);
       return;

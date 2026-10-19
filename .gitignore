@@ -58,4 +58,6 @@ docs/usuarios.md
 /promo/
 
 # Video promocional, todavia sin publicar
-/scripts/
+/scripts/*
+# El smoke del MCP si va al repo: no lleva secretos (lee .env.local) ni correos
+!/scripts/mcp-smoke.mjs

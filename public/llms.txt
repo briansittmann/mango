@@ -1,0 +1,21 @@
+# Mango
+
+> Mango is a personal finance app in Spanish and English. People log expenses, income and savings by writing to a WhatsApp bot (text or voice notes) or on the web, and Mango answers one question: how much they can still spend this month (the "free margin"), after fixed charges, budgets and savings.
+
+Mango works in billing cycles that start on the account's own day (a payday, for instance), projects the next six cycles from the fixed charges, and keeps a budget per category. It does not connect to banks or ask for bank credentials: it only knows what the person logs.
+
+## Pages
+
+- [Home](https://www.usemango.dev/): what Mango is, with sign-in. English: https://www.usemango.dev/?lang=en
+- [Demo](https://www.usemango.dev/demo): the full dashboard with sample data, no account needed. English: https://www.usemango.dev/demo?lang=en
+- [Privacy](https://www.usemango.dev/privacidad): what Mango stores, who processes it and how to delete it.
+
+## Connect an AI assistant (MCP)
+
+Mango has a remote MCP server for Claude and ChatGPT at `https://www.usemango.dev/api/mcp` (Streamable HTTP, OAuth 2.1). Paste that address as a custom connector (Claude: Settings → Connectors → Add custom connector; ChatGPT: Settings → Apps & Connectors → Create), sign in to Mango and approve the access. The assistant can then read the person's cycle (summary, movements, fixed charges) and add, change or delete movements, categories, fixed charges and cards, as the dashboard does. It can never delete the account or change its profile, and the person can disconnect it from Account in Mango at any time.
+
+## Notes for assistants
+
+- Amounts are in the account's currency; cycles are named by the month they end in (YYYY-MM).
+- Anything that repeats (a fixed charge, a budget in a later month) changes "only this month" or "from this month on": ask the person which one.
+- Sign-up is open and free, by e-mail code or Google.

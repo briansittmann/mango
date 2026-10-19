@@ -25,30 +25,34 @@ export async function GET(request: NextRequest) {
   const signup = cookieStore.get(SIGNUP_PREFS_COOKIE);
   if (signup) cookieStore.delete({ name: SIGNUP_PREFS_COOKIE, path: "/auth" });
 
-  if (params.has("error")) redirect("/login?error=google");
+  // Where the Google sign-in was sent from (add-mcp-server D10): kept through a failure, used once.
+  const prefs = decodeSignupPrefs(signup?.value);
+  const next = prefs.next ? `&next=${encodeURIComponent(prefs.next)}` : "";
+
+  if (params.has("error")) redirect(`/login?error=google${next}`);
   if (!code && !(tokenHash && type)) redirect("/login?error=enlace");
 
   const supabase = await supabaseServer();
 
   if (code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) redirect(signup ? "/login?error=google" : "/login?error=enlace");
+    if (error) redirect(signup ? `/login?error=google${next}` : "/login?error=enlace");
 
     // Once, and only on an account whose onboarding has not started: a later sign-in from a page in
     // another language must not flip an existing account (D3).
-    const prefs = decodeSignupPrefs(signup?.value);
-    if (prefs.idioma || prefs.timezone) {
+    const { idioma, timezone } = prefs;
+    if (idioma || timezone) {
       const { data: rows } = await supabase
         .from("usuarios")
-        .update(prefs)
+        .update({ idioma, timezone })
         .eq("auth_user_id", data.user.id)
         .eq("onboarding_completo", false)
         .eq("onboarding_paso", 1)
         .select("id");
       // The code mail reads the language from the auth metadata, as the language switch keeps it.
-      if (rows?.length && prefs.idioma) await supabase.auth.updateUser({ data: { idioma: prefs.idioma } });
+      if (rows?.length && idioma) await supabase.auth.updateUser({ data: { idioma } });
     }
-    redirect("/dashboard");
+    redirect(prefs.next ?? "/dashboard");
   }
 
   const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash!, type: type! });

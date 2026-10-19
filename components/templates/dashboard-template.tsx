@@ -2286,6 +2286,8 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
           onRequestLink={actions.profile.requestWhatsAppLink}
           onRefresh={() => router.refresh()}
           onUnlink={actions.profile.unlinkWhatsApp}
+          onListApps={actions.profile.listConnectedApps}
+          onDisconnectApp={actions.profile.disconnectApp}
           onDelete={actions.deleteAccount}
         />
       ) : null}

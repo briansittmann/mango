@@ -59,6 +59,8 @@ const profile: ProfileMutations = {
   complete: unsupported,
   setWidgetOrder: actions.setWidgetOrder,
   setDefaultPaymentMethod: actions.setDefaultPaymentMethod,
+  listConnectedApps: actions.listConnectedApps,
+  disconnectApp: actions.disconnectApp,
 }
 
 const mutations = {

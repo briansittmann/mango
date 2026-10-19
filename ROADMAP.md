@@ -161,7 +161,7 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [x] 👤 Decidir cómo se vincula → por código en el primer mensaje (3/10): la web abre `wa.me/<Mango>?text=vincular ABC123`, el adaptador crea el canal con el `wa_id` de Meta y responde ahí; sin plantilla y sin depender del número tipeado (ARCHITECTURE.md §4)
 - [x] 🤖 Vinculación de punta a punta: migración con `usuarios.codigo_vinculacion` (único, vence a los 7 días), generarlo al tocar "Vincular WhatsApp" (reemplaza el stub `link-request.ts`), botón con el link `wa.me` en el cierre y en ajustes, y en el adaptador: número desconocido + `vincular <código>` → fila en `canales` con el `wa_id` de Meta, `usuarios.telefono` pisado con ese número, código consumido, respuesta "✅ Listo, este chat ya está vinculado". El número de Mango sale de una variable de entorno (`WHATSAPP_PHONE_NUMBER`, distinta del `PHONE_NUMBER_ID`) — `add-whatsapp-linking` (2026-10-03): `0031` (`vincular_canal`, `canal_vinculado`), `lib/whatsapp/link.ts`, `handle-message.ts` con test unitario del orden del adaptador
 - [x] 🤖 Campo del número con bandera y prefijo: `select` nativo con emoji de bandera (derivado del ISO de `lib/data/countries.ts`) y prefijo a la izquierda, número local a la derecha, país de la cuenta preseleccionado; `libphonenumber-js` a E.164 en lugar de `normalizePhone` (resuelve el 9 y el 15 argentinos y el cero troncal). Solo sirve para cargar el número en el panel de Meta mientras dure el número de prueba — `add-whatsapp-linking`: `phone-field.tsx`, `toE164` / `formatPhone` en `lib/data/phone.ts`
-- [ ] 🤖 Rate limiting (mensajes al bot y registro web)
+- [ ] 🤖 Rate limiting (mensajes al bot, registro web y `/api/mcp`)
 - [ ] 👤 Verificar RLS con dos usuarios reales
 - [x] 👤 Cargar los números en Meta → no hace falta: con número propio (14/10) cualquiera vincula desde la web
 - [ ] 👤 Medir el costo por mensaje en WhatsApp Manager (con número propio ya no hay cupo de 1000)
@@ -210,6 +210,7 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 - [ ] Bot y parser en inglés
 - [ ] Movimiento lento del fondo de metal cepillado
 - [ ] 👤 Crear credenciales OAuth en Google Cloud y activar el proveedor Google en Supabase — pasado desde el bloque 8: el código por mail alcanza para el registro abierto. Pasos en D6 de `openspec/changes/add-google-login/design.md`; aplicar `0040` antes del deploy
+- [ ] 🤖 Servidor MCP para Claude y ChatGPT (`add-mcp-server`): `/api/mcp` con OAuth de Supabase, página de consentimiento, 19 herramientas sobre los contratos y "Claude y ChatGPT" en Cuenta — código el 2026-10-19; faltan el deploy y las rondas con Claude y ChatGPT en producción
 - [ ] 🤖 Login con Google, con el código por mail como alternativa — código hecho el 2026-10-16 (`add-google-login`: botón en `/login`, `POST /auth/google`, `0040` con el nombre de Google); falta la vuelta contra la base real cuando esté el proveedor
 
 ## 14 · Fase 4 — pagos (a futuro)

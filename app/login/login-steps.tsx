@@ -10,9 +10,21 @@ import { sendCode } from "./request-code";
 
 /**
  * `/login` is the e-mail step and `/login?email=` the code step (D1). The URL is replaced, not
- * navigated, so the step survives a reload and opening it never sends a code.
+ * navigated, so the step survives a reload and opening it never sends a code. `next` (already
+ * checked by `safeNext`) stays in every URL the steps write and is where a valid code lands
+ * (add-mcp-server D10).
  */
-export function LoginSteps({ initialEmail, linkError, googleError }: { initialEmail: string | null; linkError: boolean; googleError: boolean }) {
+export function LoginSteps({
+  initialEmail,
+  linkError,
+  googleError,
+  next,
+}: {
+  initialEmail: string | null;
+  linkError: boolean;
+  googleError: boolean;
+  next: string | null;
+}) {
   const router = useRouter();
   const locale = useLocale();
   const [email, setEmail] = useState(initialEmail);
@@ -37,12 +49,16 @@ export function LoginSteps({ initialEmail, linkError, googleError }: { initialEm
     return () => viewport.removeEventListener("resize", onResize);
   }, []);
 
-  const onSent = useCallback((address: string) => {
-    window.history.replaceState(null, "", `/login?email=${encodeURIComponent(address)}`);
-    setEmail(address);
-  }, []);
+  const nextParam = next ? `next=${encodeURIComponent(next)}` : "";
+  const onSent = useCallback(
+    (address: string) => {
+      window.history.replaceState(null, "", `/login?email=${encodeURIComponent(address)}${nextParam && `&${nextParam}`}`);
+      setEmail(address);
+    },
+    [nextParam],
+  );
 
-  if (!email) return <LoginForm linkError={linkError} googleError={googleError} defaultEmail={previous} onSent={onSent} />;
+  if (!email) return <LoginForm linkError={linkError} googleError={googleError} defaultEmail={previous} next={next} onSent={onSent} />;
 
   return (
     <CodeEntry
@@ -56,11 +72,11 @@ export function LoginSteps({ initialEmail, linkError, googleError }: { initialEm
       }}
       onResend={async () => (await sendCode(email, locale)).status}
       onChangeEmail={() => {
-        window.history.replaceState(null, "", "/login");
+        window.history.replaceState(null, "", `/login${nextParam && `?${nextParam}`}`);
         setPrevious(email);
         setEmail(null);
       }}
-      onDone={() => router.push("/dashboard")}
+      onDone={() => router.push(next ?? "/dashboard")}
     />
   );
 }

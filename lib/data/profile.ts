@@ -45,7 +45,14 @@ export type ProfileMutations = {
   setWidgetOrder?(order: WidgetId[]): Promise<void>
   /** Writes only `usuarios.medio_pago_default` (`payment-method` → *An account default payment method*); null = "Ninguno". */
   setDefaultPaymentMethod?(method: PaymentMethod | null): Promise<void>
+  /** The assistants connected over OAuth, newest first (`dashboard-ui` → *Connected assistants in the account sheet*); absent on the demo. */
+  listConnectedApps?(): Promise<ConnectedApp[]>
+  /** Revokes one assistant's access: its tokens stop working at its next call (`mcp-server` → *Revoking a connected assistant*). */
+  disconnectApp?(clientId: string): Promise<void>
 }
+
+/** An assistant the account approved on the consent page (add-mcp-server D11); `connectedAt` is an ISO instant. */
+export type ConnectedApp = { clientId: string; name: string; connectedAt: string }
 
 /** How long a linking code is live from its request time (`whatsapp-linking`). */
 export const LINK_CODE_TTL_MS = 7 * 24 * 60 * 60_000

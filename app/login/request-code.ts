@@ -13,11 +13,11 @@ export async function sendCode(email: string, idioma: string): Promise<RequestCo
   }
 }
 
-/** Posts to `/auth/google` with the page's language and the browser's timezone; the provider's URL, or null. */
-export async function startGoogle(idioma: string): Promise<string | null> {
+/** Posts to `/auth/google` with the page's language, the browser's timezone and where to land after; the provider's URL, or null. */
+export async function startGoogle(idioma: string, next: string | null): Promise<string | null> {
   try {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const response = await fetch("/auth/google", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ idioma, timezone }) });
+    const response = await fetch("/auth/google", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ idioma, timezone, ...(next && { next }) }) });
     if (!response.ok) return null;
     const result = (await response.json()) as GoogleStartResult;
     return result.status === "ok" ? result.url : null;

@@ -3,6 +3,7 @@ import { Check, Clock, Loader2, MessageCircle, Trash2, Unlink } from 'lucide-rea
 import { useTranslations } from 'next-intl'
 import { Collapsible } from '@/components/atoms/collapsible'
 import { BasicsFields, basicsValid, type BasicsDraft } from '@/components/molecules/basics-fields'
+import { ConnectedAssistants } from '@/components/molecules/connected-assistants'
 import { SegmentedControl } from '@/components/molecules/segmented-control'
 import { LinkCode, useLinkPolling, WhatsAppLinkAction, WhatsAppQr } from '@/components/molecules/whatsapp-link'
 import { usePhone } from '@/components/hooks/use-desktop'
@@ -10,7 +11,7 @@ import { SheetShell } from '@/components/organisms/sheet-shell'
 import { cn } from '@/lib/utils'
 import type { DashboardData } from '@/lib/data/dashboard'
 import type { PaymentMethod } from '@/lib/data/payment-method'
-import type { ProfileBasics } from '@/lib/data/profile'
+import type { ConnectedApp, ProfileBasics } from '@/lib/data/profile'
 // A pure formatter over the stored number, not data access (add-whatsapp-linking D8).
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
 import { formatPhone } from '@/lib/data/phone'
@@ -30,6 +31,9 @@ type AccountSheetProps = {
   onRefresh?: () => void
   /** "Desvincular": drops the linked number so another can be linked; absent when the page cannot. */
   onUnlink?: () => Promise<void>
+  /** The "Claude y ChatGPT" section's list and "Desconectar" (add-mcp-server D11); without both the section is hidden. */
+  onListApps?: () => Promise<ConnectedApp[]>
+  onDisconnectApp?: (clientId: string) => Promise<void>
   /** Deletes the account for good; absent when the page cannot (the row is then hidden). */
   onDelete?: () => Promise<void>
 }
@@ -64,6 +68,8 @@ export function AccountSheet({
   onRequestLink,
   onRefresh,
   onUnlink,
+  onListApps,
+  onDisconnectApp,
   onDelete,
 }: AccountSheetProps) {
   const t = useTranslations('cuenta')
@@ -406,6 +412,9 @@ export function AccountSheet({
             </div>
           ) : null}
         </section>
+        {onListApps && onDisconnectApp ? (
+          <ConnectedAssistants open={open} timeZone={user.timezone} disabled={busy} onList={onListApps} onDisconnect={onDisconnectApp} />
+        ) : null}
         {onDelete ? (
           <div className="mx-inset mt-6">
             {/* The row opens the confirmation in place; the sheet stays, so a slip is one tap from "Mejor no". */}

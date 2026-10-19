@@ -66,6 +66,7 @@ export const config = {
   matcher: [
     '/dashboard/:path*',
     '/onboarding/:path*',
+    '/oauth/:path*',
     '/login',
     '/auth/:path*',
     { source: '/', has: [{ type: 'query', key: 'lang' }] },

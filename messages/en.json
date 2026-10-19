@@ -404,10 +404,11 @@
     "secciones": [
       { "titulo": "What we store", "texto": "Your e-mail, so you can sign in. If you link WhatsApp, your phone number. And what you log: expenses, income, savings, categories, budgets and fixed costs." },
       { "titulo": "If you sign in with Google", "texto": "Google gives us your name and your e-mail, and nothing else: not your contacts, your calendar or your photo. You can change the name when you create your account. Mango never posts anything to your Google account." },
+      { "titulo": "If you connect Claude or ChatGPT", "texto": "If you connect your assistant to Mango, you approve it on a Mango screen, and from then on it can see and change your movements, categories, fixed charges and cards, as you would; never delete your account or change your profile. What the assistant reads goes through that assistant's company (Anthropic or OpenAI) under its own terms. You can disconnect it any time from Account, in Mango, and it loses access at that moment." },
       { "titulo": "Your messages", "texto": "When you text the bot, the message is sent to a language model (Google's Gemini, on a paid account whose content Google does not use for training) to extract the amount, the description and the category. Mango stores the resulting entry. The message text is not kept, except on accounts with conversation history enabled, where it is kept for 30 days so the bot remembers recent context." },
       { "titulo": "No access to your bank", "texto": "Mango does not connect to your bank or ask for credentials. It only knows what you log." },
-      { "titulo": "Where the data lives", "texto": "The database runs on Supabase and the website on Vercel. Sign-in codes are sent through Resend and WhatsApp messages go through Meta's official API. None of them receive your data for anything other than providing that service." },
-      { "titulo": "Cookies", "texto": "Only the necessary ones: your session, the one that remembers your language and, if you sign in with Google, one that lasts ten minutes to carry your language and timezone to the new account. No advertising or tracking cookies." },
+      { "titulo": "Where the data lives", "texto": "The database runs on Supabase and the website on Vercel. Sign-in codes are sent through Resend and WhatsApp messages go through Meta's official API. None of them receive your data for anything other than providing that service. If you connect Claude or ChatGPT, what the assistant reads also goes through Anthropic or OpenAI, under their terms." },
+      { "titulo": "Cookies", "texto": "Only the necessary ones: your session, the one that remembers your language and, if you sign in with Google, one that lasts ten minutes to carry your language, your timezone and the page you return to after signing in. No advertising or tracking cookies." },
       { "titulo": "Your rights", "texto": "You can ask for a copy of your data or have your account deleted with everything in it. Write to {correo} and it is done within a few days." }
     ]
   },
@@ -727,5 +728,54 @@
     "fila": "{nombre}, {dia}, {monto}",
     "porDefecto": "Default payment method",
     "ninguno": "None"
+  },
+  "mcp": {
+    "consentimiento": {
+      "tituloPagina": "Connect an assistant",
+      "titulo": "{app} wants to connect to your Mango",
+      "vuelveA": "After you answer, you go back to <strong>{host}</strong>.",
+      "cuenta": "Mango account",
+      "puedeVer": "See your movements, categories, fixed charges and cards.",
+      "puedeCambiar": "Add, change and delete all of that, as you would in Mango.",
+      "nunca": "Never delete your account or change your profile.",
+      "comparte": "It also receives: {datos}.",
+      "scopeOpenid": "your identity",
+      "scopeEmail": "your email",
+      "scopeProfile": "your name",
+      "scopePhone": "your phone",
+      "scopeOfflineAccess": "ongoing access until you disconnect it",
+      "desconectar": "You can disconnect it any time from Account, in Mango.",
+      "permitir": "Allow",
+      "cancelar": "Cancel",
+      "error": "Your answer could not be sent. Try again.",
+      "asistenteSinNombre": "An assistant",
+      "vencidoTitulo": "This request no longer works",
+      "vencido": "It expired or is not valid. Connect Mango again from Claude or ChatGPT.",
+      "sinTerminarTitulo": "Finish setting up Mango first",
+      "sinTerminar": "Your account is not ready yet. Once you finish the setup, connect again from your assistant.",
+      "terminarConfiguracion": "Finish the setup"
+    },
+    "cuenta": {
+      "titulo": "Claude and ChatGPT",
+      "url": "Connect Mango to your assistant",
+      "copiar": "Copy",
+      "copiado": "Copied",
+      "copiadoAnuncio": "Address copied",
+      "enClaude": "In Claude: <strong>Settings → Connectors → Add custom connector</strong>, and paste the address.",
+      "enChatgpt": "In ChatGPT: <strong>Settings → Apps & Connectors → Create</strong>, and paste the address.",
+      "cargando": "Loading connected assistants…",
+      "errorCargar": "The list of assistants could not be loaded. Open Account again to retry.",
+      "ninguno": "No assistant connected",
+      "conectados": "Connected assistants",
+      "conectadoEl": "Connected on {fecha}",
+      "desconectar": "Disconnect",
+      "desconectarApp": "Disconnect {app}",
+      "desconectarTitulo": "Disconnect {app}?",
+      "desconectarDetalle": "{app} can no longer see or change your Mango. You can connect it again from {app}.",
+      "desconectarCancelar": "Keep it",
+      "desconectarConfirmar": "Disconnect",
+      "errorDesconectar": "It could not be disconnected. Try again.",
+      "desconectadoAnuncio": "{app} disconnected"
+    }
   }
 }

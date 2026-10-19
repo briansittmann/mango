@@ -404,10 +404,11 @@
     "secciones": [
       { "titulo": "Qué guardamos", "texto": "Tu correo, para que entres a tu cuenta. Si vinculas WhatsApp, tu número de teléfono. Y lo que cargas: gastos, ingresos, ahorro, categorías, presupuestos y gastos fijos." },
       { "titulo": "Si entras con Google", "texto": "Google nos pasa tu nombre y tu correo, y nada más: ni tus contactos, ni tu calendario, ni tu foto. El nombre lo puedes cambiar al crear tu cuenta. Mango no publica nada en tu cuenta de Google." },
+      { "titulo": "Si conectas Claude o ChatGPT", "texto": "Si conectas tu asistente a Mango, lo apruebas en una pantalla de Mango y desde ahí puede ver y cambiar tus movimientos, categorías, gastos fijos y tarjetas, como lo harías tú; nunca borrar tu cuenta ni cambiar tu perfil. Lo que el asistente lee pasa por la empresa de ese asistente (Anthropic u OpenAI) según sus propias condiciones. Lo desconectas cuando quieras desde Cuenta, en Mango, y deja de tener acceso en ese momento." },
       { "titulo": "Tus mensajes", "texto": "Cuando escribes al bot, el texto del mensaje se envía a un modelo de lenguaje (Gemini, de Google, en una cuenta de pago cuyo contenido Google no usa para entrenar) para extraer el importe, la descripción y la categoría. Mango guarda el movimiento que resulta. El texto del mensaje no se guarda, salvo en cuentas con historial de conversación activado, donde se conserva 30 días para que el bot recuerde el contexto reciente." },
       { "titulo": "Sin acceso a tu banco", "texto": "Mango no se conecta a tu banco ni pide claves. Solo sabe lo que tú anotas." },
-      { "titulo": "Dónde viven los datos", "texto": "La base de datos está en Supabase y la web en Vercel. Los correos con el código de acceso salen por Resend y los mensajes de WhatsApp pasan por la API oficial de Meta. Ninguno recibe tus datos para otra cosa que prestar ese servicio." },
-      { "titulo": "Cookies", "texto": "Solo las necesarias: la de tu sesión, la que recuerda tu idioma y, si entras con Google, una que dura diez minutos para llevar tu idioma y tu zona horaria a la cuenta nueva. Sin cookies de publicidad ni de seguimiento." },
+      { "titulo": "Dónde viven los datos", "texto": "La base de datos está en Supabase y la web en Vercel. Los correos con el código de acceso salen por Resend y los mensajes de WhatsApp pasan por la API oficial de Meta. Ninguno recibe tus datos para otra cosa que prestar ese servicio. Si conectas Claude o ChatGPT, lo que el asistente lee pasa también por Anthropic u OpenAI, según sus condiciones." },
+      { "titulo": "Cookies", "texto": "Solo las necesarias: la de tu sesión, la que recuerda tu idioma y, si entras con Google, una que dura diez minutos para llevar tu idioma, tu zona horaria y la página a la que vuelves después de entrar. Sin cookies de publicidad ni de seguimiento." },
       { "titulo": "Tus derechos", "texto": "Puedes pedir una copia de tus datos o que se borre tu cuenta con todo lo que contiene. Escribe a {correo} y se hace en pocos días." }
     ]
   },
@@ -727,5 +728,54 @@
     "fila": "{nombre}, {dia}, {monto}",
     "porDefecto": "Medio de pago por defecto",
     "ninguno": "Ninguno"
+  },
+  "mcp": {
+    "consentimiento": {
+      "tituloPagina": "Conectar un asistente",
+      "titulo": "{app} quiere conectarse a tu Mango",
+      "vuelveA": "Después de tu respuesta vuelves a <strong>{host}</strong>.",
+      "cuenta": "Cuenta de Mango",
+      "puedeVer": "Ver tus movimientos, categorías, gastos fijos y tarjetas.",
+      "puedeCambiar": "Cargar, cambiar y borrar todo eso, como lo harías en Mango.",
+      "nunca": "Nunca borrar tu cuenta ni cambiar tu perfil.",
+      "comparte": "También recibe: {datos}.",
+      "scopeOpenid": "tu identidad",
+      "scopeEmail": "tu email",
+      "scopeProfile": "tu nombre",
+      "scopePhone": "tu teléfono",
+      "scopeOfflineAccess": "acceso continuo hasta que lo desconectes",
+      "desconectar": "Puedes desconectarlo cuando quieras desde Cuenta, en Mango.",
+      "permitir": "Permitir",
+      "cancelar": "Cancelar",
+      "error": "No se pudo enviar tu respuesta. Inténtalo de nuevo.",
+      "asistenteSinNombre": "Un asistente",
+      "vencidoTitulo": "Esta solicitud ya no sirve",
+      "vencido": "Venció o no es válida. Vuelve a conectar Mango desde Claude o ChatGPT.",
+      "sinTerminarTitulo": "Primero termina de configurar Mango",
+      "sinTerminar": "Tu cuenta todavía no está lista. Cuando termines la configuración, vuelve a conectar desde tu asistente.",
+      "terminarConfiguracion": "Terminar la configuración"
+    },
+    "cuenta": {
+      "titulo": "Claude y ChatGPT",
+      "url": "Conecta Mango a tu asistente",
+      "copiar": "Copiar",
+      "copiado": "Copiado",
+      "copiadoAnuncio": "Dirección copiada",
+      "enClaude": "En Claude: <strong>Configuración → Conectores → Añadir conector personalizado</strong>, y pega la dirección.",
+      "enChatgpt": "En ChatGPT: <strong>Configuración → Apps y conectores → Crear</strong>, y pega la dirección.",
+      "cargando": "Cargando asistentes conectados…",
+      "errorCargar": "No se pudo cargar la lista de asistentes. Vuelve a abrir Cuenta para intentarlo de nuevo.",
+      "ninguno": "Ningún asistente conectado",
+      "conectados": "Asistentes conectados",
+      "conectadoEl": "Conectado el {fecha}",
+      "desconectar": "Desconectar",
+      "desconectarApp": "Desconectar {app}",
+      "desconectarTitulo": "¿Desconectar {app}?",
+      "desconectarDetalle": "{app} deja de poder ver y cambiar tu Mango. Si quieres, vuelves a conectarlo desde {app}.",
+      "desconectarCancelar": "Mejor no",
+      "desconectarConfirmar": "Desconectar",
+      "errorDesconectar": "No se pudo desconectar. Inténtalo de nuevo.",
+      "desconectadoAnuncio": "{app} desconectado"
+    }
   }
 }
