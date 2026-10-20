@@ -31,6 +31,21 @@ An account SHALL be able to make at most 120 tool calls per minute through the M
 - **WHEN** the same account calls again after the minute has passed
 - **THEN** the call runs normally
 
+### Requirement: New movements are limited per day
+An account SHALL be able to add at most 100 new movements per local day through `add_movement` and the WhatsApp bot together, and at most 500 per day during the first 7 days after the account was created, so a new account can bring its history at once. The web dashboard SHALL NOT count. An `add_movement` over the limit SHALL change nothing and SHALL return `rate-limited` with a message saying to try tomorrow or use the web; the count SHALL survive between server instances and SHALL start again with the account's next local day.
+
+#### Scenario: The 101st movement of the day
+- **WHEN** an account older than a week has added 100 movements today and the assistant calls `add_movement`
+- **THEN** the call returns `rate-limited` and no movement is created
+
+#### Scenario: A new account brings its spreadsheet
+- **WHEN** an account created three days ago adds 300 movements in one day
+- **THEN** all of them are created
+
+#### Scenario: Next day
+- **WHEN** the same account adds a movement after its local midnight
+- **THEN** it is created
+
 ### Requirement: Amounts are within the stored range
 Every amount a tool takes SHALL be greater than 0, have at most two decimals, and be at most 9,999,999,999.99; a larger amount SHALL be `invalid-input` and SHALL change nothing.
 

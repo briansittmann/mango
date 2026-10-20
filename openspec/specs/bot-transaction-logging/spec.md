@@ -88,6 +88,13 @@ When the action is `repreguntar` (or the category cannot be resolved and there i
 - **WHEN** the account sends "gasté 50", then "gasté 20", then "comida"
 - **THEN** one expense of 20 exists in Comida and none of 50
 
+### Requirement: Loads count against the daily limit
+Every load SHALL count against the account's daily limit of new movements, shared with the assistants' `add_movement` (100 per local day, 500 in the account's first 7 days). A load over the limit SHALL write nothing and SHALL be answered in the account's language that the day's limit was reached and that loading can continue tomorrow or on the web.
+
+#### Scenario: Over the limit
+- **WHEN** an account that already added 100 movements today sends "súper 30"
+- **THEN** nothing is written and the reply says the day's limit was reached
+
 ### Requirement: Replies are plain text in the account's language
 
 Every reply text SHALL be taken from the translation files, in the account's language (`es` | `en`), never a literal in the code. This covers the Undo button label. Spanish texts SHALL use voseo. A confirmation SHALL read "Anotado", its icon, the name of what was loaded and the amount in the account's currency, formatted as the web formats it for that account: the same symbol and layout (`localization` → *Locale-aware formatting*) and the account's amount format in effect (`localization` → *Amount format preference*), so an account in Argentina with the abbreviated format reads `$ 15k` where the web reads `$ 15k`. For an expense the name SHALL be its description, or the recurring definition's name, or the category when there is neither, and the category SHALL follow the amount when it differs from the name. For an income the name SHALL be its description, or "Ingreso" without one. For savings it SHALL be the movement type (savings, withdrawal). The day SHALL be omitted when it is today and shown as "yesterday" or a short date otherwise. When an expense falls in the cycle in progress and its category has a budget in that cycle, the confirmation SHALL add the category's spent and budget for the cycle, the same figures as the dashboard's budget bar after the write, and a light for the dashboard's budget level: green below 80 %, yellow from 80 %, red from 100 %. An income, a savings movement, an expense in another cycle or an expense in a category without a budget SHALL get no such line. When those figures cannot be read, the confirmation SHALL go out without the line. A successful load SHALL be reported to the adapter with its confirmation text, the icon that text starts with and the row it wrote or completed. The adapter then decides between text and reaction (`bot-progressive-confirmation`) and remembers the channel's last load (`messaging-channels`).

@@ -323,6 +323,10 @@ function answerDeposit(turn: Turn, answer: DepositAnswer): Promise<BotReply> | B
 
 async function load(turn: Turn, action: Cargar): Promise<BotReply> {
   const { data, fmt, message, usuario } = turn
+  // 100 new movements a day per account, 500 in its first week, shared with the MCP (0044).
+  const { data: allowed, error } = await data.client.rpc('consumir_cupo_altas_usuario', { p_usuario_id: usuario.id })
+  if (error) throw new Error(error.message)
+  if (allowed !== true) return { kind: 'text', text: turn.t('topeDiario') }
   const date = daysBefore(fmt.today, action.dias_atras)
   const amount = Math.abs(action.monto)
   // A load that answers the pending question is confirmed in text (spec): the category question

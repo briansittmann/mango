@@ -635,6 +635,7 @@
     "categoriaParecida": "🤔 You already have {parecida}. Create {nombre} anyway?",
     "noEntendi": "😅 I didn't get that. Send me the amount and what it was for, for example: \"groceries 30\" or \"coffee 3.5 yesterday\".",
     "noDisponible": "⏳ I couldn't process your message right now. Send it again in a bit.",
+    "topeDiario": "⏳ You've reached today's limit of new movements. You can keep logging tomorrow, or add them on the web.",
     "vinculado": "✅ Done, this chat is now linked to your account.\n\nTry sending me an expense, like “groceries 15” or “coffee 3.5 yesterday”, or a voice note. And whenever you want to know how you're doing, ask me “how am I doing?”.",
     "yaVinculado": "📌 This chat is already linked to your account.",
     "codigoInvalido": "🤔 That code isn't valid or has expired. Get a new one from your account on the web.",

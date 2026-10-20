@@ -635,6 +635,7 @@
     "categoriaParecida": "🤔 Ya tenés {parecida}. ¿Creo {nombre} igual?",
     "noEntendi": "😅 No te entendí. Escribime el importe y en qué fue, por ejemplo: «súper 30» o «café 3,5 ayer».",
     "noDisponible": "⏳ No pude procesar tu mensaje ahora. Volvé a mandarlo en un rato.",
+    "topeDiario": "⏳ Llegaste al tope de movimientos nuevos por hoy. Mañana podés seguir cargando, o cargalos desde la web.",
     "vinculado": "✅ Listo, este chat ya está vinculado a tu cuenta.\n\nProbá mandarme un gasto, por ejemplo «súper 15» o «café 3,5 ayer», o una nota de voz. Y cuando quieras saber cómo venís, preguntame «¿cómo vengo?».",
     "yaVinculado": "📌 Este chat ya está vinculado a tu cuenta.",
     "codigoInvalido": "🤔 Ese código no es válido o venció. Pedí uno nuevo desde tu cuenta en la web.",

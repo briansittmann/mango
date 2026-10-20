@@ -161,7 +161,7 @@ export const movementTools = [
     name: 'add_movement',
     title: 'Add a movement',
     description:
-      'Record a one-off movement: an expense (in a category), an income, a savings deposit or withdrawal, or a transfer between cash and card (only on accounts that use payment methods). The date defaults to today. Never creates a fixed charge: use create_fixed_charge for something that repeats every month. Returns the new movement with its id.',
+      'Record a one-off movement: an expense (in a category), an income, a savings deposit or withdrawal, or a transfer between cash and card (only on accounts that use payment methods). The date defaults to today. Never creates a fixed charge: use create_fixed_charge for something that repeats every month. An account adds at most 100 new movements a day (500 in its first week), counting the WhatsApp bot too. Returns the new movement with its id.',
     input: z.object({
       kind: z.enum(['expense', 'income', 'savings', 'transfer']),
       amount: amountField,
@@ -178,6 +178,10 @@ export const movementTools = [
       const plan = newMovement(kind, fields as MovementFields, localDateOf(new Date(), tc.ctx.timezone))
       await checkDate(tc, plan.draft.date)
       if (plan.kind === 'expense') await checkCategoryAlive(tc, plan.categoryId, plan.draft.date)
+      // The day's quota is spent only by a movement that passed every check (0044).
+      const { data: allowed, error } = await tc.ctx.client.rpc('consumir_cupo_altas')
+      if (error) throw new Error(error.message)
+      if (allowed !== true) throw new McpToolError('rate-limited', 'This account reached its limit of new movements for today. Try again tomorrow, or add them on the web.')
       const before = await idsLike(tc, plan)
       await apply(tc, plan)
       const created = [...(await idsLike(tc, plan))].find((id) => !before.has(id))
