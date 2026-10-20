@@ -71,7 +71,8 @@ export type ToolContext = { ctx: DataContext; usuario: Usuario }
 
 /**
  * The `DataContext` a tool runs with: the token's client and the person's `usuarios` row, which
- * RLS returns. No row, or an onboarding not finished, is `account-not-ready`.
+ * RLS returns. No row, or an onboarding not finished, is `account-not-ready`; a call past the
+ * account's quota is `rate-limited`.
  */
 export async function toolContext(authInfo: AuthInfo | undefined): Promise<ToolContext> {
   if (!authInfo) throw new McpToolError('account-not-ready', 'No signed-in account.')
@@ -80,5 +81,9 @@ export async function toolContext(authInfo: AuthInfo | undefined): Promise<ToolC
   if (!usuario || !usuario.onboarding_completo) {
     throw new McpToolError('account-not-ready', 'This Mango account is not set up yet. Finish the setup at https://www.usemango.dev, then try again.')
   }
+  // 120 calls a minute per account, across its assistants, counted in Postgres (`harden-security` D4).
+  const { data: allowed, error } = await client.rpc('consumir_cupo_mcp')
+  if (error) throw new Error(error.message)
+  if (allowed !== true) throw new McpToolError('rate-limited', 'Too many calls to Mango in the last minute. Wait a minute, then try again.')
   return { ctx: { client, usuarioId: usuario.id, currency: usuario.moneda_default, timezone: usuario.timezone }, usuario }
 }

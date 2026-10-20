@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server'
 
-import { purgeUnknownContacts } from '@/lib/data/channels'
+import { purgeUnknownContacts, purgeUsageLimits } from '@/lib/data/channels'
 import type { LocalDate } from '@/lib/data/expenses'
 import { purgeOldMessages } from '@/lib/data/messages'
 import { proyectarCiclo } from '@/lib/data/projection'
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Conversation messages past their retention (`bot-conversation-history`) and unknown numbers
-  // past theirs (`whatsapp-linking`), after the charges: a failure here is reported and blocks nothing.
+  // past theirs (`whatsapp-linking`) and rate-limit windows over a day old (`harden-security` D4), after the charges: a failure here is reported and blocks nothing.
   let purge: { purged: number } | { purgeError: string }
   try {
     purge = { purged: await purgeOldMessages() }
@@ -85,9 +85,15 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     contacts = { purgeContactsError: err instanceof Error ? err.message : String(err) }
   }
+  let limits: { purgedLimits: number } | { purgeLimitsError: string }
+  try {
+    limits = { purgedLimits: await purgeUsageLimits() }
+  } catch (err) {
+    limits = { purgeLimitsError: err instanceof Error ? err.message : String(err) }
+  }
 
-  console.log('[cron] recurrentes', JSON.stringify({ users, ...purge, ...contacts }))
-  return Response.json({ users, ...purge, ...contacts })
+  console.log('[cron] recurrentes', JSON.stringify({ users, ...purge, ...contacts, ...limits }))
+  return Response.json({ users, ...purge, ...contacts, ...limits })
 }
 
 async function runForUser(client: ReturnType<typeof supabaseAdmin>, usuario: UsuarioRow): Promise<UserReport> {

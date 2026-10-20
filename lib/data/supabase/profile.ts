@@ -1,11 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { CYCLE_LOCKED, LINK_CODE_TTL_MS, type ProfileMutations } from '@/lib/data/profile'
 import type { Channel } from '@/lib/data/users'
-import { generateLinkCode } from '@/lib/whatsapp/link'
 import { expectRows, type DataContext } from './context'
-
-/** Postgres: unique violation. */
-const UNIQUE_VIOLATION = '23505'
 
 /** Whether a stored code is still live: requested less than `LINK_CODE_TTL_MS` ago (D1). */
 export function linkCodeIsLive(code: string | null, requestedAt: string | null, now = Date.now()): boolean {
@@ -65,26 +61,11 @@ export function createSupabaseProfileMutations(ctx: DataContext): ProfileMutatio
       await update({ meta_ahorro_mensual: amount })
     },
     async requestWhatsAppLink() {
-      const { data, error } = await client
-        .from('usuarios')
-        .select('codigo_vinculacion, whatsapp_solicitado_en')
-        .eq('id', usuarioId)
-        .single<{ codigo_vinculacion: string | null; whatsapp_solicitado_en: string | null }>()
+      // The database reuses the live code or draws a new one (`pedir_codigo_vinculacion`, 0043 D2):
+      // the session's token cannot write the column, so it is no lookup oracle for other codes.
+      const { data, error } = await client.rpc('pedir_codigo_vinculacion')
       if (error) throw new Error(error.message)
-      if (linkCodeIsLive(data.codigo_vinculacion, data.whatsapp_solicitado_en)) return { code: data.codigo_vinculacion! }
-
-      // A collision with another account's code is a unique violation: three draws from 2^30.
-      for (let attempt = 0; ; attempt++) {
-        const code = generateLinkCode()
-        const result = await client
-          .from('usuarios')
-          .update({ codigo_vinculacion: code, whatsapp_solicitado_en: new Date().toISOString() })
-          .eq('id', usuarioId)
-          .select('id')
-        if (result.error?.code === UNIQUE_VIOLATION && attempt < 2) continue
-        expectRows(result)
-        return { code }
-      }
+      return { code: data as string }
     },
     async unlinkWhatsApp() {
       // The session's own channel only: the function resolves the account from the JWT (0036).

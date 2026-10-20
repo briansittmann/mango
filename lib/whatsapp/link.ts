@@ -4,19 +4,6 @@
  * here reads `process.env` — the number people write to is passed in by the page.
  */
 
-/** Uppercase letters and digits without `0`, `O`, `1` and `I`: 32 symbols, read aloud without ambiguity. */
-export const LINK_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-export const LINK_CODE_LENGTH = 6
-
-/** A fresh six-symbol code from the alphabet (`crypto.getRandomValues`, so no `Math.random`). */
-export function generateLinkCode(): string {
-  const bytes = new Uint8Array(LINK_CODE_LENGTH)
-  crypto.getRandomValues(bytes)
-  let code = ''
-  for (const byte of bytes) code += LINK_CODE_ALPHABET[byte % LINK_CODE_ALPHABET.length]
-  return code
-}
-
 /** What the person sends: `vincular K7M2PX`. */
 export function linkMessage(code: string): string {
   return `vincular ${code}`

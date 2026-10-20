@@ -1,6 +1,6 @@
 // Smoke test of the MCP tools against the real database, as Brian (add-mcp-server D12, tasks 4.2–4.9).
 //
-//   SMOKE_EMAIL=<account> node --env-file=.env.local scripts/mcp-smoke.mjs [read] [movements] [categories] [fixed] [cards] [cleanup]
+//   SMOKE_EMAIL=<account> node --env-file=.env.local scripts/mcp-smoke.mjs [read] [movements] [categories] [fixed] [cards] [direct] [cleanup]
 //
 // Talks to `/api/mcp` of a running `next dev` (MCP_URL, default http://localhost:3000) with a real
 // OAuth access token: it registers a throwaway client by DCR, approves it as Brian with a one-time
@@ -361,6 +361,27 @@ function shift(month, n) {
 }
 
 groups.cleanup = async () => {}
+
+// The assistant's token straight against the REST API (harden-security D3): a profile update and a
+// hard delete of a movement both reach no row, and the movement is still there afterwards.
+groups.direct = async (call, { usuarioId }) => {
+  const s = await call('get_summary')
+  const add = await call('add_movement', { kind: 'expense', amount: 1, description: 'Prueba MCP directa', category_id: cat(s, 'Otros').id })
+  assert.ok(add.movement?.id, JSON.stringify(add))
+  created.tx.add(add.movement.id)
+  const asAssistant = createClient(SUPABASE_URL, ANON, { auth: { persistSession: false }, global: { headers: { Authorization: `Bearer ${token}` } } })
+  const patch = await asAssistant.from('usuarios').update({ moneda_default: 'USD' }).eq('id', usuarioId).select('id')
+  assert.equal(patch.error, null, JSON.stringify(patch.error))
+  assert.equal(patch.data.length, 0, 'the profile update reaches no row')
+  const del = await asAssistant.from('transacciones').delete().eq('id', add.movement.id).select('id')
+  assert.equal(del.error, null, JSON.stringify(del.error))
+  assert.equal(del.data.length, 0, 'the hard delete reaches no row')
+  const { count } = await admin.from('transacciones').select('id', { count: 'exact', head: true }).eq('id', add.movement.id)
+  assert.equal(count, 1, 'the movement is still there')
+  const { data: usuario } = await admin.from('usuarios').select('moneda_default').eq('id', usuarioId).single()
+  assert.notEqual(usuario.moneda_default, 'USD')
+  console.log('direct: PATCH usuarios 0 rows, DELETE transacciones 0 rows, movement still there')
+}
 
 const wanted = process.argv.slice(2).length ? process.argv.slice(2) : ['read']
 const { token, cleanup, usuarioId } = await connect(EMAIL)

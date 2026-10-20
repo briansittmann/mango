@@ -5,7 +5,7 @@ import {
   processUnknownNumber,
   type BotReply,
 } from '@/lib/bot/logic'
-import { clearPendingQuestion, linkChannel, readChannelState, registerUnknownContact, setLastLoad, writePendingQuestion } from '@/lib/data/channels'
+import { allowLinkAttempt, clearPendingQuestion, linkChannel, readChannelState, registerUnknownContact, setLastLoad, writePendingQuestion } from '@/lib/data/channels'
 import { localDateOf } from '@/lib/data/supabase/cycle'
 import { messageAlreadyProcessed } from '@/lib/data/transactions'
 import { findUserIdByPhone, readConfirmationState, setConfirmedLoads } from '@/lib/data/users'
@@ -26,8 +26,8 @@ const MESSAGES = { es, en }
 
 /** The replies the adapter sends on its own: the linking ones (`whatsapp-linking`) and the one for other media (`bot-voice-messages`), per language. */
 const ADAPTER_TEXTS: AdapterTexts = {
-  es: { vinculado: es.bot.vinculado, yaVinculado: es.bot.yaVinculado, codigoInvalido: es.bot.codigoInvalido, numeroEnOtraCuenta: es.bot.numeroEnOtraCuenta, cuentaYaVinculada: es.bot.cuentaYaVinculada, soloTextoYAudio: es.bot.soloTextoYAudio },
-  en: { vinculado: en.bot.vinculado, yaVinculado: en.bot.yaVinculado, codigoInvalido: en.bot.codigoInvalido, numeroEnOtraCuenta: en.bot.numeroEnOtraCuenta, cuentaYaVinculada: en.bot.cuentaYaVinculada, soloTextoYAudio: en.bot.soloTextoYAudio },
+  es: { vinculado: es.bot.vinculado, yaVinculado: es.bot.yaVinculado, codigoInvalido: es.bot.codigoInvalido, numeroEnOtraCuenta: es.bot.numeroEnOtraCuenta, cuentaYaVinculada: es.bot.cuentaYaVinculada, vincularEspera: es.bot.vincularEspera, soloTextoYAudio: es.bot.soloTextoYAudio },
+  en: { vinculado: en.bot.vinculado, yaVinculado: en.bot.yaVinculado, codigoInvalido: en.bot.codigoInvalido, numeroEnOtraCuenta: en.bot.numeroEnOtraCuenta, cuentaYaVinculada: en.bot.cuentaYaVinculada, vincularEspera: en.bot.vincularEspera, soloTextoYAudio: en.bot.soloTextoYAudio },
 }
 
 /**
@@ -47,6 +47,7 @@ export async function handleMessages(messages: WhatsAppMessage[]): Promise<void>
       await handleIncoming(message, {
         findUserIdByPhone,
         linkChannel,
+        allowLinkAttempt,
         registerUnknownContact,
         localeOf: async (userId) => (await readConfirmationState(userId)).idioma,
         processUnknownNumber,

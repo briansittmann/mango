@@ -14,7 +14,7 @@ export type Locale = 'es' | 'en'
 /** The strings the adapter sends on its own, per locale (`bot.*` in `messages/*.json`). */
 export type AdapterTexts = Record<
   Locale,
-  { vinculado: string; yaVinculado: string; codigoInvalido: string; numeroEnOtraCuenta: string; cuentaYaVinculada: string; soloTextoYAudio: string }
+  { vinculado: string; yaVinculado: string; codigoInvalido: string; numeroEnOtraCuenta: string; cuentaYaVinculada: string; vincularEspera: string; soloTextoYAudio: string }
 >
 
 export type LinkResult = { ok: true; userId: string } | { ok: false; error: 'codigo-invalido' | 'cuenta-ya-vinculada' | 'numero-en-otra-cuenta' }
@@ -45,6 +45,8 @@ export function buttonAction(
 export type HandlerDeps = {
   findUserIdByPhone(phone: string): Promise<string | null>
   linkChannel(channel: Channel, code: string, externalId: string): Promise<LinkResult>
+  /** Spends one of the number's linking attempts (5 per hour, `harden-security` D4); false once they are gone. */
+  allowLinkAttempt(externalId: string): Promise<boolean>
   registerUnknownContact(channel: Channel, externalId: string): Promise<boolean>
   /** The account's language, for the reply to a linked or linking chat. */
   localeOf(userId: string): Promise<Locale>
@@ -66,7 +68,7 @@ export function bilingual(texts: AdapterTexts, key: keyof AdapterTexts['es']): s
 
 /**
  * In order: (1) resolve the sender; (2) a linking message is resolved here for known and unknown
- * senders alike and never reaches the parser; (3) any other message from an unknown number is
+ * senders alike and never reaches the parser, an unknown sender's only within its attempt limit; (3) any other message from an unknown number is
  * remembered and answered once, a button press ignored; (4) the known flow: a retry is discarded,
  * an unsupported media type gets its fixed reply without touching the channel, a voice note is
  * downloaded, and the rest goes to `handleKnown`.
@@ -78,6 +80,11 @@ export async function handleIncoming(message: WhatsAppMessage, deps: HandlerDeps
   if (code !== null) {
     if (userId) {
       await deps.sendText(message.phone, deps.texts[await deps.localeOf(userId)].yaVinculado)
+      return
+    }
+    // Five codes an hour per number, a successful one included: guessing a live code takes years (D4).
+    if (!(await deps.allowLinkAttempt(message.phone))) {
+      await deps.sendText(message.phone, bilingual(deps.texts, 'vincularEspera'))
       return
     }
     const result = await deps.linkChannel('whatsapp', code, message.phone)

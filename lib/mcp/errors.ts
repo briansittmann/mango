@@ -11,6 +11,7 @@ export const TOOL_ERROR_CODES = [
   'fixed-row',
   'payment-methods-not-offered',
   'account-not-ready',
+  'rate-limited',
   'failed',
 ] as const
 

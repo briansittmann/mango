@@ -2,8 +2,9 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Eye, Loader2, PencilLine, ShieldX } from "lucide-react";
+import { BadgeCheck, Eye, Loader2, PencilLine, ShieldX, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { hostKind } from "@/lib/mcp/hosts";
 import { cn } from "@/lib/utils";
 import { decideAuthorization } from "./actions";
 
@@ -17,7 +18,9 @@ const SCOPE_KEYS = {
 
 /**
  * The consent card (add-mcp-server D9): who asks, where it returns, which Mango account, what it can
- * do, and "Permitir" / "Cancelar". The host is shown because a registered name is self-declared.
+ * do, and "Permitir" / "Cancelar". The host is shown because a registered name is self-declared:
+ * claude.ai and chatgpt.com read as verified, this computer as a local app, and any other host gets
+ * a warning at the top of the card (harden-security D5).
  * One answer at a time: the chosen button folds into a spinner and both ignore further presses.
  */
 export function ConsentCard({
@@ -52,6 +55,8 @@ export function ConsentCard({
     }
   };
 
+  const kind = hostKind(host);
+  const strong = (chunks: React.ReactNode) => <strong className="font-medium text-foreground">{chunks}</strong>;
   const shared = scopes.map((scope) => (Object.hasOwn(SCOPE_KEYS, scope) ? t(SCOPE_KEYS[scope as keyof typeof SCOPE_KEYS]) : scope));
 
   return (
@@ -60,10 +65,21 @@ export function ConsentCard({
       <img src="/mango-logo-dark.svg" alt="" className="mx-auto size-14" />
       <div className="flex flex-col gap-2 text-center">
         <h1 className="text-headline-md">{t("titulo", { app: clientName })}</h1>
-        <p className="text-body-md text-muted-foreground">
-          {t.rich("vuelveA", { host, strong: (chunks) => <strong className="font-medium text-foreground">{chunks}</strong> })}
-        </p>
+        <p className="text-body-md text-muted-foreground">{t.rich(kind === "local" ? "appLocal" : "vuelveA", { host, strong })}</p>
+        {kind === "known" && (
+          <p className="flex items-center justify-center gap-1.5 text-body-sm font-medium text-brand-ink">
+            <BadgeCheck aria-hidden className="size-4 shrink-0" />
+            {t("verificado")}
+          </p>
+        )}
       </div>
+
+      {kind === "unknown" && (
+        <p data-consent-warning className="flex gap-3 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-body-md">
+          <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0 text-warning-ink" />
+          <span>{t.rich("aviso", { host, strong })}</span>
+        </p>
+      )}
 
       <dl className="rounded-lg bg-muted px-3 py-2 text-body-sm">
         <dt className="text-muted-foreground">{t("cuenta")}</dt>

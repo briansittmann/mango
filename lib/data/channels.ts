@@ -90,6 +90,35 @@ export async function linkChannel(channel: Channel, code: string, externalId: st
   return { ok: true, userId: data as string }
 }
 
+/** Linking messages a number with no channel may send per window (`harden-security` D4). */
+const LINK_ATTEMPTS = 5
+const LINK_ATTEMPT_WINDOW_SECONDS = 3600
+
+/** Spends one linking attempt of `externalId` (`consumir_cupo`, 0043); false once the hour's five are gone. */
+export async function allowLinkAttempt(externalId: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin().rpc('consumir_cupo', {
+    p_clave: `vincular:${externalId}`,
+    p_max: LINK_ATTEMPTS,
+    p_segundos: LINK_ATTEMPT_WINDOW_SECONDS,
+  })
+  if (error) throw error
+  return data === true
+}
+
+/**
+ * Deletes the rate-limit windows (`limites_uso`, 0043) that started more than a day ago: every
+ * window is an hour at most, so none of them still counts. Returns how many.
+ */
+export async function purgeUsageLimits(): Promise<number> {
+  const { count, error } = await supabaseAdmin()
+    .from('limites_uso')
+    .delete({ count: 'exact' })
+    .lt('ventana', new Date(Date.now() - 24 * 60 * 60_000).toISOString())
+
+  if (error) throw error
+  return count ?? 0
+}
+
 /**
  * Remembers a message from a number with no channel (`registrar_contacto_desconocido`, 0031,
  * design D4) and returns whether this call is the one that answers it: true once per number.
