@@ -51,11 +51,15 @@ A request without a signed-in session SHALL be able to read, write or call nothi
 - **THEN** each page renders as before
 
 ### Requirement: Every page carries security headers
-Every response of the web application SHALL forbid being framed by any site (`frame-ancestors 'none'` and `X-Frame-Options: DENY`), SHALL carry `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, and a `Permissions-Policy` that turns off camera, microphone, geolocation and payment. The protected-resource metadata SHALL stay readable from any origin.
+Every response of the web application SHALL forbid being framed by any site (`frame-ancestors 'none'` and `X-Frame-Options: DENY`), except `/demo`, which only the site itself may frame (`frame-ancestors 'self'` and `X-Frame-Options: SAMEORIGIN`) because the home shows it in the story's phone, SHALL carry `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, and a `Permissions-Policy` that turns off camera, microphone, geolocation and payment. The protected-resource metadata SHALL stay readable from any origin.
 
 #### Scenario: Consent page in a frame
 - **WHEN** another site embeds `/oauth/consent` in an iframe
 - **THEN** the browser refuses to render it
+
+#### Scenario: The home's phone shows the demo
+- **WHEN** a visitor scrolls the home to the story's phone
+- **THEN** `/demo?embed=1` renders inside it, and another site embedding `/demo` is still refused
 
 #### Scenario: Headers present
 - **WHEN** `/`, `/dashboard`, `/oauth/consent` and `/api/mcp` are requested

@@ -18,6 +18,15 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: SECURITY_HEADERS },
+      // The home's story frames /demo in its phone: only this site may frame it. Same keys, so
+      // these override the ones above.
+      {
+        source: "/demo",
+        headers: [
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+        ],
+      },
       // /auth/* are route handlers, so page metadata can't carry robots there.
       { source: "/auth/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
     ];
