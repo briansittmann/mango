@@ -198,7 +198,8 @@ function Panel({ id, tabId, active, conversation, copy }: { id: string; tabId: s
         ))}
       </ul>
       <div className="flex gap-3">
-        <span data-step="avatar" className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-foreground/[0.07] text-foreground">
+        {/* 28px against the answer's 20px first line: 4px up puts both centres on one line. */}
+        <span data-step="avatar" className="-mt-1 grid size-7 shrink-0 place-items-center rounded-full bg-foreground/[0.07] text-foreground">
           <Mark assistant={conversation.assistant} className="size-4" />
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-3 text-body-md text-foreground">
