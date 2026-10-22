@@ -47,3 +47,18 @@ test('the phone story embeds the demo without its notice', async ({ page }) => {
   await page.goto('/demo?embed=1')
   await expect(page.getByText('Estás viendo datos de ejemplo')).toHaveCount(0)
 })
+
+test('home shows the Claude and ChatGPT conversations, one at a time', async ({ page }) => {
+  await page.goto('/')
+  const section = page.getByRole('region', { name: 'Tu mes, también en Claude y ChatGPT.' })
+  const tabs = section.getByRole('tab')
+  await expect(tabs).toHaveCount(3)
+  await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true')
+  await tabs.nth(1).click()
+  await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true')
+  await expect(section.getByRole('tabpanel')).toHaveCount(1)
+  await expect(section.getByRole('tabpanel')).toContainText('Anota la cena de anoche')
+  await tabs.nth(1).press('ArrowDown')
+  await expect(tabs.nth(2)).toBeFocused()
+  await expect(section.getByRole('tabpanel')).toContainText('¿Quieres que deje de repetirlo desde noviembre?')
+})

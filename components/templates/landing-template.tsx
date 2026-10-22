@@ -8,6 +8,7 @@ import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { SplitText } from 'gsap/SplitText'
 import { ArrowRight, CheckCheck, ChevronDown } from 'lucide-react'
+import { LandingAssistants } from '@/components/organisms/landing-assistants'
 import { LandingFeatures } from '@/components/organisms/landing-features'
 import { LandingPace } from '@/components/organisms/landing-pace'
 import { LandingStory } from '@/components/organisms/landing-story'
@@ -466,6 +467,7 @@ export function LandingTemplate({ changeLanguage }: LandingTemplateProps) {
           <LandingPace />
         </div>
         <LandingFeatures />
+        <LandingAssistants />
         <div className="landing-calm">
           <Faq />
         </div>

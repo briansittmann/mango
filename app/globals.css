@@ -1690,11 +1690,128 @@ body {
   }
 }
 
+/* Claude and ChatGPT: Mango sits between the two. The one answering comes forward and ringed, the
+   wire to it lights from Mango's side and a spark runs out along it; the other steps back. */
+.assistants-peer {
+  opacity: 0.5;
+  scale: 0.9;
+  outline: 1.5px solid transparent;
+  outline-offset: 4px;
+  transition: opacity 400ms var(--ease-out), scale 600ms var(--ease-spring), outline-color 400ms var(--ease-out);
+  &[data-lit='true'] {
+    opacity: 1;
+    scale: 1;
+    outline-color: color-mix(in oklab, var(--brand) 55%, transparent);
+  }
+}
+.assistants-wire {
+  position: relative;
+  width: 2.5rem;
+  height: 1px;
+  background: color-mix(in oklab, var(--foreground) 16%, transparent);
+  @media (width >= 48rem) {
+    width: 3.5rem;
+  }
+  &::before {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, var(--brand), color-mix(in oklab, var(--brand) 25%, transparent));
+    opacity: 0;
+    transition: opacity 400ms var(--ease-out);
+    content: '';
+  }
+  &[data-side='left']::before {
+    background: linear-gradient(270deg, var(--brand), color-mix(in oklab, var(--brand) 25%, transparent));
+  }
+  &::after {
+    position: absolute;
+    top: -2.5px;
+    left: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--brand);
+    box-shadow: 0 0 12px 2px var(--brand);
+    opacity: 0;
+    content: '';
+  }
+  &[data-lit='true']::before {
+    opacity: 1;
+  }
+  &[data-lit='true']::after {
+    animation: landing-spark 1400ms var(--ease-in-out) infinite;
+  }
+  &[data-side='left'][data-lit='true']::after {
+    animation-name: landing-spark-reverse;
+  }
+}
+
+.assistants-window {
+  box-shadow: var(--landing-phone-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.assistants-tabs {
+  scrollbar-width: none;
+}
+
+/* "Mango conectado": a ring leaves the dot now and then, the connection is live. */
+.assistants-live {
+  animation: assistants-live 2400ms var(--ease-out) infinite;
+}
+@keyframes assistants-live {
+  0% {
+    box-shadow: 0 0 0 0 var(--landing-pulse);
+  }
+  60%,
+  100% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+.assistants-caret {
+  animation: assistants-caret 900ms steps(1) infinite;
+}
+@keyframes assistants-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* The window's header changes hands: the new mark spins in, the name rises. */
+@media (prefers-reduced-motion: no-preference) {
+  .assistants-swap {
+    animation: assistants-swap 700ms var(--ease-spring) both;
+  }
+  .assistants-swap-text {
+    animation: assistants-swap-text 500ms var(--ease-out) both;
+  }
+}
+@keyframes assistants-swap {
+  from {
+    opacity: 0;
+    scale: 0.4;
+    rotate: -60deg;
+    filter: blur(4px);
+  }
+}
+@keyframes assistants-swap-text {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+    filter: blur(4px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-marquee > div,
   .landing-typing,
-  .landing-wire::after {
+  .landing-wire::after,
+  .assistants-wire::after,
+  .assistants-live,
+  .assistants-caret {
     animation: none !important;
+  }
+  .assistants-peer,
+  .assistants-wire::before {
+    transition: none !important;
   }
   .landing-caption,
   .landing-chat-out,

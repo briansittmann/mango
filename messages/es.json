@@ -380,6 +380,20 @@
     "presupuestoTexto": "Ponle un tope a comida u ocio y mira cuánto te queda por semana.",
     "presupuestoComida": "Comida",
     "presupuestoOcio": "Ocio",
+    "asistentesTitulo": "Tu mes, también en Claude y ChatGPT.",
+    "asistentesTexto": "Conecta Mango a tu asistente y pregúntale en qué se te va el dinero, o pídele que anote y planifique por ti.",
+    "asistentesNota": "Lo conectas desde tu cuenta, con tu permiso, y lo desconectas cuando quieras.",
+    "asistentesConexion": "Mango conectado a Claude y a ChatGPT",
+    "asistentesEjemplos": "Ejemplos de conversación",
+    "asistentesVentana": "Conversación de ejemplo en {asistente}",
+    "asistentesConectado": "Mango conectado",
+    "asistentesHerramienta": "Usó la herramienta {herramienta} de Mango",
+    "asistentesEscribir": "Escribe un mensaje",
+    "asistentesConversaciones": [
+      { "pregunta": "¿En qué se me va el dinero este mes?", "respuesta": "Lo que más pesa es la vivienda. En comida vas justo: 310 de 400 €.", "filas": [{ "nombre": "Vivienda" }, { "nombre": "Comida" }, { "nombre": "Ocio" }], "cierre": "Te quedan 783,20 € libres hasta fin de mes." },
+      { "pregunta": "Anota la cena de anoche, 42 €, y el taxi de vuelta, 11,80", "respuesta": "Listo, los anoté con fecha de ayer:", "filas": [{ "nombre": "Cena", "detalle": "Ocio, ayer" }, { "nombre": "Taxi", "detalle": "Transporte, ayer" }], "cierre": "Tu margen libre queda en 729,40 €." },
+      { "pregunta": "Si dejo el gimnasio, ¿cuánto me queda libre en diciembre?", "respuesta": "Diciembre se proyecta con 870 € libres. El gimnasio son 40 € al mes, así que sin él tendrías 910 €.", "filas": [{ "nombre": "Diciembre" }, { "nombre": "Sin gimnasio" }], "cierre": "¿Quieres que deje de repetirlo desde noviembre?" }
+    ],
     "cierreTitulo": "Recupera el control\nde tus gastos.",
     "cierreTituloEscapa": "gastos",
     "cierreTexto": "Gratis. Solo necesitas tu correo.",
@@ -388,6 +402,7 @@
       { "pregunta": "¿Mango se conecta a mi banco?", "respuesta": "No. Tú anotas lo que gastas, por WhatsApp o desde la web. Mango no pide claves ni ve tus cuentas." },
       { "pregunta": "¿Quién lee mis mensajes?", "respuesta": "Nadie. Un modelo de lenguaje interpreta cada mensaje para sacar el importe y la categoría, y el gasto queda en tu cuenta. Solo tú lo ves." },
       { "pregunta": "¿Necesito WhatsApp?", "respuesta": "No. Puedes cargar y editar todo desde la web. WhatsApp es la forma rápida de anotar sobre la marcha." },
+      { "pregunta": "¿Puedo usar Mango desde Claude o ChatGPT?", "respuesta": "Sí. En tu cuenta copias la dirección de Mango y la pegas como conector en Claude o ChatGPT. Das permiso una vez y ya puedes preguntarle por tu mes o pedirle que anote. Lo desconectas cuando quieras." },
       { "pregunta": "¿Cuánto cuesta?", "respuesta": "Nada. Mango es gratis; si algún día hay un plan de pago, te avisaremos antes." },
       { "pregunta": "¿Funciona en mi país?", "respuesta": "Sí. Mango está en español e inglés y funciona desde cualquier país. Hoy los importes se muestran en euros o en pesos argentinos; más monedas están en camino." }
     ],

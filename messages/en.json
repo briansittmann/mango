@@ -380,6 +380,20 @@
     "presupuestoTexto": "Cap food or going out and see how much you have left per week.",
     "presupuestoComida": "Food",
     "presupuestoOcio": "Leisure",
+    "asistentesTitulo": "Your month, in Claude and ChatGPT too.",
+    "asistentesTexto": "Connect Mango to your assistant and ask where your money goes, or have it log and plan for you.",
+    "asistentesNota": "You connect it from your account, with your permission, and disconnect it whenever you like.",
+    "asistentesConexion": "Mango connected to Claude and ChatGPT",
+    "asistentesEjemplos": "Example conversations",
+    "asistentesVentana": "Example conversation in {asistente}",
+    "asistentesConectado": "Mango connected",
+    "asistentesHerramienta": "Used Mango's {herramienta} tool",
+    "asistentesEscribir": "Write a message",
+    "asistentesConversaciones": [
+      { "pregunta": "Where is my money going this month?", "respuesta": "Housing weighs the most. Food is tight: €310 of €400.", "filas": [{ "nombre": "Housing" }, { "nombre": "Food" }, { "nombre": "Leisure" }], "cierre": "You have €783.20 free until the end of the month." },
+      { "pregunta": "Log last night's dinner, €42, and the taxi home, 11.80", "respuesta": "Done, I logged both for yesterday:", "filas": [{ "nombre": "Dinner", "detalle": "Leisure, yesterday" }, { "nombre": "Taxi", "detalle": "Transport, yesterday" }], "cierre": "Your free margin is now €729.40." },
+      { "pregunta": "If I drop the gym, how much will I have free in December?", "respuesta": "December is projected at €870 free. The gym is €40 a month, so without it you'd have €910.", "filas": [{ "nombre": "December" }, { "nombre": "Without the gym" }], "cierre": "Want me to stop repeating it from November?" }
+    ],
     "cierreTitulo": "Take back control\nof your spending.",
     "cierreTituloEscapa": "spending",
     "cierreTexto": "Free. All you need is your e-mail.",
@@ -388,6 +402,7 @@
       { "pregunta": "Does Mango connect to my bank?", "respuesta": "No. You log what you spend, on WhatsApp or on the web. Mango never asks for bank credentials or sees your accounts." },
       { "pregunta": "Who reads my messages?", "respuesta": "No one. A language model reads each message to pull out the amount and the category, and the expense lands in your account. Only you can see it." },
       { "pregunta": "Do I need WhatsApp?", "respuesta": "No. You can log and edit everything on the web. WhatsApp is the quick way to jot things down on the go." },
+      { "pregunta": "Can I use Mango from Claude or ChatGPT?", "respuesta": "Yes. Copy Mango's address from your account and add it as a connector in Claude or ChatGPT. Give permission once, then ask about your month or have it log things for you. Disconnect it whenever you like." },
       { "pregunta": "How much does it cost?", "respuesta": "Nothing. Mango is free; if a paid plan ever comes, you'll hear about it first." },
       { "pregunta": "Does it work in my country?", "respuesta": "Yes. Mango is in Spanish and English and works from anywhere. Amounts are shown in euros or Argentine pesos for now; more currencies are on the way." }
     ],
