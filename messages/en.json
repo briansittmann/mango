@@ -392,7 +392,7 @@
     "asistentesConversaciones": [
       { "pregunta": "Where is my money going this month?", "respuesta": "Housing weighs the most. Food is tight: €310 of €400.", "filas": [{ "nombre": "Housing" }, { "nombre": "Food" }, { "nombre": "Leisure" }], "cierre": "You have €783.20 free until the end of the month." },
       { "pregunta": "Log last night's dinner, €42, and the taxi home, 11.80", "respuesta": "Done, I logged both for yesterday:", "filas": [{ "nombre": "Dinner", "detalle": "Leisure, yesterday" }, { "nombre": "Taxi", "detalle": "Transport, yesterday" }], "cierre": "Your free margin is now €729.40." },
-      { "pregunta": "If I drop the gym, how much will I have free in December?", "respuesta": "December is projected at €870 free. The gym is €40 a month, so without it you'd have €910.", "filas": [{ "nombre": "December" }, { "nombre": "Without the gym" }], "cierre": "Want me to stop repeating it from November?" }
+      { "pregunta": "If I sign up for a €60-a-month English course, how does December look?", "respuesta": "December is projected at €870 free. With the course you'd have €810, so you can afford it.", "filas": [{ "nombre": "December" }, { "nombre": "With the course" }], "cierre": "Want me to add it as a fixed charge from November?" }
     ],
     "cierreTitulo": "Take back control\nof your spending.",
     "cierreTituloEscapa": "spending",

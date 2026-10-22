@@ -25,7 +25,7 @@ const NAMES: Record<Assistant, string> = { claude: 'Claude', chatgpt: 'ChatGPT' 
 
 // Who answers, which of the MCP server's tools it calls and the figures of its card; the words live
 // in `inicio.asistentesConversaciones`. Figures follow `/demo`: 783,20 € free after the story's
-// three expenses, December projected at 870 €, the gym at 40 €.
+// three expenses, December projected at 870 €, a new 60 € course.
 const CONVERSATIONS: Conversation[] = [
   {
     assistant: 'claude',
@@ -41,7 +41,7 @@ const CONVERSATIONS: Conversation[] = [
     amounts: [42, 11.8],
     colors: ['var(--cat-violeta_metalico)', 'var(--cat-celeste)'],
   },
-  { assistant: 'claude', tools: ['list_fixed_charges', 'get_summary'], card: 'compare', amounts: [870, 910], colors: [] },
+  { assistant: 'claude', tools: ['get_summary'], card: 'compare', amounts: [870, 810], colors: [] },
 ]
 
 function Mark({ assistant, className }: { assistant: Assistant; className?: string }) {
@@ -151,7 +151,12 @@ function Card({ conversation, rows }: { conversation: Conversation; rows: Copy['
         <p className="text-body-sm text-muted-foreground">{rows[1].nombre}</p>
         <span className="flex flex-wrap items-baseline gap-x-2">
           <Money amount={amounts[1]} currency={CURRENCY} className="font-display text-headline-md text-brand-ink" />
-          <Money amount={amounts[1] - amounts[0]} currency={CURRENCY} signDisplay="always" className="text-body-sm font-medium text-brand-ink" />
+          <Money
+            amount={amounts[1] - amounts[0]}
+            currency={CURRENCY}
+            signDisplay="always"
+            className={cn('text-body-sm font-medium', amounts[1] < amounts[0] ? 'text-muted-foreground' : 'text-brand-ink')}
+          />
         </span>
       </div>
     </div>

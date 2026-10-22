@@ -392,7 +392,7 @@
     "asistentesConversaciones": [
       { "pregunta": "¿En qué se me va el dinero este mes?", "respuesta": "Lo que más pesa es la vivienda. En comida vas justo: 310 de 400 €.", "filas": [{ "nombre": "Vivienda" }, { "nombre": "Comida" }, { "nombre": "Ocio" }], "cierre": "Te quedan 783,20 € libres hasta fin de mes." },
       { "pregunta": "Anota la cena de anoche, 42 €, y el taxi de vuelta, 11,80", "respuesta": "Listo, los anoté con fecha de ayer:", "filas": [{ "nombre": "Cena", "detalle": "Ocio, ayer" }, { "nombre": "Taxi", "detalle": "Transporte, ayer" }], "cierre": "Tu margen libre queda en 729,40 €." },
-      { "pregunta": "Si dejo el gimnasio, ¿cuánto me queda libre en diciembre?", "respuesta": "Diciembre se proyecta con 870 € libres. El gimnasio son 40 € al mes, así que sin él tendrías 910 €.", "filas": [{ "nombre": "Diciembre" }, { "nombre": "Sin gimnasio" }], "cierre": "¿Quieres que deje de repetirlo desde noviembre?" }
+      { "pregunta": "Si me apunto a un curso de inglés de 60 € al mes, ¿cómo quedo en diciembre?", "respuesta": "Diciembre se proyecta con 870 € libres. Con el curso tendrías 810 €, así que te lo puedes permitir.", "filas": [{ "nombre": "Diciembre" }, { "nombre": "Con el curso" }], "cierre": "¿Quieres que lo añada como fijo desde noviembre?" }
     ],
     "cierreTitulo": "Recupera el control\nde tus gastos.",
     "cierreTituloEscapa": "gastos",

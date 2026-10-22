@@ -60,5 +60,5 @@ test('home shows the Claude and ChatGPT conversations, one at a time', async ({ 
   await expect(section.getByRole('tabpanel')).toContainText('Anota la cena de anoche')
   await tabs.nth(1).press('ArrowDown')
   await expect(tabs.nth(2)).toBeFocused()
-  await expect(section.getByRole('tabpanel')).toContainText('¿Quieres que deje de repetirlo desde noviembre?')
+  await expect(section.getByRole('tabpanel')).toContainText('¿Quieres que lo añada como fijo desde noviembre?')
 })
