@@ -40,7 +40,7 @@
 ## 7. Tests, deploy and round
 
 - [x] 7.1 `npm run test:unit`, `npm run lint`, `npx tsc --noEmit`, and `npm test` in Chromium, then the three browsers; report failures with output and whether they are this change's
-- [ ] 7.2 👤 Brian deploys; verify on production with curl the `401` and the metadata, and that `/login` without `next` still lands on `/dashboard`
+- [x] 7.2 👤 Brian deploys; verify on production with curl the `401` and the metadata, and that `/login` without `next` still lands on `/dashboard`
 - [ ] 7.3 Manual round in production with Claude (claude.ai custom connector, then Claude Code via `claude mcp add --transport http mango https://www.usemango.dev/api/mcp`): connect, consent, "¿cómo vengo este mes?", load an expense, move it to another category, delete and restore it, change a fixed charge "solo este mes", and check every result on `/dashboard`; record the exchange in `docs/mcp-ejemplo.md`
 - [ ] 7.4 Manual round with ChatGPT on Brian's plan: connect with developer mode or as an app, the same requests; record whether write tools are allowed on that plan and how it asks before a destructive call
 - [ ] 7.5 Remove every row the rounds created that is not real, with Brian's confirmation
