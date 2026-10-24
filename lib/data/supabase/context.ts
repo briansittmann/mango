@@ -11,17 +11,19 @@ export type DataContext = {
   usuarioId: string
   currency: string
   timezone: string
-  /** Chat message a bot write comes from (design D4); the web never sets it. */
-  origin?: { channel: Channel; externalMessageId: string }
+  /** Chat message a bot write comes from (design D4), or the MCP (no message id); the web never sets it. */
+  origin?: { channel: Channel; externalMessageId: string } | { channel: 'mcp' }
 }
 
 /**
  * Rejects a write that failed or matched no row (D13): RLS filters a foreign id to zero rows
  * instead of raising, and the contracts require a rejection with nothing changed.
  */
-/** `canal` + `mensaje_id_externo` for an insert: the idempotency key of a bot write, nothing for the web. */
+/** `canal` + `mensaje_id_externo` for an insert: the idempotency key of a bot write, `canal` alone for the MCP, nothing for the web. */
 export function originColumns(origin: DataContext['origin']) {
-  return origin ? { canal: origin.channel, mensaje_id_externo: origin.externalMessageId } : {}
+  if (!origin) return {}
+  if (origin.channel === 'mcp') return { canal: origin.channel }
+  return { canal: origin.channel, mensaje_id_externo: origin.externalMessageId }
 }
 
 export function expectRows({ data, error }: { data: unknown[] | null; error: PostgrestError | null }): void {

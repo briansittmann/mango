@@ -85,5 +85,5 @@ export async function toolContext(authInfo: AuthInfo | undefined): Promise<ToolC
   const { data: allowed, error } = await client.rpc('consumir_cupo_mcp')
   if (error) throw new Error(error.message)
   if (allowed !== true) throw new McpToolError('rate-limited', 'Too many calls to Mango in the last minute. Wait a minute, then try again.')
-  return { ctx: { client, usuarioId: usuario.id, currency: usuario.moneda_default, timezone: usuario.timezone }, usuario }
+  return { ctx: { client, usuarioId: usuario.id, currency: usuario.moneda_default, timezone: usuario.timezone, origin: { channel: 'mcp' } }, usuario }
 }
