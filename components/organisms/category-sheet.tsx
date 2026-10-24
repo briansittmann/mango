@@ -29,7 +29,7 @@ type CategorySheetProps = {
   target: ExpenseGroup | null
   currency: string
   receivingCategories: { id: string; name: string }[]
-  /** `scope` is the choice made for a budget change in a projected cycle, null otherwise. */
+  /** `scope` is the choice made for a budget change in the cycle in progress or a projected one, null otherwise. */
   onSave: (categoryId: string, draft: CategoryDraft, scope: CategoryUpdateTarget['scope']) => Promise<void>
   /** `scope`: "only this month" hides it in the displayed cycle, "from this month on" ends it there. */
   onDelete: (categoryId: string, reassignTo: string | null, scope: Scope) => Promise<void>
@@ -44,8 +44,8 @@ type CategorySheetProps = {
   /** Whether this category's card shows its budget bar. */
   progressVisible: boolean
   onToggleProgress: () => void
-  /** Opened from a projected cycle: a budget change asks how far it reaches before saving. */
-  projected?: boolean
+  /** Opened from the cycle in progress or a projected one: a budget change asks how far it reaches before saving. */
+  asksBudgetScope?: boolean
 }
 
 type Step = 'form' | 'confirmDelete'
@@ -88,7 +88,7 @@ export function CategorySheet({
   onReorder,
   progressVisible,
   onToggleProgress,
-  projected = false,
+  asksBudgetScope = false,
   fixedCount = 0,
 }: CategorySheetProps) {
   const t = useTranslations('hojaCategoria')
@@ -110,7 +110,7 @@ export function CategorySheet({
   const [error, setError] = useState<'save' | 'delete' | null>(null)
   const [nameError, setNameError] = useState(false)
   const [reassignTo, setReassignTo] = useState<string | null>(null)
-  const [scope, setScope] = useState<CategoryUpdateTarget['scope']>(null)
+  const [scope, setScope] = useState<CategoryUpdateTarget['scope']>('only')
   const [deleteScope, setDeleteScope] = useState<Scope | null>(null)
   const [createScope, setCreateScope] = useState<Scope | null>(null)
 
@@ -127,7 +127,7 @@ export function CategorySheet({
       setNameError(false)
       setStep('form')
       setReassignTo(null)
-      setScope(null)
+      setScope('only')
       setDeleteScope(null)
       setCreateScope(null)
     }
@@ -150,7 +150,7 @@ export function CategorySheet({
     fieldState.color !== initialSnapshot.color ||
     fieldState.budget !== initialSnapshot.budget
   const busy = status !== 'idle'
-  const asksScope = projected && mode === 'edit' && fieldState.budget !== initialSnapshot.budget
+  const asksScope = asksBudgetScope && mode === 'edit' && fieldState.budget !== initialSnapshot.budget
   const primaryDisabled = busy || !nameValid || !budgetValid || (asksScope && scope == null) || (mode === 'create' && createScope == null)
   const deleteDisabled = busy || deleteScope == null || (needsReceiver && !reassignTo)
   // `receivingCategories` is every category but this one, so an empty list means this is the only one.

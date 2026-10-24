@@ -72,7 +72,7 @@ export const categoryTools = [
     name: 'update_category',
     title: 'Change a category',
     description:
-      'Change a category’s name, colour, budget (a number, or null for none) or whether its card shows the budget bar. A budget in the cycle in progress (or a past month) is written for the cycle in progress, as on the dashboard. In a projected month a budget change needs scope: only_this_month or from_this_month. Name and colour are the same in every month.',
+      'Change a category’s name, colour, budget (a number, or null for none) or whether its card shows the budget bar. A budget in the cycle in progress (or a past month) is written for the cycle in progress; in the cycle in progress, scope only_this_month keeps later months on the previous budget, and from_this_month (the default) lets them follow. In a projected month a budget change needs scope: only_this_month or from_this_month. Name and colour are the same in every month.',
     input: z.object({
       id: idField.describe('The category id from get_summary.'),
       month: monthField.optional(),
@@ -95,8 +95,12 @@ export const categoryTools = [
       if (changesDraft) {
         await createSupabaseCategoryMutations(tc.ctx).update(input.id, draft, {
           cycle: data.cycle.start,
-          // A projected month without a budget change is a rename: no budget is written.
-          scope: data.cycle.projected && budgetChanges ? toScope(input.scope!) : null,
+          // A projected month without a budget change is a rename: no budget is written. A past
+          // month writes the cycle in progress with no scope, as the dashboard does.
+          scope:
+            budgetChanges && input.scope && (data.cycle.projected || data.cycle.month === data.cycle.currentMonth)
+              ? toScope(input.scope)
+              : null,
         })
       }
       if (input.show_progress !== undefined) await createSupabaseCategoryMutations(tc.ctx).setProgressVisible(input.id, input.show_progress)

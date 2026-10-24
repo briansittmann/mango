@@ -156,16 +156,30 @@ test.describe('the demo projects its sample', () => {
     }
   })
 
-  test('a budget raised in the sample reaches the October projection', async ({ page }) => {
+  test('a budget raised in the sample from this month on reaches the October projection', async ({ page }) => {
     await page.goto('/demo')
     const sheet = await openCategory(page, 'Comida')
     await sheet.getByLabel('Presupuesto').fill('500')
-    await expect(scopeChoice(sheet)).toHaveAttribute('inert', '')
+    await expect(scopeChoice(sheet)).not.toHaveAttribute('inert', '')
+    await sheet.getByText('Desde este mes en adelante').click()
     await sheet.getByRole('button', { name: 'Guardar', exact: true }).click()
     await expect(sheet).toBeHidden()
 
     await goForward(page, 1)
     await expect(cardHeader(page, 'comida')).toContainText(/Comida\s*500\s?€/)
+  })
+
+  test('a budget raised in the sample only this month (the default) stays out of October', async ({ page }) => {
+    await page.goto('/demo')
+    const sheet = await openCategory(page, 'Comida')
+    await sheet.getByLabel('Presupuesto').fill('500')
+    await expect(sheet.getByRole('radio', { name: 'Solo este mes' })).toBeChecked()
+    await sheet.getByRole('button', { name: 'Guardar', exact: true }).click()
+    await expect(sheet).toBeHidden()
+    await expect(cardHeader(page, 'comida')).toContainText(/de 500\s?€/)
+
+    await goForward(page, 1)
+    await expect(cardHeader(page, 'comida')).toContainText(/Comida\s*400\s?€/)
   })
 
   test('the previous control goes back from a projection to the sample', async ({ page }) => {
@@ -178,21 +192,17 @@ test.describe('the demo projects its sample', () => {
 })
 
 test.describe("a future cycle's budget asks how far it reaches", () => {
-  test('the question appears only for a budget change, and gates the save', async ({ page }) => {
+  test('the question appears only for a budget change, with only this month preselected', async ({ page }) => {
     await page.goto('/demo')
     await goForward(page, 3)
     const sheet = await openCategory(page, 'Comida')
     await sheet.getByLabel('Presupuesto').fill('500')
     const only = sheet.getByRole('radio', { name: 'Solo este mes' })
     const onward = sheet.getByRole('radio', { name: 'Desde este mes en adelante' })
-    await expect(only).not.toBeChecked()
+    await expect(only).toBeChecked()
     await expect(onward).not.toBeChecked()
     await expect(scopeChoice(sheet)).not.toHaveAttribute('inert', '')
     const save = sheet.getByRole('button', { name: 'Guardar', exact: true })
-    await expect(save).toBeDisabled()
-
-    await sheet.getByText('Solo este mes').click()
-    await expect(only).toBeChecked()
     await expect(save).toBeEnabled()
     await save.click()
     await expect(sheet).toBeHidden()

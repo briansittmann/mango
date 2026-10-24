@@ -34,8 +34,8 @@ export type CategoryDraft = {
 
 /**
  * Where `update` writes the budget: `cycle` is the displayed cycle's first day; `scope` is the
- * sheet's choice for a projected cycle ("solo este mes" → `'only'`, "desde este mes en
- * adelante" → `'onward'`), and `null` everywhere else. A projected cycle with `scope: null` (only
+ * sheet's choice for a budget change in the current or a projected cycle ("solo este mes" →
+ * `'only'`, "desde este mes en adelante" → `'onward'`), and `null` everywhere else. A projected cycle with `scope: null` (only
  * the name or colour changed) leaves every budget as it is.
  */
 export type CategoryUpdateTarget = { cycle: LocalDate; scope: 'only' | 'onward' | null }
@@ -57,9 +57,9 @@ export type CategoryDeleteTarget = { cycle: LocalDate; scope: 'only' | 'onward' 
  *   new card apart from the others. A budget writes `cycle`'s `BudgetRow` as an "onward" edit
  *   does; no budget writes no row. With `'only'` the category also ends in `cycle`: it lives in
  *   that one cycle, as one deleted "onward" from the next would.
- * - `update` writes the category's name, colour and budget. In the current cycle (or from a
- *   past one) the budget goes to the current cycle's `BudgetRow` only. In a projected cycle it
- *   first writes every row that cycle inherits when it holds none, then that cycle's row; with
+ * - `update` writes the category's name, colour and budget. From a past cycle the budget
+ *   goes to the current cycle's `BudgetRow` only. In the current or a projected cycle it first
+ *   writes every row that cycle inherits when it holds none, then that cycle's row; with
  *   `'only'` the following cycle, when it holds no row, keeps what it inherited before the edit
  *   (`category-editing` → *Budgets belong to one cycle*). `budget: null` writes a "no budget"
  *   marker instead of deleting; earlier cycles never change. It never touches expenses or

@@ -22,8 +22,8 @@ export function setBudget(rows: BudgetRow[], categoryId: string, amount: number 
   return [...others, { categoryId, cycle: current, amount }]
 }
 
-// A budget edit from the displayed `cycle`, as `actualizar_categoria` (0022) does it. From the
-// current cycle or a past one it writes the current cycle only. From a projected one it first
+// A budget edit from the displayed `cycle`, as `actualizar_categoria` (0046) does it. From a
+// past cycle it writes the current cycle only. From the current or a projected one it first
 // materialises that cycle; with `'only'` it also materialises `following` (the next cycle's
 // start) when it holds no row, with a marker for this category if it had nothing to inherit,
 // so the edit does not carry over. A projected cycle without a scope (a rename) changes nothing.
@@ -39,8 +39,8 @@ export function setBudgetInCycle(
   }: { current: LocalDate; cycle: LocalDate; following: LocalDate; scope: 'only' | 'onward' | null },
 ): BudgetRow[] {
   const withCurrent = copyForward(rows, current)
-  if (cycle <= current) return setBudget(withCurrent, categoryId, amount, current)
-  if (scope == null) return withCurrent
+  if (cycle < current) return setBudget(withCurrent, categoryId, amount, current)
+  if (cycle > current && scope == null) return withCurrent
 
   let next = copyForward(withCurrent, cycle)
   if (scope === 'only' && !next.some((row) => row.cycle === following)) {

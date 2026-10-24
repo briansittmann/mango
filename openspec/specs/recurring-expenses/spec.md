@@ -277,7 +277,7 @@ When a message loads an amount for a recurring expense that differs from its def
 
 ### Requirement: Every change to a recurring row asks how far it reaches
 
-Whenever a save or a delete from the entry sheet targets a row that belongs to a recurring definition, expense or income, real or projected, in any cycle, the sheet SHALL ask "Solo este mes" or "Desde este mes en adelante" (in the active language) before it runs. The question SHALL be the same control, with the same two labels in the same order, that the category sheet uses for a projected budget (`category-editing` → *A future cycle's budget asks how far it reaches*):
+Whenever a save or a delete from the entry sheet targets a row that belongs to a recurring definition, expense or income, real or projected, in any cycle, the sheet SHALL ask "Solo este mes" or "Desde este mes en adelante" (in the active language) before it runs. The question SHALL be the same control, with the same two labels in the same order, that the category sheet uses for a budget change (`category-editing` → *A budget change asks how far it reaches*):
 
 - a single choice with neither option preselected, shown in the sheet itself and not in a separate dialog
 - for a save, shown when any field differs from the value it opened with; the save action SHALL be unavailable until one is chosen

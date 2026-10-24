@@ -2343,7 +2343,7 @@ function Dashboard({ data, actions, charges, definitions, notice, cycleLoading }
         onToggleProgress={() => {
           if (categorySheetTargetGroup) void toggleProgress(categorySheetTargetGroup)
         }}
-        projected={projected}
+        asksBudgetScope={projected || currentCycle}
       />
       {actions.cards ? (
         <CardSheet

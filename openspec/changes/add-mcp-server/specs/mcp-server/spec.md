@@ -142,7 +142,7 @@ A row of a fixed charge, real or projected, SHALL be refused by `update_movement
 ### Requirement: Categories
 The server SHALL offer four category tools, each taking `month` (default the cycle in progress) and, where the dashboard asks it, `scope` (`only_this_month` or `from_this_month`):
 - `create_category`: `name`, `color` from the palette (default the first one the account does not use, never the rainbow), optional `budget`, `scope` (default `from_this_month`).
-- `update_category`: id, and any of `name`, `color`, `budget` (a number, or null for none), `show_progress`. In a projected cycle, a budget change requires `scope`; in the current cycle it writes the current cycle as the dashboard does.
+- `update_category`: id, and any of `name`, `color`, `budget` (a number, or null for none), `show_progress`. In a projected cycle, a budget change requires `scope`; in the current cycle `scope` is optional (`only_this_month` keeps later months on the previous budget; without it they follow, as `from_this_month`).
 - `delete_category`: id, `scope` (required), and `reassign_to` (another category alive in the cycle) when the scope reaches any row or fixed charge; without it in that case, the error SHALL say how many rows and fixed charges it reaches.
 - `reorder_categories`: the complete list of the ids of the categories alive in the cycle in progress (the ones `get_summary` lists), each once, in the new order; every other category of the account keeps its stored position, so the same list changes nothing.
 

@@ -100,7 +100,7 @@ A projected cycle SHALL be rendered by the same dashboard as any other, with the
 - The accumulated savings SHALL be shown, as the balance at the cycle's end: every real savings row up to the end of the cycle in progress, plus each projected cycle's savings up to and including the shown one, each counted as that cycle's savings column shows it (the larger of the target and its movements).
 - The "Añadir categoría" tile SHALL be offered as in the cycle in progress; a category created there starts in that cycle (`category-creation` → *Category creation goes through an injected operation*). No reorder mode SHALL be offered.
 - Only the categories alive in the cycle SHALL be listed.
-- The category sheet SHALL open from a card and SHALL allow changing the budget of that cycle (`category-editing` → *A future cycle's budget asks how far it reaches*).
+- The category sheet SHALL open from a card and SHALL allow changing the budget of that cycle (`category-editing` → *A budget change asks how far it reaches*).
 
 #### Scenario: Label and read-only charges
 - **WHEN** the user, in Spanish, opens the November 2026 projection

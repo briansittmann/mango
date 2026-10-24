@@ -19,7 +19,7 @@ Dashboard components SHALL change categories only through these operations.
 
 **Update:**
 - The budget SHALL be either an amount above 0 or "no budget". "No budget" SHALL remove the category's budget, and an amount SHALL set or replace it.
-- Update SHALL receive the displayed cycle and, when that cycle is a projection, the scope chosen in the sheet: "only this month" or "from this month on". The budget SHALL be written as *Budgets belong to one cycle* states for that cycle and scope; in the cycle in progress, or from a past cycle, only the current cycle's entry SHALL change, as before.
+- Update SHALL receive the displayed cycle and, when that cycle is the cycle in progress or a projection, the scope chosen in the sheet: "only this month" or "from this month on". The budget SHALL be written as *Budgets belong to one cycle* states for that cycle and scope; from a past cycle, only the current cycle's entry SHALL change, as before.
 - When the displayed cycle is a projection and no scope is given (only the name or the colour changed), update SHALL change the name and colour only, and SHALL leave every budget entry of every cycle unchanged.
 - Update SHALL NOT change any expense's amount, description, date or category, and SHALL NOT change any other category's name or colour.
 - A name already used by another of the user's live categories SHALL be rejected, and that rejection SHALL be distinguishable by the caller from every other failure. A category that ended before the cycle in progress (*A category lives from its first cycle to its last*) SHALL NOT reserve its name.
@@ -507,7 +507,7 @@ Every data source SHALL apply these rules:
 
 - **Copy into a new current cycle.** When a cycle becomes the current cycle and holds no entry for any category, every entry of the most recent earlier cycle that holds any SHALL be copied into it before any figure is computed: the same categories, the same amounts, and "no budget" entries as "no budget". A cycle that already holds at least one entry, "no budget" entries included, SHALL NOT receive a copy, so reading it again never brings back a cleared budget. An earlier cycle SHALL never receive a copy.
 - **A projected cycle inherits without writing.** A cycle after the current one SHALL be read with its own entries when it holds any, and otherwise with those of the most recent earlier cycle that holds any. Reading it SHALL write nothing.
-- **Edits in the current cycle.** Setting or changing a budget in the current cycle SHALL write the current cycle's entry for that category as that amount. Clearing it SHALL write the current cycle's entry as "no budget" rather than remove it. Entries of earlier cycles SHALL NOT change. Later cycles without entries of their own SHALL inherit the new amount, or the "no budget", through the copy.
+- **Edits in the current cycle.** Setting or changing a budget in the current cycle SHALL write the current cycle's entry for that category as that amount. Clearing it SHALL write the current cycle's entry as "no budget" rather than remove it. Entries of earlier cycles SHALL NOT change. With "from this month on" (or no scope, from a past cycle), later cycles without entries of their own SHALL inherit the new amount, or the "no budget", through the copy. With "only this month", when the following cycle holds no entry, every entry it would have inherited before the edit SHALL be written into it first, so the change does not carry over.
 - **Edits in a projected cycle.** Before a budget of a projected cycle is written, if that cycle holds no entry, every entry it inherits SHALL be written into it, so that the edited category is not the only one with an entry there. Then:
   - "from this month on" SHALL write that cycle's entry for the category; later cycles without entries of their own inherit it.
   - "only this month" SHALL also, when the following cycle holds no entry, write every entry the following cycle would have inherited before the edit, so the change does not carry over.
@@ -590,18 +590,18 @@ Every data source SHALL apply these rules:
 - **WHEN** September and October hold "ocio" 150 and the visitor deletes "ocio" from October with "Desde este mes en adelante"
 - **THEN** September still holds "ocio" 150, and no "ocio" entry exists for October or later
 
-### Requirement: A future cycle's budget asks how far it reaches
+### Requirement: A budget change asks how far it reaches
 
-When the category sheet is opened from a projected cycle and its budget field differs from the value it opened with, the sheet SHALL ask, before saving, whether the change applies "solo este mes" or "desde este mes en adelante" (in the active language), as a single choice with neither option preselected. Saving SHALL be unavailable until one is chosen. The choice SHALL NOT be shown when only the name or the colour changed, nor in the cycle in progress or a past cycle. The chosen scope SHALL be passed to the update operation with the displayed cycle.
+When the category sheet is opened from the cycle in progress or a projected cycle and its budget field differs from the value it opened with, the sheet SHALL ask, before saving, whether the change applies "solo este mes" or "desde este mes en adelante" (in the active language), as a single choice with "solo este mes" preselected. The choice SHALL NOT be shown when only the name or the colour changed, nor in a past cycle. The chosen scope SHALL be passed to the update operation with the displayed cycle.
 
 #### Scenario: The question appears only for a budget change in a projection
 - **WHEN** the visitor opens "comida" in the December projection and changes its budget from 300 to 500
-- **THEN** the sheet shows "Solo este mes" and "Desde este mes en adelante", neither selected, and the save control is unavailable
-- **AND** after choosing "Solo este mes" the save control becomes available
+- **THEN** the sheet shows "Solo este mes" and "Desde este mes en adelante", with "Solo este mes" selected, and the save control is available
 
-#### Scenario: No question in the cycle in progress
-- **WHEN** the visitor opens "comida" in the cycle in progress and changes its budget
-- **THEN** no scope choice is shown, and saving writes the current cycle's entry
+#### Scenario: The cycle in progress asks too, and keeps the change to this month by default
+- **WHEN** the visitor opens "comida" (400 €) in the cycle in progress, changes its budget to 500 and saves without touching the choice
+- **THEN** the cycle in progress shows "comida" 500 and the next projection still shows "comida" 400
+- **AND** choosing "Desde este mes en adelante" instead makes the next projection show "comida" 500
 
 #### Scenario: No question for a rename
 - **WHEN** the visitor opens "comida" in the December projection and only renames it
