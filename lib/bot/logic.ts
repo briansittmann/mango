@@ -11,6 +11,7 @@ import { createTranslator } from 'next-intl'
 
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { effectiveAmountFormat } from '@/lib/data/amount-format'
+import { recordBotEvent } from '@/lib/data/bot-events'
 import { CATEGORY_COLORS, DUPLICATE_CATEGORY_NAME } from '@/lib/data/categories'
 import { recentMessages, storeExchange, type StoredMessage } from '@/lib/data/messages'
 import { fechaEnCiclo } from '@/lib/data/projection'
@@ -66,14 +67,26 @@ export type IncomingMessage = {
   /** The row an Undo button names (design D2): the parser is skipped and that row is deleted. */
   undoId?: string
   /**
-   * A pressed answer to the pending deposit question (`payment-method`, D10): the parser is skipped
-   * and the pending amount is written as a transfer from cash or as a new income.
+   * A pressed answer to the pending question, and the parser is skipped: the deposit question
+   * (`payment-method`, D10) writes the pending amount as a transfer from cash or as a new income;
+   * the repeated fixed charge writes it as a separate expense, or nothing.
    */
-  answer?: DepositAnswer
+  answer?: QuestionAnswer
 }
 
-/** What the deposit question's two buttons stand for: cash moved into the bank, or new money. */
-export type DepositAnswer = 'transfer' | 'income'
+/**
+ * What a question's buttons stand for: cash moved into the bank or new money (the deposit), a
+ * separate payment or the same one (a fixed charge already charged this cycle).
+ */
+export type QuestionAnswer = 'transfer' | 'income' | 'repeat' | 'same'
+
+/** Each answer's button label, also how a press is stored in a VIP history. */
+const ANSWER_LABELS = {
+  transfer: 'botonDesdeEfectivo',
+  income: 'botonIngresoNuevo',
+  repeat: 'botonCargarAparte',
+  same: 'botonEraEse',
+} as const
 
 export type BotReply = (
   | { kind: 'text'; text: string }
@@ -88,8 +101,8 @@ export type BotReply = (
       kind: 'ask'
       text: string
       pending: PendingQuestion
-      /** Reply buttons, by the answer each stands for (the deposit question); the adapter builds the platform's. */
-      buttons?: { answer: DepositAnswer; label: string }[]
+      /** Reply buttons, by the answer each stands for; the adapter builds the platform's. */
+      buttons?: { answer: QuestionAnswer; label: string }[]
     }
   | {
       /**
@@ -130,6 +143,7 @@ type Turn = {
 }
 
 export async function processMessage(message: IncomingMessage): Promise<BotReply> {
+  const started = performance.now()
   // TODO: intercept the user with `onboarding_completo = false` and trigger
   // the wizard before parsing anything (§11).
   const client = supabaseAdmin()
@@ -164,20 +178,22 @@ export async function processMessage(message: IncomingMessage): Promise<BotReply
 
   if (message.undoId) {
     const reply = await undo(turn, message.undoId)
-    await remember(turn, UNDO_TEXT, reply)
+    await Promise.all([remember(turn, UNDO_TEXT, reply), record(turn, 'deshacer', started)])
     return reply
   }
 
   if (message.answer) {
-    const reply = await answerDeposit(turn, message.answer)
-    await remember(turn, t(message.answer === 'transfer' ? 'botonDesdeEfectivo' : 'botonIngresoNuevo'), reply)
+    const reply = await (message.answer === 'repeat' || message.answer === 'same'
+      ? answerRepeated(turn, message.answer)
+      : answerDeposit(turn, message.answer))
+    await Promise.all([remember(turn, t(ANSWER_LABELS[message.answer]), reply), record(turn, `boton_${message.answer}`, started)])
     return reply
   }
 
   const history = usuario.vip ? await recentMessages(usuario.id) : undefined
-  const { reply, heard } = await answer(turn, history)
+  const { reply, heard, action } = await answer(turn, history)
   // For a voice note the stored incoming text is the transcription, '🎤' alone when there is none; never the bytes (D6).
-  await remember(turn, message.audio ? heard || '🎤' : message.text, reply)
+  await Promise.all([remember(turn, message.audio ? heard || '🎤' : message.text, reply), record(turn, outcomeOf(action, reply), started)])
   return reply
 }
 
@@ -186,7 +202,7 @@ export async function processMessage(message: IncomingMessage): Promise<BotReply
  * reply starts with what was heard, a load is always confirmed in text, and `heard` is the
  * transcription for the VIP history.
  */
-async function answer(turn: Turn, history: StoredMessage[] | undefined): Promise<{ reply: BotReply; heard?: string }> {
+async function answer(turn: Turn, history: StoredMessage[] | undefined): Promise<{ reply: BotReply; heard?: string; action?: ParseResult }> {
   const { message, context, fmt, t } = turn
   const audio = message.audio
 
@@ -213,15 +229,28 @@ async function answer(turn: Turn, history: StoredMessage[] | undefined): Promise
   )
 
   const reply = await act(turn, action)
-  if (!audio) return { reply }
+  if (!audio) return { reply, action }
 
   const heard = 'transcripcion' in action ? action.transcripcion : undefined
-  if (action.accion === 'no_entendido' && !heard) return { reply: { kind: 'text', text: t('audioSinVoz') }, heard }
+  if (action.accion === 'no_entendido' && !heard) return { reply: { kind: 'text', text: t('audioSinVoz') }, heard, action }
   // `no_disponible` carries no transcription: its text goes out as it is.
-  if (reply.kind === 'none' || heard === undefined) return { reply, heard }
+  if (reply.kind === 'none' || heard === undefined) return { reply, heard, action }
 
   const text = `${t('escuche', { texto: heard })}\n${reply.text}`
-  return { reply: reply.kind === 'loaded' ? { ...reply, text, alwaysText: true } : { ...reply, text }, heard }
+  return { reply: reply.kind === 'loaded' ? { ...reply, text, alwaysText: true } : { ...reply, text }, heard, action }
+}
+
+/**
+ * What a parsed turn ended in, for `eventos_bot` (0048): a question by what it asks, a load, a
+ * load refused (the daily limit, a transfer without the feature), else the parser's action. No
+ * action means a voice note refused before the model.
+ */
+function outcomeOf(action: ParseResult | undefined, reply: BotReply): string {
+  if (!action) return 'audio_rechazado'
+  if (reply.kind === 'ask') return `pregunta_${reply.pending.pregunta}`
+  if (reply.kind === 'loaded') return 'cargado'
+  if (action.accion === 'cargar') return 'carga_rechazada'
+  return action.accion
 }
 
 /** Whether the account is offered the payment-method feature (`payment-method` → *The feature is offered by country*, D14). */
@@ -278,6 +307,15 @@ async function remember({ usuario, message }: Turn, incoming: string, reply: Bot
   }
 }
 
+/** The turn's outcome to `eventos_bot` (0048), without content. A failed write is logged: the reply still goes out. */
+async function record({ usuario, message }: Turn, outcome: string, started: number): Promise<void> {
+  try {
+    await recordBotEvent({ userId: usuario.id, channel: message.channel, outcome, voice: message.audio !== undefined, ms: performance.now() - started })
+  } catch (error) {
+    console.error('[bot] event not recorded:', error)
+  }
+}
+
 function ask({ t, context }: Turn, pending: PendingQuestion): BotReply {
   const categorias = context.categories.map((category) => category.nombre).join(', ')
   return { kind: 'ask', text: t('preguntaCategoria', { categorias }), pending }
@@ -298,14 +336,14 @@ function askDeposit(turn: Turn, action: Repreguntar): BotReply | Promise<BotRepl
     text: t('preguntaDeposito', { monto: formatBotAmount(fmt.locale, fmt.currency, action.monto, fmt.amountFormat) }),
     pending: { pregunta: 'deposito', monto: action.monto, diasAtras: action.dias_atras, descripcion },
     buttons: [
-      { answer: 'transfer', label: t('botonDesdeEfectivo') },
-      { answer: 'income', label: t('botonIngresoNuevo') },
+      { answer: 'transfer', label: t(ANSWER_LABELS.transfer) },
+      { answer: 'income', label: t(ANSWER_LABELS.income) },
     ],
   }
 }
 
 /** A pressed deposit answer: the pending amount into the bank, as cash moved there or as new income. */
-function answerDeposit(turn: Turn, answer: DepositAnswer): Promise<BotReply> | BotReply {
+function answerDeposit(turn: Turn, answer: 'transfer' | 'income'): Promise<BotReply> | BotReply {
   const pending = turn.message.pending
   // The adapter only passes an answer with the question pending; anything else is dropped.
   if (pending?.pregunta !== 'deposito' || !offersPaymentMethods(turn)) return { kind: 'none' }
@@ -321,6 +359,49 @@ function answerDeposit(turn: Turn, answer: DepositAnswer): Promise<BotReply> | B
   })
 }
 
+/**
+ * A fixed charge already charged this cycle (`bot-transaction-logging`): nothing is written, and
+ * two buttons ask whether the amount is a separate payment, to load as an ordinary expense in the
+ * charge's category under its name.
+ */
+function askRepeated(turn: Turn, definition: BotRecurring, amount: number, diasAtras: number, said: PaymentMethod | undefined): BotReply {
+  const { context, fmt, t } = turn
+  return {
+    kind: 'ask',
+    text: t('yaCargado', { nombre: definition.nombre, monto: formatBotAmount(fmt.locale, fmt.currency, amount, fmt.amountFormat) }),
+    pending: {
+      pregunta: 'cargo_repetido',
+      nombre: definition.nombre,
+      categoria: context.categories.find((c) => c.id === definition.categoria_id)?.nombre ?? '',
+      monto: amount,
+      diasAtras,
+      medioPago: said ?? null,
+    },
+    buttons: [
+      { answer: 'repeat', label: t(ANSWER_LABELS.repeat) },
+      { answer: 'same', label: t(ANSWER_LABELS.same) },
+    ],
+  }
+}
+
+/** A pressed answer to the repeated charge: the pending amount as a separate expense, or nothing. */
+function answerRepeated(turn: Turn, answer: 'repeat' | 'same'): Promise<BotReply> | BotReply {
+  const pending = turn.message.pending
+  // The adapter only passes an answer with the question pending; anything else is dropped.
+  if (pending?.pregunta !== 'cargo_repetido') return { kind: 'none' }
+  if (answer === 'same') return { kind: 'text', text: turn.t('nadaCargado', { nombre: pending.nombre }) }
+  return load(turn, {
+    accion: 'cargar',
+    tipo: 'gasto',
+    monto: pending.monto,
+    categoria: pending.categoria,
+    descripcion: pending.nombre,
+    dias_atras: pending.diasAtras,
+    recurrente: null,
+    medio_pago: offersPaymentMethods(turn) ? pending.medioPago : null,
+  })
+}
+
 async function load(turn: Turn, action: Cargar): Promise<BotReply> {
   const { data, fmt, message, usuario } = turn
   // 100 new movements a day per account, 500 in its first week, shared with the MCP (0044).
@@ -330,11 +411,13 @@ async function load(turn: Turn, action: Cargar): Promise<BotReply> {
   const date = daysBefore(fmt.today, action.dias_atras)
   const amount = Math.abs(action.monto)
   // A load that answers the pending question is confirmed in text (spec): the category question
-  // with its type and amount, or the deposit question with its amount, as a transfer or an income.
+  // with its type and amount, the deposit question with its amount, as a transfer or an income,
+  // or the repeated charge with its amount, as an expense.
   const pending = message.pending
   const answered =
     (pending?.pregunta === 'categoria' && pending.tipo === action.tipo && pending.monto === action.monto) ||
-    (pending?.pregunta === 'deposito' && pending.monto === action.monto && (action.tipo === 'transferencia' || action.tipo === 'ingreso'))
+    (pending?.pregunta === 'deposito' && pending.monto === action.monto && (action.tipo === 'transferencia' || action.tipo === 'ingreso')) ||
+    (pending?.pregunta === 'cargo_repetido' && pending.monto === action.monto && action.tipo === 'gasto')
   // The method the message said, else the account's default; only a said one is named (D10).
   const said: PaymentMethod | undefined = action.medio_pago ?? undefined
   const method = action.medio_pago ?? (offersPaymentMethods(turn) ? usuario.medio_pago_default : null)
@@ -366,7 +449,7 @@ async function load(turn: Turn, action: Cargar): Promise<BotReply> {
 
   const definition = action.recurrente ? findByName(turn.context.recurring, action.recurrente) : undefined
   if (definition) {
-    const reply = await completeRecurring(turn, definition, amount, date, answered, said)
+    const reply = await completeRecurring(turn, definition, amount, date, action.dias_atras, answered, said)
     if (reply) return reply
   }
 
@@ -395,13 +478,16 @@ async function load(turn: Turn, action: Cargar): Promise<BotReply> {
  * Completes this cycle's charge of `definition` (design D6). Null when the plan ended or the
  * definition is gone, so the caller loads an ordinary expense. An amount that differs from the
  * definition's changes only this charge, and the reply says so (`recurring-expenses`). The charge
- * keeps its definition's method unless the message said one, written on this charge only.
+ * keeps its definition's method unless the message said one, written on this charge only. A
+ * charge deleted "only this month" comes back confirmed (0047); one already charged asks whether
+ * this is a separate payment.
  */
 async function completeRecurring(
   turn: Turn,
   definition: BotRecurring,
   amount: number,
   date: string,
+  diasAtras: number,
   answered: boolean,
   said: PaymentMethod | undefined,
 ): Promise<BotReply | null> {
@@ -424,7 +510,7 @@ async function completeRecurring(
   })
 
   if (error) {
-    if (error.message === 'already-confirmed') return { kind: 'text', text: t('yaCargado', { nombre: definition.nombre }) }
+    if (error.message === 'already-confirmed') return askRepeated(turn, definition, amount, diasAtras, said)
     if (error.message === 'plan-completed' || error.message === 'not-found') return null
     throw new Error(error.message)
   }

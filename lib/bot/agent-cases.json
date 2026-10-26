@@ -1,0 +1,56 @@
+{
+  "nota": "Mensajes reales que el bot no resolvio (historial VIP de Brian, 2026-10-01 a 2026-10-26), con lo que deberia haber pasado. Es el examen del modo agente (etapa 3); se suma un caso cada vez que eventos_bot o el historial muestren uno nuevo. 'escribe' lista lo que el turno deberia cambiar en la base; vacio = solo responder.",
+  "casos": [
+    {
+      "mensaje": "Que me recomendas hacer con mi dinero ?",
+      "fecha": "2026-10-01",
+      "respuesta_de_hoy": "no_entendido",
+      "esperado": "Una lectura corta de su mes con sus propios numeros (margen libre, la categoria que mas pesa, ahorro contra la meta) y una o dos sugerencias concretas, sin consejo de inversion.",
+      "escribe": []
+    },
+    {
+      "mensaje": "Si",
+      "fecha": "2026-10-01",
+      "respuesta_de_hoy": "no_entendido",
+      "esperado": "Sin pregunta pendiente: preguntar a que se refiere, sin escribir nada.",
+      "escribe": []
+    },
+    {
+      "mensaje": "Elimina categoría mascota",
+      "fecha": "2026-10-01",
+      "respuesta_de_hoy": "no_entendido",
+      "esperado": "Si la categoria existe: preguntar con un boton si la borra solo este mes o desde este mes, y a que categoria pasan sus movimientos; si no existe, decirlo y nombrar las parecidas.",
+      "escribe": ["categoria borrada con alcance, despues de confirmar"]
+    },
+    {
+      "mensaje": "Hola",
+      "fecha": "2026-10-12",
+      "respuesta_de_hoy": "no_entendido",
+      "esperado": "Saludar y recordar en una linea que puede hacer (anotar, corregir, preguntar como viene).",
+      "escribe": []
+    },
+    {
+      "mensaje": "Hola cómo estás ?",
+      "fecha": "2026-10-14",
+      "respuesta_de_hoy": "no_entendido",
+      "esperado": "Igual que 'Hola'.",
+      "escribe": []
+    },
+    {
+      "mensaje": "4€ lightroom",
+      "fecha": "2026-10-26",
+      "contexto": "Lightroom es un fijo activo de 8 EUR, dia 12, en Suscripciones; su cargo de octubre esta borrado solo este mes.",
+      "respuesta_de_hoy": "ya_cargado (arreglado en la etapa 1 con 0047: revive el cargo a 4)",
+      "esperado": "Revivir el cargo de octubre confirmado a 4 y avisar que Lightroom sigue en 8 desde el ciclo que viene.",
+      "escribe": ["cargo de octubre de Lightroom: borrado -> confirmado, monto 4"]
+    },
+    {
+      "mensaje": "Lightroom 4€ agrégalo a suscripciones, no importa que ya esté crea uno nuevo solo para este mes",
+      "fecha": "2026-10-26",
+      "contexto": "El mismo Lightroom, con el cargo de octubre ya cobrado.",
+      "respuesta_de_hoy": "no_disponible (Gemini colgado dos veces; con la etapa 1 carga un gasto aparte)",
+      "esperado": "Un gasto comun de 4 en Suscripciones con descripcion Lightroom, sin tocar el fijo.",
+      "escribe": ["gasto 4 en Suscripciones, descripcion Lightroom"]
+    }
+  ]
+}

@@ -11,7 +11,7 @@ import { messageAlreadyProcessed } from '@/lib/data/transactions'
 import { findUserIdByPhone, readConfirmationState, setConfirmedLoads } from '@/lib/data/users'
 import es from '@/messages/es.json'
 import en from '@/messages/en.json'
-import { DEPOSIT_BUTTONS, UNDO_PREFIX, buttonAction, handleIncoming, type AdapterTexts } from './handle-message'
+import { ANSWER_BUTTONS, UNDO_PREFIX, buttonAction, handleIncoming, type AdapterTexts } from './handle-message'
 import { downloadMedia, type MediaResult } from './media'
 import { maskPhone, sendButtons, sendReaction, sendText } from './send'
 
@@ -68,7 +68,7 @@ export async function handleMessages(messages: WhatsAppMessage[]): Promise<void>
 async function handleKnown(userId: string, message: WhatsAppMessage, audio?: MediaResult): Promise<void> {
   const { pending, lastLoadId } = await readChannelState('whatsapp', message.phone)
 
-  // An Undo, or an answer to a deposit question still pending; any other press is dropped (D10).
+  // An Undo, or an answer to a question still pending; any other press is dropped (D10).
   const button = message.buttonId === undefined ? null : buttonAction(message.buttonId, pending)
   if (message.buttonId !== undefined && !button) {
     console.info(`[whatsapp] button discarded: ${message.messageId}`)
@@ -131,7 +131,7 @@ async function confirmLoad(userId: string, message: WhatsAppMessage, reply: Extr
 async function sendReply(phone: string, reply: BotReply): Promise<void> {
   if (reply.kind === 'none') return
   if (reply.kind === 'ask' && reply.buttons) {
-    await sendButtons(phone, reply.text, reply.buttons.map(({ answer, label }) => ({ id: DEPOSIT_BUTTONS[answer], title: label })))
+    await sendButtons(phone, reply.text, reply.buttons.map(({ answer, label }) => ({ id: ANSWER_BUTTONS[answer], title: label })))
     return
   }
   await sendText(phone, reply.text)

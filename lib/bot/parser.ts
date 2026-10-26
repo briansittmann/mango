@@ -117,6 +117,8 @@ export type PendingQuestion =
   | { pregunta: 'crear_categoria'; nombre: string; presupuesto: number | null; parecida: string }
   /** Income or cash moved from the cash pocket, for an amount put into the bank (`payment-method`, D10). */
   | { pregunta: 'deposito'; monto: number; diasAtras: number; descripcion: string | null }
+  /** Whether an expense naming a fixed charge already charged this cycle is a separate payment (`bot-transaction-logging`). */
+  | { pregunta: 'cargo_repetido'; nombre: string; categoria: string; monto: number; diasAtras: number; medioPago: 'efectivo' | 'tarjeta' | null }
 
 export type AudioInput = { data: Uint8Array; mimeType: string }
 
@@ -253,7 +255,7 @@ Gastos fijos activos: ${recurring}`,
 - categoria: exactamente uno de los nombres de "Categorías", escrito igual. Nunca inventes una. Si hay descripción pero ninguna categoría encaja, usá "Otros". En ingreso y ahorro, categoria es null.
 - Toda descripción, aunque sea vaga ("cosas 50"), se carga: nunca repreguntar si hay alguna palabra que describa el gasto.
 - descripcion: dos o tres palabras con mayúscula inicial ("Propina", "Nafta"); null si el mensaje solo tiene el verbo y el monto.
-- recurrente: el nombre exacto de un "Gasto fijo activo" solo cuando el mensaje lo nombra; si no, null. En ingreso y ahorro siempre null.
+- recurrente: el nombre exacto de un "Gasto fijo activo" solo cuando el mensaje lo nombra; si no, null. En ingreso y ahorro siempre null. Si el mensaje pide cargarlo aparte, como otro pago o uno nuevo aunque ya esté anotado, recurrente es null y la categoria es la que nombre o la que corresponda.
 - "cobré", "me pagaron", "propina", "sueldo" son ingreso; "ahorré", "guardé" son ahorro.
 - monto: número JSON, nunca string. La coma es separador decimal ("3,5" → 3.5); ignorá la puntuación final.
 - dias_atras: 0 si el mensaje no nombra un día; "ayer" → 1; "anteayer" → 2; "hace N días" → N. "date" es una cita (Ocio), no una fecha.
@@ -292,6 +294,11 @@ En el turno anterior el bot preguntó si crea la categoría "${nombre}" aunque y
     const base = { accion: 'cargar', monto, categoria: null, dias_atras: diasAtras, recurrente: null, medio_pago: 'tarjeta' }
     sections.push(`${PENDING_HEADER}
 En el turno anterior el bot preguntó si los ${monto} que entraron al banco (dias_atras ${diasAtras}) los pasó desde el efectivo o son un ingreso nuevo. Si este mensaje dice que vinieron del efectivo ("del efectivo", "lo pasé", "eran las propinas"), devolvé ${JSON.stringify({ ...base, tipo: 'transferencia', descripcion: null })}. Si dice que es plata nueva ("es nuevo", "me pagaron", "es un ingreso"), devolvé ${JSON.stringify({ ...base, tipo: 'ingreso', descripcion })}. Si el mensaje es otra cosa, interpretalo por sí solo e ignorá la pregunta.`)
+  } else if (input.pending?.pregunta === 'cargo_repetido') {
+    const { nombre, categoria, monto, diasAtras, medioPago } = input.pending
+    const carga = { accion: 'cargar', tipo: 'gasto', monto, categoria, descripcion: nombre, dias_atras: diasAtras, recurrente: null, medio_pago: medioPago }
+    sections.push(`${PENDING_HEADER}
+En el turno anterior el bot avisó que el gasto fijo "${nombre}" ya está cobrado este ciclo y preguntó si los ${monto} son otro pago aparte. Si este mensaje lo confirma ("sí", "cargalo", "es otro"), devolvé ${JSON.stringify(carga)}. Si el mensaje es otra cosa, interpretalo por sí solo e ignorá la pregunta.`)
   }
 
   sections.push(

@@ -25,21 +25,37 @@ export type UnknownReply = { kind: 'text'; text: string } | { kind: 'none' }
 export const UNDO_PREFIX = 'undo:'
 const UNDO_ID = /^undo:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
 
-/** The deposit question's buttons (`add-payment-method` D10), by the answer each stands for. */
-export const DEPOSIT_BUTTONS = { transfer: 'deposito:transferencia', income: 'deposito:ingreso' } as const
+/**
+ * The buttons that answer a question, by the answer each stands for: the deposit question
+ * (`add-payment-method` D10) and the fixed charge already charged this cycle.
+ */
+export const ANSWER_BUTTONS = {
+  transfer: 'deposito:transferencia',
+  income: 'deposito:ingreso',
+  repeat: 'repetido:cargar',
+  same: 'repetido:era',
+} as const
+
+/** The question each answer belongs to: a press counts only while that question is pending. */
+const QUESTION_OF: Record<keyof typeof ANSWER_BUTTONS, string> = {
+  transfer: 'deposito',
+  income: 'deposito',
+  repeat: 'cargo_repetido',
+  same: 'cargo_repetido',
+}
 
 /**
- * What a pressed button asks the logic for: the row an Undo names, or an answer to the deposit
- * question, only while that question is pending on the channel. Null discards the press.
+ * What a pressed button asks the logic for: the row an Undo names, or an answer to a question,
+ * only while that question is pending on the channel. Null discards the press.
  */
 export function buttonAction(
   buttonId: string,
   pending: { pregunta: string } | null,
-): { undoId: string } | { answer: keyof typeof DEPOSIT_BUTTONS } | null {
+): { undoId: string } | { answer: keyof typeof ANSWER_BUTTONS } | null {
   const undoId = UNDO_ID.exec(buttonId)?.[1]
   if (undoId) return { undoId }
-  const answer = (Object.keys(DEPOSIT_BUTTONS) as (keyof typeof DEPOSIT_BUTTONS)[]).find((key) => DEPOSIT_BUTTONS[key] === buttonId)
-  return answer && pending?.pregunta === 'deposito' ? { answer } : null
+  const answer = (Object.keys(ANSWER_BUTTONS) as (keyof typeof ANSWER_BUTTONS)[]).find((key) => ANSWER_BUTTONS[key] === buttonId)
+  return answer && pending?.pregunta === QUESTION_OF[answer] ? { answer } : null
 }
 
 export type HandlerDeps = {

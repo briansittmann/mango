@@ -46,7 +46,7 @@ The parsed category SHALL be matched against the account's categories by name, i
 
 ### Requirement: An expense that names a recurring expense completes its pending charge
 
-When a `cargar` of type `gasto` names one of the account's active recurring expenses, the bot SHALL complete that definition's charge for the cycle that contains the movement's local date. The charge SHALL take the loaded amount and be confirmed, and no second row SHALL be written. The completed row SHALL record the channel and message id. When the loaded amount equals the definition's expected amount, the reply SHALL be the ordinary confirmation. When it differs, the charge SHALL still be completed at the loaded amount, and the definition SHALL NOT change. The reply SHALL be the ordinary confirmation followed by a note that only this cycle changed and the definition keeps its expected amount. The bot SHALL ask nothing about it (`recurring-expenses` → *A differing amount from the bot changes only this cycle*). When that cycle's charge is already confirmed or deleted, nothing SHALL be written and the reply SHALL say the charge is already logged this cycle. When the definition has ended or is inactive, the movement SHALL be written as an ordinary expense in the definition's category with the definition's name as description. An `ingreso` SHALL never complete a recurring definition.
+When a `cargar` of type `gasto` names one of the account's active recurring expenses, the bot SHALL complete that definition's charge for the cycle that contains the movement's local date. The charge SHALL take the loaded amount and be confirmed, and no second row SHALL be written. The completed row SHALL record the channel and message id. When the loaded amount equals the definition's expected amount, the reply SHALL be the ordinary confirmation. When it differs, the charge SHALL still be completed at the loaded amount, and the definition SHALL NOT change. The reply SHALL be the ordinary confirmation followed by a note that only this cycle changed and the definition keeps its expected amount. The bot SHALL ask nothing about it (`recurring-expenses` → *A differing amount from the bot changes only this cycle*). When that cycle's charge was deleted for that cycle only, it SHALL come back confirmed at the loaded amount, as a pending one would. When it is already confirmed, nothing SHALL be written: the reply SHALL say the charge is already charged this cycle and ask, with two buttons, whether the amount is a separate payment, holding the question on the channel like any pending question. Answering yes, by button or in words, SHALL write an ordinary expense of that amount in the definition's category with the definition's name as description, confirmed in text; answering no SHALL write nothing and say so. A message that asks to load it separately, as another payment or even though it is already logged, SHALL be written as an ordinary expense without completing the definition. When the definition has ended or is inactive, the movement SHALL be written as an ordinary expense in the definition's category with the definition's name as description. An `ingreso` SHALL never complete a recurring definition.
 
 #### Scenario: Pending charge at the expected amount
 - **WHEN** the October cycle holds a pending "Netflix" charge of 13 and the account sends "netflix 13" on 5 October 2026
@@ -58,7 +58,23 @@ When a `cargar` of type `gasto` names one of the account's active recurring expe
 
 #### Scenario: Already confirmed this cycle
 - **WHEN** October's "Netflix" charge is already confirmed and the account sends "netflix 13" again
-- **THEN** nothing is written and the reply says Netflix is already logged this cycle
+- **THEN** nothing is written, and the reply says Netflix is already charged this cycle and asks, with the buttons "Sí, cargalo aparte" and "No, era ese", whether the 13 are a separate payment
+
+#### Scenario: A separate payment of a charged fixed expense
+- **WHEN** the account presses "Sí, cargalo aparte" (or answers "sí, cargalo") within 30 minutes
+- **THEN** an ordinary expense of 13 is written in Netflix's category with description "Netflix", confirmed in text, and October's Netflix charge is untouched
+
+#### Scenario: The same payment
+- **WHEN** the account presses "No, era ese"
+- **THEN** nothing is written and the reply says Netflix stays as it was
+
+#### Scenario: A charge deleted only this month
+- **WHEN** October's "Lightroom" charge of 8 was deleted for October only and the account sends "4€ lightroom"
+- **THEN** that row is no longer deleted, it is confirmed at 4, the definition still expects 8, and the reply says only this cycle changed
+
+#### Scenario: Asked to load it separately
+- **WHEN** the account sends "Lightroom 4€, no importa que ya esté, crea uno nuevo"
+- **THEN** an ordinary expense of 4 is written in the named or matching category and no charge of Lightroom changes
 
 #### Scenario: Ended plan
 - **WHEN** the account's "Cetelem" plan has reached its last repetition and the account sends "cetelem 50"

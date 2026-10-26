@@ -86,7 +86,7 @@ When the job runs, every pending charge of a cycle that has ended in its owner's
 
 ### Requirement: A charge entered for a definition completes the pending one
 
-Saving a pending charge from its row SHALL confirm it with the amount, description and date entered; no second row SHALL be created. The data layer SHALL also offer, for a definition and a cycle, one operation that completes that cycle's pending charge of the definition with a given amount and date and confirms it, or, when the cycle has no row of that definition, inserts a confirmed row linked to it and counts it as the job would. When the cycle already holds a confirmed or soft-deleted row of that definition, the operation SHALL reject with nothing changed, and the rejection SHALL be distinguishable from other failures.
+Saving a pending charge from its row SHALL confirm it with the amount, description and date entered; no second row SHALL be created. The data layer SHALL also offer, for a definition and a cycle, one operation that completes that cycle's pending charge of the definition with a given amount and date and confirms it, or, when the cycle has no row of that definition, inserts a confirmed row linked to it and counts it as the job would. When the cycle holds a soft-deleted row of that definition, the operation SHALL restore it and confirm it with the given amount and date, without counting the repetition again. When the cycle already holds a confirmed row of that definition, the operation SHALL reject with nothing changed, and the rejection SHALL be distinguishable from other failures.
 
 #### Scenario: A variable bill
 - **WHEN** the October "Luz" charge is pending at 90 € and the user opens it and saves 120 €
@@ -99,6 +99,10 @@ Saving a pending charge from its row SHALL confirm it with the amount, descripti
 #### Scenario: Nothing to complete
 - **WHEN** the operation is called for "Luz" in October after the October row was confirmed
 - **THEN** it rejects as already confirmed and no row changes
+
+#### Scenario: A row deleted for this cycle only
+- **WHEN** the operation is called for "Luz" in October with 120 € after the October row was deleted for October only
+- **THEN** that row is restored and confirmed at 120 €, no row is added, and the plan's count does not change
 
 ### Requirement: Only the scheduler can run the job
 

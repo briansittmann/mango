@@ -18,4 +18,11 @@ const authed = withMcpAuth(handler, verifyToken, {
   resourceMetadataPath: '/.well-known/oauth-protected-resource',
 })
 
-export { authed as GET, authed as POST, authed as DELETE }
+// A GET opens a stream for server messages that this stateless server never sends: it held the
+// function until Vercel's 300 s cut, once per client every five minutes (26/10 logs). The
+// transport lets a server without that stream answer 405, and clients go on over POST.
+function noStream() {
+  return new Response(null, { status: 405, headers: { Allow: 'POST, DELETE' } })
+}
+
+export { noStream as GET, authed as POST, authed as DELETE }

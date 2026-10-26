@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 
 import { purgeUnknownContacts, purgeUsageLimits } from '@/lib/data/channels'
 import type { LocalDate } from '@/lib/data/expenses'
+import { purgeBotEvents } from '@/lib/data/bot-events'
 import { purgeOldMessages } from '@/lib/data/messages'
 import { proyectarCiclo } from '@/lib/data/projection'
 import type { RecurringDefinition } from '@/lib/data/recurring'
@@ -72,7 +73,8 @@ export async function GET(request: NextRequest) {
   }
 
   // Conversation messages past their retention (`bot-conversation-history`) and unknown numbers
-  // past theirs (`whatsapp-linking`) and rate-limit windows over a day old (`harden-security` D4), after the charges: a failure here is reported and blocks nothing.
+  // past theirs (`whatsapp-linking`), rate-limit windows over a day old (`harden-security` D4) and
+  // bot events past 90 days (0048), after the charges: a failure here is reported and blocks nothing.
   let purge: { purged: number } | { purgeError: string }
   try {
     purge = { purged: await purgeOldMessages() }
@@ -92,8 +94,15 @@ export async function GET(request: NextRequest) {
     limits = { purgeLimitsError: err instanceof Error ? err.message : String(err) }
   }
 
-  console.log('[cron] recurrentes', JSON.stringify({ users, ...purge, ...contacts, ...limits }))
-  return Response.json({ users, ...purge, ...contacts, ...limits })
+  let events: { purgedEvents: number } | { purgeEventsError: string }
+  try {
+    events = { purgedEvents: await purgeBotEvents() }
+  } catch (err) {
+    events = { purgeEventsError: err instanceof Error ? err.message : String(err) }
+  }
+
+  console.log('[cron] recurrentes', JSON.stringify({ users, ...purge, ...contacts, ...limits, ...events }))
+  return Response.json({ users, ...purge, ...contacts, ...limits, ...events })
 }
 
 async function runForUser(client: ReturnType<typeof supabaseAdmin>, usuario: UsuarioRow): Promise<UserReport> {
