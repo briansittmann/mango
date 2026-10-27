@@ -149,8 +149,8 @@ export function DesktopSidebar({
           aria-label={tDashboard('irArriba')}
           className="pressable -ml-1 flex min-h-target items-center self-start rounded-full pr-3 [--press-scale:0.96]"
         >
-          {/* The fruit hangs low in its artwork; 1px up centres its body on the wordmark. */}
-          <span className="nav-fruit inline-flex -translate-y-px">
+          {/* The fruit hangs low in its artwork; 1.5px up centres its body on the wordmark. */}
+          <span className="nav-fruit inline-flex -translate-y-[1.5px]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/mango-logo-light.svg" alt="" aria-hidden className="size-11 object-contain dark:hidden" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
