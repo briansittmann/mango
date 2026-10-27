@@ -74,6 +74,65 @@ export function confirmationText({ locale, currency, amountFormat, today, t }: B
 }
 
 /**
+ * An item a batch did not write (`add-bot-batch-loads` D3), named by its name, else its amount: its
+ * fixed charge was already charged, no category fits, or a transfer the account is not offered.
+ */
+export type SkippedLoad = { name: string | null; amount: number; reason: 'cobrado' | 'sinCategoria' | 'transferencia' }
+
+/** The items a batch did not try, and why it stopped: the limit of 10, the daily limit or a failed write. */
+export type LeftOutLoads = { count: number; reason: 'limite' | 'tope' | 'error' }
+
+/**
+ * One text for a message with several movements (D4): the count, one line per row (the single
+ * confirmation without "Anotado", the method and the budget line), and one line naming what was not
+ * written. With no row, only what was not written and why.
+ */
+export function batchConfirmationText(
+  fmt: BotFormat,
+  rows: LoadSummary[],
+  { skipped, leftOut }: { skipped: SkippedLoad[]; leftOut: LeftOutLoads | null },
+): string {
+  const { locale, currency, amountFormat, t } = fmt
+  const missing = skipped.map((item) =>
+    t('noAnoteFila', { nombre: item.name ?? formatBotAmount(locale, currency, item.amount, amountFormat), motivo: item.reason }),
+  )
+  if (leftOut) missing.push(t('noAnoteResto', { cantidad: leftOut.count, motivo: leftOut.reason, conOtros: skipped.length > 0 ? 'si' : 'no' }))
+  const lista = new Intl.ListFormat(locale, { type: 'conjunction' }).format(missing)
+
+  if (rows.length === 0) return t('nadaCargadoLista', { lista })
+  const lines = [t('cargadoVarios', { cantidad: rows.length }), ...rows.map((row) => batchRowLine(fmt, row))]
+  if (missing.length > 0) lines.push(t('noAnote', { lista }))
+  return lines.join('\n')
+}
+
+function batchRowLine({ locale, currency, amountFormat, today, t }: BotFormat, load: LoadSummary): string {
+  const monto = formatBotAmount(locale, currency, Math.abs(load.amount), amountFormat)
+  const when = { cuando: load.date === today ? 'hoy' : 'otro', dia: formatBotDay(locale, today, load.date, t) }
+  const nombre =
+    load.tipo === 'gasto' ? (load.name ?? load.category)
+    : load.tipo === 'ingreso' ? (load.name ?? t('ingreso'))
+    : t('nombreFila', { tipo: load.tipo === 'transferencia' ? load.into : load.amount < 0 ? 'retiro' : 'ahorro' })
+  const conCategoria = load.tipo === 'gasto' && normalizeName(nombre) !== normalizeName(load.category) ? 'si' : 'no'
+  const categoria = load.tipo === 'gasto' ? load.category : ''
+  return t('filaVarios', { icono: loadIcon(load), nombre, monto, conCategoria, categoria, ...when })
+}
+
+/**
+ * A delete or a correction on a list that names no single row (`add-bot-batch-loads` D5): the rows
+ * with their amounts and an example naming the first one. No question is held on the channel.
+ */
+export function whichRowText(
+  { locale, currency, amountFormat, t }: BotFormat,
+  key: 'cualCorregir' | 'cualBorrar',
+  rows: { name: string; amount: number }[],
+): string {
+  const lista = new Intl.ListFormat(locale, { type: 'disjunction' }).format(
+    rows.map((row) => `${row.name} ${formatBotAmount(locale, currency, Math.abs(row.amount), amountFormat)}`),
+  )
+  return t(key, { lista, ejemplo: rows[0].name.toLocaleLowerCase(locale) })
+}
+
+/**
  * The month query's categories (design D7): spent > 0, largest first, at most `limit` in `top`;
  * `rest` counts and sums the spent categories left out, so the lines add up to the total.
  */

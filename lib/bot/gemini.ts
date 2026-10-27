@@ -1,4 +1,4 @@
-import { GoogleGenAI, type ContentListUnion } from '@google/genai'
+import { GoogleGenAI, ThinkingLevel, type ContentListUnion } from '@google/genai'
 
 import type { Model } from './parser'
 
@@ -17,6 +17,15 @@ export const GEMINI_FALLBACK_MODEL = 'gemini-3.7-flash'
  * A 34 s voice note measured 7.4 s at worst (`add-voice-messages` design), so 12 s still holds it.
  */
 export const GEMINI_TIMEOUT_MS = 12_000
+
+/**
+ * Passed on every text call when set (`add-bot-batch-loads` D6); a voice note, and any call while
+ * unset, runs the model's default thinking. With `LOW` every text case of `npm run test:parser`
+ * passed on both models and a list of 12 parses in 4–5 s instead of 11–24 s, past the timeout;
+ * voice transcriptions came back in digits ("café 350" for "café tres cincuenta"), so voice keeps
+ * the default.
+ */
+export const GEMINI_TEXT_THINKING_LEVEL: ThinkingLevel | undefined = ThinkingLevel.LOW
 
 /**
  * The parser's `model` over Gemini (design D1): JSON mode, temperature 0. The key is read inside
@@ -44,6 +53,7 @@ export function createGeminiModel(model = GEMINI_MODEL, fallback = GEMINI_FALLBA
           responseMimeType: 'application/json',
           temperature: 0,
           abortSignal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
+          ...(GEMINI_TEXT_THINKING_LEVEL && !audio ? { thinkingConfig: { thinkingLevel: GEMINI_TEXT_THINKING_LEVEL } } : {}),
         },
       })
       return response.text ?? ''

@@ -11,8 +11,8 @@
     { "mensaje": "ahorré 200", "esperado": { "accion": "cargar", "tipo": "ahorro", "monto": 200, "dias_atras": 0 } },
     { "mensaje": "saqué 100 del ahorro", "esperado": { "accion": "cargar", "tipo": "ahorro", "monto": -100, "dias_atras": 0 } },
     { "mensaje": "gasté 50", "esperado": { "accion": "repreguntar", "falta": "categoria", "tipo": "gasto", "monto": 50 }, "nota": "Repregunta ofreciendo categorías." },
-    { "mensaje": "no, era 40", "esperado": { "accion": "corregir", "monto": 40 }, "nota": "Sobre la última carga." },
-    { "mensaje": "borrá eso", "esperado": { "accion": "borrar" }, "nota": "Borra la última carga." },
+    { "mensaje": "no, era 40", "esperado": { "accion": "corregir", "monto": 40, "cual": null }, "nota": "Sobre la última carga; no nombra un movimiento." },
+    { "mensaje": "borrá eso", "esperado": { "accion": "borrar", "cual": null }, "nota": "Borra la última carga." },
     { "mensaje": "crea categoria Musica", "esperado": { "accion": "crear_categoria", "nombre": "Música", "confirmada": false } },
     { "mensaje": "osea lo que gaste esos 50 eran comida", "esperado": { "accion": "corregir", "categoria": "Comida" }, "nota": "Corrección suelta sobre la última carga (ronda del 28/9)." },
     { "mensaje": "nueva categoría Viajes, presupuesto 200", "esperado": { "accion": "crear_categoria", "nombre": "Viajes", "presupuesto": 200, "confirmada": false } },
@@ -26,6 +26,13 @@
     { "mensaje": "saqué 200", "esperado": { "accion": "cargar", "tipo": "transferencia", "monto": 200, "medio_pago": "efectivo", "categoria": null, "recurrente": null }, "nota": "Cajero: de tarjeta a efectivo." },
     { "mensaje": "deposité las propinas, 120", "esperado": { "accion": "cargar", "tipo": "transferencia", "monto": 120, "medio_pago": "tarjeta" }, "nota": "Efectivo al banco." },
     { "mensaje": "saqué 100 del ahorro", "esperado": { "accion": "cargar", "tipo": "ahorro", "monto": -100, "medio_pago": null }, "nota": "Sacar del ahorro sigue siendo ahorro, no transferencia." },
-    { "mensaje": "ingresé 200 en el banco", "esperado": { "accion": "repreguntar", "falta": "deposito", "tipo": "ingreso", "monto": 200 }, "nota": "Ingreso o depósito desde el efectivo: el bot pregunta." }
+    { "mensaje": "ingresé 200 en el banco", "esperado": { "accion": "repreguntar", "falta": "deposito", "tipo": "ingreso", "monto": 200 }, "nota": "Ingreso o depósito desde el efectivo: el bot pregunta." },
+    { "mensaje": "café 3, súper 25 y nafta 40", "esperado": { "accion": "cargar_varios", "cargas": [{ "monto": 3, "categoria": "Ocio" }, { "monto": 25, "categoria": "Comida" }, { "monto": 40, "categoria": "Transporte" }] }, "nota": "Lista por comas (add-bot-batch-loads)." },
+    { "mensaje": "súper 25\nnafta 40\ncine 12", "esperado": { "accion": "cargar_varios", "cargas": [{ "monto": 25, "categoria": "Comida" }, { "monto": 40, "categoria": "Transporte" }, { "monto": 12, "categoria": "Ocio" }] }, "nota": "Lista por líneas: antes pasaba los 12 s del timeout pensando." },
+    { "mensaje": "gasté 25 en el súper y 40 de nafta", "esperado": { "accion": "cargar_varios", "cargas": [{ "monto": 25, "categoria": "Comida" }, { "monto": 40, "categoria": "Transporte" }] }, "nota": "Lista en una frase." },
+    { "mensaje": "propina 500 y nafta 40", "esperado": { "accion": "cargar_varios", "cargas": [{ "tipo": "ingreso", "monto": 500 }, { "tipo": "gasto", "monto": 40, "categoria": "Transporte" }] }, "nota": "Tipos mezclados en una lista." },
+    { "mensaje": "la nafta era 40", "esperado": { "accion": "corregir", "monto": 40, "cual": "nafta" }, "nota": "Corrección que nombra el movimiento." },
+    { "mensaje": "borrá el cine", "esperado": { "accion": "borrar", "cual": "cine" }, "nota": "Borrado que nombra el movimiento." },
+    { "mensaje": "súper 25, nafta 40, cine 12, farmacia 8, pan 2, taxi 15, peluquería 18, helado 4, regalo 30, gimnasio 35, libro 20, café 3", "esperado": { "accion": "cargar_varios", "cargas": [{ "monto": 25 }, { "monto": 40 }, { "monto": 12 }, { "monto": 8 }, { "monto": 2 }, { "monto": 15 }, { "monto": 18 }, { "monto": 4 }, { "monto": 30 }, { "monto": 35 }, { "monto": 20 }, { "monto": 3 }] }, "nota": "Lista de 12: con el pensamiento por defecto tardaba 11–24 s y pasaba el timeout (26/10)." }
   ]
 }

@@ -31,6 +31,7 @@ import { SITE_URL } from '@/lib/metadata'
 import es from '@/messages/es.json'
 import en from '@/messages/en.json'
 import {
+  batchConfirmationText,
   confirmationText,
   daysBefore,
   formatBotAmount,
@@ -41,8 +42,10 @@ import {
   type BotTranslate,
   type LoadBudget,
   type LoadSummary,
+  whichRowText,
 } from './format'
 import { refuseVoiceNote } from './audio'
+import { loadExternalIds, precheckItem, rowToCorrect, rowsToDelete, runBatch } from './batch'
 import { createGeminiModel } from './gemini'
 import { parseMessage, type Action, type ParseResult, type PendingQuestion } from './parser'
 
@@ -128,8 +131,10 @@ const UNDO_TEXT = '↩︎ Deshacer'
 const MESSAGES = { es, en }
 
 type Cargar = Extract<Action, { accion: 'cargar' }>
+type CargarVarios = Extract<Action, { accion: 'cargar_varios' }>
 type Repreguntar = Extract<Action, { accion: 'repreguntar' }>
 type Corregir = Extract<Action, { accion: 'corregir' }>
+type Borrar = Extract<Action, { accion: 'borrar' }>
 type CrearCategoria = Extract<Action, { accion: 'crear_categoria' }>
 
 /** Everything one message is handled with, loaded once (design D9). */
@@ -242,14 +247,14 @@ async function answer(turn: Turn, history: StoredMessage[] | undefined): Promise
 
 /**
  * What a parsed turn ended in, for `eventos_bot` (0048): a question by what it asks, a load, a
- * load refused (the daily limit, a transfer without the feature), else the parser's action. No
- * action means a voice note refused before the model.
+ * load refused (the daily limit, a transfer without the feature, a list with nothing written), a
+ * list loaded, else the parser's action. No action means a voice note refused before the model.
  */
 function outcomeOf(action: ParseResult | undefined, reply: BotReply): string {
   if (!action) return 'audio_rechazado'
   if (reply.kind === 'ask') return `pregunta_${reply.pending.pregunta}`
-  if (reply.kind === 'loaded') return 'cargado'
-  if (action.accion === 'cargar') return 'carga_rechazada'
+  if (reply.kind === 'loaded') return action.accion === 'cargar_varios' ? 'cargado_varios' : 'cargado'
+  if (action.accion === 'cargar' || action.accion === 'cargar_varios') return 'carga_rechazada'
   return action.accion
 }
 
@@ -268,6 +273,8 @@ async function act(turn: Turn, action: ParseResult): Promise<BotReply> {
         return load(turn, { ...action, medio_pago: null })
       }
       return load(turn, action)
+    case 'cargar_varios':
+      return loadBatch(turn, action)
     case 'repreguntar':
       if (action.falta === 'deposito') return askDeposit(turn, action)
       return ask(turn, { pregunta: 'categoria', tipo: action.tipo, monto: action.monto, diasAtras: action.dias_atras })
@@ -276,7 +283,7 @@ async function act(turn: Turn, action: ParseResult): Promise<BotReply> {
     case 'no_disponible':
       return { kind: 'unavailable', text: t('noDisponible') }
     case 'borrar':
-      return remove(turn)
+      return remove(turn, action)
     case 'corregir':
       return correct(turn, action)
     case 'consultar':
@@ -403,13 +410,8 @@ function answerRepeated(turn: Turn, answer: 'repeat' | 'same'): Promise<BotReply
 }
 
 async function load(turn: Turn, action: Cargar): Promise<BotReply> {
-  const { data, fmt, message, usuario } = turn
-  // 100 new movements a day per account, 500 in its first week, shared with the MCP (0044).
-  const { data: allowed, error } = await data.client.rpc('consumir_cupo_altas_usuario', { p_usuario_id: usuario.id })
-  if (error) throw new Error(error.message)
-  if (allowed !== true) return { kind: 'text', text: turn.t('topeDiario') }
-  const date = daysBefore(fmt.today, action.dias_atras)
-  const amount = Math.abs(action.monto)
+  const { message, fmt, t } = turn
+  if (!(await consumeQuota(turn))) return { kind: 'text', text: t('topeDiario') }
   // A load that answers the pending question is confirmed in text (spec): the category question
   // with its type and amount, the deposit question with its amount, as a transfer or an income,
   // or the repeated charge with its amount, as an expense.
@@ -418,6 +420,77 @@ async function load(turn: Turn, action: Cargar): Promise<BotReply> {
     (pending?.pregunta === 'categoria' && pending.tipo === action.tipo && pending.monto === action.monto) ||
     (pending?.pregunta === 'deposito' && pending.monto === action.monto && (action.tipo === 'transferencia' || action.tipo === 'ingreso')) ||
     (pending?.pregunta === 'cargo_repetido' && pending.monto === action.monto && action.tipo === 'gasto')
+
+  const written = await writeMovement(turn, action, message.messageId)
+  if (written.kind === 'charged') return askRepeated(turn, written.definition, Math.abs(action.monto), action.dias_atras, action.medio_pago ?? undefined)
+  if (written.kind === 'no-category') return ask(turn, { pregunta: 'categoria', tipo: 'gasto', monto: action.monto, diasAtras: action.dias_atras })
+
+  const { summary, categoryId, differs } = written
+  const withBudget = summary.tipo === 'gasto' && categoryId ? { ...summary, budget: await budgetOf(turn, categoryId, summary.date) } : summary
+  const note = differs
+    ? t('soloEsteMes', { nombre: differs.nombre, monto: formatBotAmount(fmt.locale, fmt.currency, differs.monto_actual, fmt.amountFormat) })
+    : undefined
+  return loaded(turn, withBudget, written.id, answered || differs !== undefined, note)
+}
+
+/**
+ * `cargar_varios` (`add-bot-batch-loads` D3, D4): the items in order, each written as a single load
+ * writes it, asking nothing; one text confirms the rows and names what was not written. The first
+ * row is the Undo button's and the channel's last load (D2); with no row, the last load stays.
+ */
+async function loadBatch(turn: Turn, action: CargarVarios): Promise<BotReply> {
+  const { context, fmt } = turn
+  const offered = offersPaymentMethods(turn)
+  const outcome = await runBatch<Cargar, Written>(action.cargas, turn.message.messageId, {
+    precheck: (item) => precheckItem(item, { paymentMethods: offered, categories: context.categories, recurring: context.recurring }),
+    quota: () => consumeQuota(turn),
+    write: async (item, externalId) => {
+      // Not offered: no method is read, as for a single load.
+      const written = await writeMovement(turn, offered ? item : { ...item, medio_pago: null }, externalId)
+      if (written.kind === 'charged') return { skipped: { name: written.definition.nombre, amount: Math.abs(item.monto), reason: 'cobrado' } }
+      if (written.kind === 'no-category') return { skipped: { name: item.descripcion, amount: Math.abs(item.monto), reason: 'sinCategoria' } }
+      return { written }
+    },
+  })
+
+  const text = batchConfirmationText(fmt, outcome.rows.map((row) => row.summary), outcome)
+  const first = outcome.rows[0]
+  if (!first) return { kind: 'text', text }
+  return { kind: 'loaded', text, icon: '✅', transactionId: first.id, alwaysText: true, lastLoad: first.id }
+}
+
+/** 100 new movements a day per account, 500 in its first week, shared with the MCP (0044). */
+async function consumeQuota({ data, usuario }: Turn): Promise<boolean> {
+  const { data: allowed, error } = await data.client.rpc('consumir_cupo_altas_usuario', { p_usuario_id: usuario.id })
+  if (error) throw new Error(error.message)
+  return allowed === true
+}
+
+/**
+ * What writing one movement ended in: its row, as the confirmation names it (no budget yet), or
+ * why nothing was written: its fixed charge was already charged, or no category fits.
+ */
+type Written = {
+  kind: 'written'
+  id: string
+  summary: LoadSummary
+  /** An expense's category, for the budget line of a single load. */
+  categoryId?: string
+  /** A recurring charge completed at an amount other than its definition's. */
+  differs?: BotRecurring
+}
+type WriteResult = Written | { kind: 'charged'; definition: BotRecurring } | { kind: 'no-category' }
+
+/**
+ * Writes one movement as the bot loads it, with `externalId` as its row's message id
+ * (`add-bot-batch-loads` D2): the writer for its type, a recurring charge completed (or revived,
+ * 0047), an expense in its category by name with Otros. Shared by a single load and a batch (D3).
+ */
+async function writeMovement(turn: Turn, action: Cargar, externalId: string): Promise<WriteResult> {
+  const { fmt, message, usuario } = turn
+  const data: DataContext = { ...turn.data, origin: { channel: message.channel, externalMessageId: externalId } }
+  const date = daysBefore(fmt.today, action.dias_atras)
+  const amount = Math.abs(action.monto)
   // The method the message said, else the account's default; only a said one is named (D10).
   const said: PaymentMethod | undefined = action.medio_pago ?? undefined
   const method = action.medio_pago ?? (offersPaymentMethods(turn) ? usuario.medio_pago_default : null)
@@ -425,12 +498,12 @@ async function load(turn: Turn, action: Cargar): Promise<BotReply> {
   if (action.tipo === 'transferencia') {
     const into = action.medio_pago!
     await createSupabaseTransferMutations(data).create({ amount, into, date })
-    return loaded(turn, { tipo: 'transferencia', amount, date, into }, await writtenRowId(turn), answered)
+    return { kind: 'written', id: await writtenRowId(turn, externalId), summary: { tipo: 'transferencia', amount, date, into } }
   }
 
   if (action.tipo === 'ingreso') {
     await createSupabaseIncomeMutations(data).create({ amount, date, description: action.descripcion ?? '', paymentMethod: method })
-    return loaded(turn, { tipo: 'ingreso', amount, date, name: action.descripcion, method: said }, await writtenRowId(turn), answered)
+    return { kind: 'written', id: await writtenRowId(turn, externalId), summary: { tipo: 'ingreso', amount, date, name: action.descripcion, method: said } }
   }
 
   if (action.tipo === 'ahorro') {
@@ -444,13 +517,13 @@ async function load(turn: Turn, action: Cargar): Promise<BotReply> {
       name: action.descripcion ?? resumen(withdrawal ? 'retiro' : 'deposito'),
       alreadySaved: false,
     })
-    return loaded(turn, { tipo: 'ahorro', amount: action.monto, date }, await writtenRowId(turn), answered)
+    return { kind: 'written', id: await writtenRowId(turn, externalId), summary: { tipo: 'ahorro', amount: action.monto, date } }
   }
 
   const definition = action.recurrente ? findByName(turn.context.recurring, action.recurrente) : undefined
   if (definition) {
-    const reply = await completeRecurring(turn, definition, amount, date, action.dias_atras, answered, said)
-    if (reply) return reply
+    const result = await completeRecurring(turn, definition, amount, date, said, externalId)
+    if (result) return result
   }
 
   // A plan that ended (or vanished) since the context was read is loaded as an ordinary expense in
@@ -458,20 +531,12 @@ async function load(turn: Turn, action: Cargar): Promise<BotReply> {
   const category = definition
     ? turn.context.categories.find((c) => c.id === definition.categoria_id)
     : findCategory(turn.context.categories, action.categoria)
-  if (!category) return ask(turn, { pregunta: 'categoria', tipo: 'gasto', monto: action.monto, diasAtras: action.dias_atras })
+  if (!category) return { kind: 'no-category' }
 
   const name = definition?.nombre ?? action.descripcion
   await createSupabaseExpenseMutations(data).create(category.id, { amount, date, description: name ?? '', paymentMethod: method })
-  const summary: LoadSummary = {
-    tipo: 'gasto',
-    amount,
-    date,
-    name,
-    category: category.nombre,
-    budget: await budgetOf(turn, category.id, date),
-    method: said,
-  }
-  return loaded(turn, summary, await writtenRowId(turn), answered)
+  const summary: LoadSummary = { tipo: 'gasto', amount, date, name, category: category.nombre, budget: null, method: said }
+  return { kind: 'written', id: await writtenRowId(turn, externalId), summary, categoryId: category.id }
 }
 
 /**
@@ -479,19 +544,18 @@ async function load(turn: Turn, action: Cargar): Promise<BotReply> {
  * definition is gone, so the caller loads an ordinary expense. An amount that differs from the
  * definition's changes only this charge, and the reply says so (`recurring-expenses`). The charge
  * keeps its definition's method unless the message said one, written on this charge only. A
- * charge deleted "only this month" comes back confirmed (0047); one already charged asks whether
- * this is a separate payment.
+ * charge deleted "only this month" comes back confirmed (0047); one already charged is `charged`,
+ * which a single load asks about and a batch skips.
  */
 async function completeRecurring(
   turn: Turn,
   definition: BotRecurring,
   amount: number,
   date: string,
-  diasAtras: number,
-  answered: boolean,
   said: PaymentMethod | undefined,
-): Promise<BotReply | null> {
-  const { usuario, data, message, context, fmt, t } = turn
+  externalId: string,
+): Promise<WriteResult | null> {
+  const { usuario, data, message, context } = turn
   const range = await cycleRange(data.client, {
     diaInicio: usuario.dia_inicio_ciclo,
     timezone: usuario.timezone,
@@ -505,12 +569,12 @@ async function completeRecurring(
     p_monto: amount,
     p_fecha: date,
     p_canal: message.channel,
-    p_mensaje_id_externo: message.messageId,
+    p_mensaje_id_externo: externalId,
     p_medio_pago: said ?? null,
   })
 
   if (error) {
-    if (error.message === 'already-confirmed') return askRepeated(turn, definition, amount, diasAtras, said)
+    if (error.message === 'already-confirmed') return { kind: 'charged', definition }
     if (error.message === 'plan-completed' || error.message === 'not-found') return null
     throw new Error(error.message)
   }
@@ -521,14 +585,16 @@ async function completeRecurring(
     date,
     name: definition.nombre,
     category: context.categories.find((c) => c.id === definition.categoria_id)?.nombre ?? definition.nombre,
-    budget: await budgetOf(turn, definition.categoria_id, date),
+    budget: null,
     method: said,
   }
-  const differs = amount !== definition.monto_actual
-  const note = differs
-    ? t('soloEsteMes', { nombre: definition.nombre, monto: formatBotAmount(fmt.locale, fmt.currency, definition.monto_actual, fmt.amountFormat) })
-    : undefined
-  return loaded(turn, summary, id as string, answered || differs, note)
+  return {
+    kind: 'written',
+    id: id as string,
+    summary,
+    categoryId: definition.categoria_id,
+    differs: amount !== definition.monto_actual ? definition : undefined,
+  }
 }
 
 function loaded({ fmt }: Turn, summary: LoadSummary, transactionId: string, alwaysText: boolean, note?: string): BotReply {
@@ -543,14 +609,14 @@ function loaded({ fmt }: Turn, summary: LoadSummary, transactionId: string, alwa
   }
 }
 
-/** The row this message's creator just wrote: `(usuario_id, canal, mensaje_id_externo)` is unique (design D1). */
-async function writtenRowId({ data, message }: Turn): Promise<string> {
+/** The row a creator just wrote with `externalId`: `(usuario_id, canal, mensaje_id_externo)` is unique (design D1). */
+async function writtenRowId({ data, message }: Turn, externalId: string): Promise<string> {
   const { data: row, error } = await data.client
     .from('transacciones')
     .select('id')
     .eq('usuario_id', data.usuarioId)
     .eq('canal', message.channel)
-    .eq('mensaje_id_externo', message.messageId)
+    .eq('mensaje_id_externo', externalId)
     .single<{ id: string }>()
   if (error) throw error
   return row.id
@@ -586,22 +652,38 @@ type LoadRow = {
   categoria: { nombre: string } | null
 }
 
+const LOAD_COLUMNS = 'id, tipo, monto, fecha, descripcion, categoria_id, movimiento_recurrente_id, ciclo_mes, medio_pago, mensaje_id_externo, categoria:categorias(nombre)'
+
 /**
- * A load the chat may change (design D3): the account's own row, not deleted and confirmed. A
- * recurring charge that a delete reopened is pending again, so it no longer counts as a load.
+ * The rows of a load the chat may change (design D3, `add-bot-batch-loads` D2): the named row, read
+ * whatever its state, gives the message id; the load is every confirmed, not deleted row of the
+ * account and channel with that id or with `#2`…`#10`, in written order. A recurring charge that a
+ * delete reopened is pending again, so it no longer counts. A single load has no siblings.
  */
-async function readLoad({ data }: Turn, id: string | undefined): Promise<LoadRow | null> {
-  if (!id) return null
-  const { data: row, error } = await data.client
+async function readLoad({ data }: Turn, id: string | undefined): Promise<LoadRow[]> {
+  if (!id) return []
+  const named = await data.client
     .from('transacciones')
-    .select('id, tipo, monto, fecha, descripcion, categoria_id, movimiento_recurrente_id, ciclo_mes, medio_pago, categoria:categorias(nombre)')
+    .select('canal, mensaje_id_externo')
     .eq('id', id)
+    .eq('usuario_id', data.usuarioId)
+    .maybeSingle<{ canal: string | null; mensaje_id_externo: string | null }>()
+  if (named.error) throw named.error
+  if (!named.data) return []
+
+  const { canal, mensaje_id_externo } = named.data
+  const ids = canal && mensaje_id_externo ? loadExternalIds(mensaje_id_externo) : null
+  const query = data.client
+    .from('transacciones')
+    .select(LOAD_COLUMNS)
     .eq('usuario_id', data.usuarioId)
     .eq('estado', 'confirmada')
     .is('borrado_en', null)
-    .maybeSingle<LoadRow>()
+  const { data: rows, error } = await (ids ? query.eq('canal', canal).in('mensaje_id_externo', ids) : query.eq('id', id))
   if (error) throw error
-  return row ? { ...row, monto: Number(row.monto) } : null
+  return (rows as unknown as (LoadRow & { mensaje_id_externo: string | null })[])
+    .map((row) => ({ ...row, monto: Number(row.monto) }))
+    .sort((a, b) => (ids ? ids.indexOf(a.mensaje_id_externo!) - ids.indexOf(b.mensaje_id_externo!) : 0))
 }
 
 /**
@@ -652,37 +734,68 @@ function describeLoad({ fmt, usuario }: Turn, row: LoadRow, amount = Math.abs(ro
   }
 }
 
-async function remove(turn: Turn): Promise<BotReply> {
-  const row = await readLoad(turn, turn.message.lastLoadId)
-  if (!row) return { kind: 'text', text: turn.t('nadaQueCorregir'), lastLoad: null }
-
-  await deleteLoad(turn, row)
-  return { kind: 'text', text: turn.t('borrado', describeLoad(turn, row)), lastLoad: null }
+/** How a delete or an undo names what it removed: the row, or how many and their total. */
+function removedText(turn: Turn, rows: LoadRow[], one: 'borrado' | 'deshecho', several: 'borradoVarios' | 'deshechoVarios'): string {
+  const { fmt, t } = turn
+  if (rows.length === 1) return t(one, describeLoad(turn, rows[0]))
+  const total = rows.reduce((sum, row) => sum + Math.abs(row.monto), 0)
+  return t(several, { cantidad: rows.length, total: formatBotAmount(fmt.locale, fmt.currency, total, fmt.amountFormat) })
 }
 
-/** Undo deletes the row its button names, even when newer loads exist (design D2). */
-async function undo(turn: Turn, id: string): Promise<BotReply> {
-  const row = await readLoad(turn, id)
-  if (!row) return { kind: 'text', text: turn.t('yaDeshecho') }
+/** A row as the "which one?" replies list it: its description, else its category, else its type. */
+function rowName({ t }: Turn, row: LoadRow): string {
+  if (row.descripcion) return row.descripcion
+  if (row.categoria) return row.categoria.nombre
+  if (row.tipo === 'ingreso') return t('ingreso')
+  return t('nombreFila', { tipo: row.tipo === 'transferencia' ? (row.medio_pago ?? 'tarjeta') : row.monto < 0 ? 'retiro' : 'ahorro' })
+}
 
-  await deleteLoad(turn, row)
+function whichRow(turn: Turn, key: 'cualCorregir' | 'cualBorrar', rows: LoadRow[]): BotReply {
+  return { kind: 'text', text: whichRowText(turn.fmt, key, rows.map((row) => ({ name: rowName(turn, row), amount: row.monto }))) }
+}
+
+/**
+ * `borrar` (`add-bot-batch-loads` D5): every row of the last load, or the one row a list's message
+ * names; a name that matches no single row deletes nothing and asks which one. Rows left keep the
+ * load as the channel's last.
+ */
+async function remove(turn: Turn, action: Borrar): Promise<BotReply> {
+  const rows = await readLoad(turn, turn.message.lastLoadId)
+  if (rows.length === 0) return { kind: 'text', text: turn.t('nadaQueCorregir'), lastLoad: null }
+
+  const targets = rowsToDelete(rows, action.cual)
+  if (!targets) return whichRow(turn, 'cualBorrar', rows)
+
+  for (const row of targets) await deleteLoad(turn, row)
+  return { kind: 'text', text: removedText(turn, targets, 'borrado', 'borradoVarios'), lastLoad: targets.length === rows.length ? null : undefined }
+}
+
+/** Undo deletes every standing row of the load its button names, even when newer loads exist (design D2). */
+async function undo(turn: Turn, id: string): Promise<BotReply> {
+  const rows = await readLoad(turn, id)
+  if (rows.length === 0) return { kind: 'text', text: turn.t('yaDeshecho') }
+
+  for (const row of rows) await deleteLoad(turn, row)
   return {
     kind: 'text',
-    text: turn.t('deshecho', describeLoad(turn, row)),
+    text: removedText(turn, rows, 'deshecho', 'deshechoVarios'),
     lastLoad: id === turn.message.lastLoadId ? null : undefined,
   }
 }
 
 /**
- * `corregir` on the channel's last load (design D3). A category moves an expense through the
+ * `corregir` on one row of the channel's last load (design D3). A category moves an expense through the
  * web's own update. An amount goes through the contract for ordinary expenses and incomes, and
  * as a direct update of `monto` for savings (no update in their contract) and recurring charges
  * (the definition never changes). A withdrawal stays negative.
  */
 async function correct(turn: Turn, action: Corregir): Promise<BotReply> {
   const { data, context, usuario, t } = turn
-  const row = await readLoad(turn, turn.message.lastLoadId)
-  if (!row) return { kind: 'text', text: t('nadaQueCorregir'), lastLoad: null }
+  const rows = await readLoad(turn, turn.message.lastLoadId)
+  if (rows.length === 0) return { kind: 'text', text: t('nadaQueCorregir'), lastLoad: null }
+  // On a list, only the row the message names (`add-bot-batch-loads` D5); otherwise it asks which one.
+  const row = rowToCorrect(rows, action.cual)
+  if (!row) return whichRow(turn, 'cualCorregir', rows)
 
   const amount = action.monto ?? Math.abs(row.monto)
   // A correction never changes the method (`bot-transaction-logging` → *A load carries its payment method*).
