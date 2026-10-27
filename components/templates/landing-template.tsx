@@ -7,7 +7,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { SplitText } from 'gsap/SplitText'
-import { ArrowRight, CheckCheck, ChevronDown } from 'lucide-react'
+import { ArrowRight, CheckCheck, ChevronDown, Loader2 } from 'lucide-react'
 import { LandingAssistants } from '@/components/organisms/landing-assistants'
 import { LandingFeatures } from '@/components/organisms/landing-features'
 import { LandingPace } from '@/components/organisms/landing-pace'
@@ -82,11 +82,47 @@ function spotlight(event: PointerEvent<HTMLElement>) {
   event.currentTarget.style.setProperty('--y', `${event.clientY - top}px`)
 }
 
+// "Ver la demo" while /demo loads: the label rolls away, a spinner takes its place and a brand edge
+// runs around the pill. A second press does nothing; coming back from the bfcache frees it.
+function DemoLink({ label }: { label: string }) {
+  const [pending, setPending] = useState(false)
+
+  useEffect(() => {
+    const reset = (event: PageTransitionEvent) => event.persisted && setPending(false)
+    addEventListener('pageshow', reset)
+    return () => removeEventListener('pageshow', reset)
+  }, [])
+
+  return (
+    <Link
+      href="/demo"
+      aria-busy={pending || undefined}
+      data-pending={pending || undefined}
+      onPointerMove={spotlight}
+      onPointerDown={ripple}
+      onClick={(event) => {
+        if (pending) event.preventDefault()
+        else if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && event.button === 0) setPending(true)
+      }}
+      className="landing-demo liquid-glass pressable inline-flex h-12 items-center rounded-full px-6 text-body-lg font-medium text-foreground"
+    >
+      <span className="sr-only">{label}</span>
+      <span aria-hidden className="text-roll">
+        {[...label].map((char, index) => (
+          <span key={index} style={{ '--i': index } as CSSProperties}>
+            {char === ' ' ? NBSP : char}
+          </span>
+        ))}
+      </span>
+      <Loader2 aria-hidden className="demo-spinner absolute inset-0 m-auto size-5 animate-spin" />
+    </Link>
+  )
+}
+
 // `hero` marks the hero's pair: once it scrolls out, the nav's "Entrar" turns into "Empezar".
 function Actions({ delay = 0, className, hero }: { delay?: number; className?: string; hero?: boolean }) {
   const t = useTranslations('inicio')
   const root = useRef<HTMLDivElement>(null)
-  const demo = t('verDemo')
 
   // Buttons spring up from below, one after the other, the first time they come into view.
   useLayoutEffect(() => {
@@ -116,20 +152,7 @@ function Actions({ delay = 0, className, hero }: { delay?: number; className?: s
         {t('empezar')}
         <ArrowRight className="size-4 transition-transform duration-300 ease-spring group-hover:translate-x-1" aria-hidden />
       </Link>
-      <Link
-        href="/demo"
-        onPointerMove={spotlight}
-        className="landing-demo liquid-glass pressable inline-flex h-12 items-center rounded-full px-6 text-body-lg font-medium text-foreground"
-      >
-        <span className="sr-only">{demo}</span>
-        <span aria-hidden className="text-roll">
-          {[...demo].map((char, index) => (
-            <span key={index} style={{ '--i': index } as CSSProperties}>
-              {char === ' ' ? NBSP : char}
-            </span>
-          ))}
-        </span>
-      </Link>
+      <DemoLink label={t('verDemo')} />
     </div>
   )
 }

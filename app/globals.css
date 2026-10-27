@@ -1363,6 +1363,49 @@ body {
   }
 }
 
+/* "Ver la demo" once pressed (`DemoLink`): the letters roll up and blur away, the spinner fades in
+   behind them, the glow fills the pill and a brand arc runs around its edge until /demo arrives. */
+@property --demo-turn {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+.demo-spinner {
+  opacity: 0;
+  scale: 0.6;
+  transition: opacity 200ms var(--ease-out), scale 400ms var(--ease-spring);
+}
+.landing-demo[data-pending] {
+  cursor: progress;
+  .text-roll > span {
+    translate: 0 -1.25em;
+    opacity: 0;
+    filter: blur(4px);
+    transition: translate 400ms var(--ease-out) calc(var(--i) * 14ms), opacity 250ms var(--ease-out) calc(var(--i) * 14ms),
+      filter 250ms var(--ease-out) calc(var(--i) * 14ms);
+  }
+  .demo-spinner {
+    opacity: 1;
+    scale: 1;
+    transition-delay: 150ms;
+  }
+  &::before {
+    opacity: 1;
+    background: radial-gradient(closest-side, color-mix(in oklab, var(--brand) 24%, transparent), transparent);
+  }
+  &::after {
+    opacity: 1;
+    padding: 1.5px;
+    background: conic-gradient(from var(--demo-turn), transparent 0 50%, var(--brand) 85%, transparent);
+    animation: demo-turn 1s linear infinite;
+  }
+}
+@keyframes demo-turn {
+  to {
+    --demo-turn: 360deg;
+  }
+}
+
 /* Story: the step captions cross-fade in place. */
 .landing-caption {
   opacity: 0;
@@ -1804,6 +1847,7 @@ body {
   .landing-marquee > div,
   .landing-typing,
   .landing-wire::after,
+  .landing-demo::after,
   .assistants-wire::after,
   .assistants-live,
   .assistants-caret {
