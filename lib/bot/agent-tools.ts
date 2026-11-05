@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import { callTool } from '@/lib/mcp/envelope'
 import { MCP_INSTRUCTIONS } from '@/lib/mcp/instructions'
-import { readTools } from '@/lib/mcp/tools/read'
+import { TOOLS } from '@/lib/mcp/tools'
 import type { ToolContext } from '@/lib/mcp/context'
 import type { DataContext } from '@/lib/data/supabase/context'
 import type { Usuario } from '@/lib/data/supabase/user'
@@ -12,17 +12,19 @@ import { buildAgentPrompt, type AgentTool } from './agent'
 import { formatBotAmount, type BotFormat } from './format'
 
 /**
- * The MCP's read tools as the agent's tools (`add-bot-agent-mode` D3): the same `readTools`, run
- * through the same envelope (`invalid-input` for a bad argument, one log line without content),
- * on a `ToolContext` built from the bot's turn. The admin client has no RLS: the three reads filter
- * by the account's id themselves, as `resumenMensual` always did for the bot. Nothing writes.
+ * The MCP's nineteen tools as the agent's tools (`add-bot-agent-mode` D3, `add-bot-agent-writes`
+ * D1): the same `TOOLS`, run through the same envelope (`invalid-input` for a bad argument, one log
+ * line without content), on a `ToolContext` built from the bot's turn. The admin client has no RLS:
+ * every tool filters by the account's id itself, as `resumenMensual` always did for the bot.
+ * A tool that is not read-only is `confirm`: the loop never runs it, the person approves it first.
  */
 export function agentToolsFor(data: DataContext, usuario: Usuario, channel: Channel): AgentTool[] {
-  const context = async (): Promise<ToolContext> => ({ ctx: data, usuario })
-  return readTools.map((tool) => ({
+  const context = async (): Promise<ToolContext> => ({ ctx: data, usuario, admin: true })
+  return TOOLS.map((tool) => ({
     name: tool.name,
     description: tool.description,
     parameters: parametersOf(tool.input),
+    confirm: !tool.annotations.readOnlyHint,
     run: async (args) =>
       (await callTool(tool, args, { context, userIdOf: (tc) => tc.usuario.id, clientId: channel, log: (line) => console.info(line) })).structuredContent,
   }))

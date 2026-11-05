@@ -3,6 +3,7 @@
  * `lib/whatsapp/adapter.ts` does with one message, written so `adapter.test.mjs` can run it with
  * the data functions and the sends faked. Only relative imports to pure modules, so Node loads it.
  */
+import { oggOpusDurationSeconds } from '../bot/audio.ts'
 import { parseLinkMessage } from './link.ts'
 
 import type { MediaResult } from './media.ts'
@@ -11,10 +12,25 @@ import type { WhatsAppMessage } from './payload.ts'
 export type Channel = 'whatsapp' | 'telegram'
 export type Locale = 'es' | 'en'
 
+/**
+ * A voice note at least this long gets "dame un momento" before the logic runs
+ * (`add-bot-agent-writes` D5): two model calls over it can outlast the typing indicator's 25 s.
+ */
+export const LONG_AUDIO_SECONDS = 10
+
 /** The strings the adapter sends on its own, per locale (`bot.*` in `messages/*.json`). */
 export type AdapterTexts = Record<
   Locale,
-  { vinculado: string; yaVinculado: string; codigoInvalido: string; numeroEnOtraCuenta: string; cuentaYaVinculada: string; vincularEspera: string; soloTextoYAudio: string }
+  {
+    vinculado: string
+    yaVinculado: string
+    codigoInvalido: string
+    numeroEnOtraCuenta: string
+    cuentaYaVinculada: string
+    vincularEspera: string
+    soloTextoYAudio: string
+    unMomento: string
+  }
 >
 
 export type LinkResult = { ok: true; userId: string } | { ok: false; error: 'codigo-invalido' | 'cuenta-ya-vinculada' | 'numero-en-otra-cuenta' }
@@ -34,6 +50,8 @@ export const ANSWER_BUTTONS = {
   income: 'deposito:ingreso',
   repeat: 'repetido:cargar',
   same: 'repetido:era',
+  confirm: 'agente:si',
+  cancel: 'agente:no',
 } as const
 
 /** The question each answer belongs to: a press counts only while that question is pending. */
@@ -42,6 +60,8 @@ const QUESTION_OF: Record<keyof typeof ANSWER_BUTTONS, string> = {
   income: 'deposito',
   repeat: 'cargo_repetido',
   same: 'cargo_repetido',
+  confirm: 'agente',
+  cancel: 'agente',
 }
 
 /**
@@ -71,6 +91,8 @@ export type HandlerDeps = {
   messageAlreadyProcessed(userId: string, messageId: string): Promise<boolean>
   /** Fetches a voice note's bytes from the platform (`add-voice-messages` D2). Never throws. */
   downloadMedia(id: string): Promise<MediaResult>
+  /** Marks the message read and shows "typing…" until the reply, 25 s at most (`add-bot-agent-writes` D5). Never throws. */
+  markTyping(messageId: string): Promise<void>
   /** The known flow after the checks above: channel state, logic, confirmation. `audio` is set for a voice note. */
   handleKnown(userId: string, message: WhatsAppMessage, audio?: MediaResult): Promise<void>
   sendText(phone: string, text: string): Promise<void>
@@ -86,8 +108,9 @@ export function bilingual(texts: AdapterTexts, key: keyof AdapterTexts['es']): s
  * In order: (1) resolve the sender; (2) a linking message is resolved here for known and unknown
  * senders alike and never reaches the parser, an unknown sender's only within its attempt limit; (3) any other message from an unknown number is
  * remembered and answered once, a button press ignored; (4) the known flow: a retry is discarded,
- * an unsupported media type gets its fixed reply without touching the channel, a voice note is
- * downloaded, and the rest goes to `handleKnown`.
+ * an unsupported media type gets its fixed reply without touching the channel, the chat shows
+ * "typing…", a voice note is downloaded (a long one is acknowledged first), and the rest goes to
+ * `handleKnown`.
  */
 export async function handleIncoming(message: WhatsAppMessage, deps: HandlerDeps): Promise<void> {
   const userId = await deps.findUserIdByPhone(message.phone)
@@ -133,7 +156,14 @@ export async function handleIncoming(message: WhatsAppMessage, deps: HandlerDeps
     return
   }
 
+  // Read and "typing…" while the models work: the person knows the message got through.
+  await deps.markTyping(message.messageId)
+
   // A voice note is downloaded here, after the idempotency check, so a retry never downloads (D2).
   const audio = message.audio ? await deps.downloadMedia(message.audio.id) : undefined
+  // A long note can take two model calls past the indicator's 25 s: say so before starting.
+  if (audio && 'data' in audio && (oggOpusDurationSeconds(audio.data) ?? 0) >= LONG_AUDIO_SECONDS) {
+    await deps.sendText(message.phone, deps.texts[await deps.localeOf(userId)].unMomento)
+  }
   await deps.handleKnown(userId, message, audio)
 }

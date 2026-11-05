@@ -42,7 +42,20 @@ export async function sendTemplate(phone: string, name: string, language: string
   })
 }
 
+/**
+ * Marks the person's message as read and shows "typing…" until the reply goes out, or 25 s at
+ * most (`add-bot-agent-writes` D5): the person sees the bot is on it while the model thinks.
+ * A status, not a message: no `to`. Never throws, like `sendText`.
+ */
+export async function sendTyping(phone: string, messageId: string): Promise<void> {
+  await post(phone, 'typing', { status: 'read', message_id: messageId, typing_indicator: { type: 'text' } })
+}
+
 async function send(phone: string, what: string, message: Record<string, unknown>): Promise<boolean> {
+  return post(phone, what, { to: phone.replace(/\D/g, ''), ...message })
+}
+
+async function post(phone: string, what: string, body: Record<string, unknown>): Promise<boolean> {
   const token = process.env.WHATSAPP_TOKEN
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
 
@@ -55,7 +68,7 @@ async function send(phone: string, what: string, message: Record<string, unknown
     const response = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messaging_product: 'whatsapp', to: phone.replace(/\D/g, ''), ...message }),
+      body: JSON.stringify({ messaging_product: 'whatsapp', ...body }),
     })
 
     if (!response.ok) {

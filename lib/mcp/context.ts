@@ -67,7 +67,12 @@ export async function verifyToken(_req: Request, bearer?: string): Promise<AuthI
   }
 }
 
-export type ToolContext = { ctx: DataContext; usuario: Usuario }
+export type ToolContext = {
+  ctx: DataContext
+  usuario: Usuario
+  /** Set by the bot's agent (`add-bot-agent-writes` D1): `ctx.client` is the admin client, so the RPCs that read `auth.uid()` take the account's id instead. */
+  admin?: true
+}
 
 /**
  * The `DataContext` a tool runs with: the token's client and the person's `usuarios` row, which

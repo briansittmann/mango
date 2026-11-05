@@ -46,7 +46,7 @@ import {
   whichRowText,
 } from './format'
 import { agentPromptFor, agentToolsFor } from './agent-tools'
-import { runAgent } from './agent'
+import { AGENT_TIMEOUT_MS, narrateResults, runAgent } from './agent'
 import { refuseVoiceNote } from './audio'
 import { loadExternalIds, precheckItem, rowToCorrect, rowsToDelete, runBatch } from './batch'
 import { createGeminiAgentCall, createGeminiModel } from './gemini'
@@ -75,16 +75,18 @@ export type IncomingMessage = {
   /**
    * A pressed answer to the pending question, and the parser is skipped: the deposit question
    * (`payment-method`, D10) writes the pending amount as a transfer from cash or as a new income;
-   * the repeated fixed charge writes it as a separate expense, or nothing.
+   * the repeated fixed charge writes it as a separate expense, or nothing; the agent's question
+   * runs the writes it proposed, or drops them (`add-bot-agent-writes` D3).
    */
   answer?: QuestionAnswer
 }
 
 /**
  * What a question's buttons stand for: cash moved into the bank or new money (the deposit), a
- * separate payment or the same one (a fixed charge already charged this cycle).
+ * separate payment or the same one (a fixed charge already charged this cycle), go ahead or leave
+ * it (the writes the agent proposed).
  */
-export type QuestionAnswer = 'transfer' | 'income' | 'repeat' | 'same'
+export type QuestionAnswer = 'transfer' | 'income' | 'repeat' | 'same' | 'confirm' | 'cancel'
 
 /** Each answer's button label, also how a press is stored in a VIP history. */
 const ANSWER_LABELS = {
@@ -92,7 +94,18 @@ const ANSWER_LABELS = {
   income: 'botonIngresoNuevo',
   repeat: 'botonCargarAparte',
   same: 'botonEraEse',
+  confirm: 'botonSiDale',
+  cancel: 'botonNo',
 } as const
+
+/** A typed "sí" while the agent's question is pending counts as the button (`add-bot-agent-writes` D3). */
+const YES_WORDS = /^(s[ií]|dale|ok|okey|confirmo|hacelo|yes|sure|do it)\b/i
+
+/**
+ * The webhook's `maxDuration` is 60 s and the parser already spent one or two calls; the agent
+ * gets what is left of this, at most `AGENT_TIMEOUT_MS`, so the reply still goes out.
+ */
+const TURN_BUDGET_MS = 50_000
 
 export type BotReply = (
   | { kind: 'text'; text: string }
@@ -103,10 +116,11 @@ export type BotReply = (
       text: string
     }
   | {
-      /** A VIP account's agent wrote `text` from the account's figures (`add-bot-agent-mode`); `tools` names what it read. */
+      /** A VIP account's agent wrote `text` from the account's figures (`add-bot-agent-mode`); `tools` names what it read, or what it wrote after the person confirmed (`wrote`). */
       kind: 'agent'
       text: string
       tools: string[]
+      wrote?: true
     }
   | {
       /** A question: the adapter holds `pending` on the channel for 30 minutes, then sends `text`. */
@@ -156,6 +170,8 @@ type Turn = {
   t: ReturnType<typeof createTranslator<typeof es, 'bot'>>
   /** A VIP account's recent messages, oldest first; the parser and the agent read them. */
   history?: StoredMessage[]
+  /** `performance.now()` when the message arrived: the agent's budget is what is left of the turn. */
+  started: number
 }
 
 export async function processMessage(message: IncomingMessage): Promise<BotReply> {
@@ -190,6 +206,7 @@ export async function processMessage(message: IncomingMessage): Promise<BotReply
       t: t as BotTranslate,
     },
     t,
+    started,
   }
 
   if (message.undoId) {
@@ -199,9 +216,11 @@ export async function processMessage(message: IncomingMessage): Promise<BotReply
   }
 
   if (message.answer) {
-    const reply = await (message.answer === 'repeat' || message.answer === 'same'
-      ? answerRepeated(turn, message.answer)
-      : answerDeposit(turn, message.answer))
+    const reply = await (message.answer === 'confirm' || message.answer === 'cancel'
+      ? answerAgent(turn, message.answer)
+      : message.answer === 'repeat' || message.answer === 'same'
+        ? answerRepeated(turn, message.answer)
+        : answerDeposit(turn, message.answer))
     await Promise.all([remember(turn, t(ANSWER_LABELS[message.answer]), reply), record(turn, `boton_${message.answer}`, started)])
     return reply
   }
@@ -264,7 +283,7 @@ async function answer(turn: Turn, history: StoredMessage[] | undefined): Promise
  */
 function outcomeOf(action: ParseResult | undefined, reply: BotReply): string {
   if (!action) return 'audio_rechazado'
-  if (reply.kind === 'agent') return 'agente'
+  if (reply.kind === 'agent') return reply.wrote ? 'agente_escribio' : 'agente'
   if (reply.kind === 'unavailable' && (action.accion === 'preguntar' || action.accion === 'no_entendido')) return 'agente_no_disponible'
   if (reply.kind === 'ask') return `pregunta_${reply.pending.pregunta}`
   if (reply.kind === 'loaded') return action.accion === 'cargar_varios' ? 'cargado_varios' : 'cargado'
@@ -293,8 +312,10 @@ async function act(turn: Turn, action: ParseResult): Promise<BotReply> {
       if (action.falta === 'deposito') return askDeposit(turn, action)
       return ask(turn, { pregunta: 'categoria', tipo: action.tipo, monto: action.monto, diasAtras: action.dias_atras })
     case 'no_entendido':
+      if (confirmsInText(turn)) return confirmAgent(turn)
       return turn.usuario.vip ? askAgent(turn, action) : { kind: 'text', text: t('noEntendi') }
     case 'preguntar':
+      if (confirmsInText(turn)) return confirmAgent(turn)
       // Without the agent, the month query already lists every category (D2).
       return turn.usuario.vip ? askAgent(turn, action) : query(turn, 'mes')
     case 'no_disponible':
@@ -311,10 +332,12 @@ async function act(turn: Turn, action: ParseResult): Promise<BotReply> {
 }
 
 /**
- * Agent mode (`add-bot-agent-mode` D1, D3, D6): a VIP account's open question, or a message the
- * parser did not understand, goes to the function-calling loop over the MCP's read tools, with the
- * history as previous turns. For a voice note the message is the transcription; none heard is
- * `noEntendi`, as before. Nothing is written and no question is held.
+ * Agent mode (`add-bot-agent-mode` D1, D3, D6; `add-bot-agent-writes` D2, D3): a VIP account's open
+ * question, or a message the parser did not understand, goes to the function-calling loop over the
+ * MCP's tools, with the history as previous turns. For a voice note the message is the
+ * transcription; none heard is `noEntendi`, as before. A write the model asked for is not run:
+ * the reply is its question with two buttons, and the writes wait on the channel as the pending
+ * question `agente`.
  */
 async function askAgent(turn: Turn, action: ParseResult): Promise<BotReply> {
   const { usuario, message, context, data, fmt, t } = turn
@@ -327,9 +350,75 @@ async function askAgent(turn: Turn, action: ParseResult): Promise<BotReply> {
     message: text,
     tools: agentToolsFor(data, usuario, message.channel),
     call: createGeminiAgentCall(),
+    budgetMs: agentBudget(turn),
   })
   if (result.kind === 'unavailable') return { kind: 'unavailable', text: t('noDisponible') }
+  if (result.kind === 'confirm') {
+    return {
+      kind: 'ask',
+      text: result.text,
+      pending: { pregunta: 'agente', llamadas: result.calls },
+      buttons: [
+        { answer: 'confirm', label: t(ANSWER_LABELS.confirm) },
+        { answer: 'cancel', label: t(ANSWER_LABELS.cancel) },
+      ],
+    }
+  }
   return { kind: 'agent', text: result.text, tools: result.toolCalls }
+}
+
+/** What is left of the turn for the agent, at most `AGENT_TIMEOUT_MS`. */
+function agentBudget(turn: Turn): number {
+  return Math.min(AGENT_TIMEOUT_MS, TURN_BUDGET_MS - (performance.now() - turn.started))
+}
+
+/** A typed "sí" (or "dale", "ok"…) while the agent's writes are pending: the parser sees no question to confirm, so it comes as `no_entendido`. */
+function confirmsInText({ message }: Turn): boolean {
+  return message.pending?.pregunta === 'agente' && YES_WORDS.test(message.text.trim())
+}
+
+/** A pressed answer to the agent's question: "Sí" runs the writes it proposed, "No" drops them. */
+function answerAgent(turn: Turn, answer: 'confirm' | 'cancel'): Promise<BotReply> | BotReply {
+  // The adapter only passes an answer with the question pending; anything else is dropped.
+  if (turn.message.pending?.pregunta !== 'agente') return { kind: 'none' }
+  if (answer === 'cancel') return { kind: 'text', text: turn.t('agenteCancelado') }
+  return confirmAgent(turn)
+}
+
+/**
+ * The person approved (`add-bot-agent-writes` D3): the pending writes run in order, one by one,
+ * through the same tools the agent proposed them with (the envelope validates the arguments again,
+ * so a bad one is an error object, not a throw), and one model call without tools says what was
+ * done. The writes already happened, so a model that never answers still gets a fixed text.
+ */
+async function confirmAgent(turn: Turn): Promise<BotReply> {
+  const { usuario, message, context, data, fmt, t } = turn
+  const pending = message.pending
+  if (pending?.pregunta !== 'agente') return { kind: 'none' }
+
+  const tools = new Map(agentToolsFor(data, usuario, message.channel).map((tool) => [tool.name, tool]))
+  const results: Parameters<typeof narrateResults>[0]['results'] = []
+  for (const { name, args } of pending.llamadas) {
+    const tool = tools.get(name)
+    const response = tool ? await tool.run(args) : { code: 'unknown-tool', message: `No tool is named ${name}.` }
+    results.push({ name, args, response })
+  }
+  const failed = results.some((result) => 'code' in result.response)
+
+  const history = turn.history ?? (usuario.vip ? await recentMessages(usuario.id) : [])
+  const text = await narrateResults({
+    system: agentPromptFor(usuario, fmt, context.categories.map((category) => category.nombre)),
+    history,
+    results,
+    call: createGeminiAgentCall(),
+    budgetMs: agentBudget(turn),
+  })
+  return {
+    kind: 'agent',
+    text: text ?? (failed ? t('agenteFallo', { link: `${SITE_URL}/dashboard` }) : t('agenteHecho')),
+    tools: results.map((result) => result.name),
+    wrote: true,
+  }
 }
 
 /**

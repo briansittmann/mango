@@ -178,8 +178,10 @@ export const movementTools = [
       const plan = newMovement(kind, fields as MovementFields, localDateOf(new Date(), tc.ctx.timezone))
       await checkDate(tc, plan.draft.date)
       if (plan.kind === 'expense') await checkCategoryAlive(tc, plan.categoryId, plan.draft.date)
-      // The day's quota is spent only by a movement that passed every check (0044).
-      const { data: allowed, error } = await tc.ctx.client.rpc('consumir_cupo_altas')
+      // The day's quota is spent only by a movement that passed every check (0044); the bot's agent spends it by id (service role).
+      const { data: allowed, error } = tc.admin
+        ? await tc.ctx.client.rpc('consumir_cupo_altas_usuario', { p_usuario_id: tc.ctx.usuarioId })
+        : await tc.ctx.client.rpc('consumir_cupo_altas')
       if (error) throw new Error(error.message)
       if (allowed !== true) throw new McpToolError('rate-limited', 'This account reached its limit of new movements for today. Try again tomorrow, or add them on the web.')
       const before = await idsLike(tc, plan)

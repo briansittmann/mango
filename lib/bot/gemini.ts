@@ -20,11 +20,20 @@ export const GEMINI_FALLBACK_MODEL = 'gemini-3.7-flash'
 export const GEMINI_TIMEOUT_MS = 12_000
 
 /**
+ * Per call of the agent (`add-bot-agent-writes`): with the nineteen tools declared, the call after
+ * a tool result took over 12 s in 9 of 76 eval cases (both models) and was aborted, and twice in a
+ * row once; the agent's 30 s budget still bounds the turn, and the webhook's 60 s hold both.
+ */
+export const GEMINI_AGENT_CALL_TIMEOUT_MS = 20_000
+
+/**
  * Passed on every text call when set (`add-bot-batch-loads` D6); a voice note, and any call while
  * unset, runs the model's default thinking. With `LOW` every text case of `npm run test:parser`
  * passed on both models and a list of 12 parses in 4–5 s instead of 11–24 s, past the timeout;
- * voice transcriptions came back in digits ("café 350" for "café tres cincuenta"), so voice keeps
- * the default.
+ * voice transcriptions came back in digits ("café 350" for "café tres cincuenta"), so a voice
+ * note's first call keeps the default. Its retry runs with `LOW` (`add-bot-agent-writes` D5): on
+ * 5/11 three notes with several orders each hit the 12 s twice in a row, 24,6 s per message, and
+ * ended in "volvé a mandarlo"; a retry that thinks less and answers beats one that times out again.
  */
 export const GEMINI_TEXT_THINKING_LEVEL: ThinkingLevel | undefined = ThinkingLevel.LOW
 
@@ -54,7 +63,7 @@ export function createGeminiModel(model = GEMINI_MODEL, fallback = GEMINI_FALLBA
           responseMimeType: 'application/json',
           temperature: 0,
           abortSignal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
-          ...(GEMINI_TEXT_THINKING_LEVEL && !audio ? { thinkingConfig: { thinkingLevel: GEMINI_TEXT_THINKING_LEVEL } } : {}),
+          ...(GEMINI_TEXT_THINKING_LEVEL && (!audio || failed) ? { thinkingConfig: { thinkingLevel: GEMINI_TEXT_THINKING_LEVEL } } : {}),
         },
       })
       return response.text ?? ''
@@ -66,8 +75,8 @@ export function createGeminiModel(model = GEMINI_MODEL, fallback = GEMINI_FALLBA
 }
 
 /**
- * The agent's model call (`add-bot-agent-mode` D4): the same models, timeout per call and switch to
- * the fallback as the parser, with the tools as function declarations and the system prompt as
+ * The agent's model call (`add-bot-agent-mode` D4): the same models and switch to the fallback as
+ * the parser, a longer timeout per call (`GEMINI_AGENT_CALL_TIMEOUT_MS`), with the tools as function declarations and the system prompt as
  * `systemInstruction`. Text out, not JSON. The candidate's content goes back as it came (thought
  * signatures included), so the next call sees its own tool calls.
  */
@@ -86,7 +95,7 @@ export function createGeminiAgentCall(model = GEMINI_MODEL, fallback = GEMINI_FA
         config: {
           systemInstruction: system,
           temperature: 0.2,
-          abortSignal: AbortSignal.any([AbortSignal.timeout(GEMINI_TIMEOUT_MS), signal]),
+          abortSignal: AbortSignal.any([AbortSignal.timeout(GEMINI_AGENT_CALL_TIMEOUT_MS), signal]),
           ...(GEMINI_TEXT_THINKING_LEVEL ? { thinkingConfig: { thinkingLevel: GEMINI_TEXT_THINKING_LEVEL } } : {}),
           ...(tools
             ? { tools: [{ functionDeclarations: tools.map((tool) => ({ name: tool.name, description: tool.description, parametersJsonSchema: tool.parameters })) }] }

@@ -1,5 +1,5 @@
 {
-  "nota": "Mensajes reales que el bot no resolvia (historial VIP de Brian, 2026-10-01 a 2026-10-26) y casos de lectura agregados, con lo que deberia pasar. Es el examen del modo agente (add-bot-agent-mode, etapa 3); se suma un caso cada vez que eventos_bot o el historial muestren uno nuevo. 'escribe' lista lo que el turno deberia cambiar en la base; vacio = solo responder. 'eval' lo corre `npm run test:agent` contra Gemini real con herramientas falsas: 'herramientas' son las que tiene que llamar (vacio = ninguna), 'alguna' basta con una de la lista (con 'herramientas' vacio: puede leerlas, no es obligatorio), 'menciona' son textos que la respuesta tiene que contener (sin mayusculas ni tildes). Un caso sin 'eval' se salta (escrituras, etapa 4).",
+  "nota": "Mensajes reales que el bot no resolvia (historial VIP de Brian, 2026-10-01 a 2026-10-26; Lean, 2026-11-05) y casos agregados, con lo que deberia pasar. Es el examen del modo agente (add-bot-agent-mode, etapa 3; escrituras con confirmacion en add-bot-agent-writes, etapa 4); se suma un caso cada vez que eventos_bot o el historial muestren uno nuevo. 'escribe' lista lo que el turno deberia cambiar en la base; vacio = solo responder. 'eval' lo corre `npm run test:agent` contra Gemini real con herramientas falsas: 'herramientas' son las de lectura que tiene que llamar (vacio = ninguna), 'alguna' basta con una de la lista (con 'herramientas' vacio: puede leerlas, no es obligatorio), 'menciona' son textos que la respuesta tiene que contener (sin mayusculas ni tildes), 'plan' son las escrituras que tiene que proponer (nombre y un subconjunto de los args; sin 'plan' no puede proponer ninguna). Un caso sin 'eval' se salta.",
   "casos": [
     {
       "mensaje": "Que me recomendas hacer con mi dinero ?",
@@ -29,17 +29,14 @@
       "mensaje": "Elimina categoría mascota",
       "fecha": "2026-10-01",
       "respuesta_de_hoy": "no_entendido",
-      "esperado": "Etapa 3 (solo lectura): decir relajado que desde el chat todavia no se borran categorias, sin escribir nada, y ofrecer la web y Claude o ChatGPT con Mango conectado. Etapa 4: si la categoria existe, preguntar con un boton si la borra solo este mes o desde este mes, y a que categoria pasan sus movimientos; si no existe, decirlo y nombrar las parecidas.",
-      "escribe": [
-        "categoria borrada con alcance, despues de confirmar"
-      ],
+      "esperado": "No existe esa categoria: decirlo y nombrar las que hay, sin proponer ninguna escritura.",
+      "escribe": [],
       "eval": {
-        "herramientas": [],
-        "alguna": [
+        "herramientas": [
           "get_summary"
         ],
         "menciona": [
-          "claude"
+          "mascota"
         ]
       }
     },
@@ -152,7 +149,7 @@
     {
       "mensaje": "anotá café 3",
       "fecha": "2026-11-05",
-      "contexto": "Llega al agente solo si el parser no lo tomo como carga; el agente no escribe.",
+      "contexto": "Llega al agente solo si el parser no lo tomo como carga; un gasto de hoy se anota escribiendolo.",
       "esperado": "No anota: dice que lo escriba como carga («café 3»).",
       "escribe": [],
       "eval": {
@@ -180,7 +177,7 @@
       "mensaje": "cambiame el presupuesto de comida a 400",
       "fecha": "2026-11-05",
       "respuesta_de_hoy": "no_entendido",
-      "esperado": "Que desde el chat todavia no, y que se hace en la web o con Claude/ChatGPT conectado; nada escrito.",
+      "esperado": "En el ciclo en curso sin decir el alcance: preguntar en texto si es solo este mes o desde este mes, sin proponer la escritura todavia.",
       "escribe": [],
       "eval": {
         "herramientas": [],
@@ -188,7 +185,181 @@
           "get_summary"
         ],
         "menciona": [
-          "web"
+          "este mes"
+        ]
+      }
+    },
+    {
+      "mensaje": "eliminá los 32,40 de comida. no hay límite para comida este mes. borrá los 54,48",
+      "fecha": "2026-11-05",
+      "contexto": "El audio de Lean del 5/11 (\"eliminar los 7,000 de delivery. No hay límite para delivery este mes. Borrar los 3,000\") con las cifras de la cuenta fija: Súper 32,40 y Mercado 54,48 en Comida, presupuesto 300.",
+      "respuesta_de_hoy": "no_disponible (el parser vencio dos veces con el audio); con el agente de solo lectura, 'eso todavia no lo puedo hacer desde el chat'",
+      "esperado": "Leer los movimientos, y proponer en una sola pregunta borrar Súper 32,40, dejar Comida sin presupuesto solo este mes y borrar Mercado 54,48; escribir solo al tocar Sí.",
+      "escribe": [
+        "Súper 32,40 borrado",
+        "presupuesto de Comida null solo este mes",
+        "Mercado 54,48 borrado"
+      ],
+      "eval": {
+        "herramientas": [
+          "list_movements"
+        ],
+        "alguna": [
+          "get_summary"
+        ],
+        "menciona": [
+          "32,40",
+          "54,48",
+          "comida"
+        ],
+        "plan": [
+          {
+            "name": "delete_movement",
+            "args": {
+              "id": "m2"
+            }
+          },
+          {
+            "name": "update_category",
+            "args": {
+              "id": "c2",
+              "budget": null,
+              "scope": "only_this_month"
+            }
+          },
+          {
+            "name": "delete_movement",
+            "args": {
+              "id": "m3"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "mensaje": "eliminar los 7,000 de delivery. No hay límite para delivery este mes. Borrar los 3,000.",
+      "fecha": "2026-11-05",
+      "contexto": "El texto literal del audio de Lean sobre la cuenta fija, que no tiene Delivery ni esas filas.",
+      "esperado": "No proponer nada: decir que no hay una categoria Delivery ni movimientos de 7.000 o 3.000, y nombrar lo que hay.",
+      "escribe": [],
+      "eval": {
+        "herramientas": [],
+        "alguna": [
+          "list_movements",
+          "get_summary",
+          "list_fixed_charges"
+        ],
+        "menciona": [
+          "delivery"
+        ]
+      }
+    },
+    {
+      "mensaje": "borrá el cine",
+      "fecha": "2026-11-05",
+      "contexto": "Llega al agente cuando el cine no es la ultima carga del chat (el parser lo toma como borrar y la logica responde 'cual' o 'nada que corregir'); aca se prueba la propuesta.",
+      "esperado": "Proponer borrar Cine 48 del 2/11, y borrarlo al tocar Sí.",
+      "escribe": [
+        "Cine 48 borrado"
+      ],
+      "eval": {
+        "herramientas": [
+          "list_movements"
+        ],
+        "menciona": [
+          "cine",
+          "48"
+        ],
+        "plan": [
+          {
+            "name": "delete_movement",
+            "args": {
+              "id": "m4"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "mensaje": "cambiá el presupuesto de comida a 400 desde este mes",
+      "fecha": "2026-11-05",
+      "esperado": "Proponer el presupuesto de Comida a 400 desde este mes.",
+      "escribe": [
+        "presupuesto de Comida 400 desde este mes"
+      ],
+      "eval": {
+        "herramientas": [
+          "get_summary"
+        ],
+        "menciona": [
+          "comida",
+          "400"
+        ],
+        "plan": [
+          {
+            "name": "update_category",
+            "args": {
+              "id": "c2",
+              "budget": 400,
+              "scope": "from_this_month"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "mensaje": "el gimnasio ya lo pagué",
+      "fecha": "2026-11-05",
+      "contexto": "Gimnasio es un fijo de 50 el dia 10, pendiente este ciclo.",
+      "esperado": "Proponer marcar Gimnasio como cobrado este mes.",
+      "escribe": [
+        "cargo de Gimnasio de noviembre cobrado"
+      ],
+      "eval": {
+        "herramientas": [
+          "list_fixed_charges"
+        ],
+        "menciona": [
+          "gimnasio"
+        ],
+        "plan": [
+          {
+            "name": "set_fixed_charged",
+            "args": {
+              "id": "d3",
+              "charged": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "mensaje": "anotá 30 en comida con fecha del 10 de diciembre",
+      "fecha": "2026-11-05",
+      "contexto": "Un gasto en otro mes no entra escribiendolo (el parser lo carga hoy); el pedido de Brian del 5/11.",
+      "esperado": "Proponer un gasto de 30 en Comida el 2026-12-10.",
+      "escribe": [
+        "gasto 30 en Comida el 2026-12-10"
+      ],
+      "eval": {
+        "herramientas": [],
+        "alguna": [
+          "get_summary"
+        ],
+        "menciona": [
+          "comida",
+          "30"
+        ],
+        "plan": [
+          {
+            "name": "add_movement",
+            "args": {
+              "kind": "expense",
+              "amount": 30,
+              "category_id": "c2",
+              "date": "2026-12-10"
+            }
+          }
         ]
       }
     }

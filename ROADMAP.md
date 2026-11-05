@@ -207,7 +207,7 @@ Estado de partida: web y `/dashboard` sobre Supabase hechos, demo publicada en `
 
 - [ ] Alertas al acercarse al techo de una categoría
 - [ ] Presupuestos sugeridos a partir del historial
-- [ ] Modo asesor con más contexto → 🤖 modo agente solo lectura para VIP (`add-bot-agent-mode`, 2026-11-05): Gemini en function calling sobre las tres herramientas de lectura del MCP, como fallback del parser (`preguntar` / `no_entendido`); `npm run test:agent`. Faltan la vuelta contra la base real, la ronda por WhatsApp y archivar. Etapa 4: escrituras con confirmación
+- [ ] Modo asesor con más contexto → 🤖 modo agente solo lectura para VIP (`add-bot-agent-mode`, 2026-11-05): Gemini en function calling sobre las tres herramientas de lectura del MCP, como fallback del parser (`preguntar` / `no_entendido`); `npm run test:agent`. Faltan la ronda por WhatsApp y archivar. Etapa 4 hecha (`add-bot-agent-writes`, 2026-11-05): las diecinueve herramientas, las escrituras piden confirmación con botones «Sí, dale» / «No, dejalo», "escribiendo…" en todo mensaje y "dame un momento" en una nota de voz larga, el reintento de voz con pensamiento LOW; falta la ronda por WhatsApp y archivar después de `add-bot-agent-mode`
 - [ ] Recordatorio diario opcional (apagado por defecto)
 - [ ] Reordenar gastos dentro de su categoría
 - [ ] Bot y parser en inglés

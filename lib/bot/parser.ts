@@ -136,6 +136,8 @@ export type PendingQuestion =
   | { pregunta: 'deposito'; monto: number; diasAtras: number; descripcion: string | null }
   /** Whether an expense naming a fixed charge already charged this cycle is a separate payment (`bot-transaction-logging`). */
   | { pregunta: 'cargo_repetido'; nombre: string; categoria: string; monto: number; diasAtras: number; medioPago: 'efectivo' | 'tarjeta' | null }
+  /** The writes a VIP account's agent proposed, waiting for "Sí" (`add-bot-agent-writes` D3); the parser has no block for it. */
+  | { pregunta: 'agente'; llamadas: { name: string; args: Record<string, unknown> }[] }
 
 export type AudioInput = { data: Uint8Array; mimeType: string }
 

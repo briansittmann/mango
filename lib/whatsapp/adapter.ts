@@ -13,7 +13,7 @@ import es from '@/messages/es.json'
 import en from '@/messages/en.json'
 import { ANSWER_BUTTONS, UNDO_PREFIX, buttonAction, handleIncoming, type AdapterTexts } from './handle-message'
 import { downloadMedia, type MediaResult } from './media'
-import { maskPhone, sendButtons, sendReaction, sendText } from './send'
+import { maskPhone, sendButtons, sendReaction, sendText, sendTyping } from './send'
 
 import type { WhatsAppMessage } from './payload'
 
@@ -24,10 +24,10 @@ export const DAILY_TEXT_CONFIRMATIONS = 10
 
 const MESSAGES = { es, en }
 
-/** The replies the adapter sends on its own: the linking ones (`whatsapp-linking`) and the one for other media (`bot-voice-messages`), per language. */
+/** The replies the adapter sends on its own: the linking ones (`whatsapp-linking`), the one for other media (`bot-voice-messages`) and the wait for a long note, per language. */
 const ADAPTER_TEXTS: AdapterTexts = {
-  es: { vinculado: es.bot.vinculado, yaVinculado: es.bot.yaVinculado, codigoInvalido: es.bot.codigoInvalido, numeroEnOtraCuenta: es.bot.numeroEnOtraCuenta, cuentaYaVinculada: es.bot.cuentaYaVinculada, vincularEspera: es.bot.vincularEspera, soloTextoYAudio: es.bot.soloTextoYAudio },
-  en: { vinculado: en.bot.vinculado, yaVinculado: en.bot.yaVinculado, codigoInvalido: en.bot.codigoInvalido, numeroEnOtraCuenta: en.bot.numeroEnOtraCuenta, cuentaYaVinculada: en.bot.cuentaYaVinculada, vincularEspera: en.bot.vincularEspera, soloTextoYAudio: en.bot.soloTextoYAudio },
+  es: { vinculado: es.bot.vinculado, yaVinculado: es.bot.yaVinculado, codigoInvalido: es.bot.codigoInvalido, numeroEnOtraCuenta: es.bot.numeroEnOtraCuenta, cuentaYaVinculada: es.bot.cuentaYaVinculada, vincularEspera: es.bot.vincularEspera, soloTextoYAudio: es.bot.soloTextoYAudio, unMomento: es.bot.unMomento },
+  en: { vinculado: en.bot.vinculado, yaVinculado: en.bot.yaVinculado, codigoInvalido: en.bot.codigoInvalido, numeroEnOtraCuenta: en.bot.numeroEnOtraCuenta, cuentaYaVinculada: en.bot.cuentaYaVinculada, vincularEspera: en.bot.vincularEspera, soloTextoYAudio: en.bot.soloTextoYAudio, unMomento: en.bot.unMomento },
 }
 
 /**
@@ -53,6 +53,7 @@ export async function handleMessages(messages: WhatsAppMessage[]): Promise<void>
         processUnknownNumber,
         messageAlreadyProcessed: (userId, messageId) => messageAlreadyProcessed(userId, 'whatsapp', messageId),
         downloadMedia,
+        markTyping: (messageId) => sendTyping(message.phone, messageId),
         handleKnown,
         sendText,
         texts: ADAPTER_TEXTS,
