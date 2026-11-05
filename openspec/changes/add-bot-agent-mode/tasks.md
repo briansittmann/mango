@@ -27,3 +27,10 @@
 - [x] 4.1 `/privacidad` ("Tus mensajes" / "Your messages"): on accounts with history, answering a question also sends the model the account figures the question needs
 - [x] 4.2 CLAUDE.md (state and the open change), ARCHITECTURE.md §5 (advisor mode, implemented as the agent) and §11 (invented figures), ROADMAP.md block 13
 - [ ] 4.3 Archive after `add-bot-batch-loads` (whose delta of *A message becomes exactly one action* this change builds on) and copy the Risks into *Deuda técnica*
+
+## 5. Never without an answer (2026-11-05, after the round)
+
+- [x] 5.1 The round of 5/11 failed in the parser with `402 RESOURCE_EXHAUSTED` (Gemini prepaid credits depleted), not in the agent; Brian topped them up. Brian's ask: the agent never answers just "no puedo"; it says relaxed that the chat cannot do it yet and offers options, Claude or ChatGPT with Mango connected among them
+- [x] 5.2 `buildAgentPrompt`: the rule "never without an answer" (relaxed "todavía no lo puedo hacer desde el chat" and options in order: the chat, the web, Claude/ChatGPT), what the chat does, and a section on the MCP (what it does that the chat does not, what it does not do, and the connection steps with `mcpUrl` = `${SITE_URL}/api/mcp`, as the account sheet shows them), offered only when it applies; `agent-cases.json` adds "cómo conecto mango con chatgpt" and "cambiame el presupuesto de comida a 400", and the deletion case expects Claude to be named; the eval ignores numbers inside quotes (examples to write); verify `npm run test:agent` on both models
+  - 2026-11-05: with the new prompt, four full runs (3.8, 3.7, 3.8, 3.7) all passed, 12/12 each. A fifth failed on "Hola" ("35" from a quoted example to write, now ignored by the figure check) and on two cases that hung while the Mac slept. The rerun with the quote fix did not finish because the Mac kept sleeping (06:55–07:55 UTC); run it again once on each model.
+
