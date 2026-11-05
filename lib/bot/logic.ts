@@ -45,9 +45,11 @@ import {
   type LoadSummary,
   whichRowText,
 } from './format'
+import { agentPromptFor, agentToolsFor } from './agent-tools'
+import { runAgent } from './agent'
 import { refuseVoiceNote } from './audio'
 import { loadExternalIds, precheckItem, rowToCorrect, rowsToDelete, runBatch } from './batch'
-import { createGeminiModel } from './gemini'
+import { createGeminiAgentCall, createGeminiModel } from './gemini'
 import { parseMessage, type Action, type ParseResult, type PendingQuestion } from './parser'
 
 /**
@@ -101,6 +103,12 @@ export type BotReply = (
       text: string
     }
   | {
+      /** A VIP account's agent wrote `text` from the account's figures (`add-bot-agent-mode`); `tools` names what it read. */
+      kind: 'agent'
+      text: string
+      tools: string[]
+    }
+  | {
       /** A question: the adapter holds `pending` on the channel for 30 minutes, then sends `text`. */
       kind: 'ask'
       text: string
@@ -146,6 +154,8 @@ type Turn = {
   data: DataContext
   fmt: BotFormat
   t: ReturnType<typeof createTranslator<typeof es, 'bot'>>
+  /** A VIP account's recent messages, oldest first; the parser and the agent read them. */
+  history?: StoredMessage[]
 }
 
 export async function processMessage(message: IncomingMessage): Promise<BotReply> {
@@ -197,6 +207,7 @@ export async function processMessage(message: IncomingMessage): Promise<BotReply
   }
 
   const history = usuario.vip ? await recentMessages(usuario.id) : undefined
+  turn.history = history
   const { reply, heard, action } = await answer(turn, history)
   // For a voice note the stored incoming text is the transcription, '🎤' alone when there is none; never the bytes (D6).
   await Promise.all([remember(turn, message.audio ? heard || '🎤' : message.text, reply), record(turn, outcomeOf(action, reply), started)])
@@ -253,6 +264,8 @@ async function answer(turn: Turn, history: StoredMessage[] | undefined): Promise
  */
 function outcomeOf(action: ParseResult | undefined, reply: BotReply): string {
   if (!action) return 'audio_rechazado'
+  if (reply.kind === 'agent') return 'agente'
+  if (reply.kind === 'unavailable' && (action.accion === 'preguntar' || action.accion === 'no_entendido')) return 'agente_no_disponible'
   if (reply.kind === 'ask') return `pregunta_${reply.pending.pregunta}`
   if (reply.kind === 'loaded') return action.accion === 'cargar_varios' ? 'cargado_varios' : 'cargado'
   if (action.accion === 'cargar' || action.accion === 'cargar_varios') return 'carga_rechazada'
@@ -280,7 +293,10 @@ async function act(turn: Turn, action: ParseResult): Promise<BotReply> {
       if (action.falta === 'deposito') return askDeposit(turn, action)
       return ask(turn, { pregunta: 'categoria', tipo: action.tipo, monto: action.monto, diasAtras: action.dias_atras })
     case 'no_entendido':
-      return { kind: 'text', text: t('noEntendi') }
+      return turn.usuario.vip ? askAgent(turn, action) : { kind: 'text', text: t('noEntendi') }
+    case 'preguntar':
+      // Without the agent, the month query already lists every category (D2).
+      return turn.usuario.vip ? askAgent(turn, action) : query(turn, 'mes')
     case 'no_disponible':
       return { kind: 'unavailable', text: t('noDisponible') }
     case 'borrar':
@@ -292,6 +308,28 @@ async function act(turn: Turn, action: ParseResult): Promise<BotReply> {
     case 'crear_categoria':
       return createCategory(turn, action)
   }
+}
+
+/**
+ * Agent mode (`add-bot-agent-mode` D1, D3, D6): a VIP account's open question, or a message the
+ * parser did not understand, goes to the function-calling loop over the MCP's read tools, with the
+ * history as previous turns. For a voice note the message is the transcription; none heard is
+ * `noEntendi`, as before. Nothing is written and no question is held.
+ */
+async function askAgent(turn: Turn, action: ParseResult): Promise<BotReply> {
+  const { usuario, message, context, data, fmt, t } = turn
+  const text = (('transcripcion' in action && action.transcripcion) || message.text).trim()
+  if (!text) return { kind: 'text', text: t('noEntendi') }
+
+  const result = await runAgent({
+    system: agentPromptFor(usuario, fmt, context.categories.map((category) => category.nombre)),
+    history: turn.history ?? [],
+    message: text,
+    tools: agentToolsFor(data, usuario, message.channel),
+    call: createGeminiAgentCall(),
+  })
+  if (result.kind === 'unavailable') return { kind: 'unavailable', text: t('noDisponible') }
+  return { kind: 'agent', text: result.text, tools: result.toolCalls }
 }
 
 /**

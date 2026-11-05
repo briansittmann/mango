@@ -69,6 +69,9 @@ const NoEntendidoSchema = z.strictObject({ accion: z.literal('no_entendido') })
 
 const ConsultarSchema = z.strictObject({ accion: z.literal('consultar'), consulta: z.enum(['margen_libre', 'mes']) })
 
+/** Any other question or request about the account's money (`add-bot-agent-mode` D2): a VIP account's agent answers it. */
+const PreguntarSchema = z.strictObject({ accion: z.literal('preguntar') })
+
 const CorregirSchema = z
   .strictObject({
     accion: z.literal('corregir'),
@@ -95,6 +98,7 @@ export const ActionSchema = z.discriminatedUnion('accion', [
   RepreguntarSchema,
   NoEntendidoSchema,
   ConsultarSchema,
+  PreguntarSchema,
   CorregirSchema,
   BorrarSchema,
   CrearCategoriaSchema,
@@ -110,6 +114,7 @@ export const VoiceActionSchema = z.discriminatedUnion('accion', [
   RepreguntarSchema.extend(transcripcion),
   NoEntendidoSchema.extend(transcripcion),
   ConsultarSchema.extend(transcripcion),
+  PreguntarSchema.extend(transcripcion),
   CorregirSchema.extend(transcripcion),
   BorrarSchema.extend(transcripcion),
   CrearCategoriaSchema.extend(transcripcion),
@@ -182,6 +187,8 @@ const EXAMPLES: Record<ParseInput['locale'], [string, object][]> = {
     ['borrá el cine', { accion: 'borrar', cual: 'cine' }],
     ['¿cuánto me queda?', { accion: 'consultar', consulta: 'margen_libre' }],
     ['¿cómo voy este mes?', { accion: 'consultar', consulta: 'mes' }],
+    ['¿cómo vengo en Comida?', { accion: 'preguntar' }],
+    ['¿cuánto gasté en Netflix este año?', { accion: 'preguntar' }],
     ['creá la categoría Regalos con presupuesto 150', { accion: 'crear_categoria', nombre: 'Regalos', presupuesto: 150, confirmada: false }],
     ['asdasda', { accion: 'no_entendido' }],
   ],
@@ -211,6 +218,8 @@ const EXAMPLES: Record<ParseInput['locale'], [string, object][]> = {
     ['delete the movies', { accion: 'borrar', cual: 'movies' }],
     ['how much do I have left?', { accion: 'consultar', consulta: 'margen_libre' }],
     ['how is the month going?', { accion: 'consultar', consulta: 'mes' }],
+    ['how am I doing on Food?', { accion: 'preguntar' }],
+    ['how much did I spend on Netflix this year?', { accion: 'preguntar' }],
     ['create the category Gifts with a budget of 150', { accion: 'crear_categoria', nombre: 'Gifts', presupuesto: 150, confirmada: false }],
     ['asdasda', { accion: 'no_entendido' }],
   ],
@@ -278,7 +287,8 @@ ${
 - {"accion":"cargar_varios","cargas":[objeto cargar, …]${T}}
   Varios movimientos en el mismo mensaje: un objeto "cargar" completo por movimiento, en el orden del mensaje, entre 2 y 20.
 - {"accion":"no_entendido"${T}}  El mensaje no es ninguna de las otras acciones.
-- {"accion":"consultar","consulta":"margen_libre"|"mes"${T}}  "libre" o cuánto le queda → margen_libre; cómo viene el mes → mes.
+- {"accion":"consultar","consulta":"margen_libre"|"mes"${T}}  Solo dos consultas: "libre" o cuánto le queda en general → margen_libre; cómo viene el mes en general → mes.
+- {"accion":"preguntar"${T}}  Cualquier otra pregunta o pedido sobre su plata o su cuenta: una categoría ("¿cómo vengo en Comida?"), un gasto o un fijo concreto ("¿cuánto gasté en Netflix?"), otro mes, su ahorro, un consejo ("¿qué me recomendás?"), qué sabe hacer el bot.
 - {"accion":"corregir","monto"?:número,"categoria"?:string,"cual":string|null${T}}  Corrige la última carga; al menos uno de monto y categoria.
 - {"accion":"borrar","cual":string|null${T}}  Borra la última carga ("borrá eso").
 - {"accion":"crear_categoria","nombre":string,"presupuesto"?:número,"confirmada":boolean${T}}  Solo cuando el mensaje pide crear una categoría. nombre con la ortografía correcta, tildes incluidas; presupuesto solo si el mensaje lo da (positivo); confirmada es false salvo que el mensaje confirme la pregunta pendiente.`,
@@ -299,7 +309,8 @@ Gastos fijos activos: ${recurring}`,
 - corregir: cualquier forma de decir que la última carga estaba mal, aunque sea suelta ("osea lo que gasté esos 50 eran comida" → corregir con categoria "Comida"; "no, eran 80" → corregir con monto 80). Un monto que solo repite el de la carga para identificarla no es un monto nuevo.
 - Varios movimientos en un mensaje, separados por coma, por "y" o uno por línea ("café 3, súper 25 y nafta 40") → cargar_varios, con un cargar por movimiento en el orden del mensaje; cada uno sigue todas estas reglas. Un solo movimiento es siempre cargar.
 - cual: en corregir y borrar, el movimiento que el mensaje nombra como el que hay que cambiar, en una o dos palabras sin artículo ("la nafta era 40" → "nafta"; "borrá el cine" → "cine"); null si no nombra ninguno ("no, era 40", "borrá eso").
-- Un "sí", "dale" u "ok" suelto, sin una pregunta pendiente que confirme, es no_entendido.${payments ? PAYMENT_RULES : ''}`,
+- Un "sí", "dale" u "ok" suelto, sin una pregunta pendiente que confirme, es no_entendido. Un saludo solo ("hola", "¿cómo estás?") también.
+- preguntar: cualquier pregunta o pedido sobre su plata que no sea una carga, una corrección, un borrado, crear una categoría ni una de las dos consultas exactas. Si la pregunta nombra una categoría, un gasto, un fijo, un mes o pide un consejo, es preguntar, no consultar.${payments ? PAYMENT_RULES : ''}`,
   ]
 
   if (voice) {

@@ -426,7 +426,19 @@ Ejemplos: *"¿qué presupuesto semanal tengo?"*, *"¿cómo vengo este mes?"*
  
 El bot responde el **total del mes + desglose por categoría (top 5)** y una línea con cuántas categorías quedaron afuera y cuánto suman, para que las líneas den el total. Nada más: la lista completa en chat es ilegible. Para el detalle transacción por transacción, devuelve un link a la web. *"Libre"* o *"¿cuánto me queda?"* responde el margen libre.
 
-*(Implementado, `add-bot-conversation`, 1/10/2026.)* Las dos consultas salen de `resumenMensual`, la misma función del dashboard, sin llamar al modelo: los números coinciden con la pantalla. El modo asesor con Gemini (arriba) sigue pendiente, bloque 13 de `ROADMAP.md`.
+*(Implementado, `add-bot-conversation`, 1/10/2026.)* Las dos consultas salen de `resumenMensual`, la misma función del dashboard, sin llamar al modelo: los números coinciden con la pantalla. 
+
+### Modo agente: las herramientas del MCP desde el chat *(`add-bot-agent-mode`, nov 2026)*
+
+**Decisión (5/11/2026):** para las cuentas VIP, lo que el parser no resuelve (`preguntar`: cualquier pregunta sobre su plata que no sea una de las dos consultas exactas; y `no_entendido`) lo contesta un **agente**: Gemini en *function calling* sobre las tres herramientas de lectura del servidor MCP (`get_summary`, `list_movements`, `list_fixed_charges`, sección 4), con el historial reciente como turnos previos. Es la etapa 3 del plan del bot (la 2 fue medir con `eventos_bot`). El agente es el **fallback del parser, no lo reemplaza**: las cargas, las listas, Deshacer, las preguntas pendientes y las dos consultas fijas siguen por su camino determinista, barato y estable.
+
+**Solo lectura:** el agente no tiene ninguna herramienta que escriba; si le piden anotar, corregir o borrar, explica cómo decirlo como una carga. Las escrituras con confirmación son la etapa 4. Las herramientas corren en proceso sobre el contexto de datos del propio turno (cliente admin, filtro por `usuario_id` explícito), por el mismo sobre que usa el MCP (`callTool`): una entrada inválida vuelve al modelo como error y cada llamada deja una línea de log sin contenido.
+
+**Reglas al modelo:** toda cifra tiene que venir de una herramienta llamada en ese turno (nunca de memoria), el formato de montos de la cuenta con dos ejemplos escritos por `formatBotAmount`, el idioma (voseo en español), las reglas de ciclo del MCP (`MCP_INSTRUCTIONS`), texto plano corto con emoji al principio, sin consejos de inversión. Hasta 4 llamadas al modelo (la última sin herramientas), 30 s en total; dos fallos seguidos son el mismo "no pude procesarlo" de siempre. `eventos_bot` registra `agente` y `agente_no_disponible`.
+
+**Qué se le manda a Gemini:** además del texto, las cifras del ciclo que la pregunta necesita (totales, categorías, movimientos o fijos); `/privacidad` lo dice. La regla de coste de arriba (resumen agregado, no transacciones crudas) se relaja solo acá, solo para VIP y solo cuando el parser no entendió. Una cuenta no VIP recibe la consulta del mes ante un `preguntar`.
+
+**Cómo se mide:** `npm run test:agent` (`lib/bot/agent.eval.mjs`) corre `lib/bot/agent-cases.json` contra Gemini real con herramientas falsas sobre una cuenta fija y verifica las herramientas llamadas, los nombres que la respuesta tiene que contener y que ninguna cifra sea inventada (todas tienen que existir en los datos leídos).
  
 > El chat es para lo rápido. La web es para lo profundo.
  
@@ -1128,6 +1140,7 @@ Todo este cálculo es del número de prueba. Con número propio (octubre de 2026
 |---|---|
 | Gemini devuelve JSON mal formado | Validación con Zod + reintento |
 | Gemini inventa categorías | Mapeo estricto contra la lista existente; lo que no matchea cae en `otros` |
+| El agente (sección 5) inventa una cifra en una respuesta | Regla del prompt (solo cifras leídas en el turno), eval que rechaza toda cifra que no esté en los datos leídos, y el historial VIP guarda la respuesta para revisarla. Si aparece en uso, forzar una lectura en el primer paso (`FunctionCallingConfigMode.ANY`) |
 | Gemini inventa una transcripción sobre una nota de voz sin palabras | Medido el 8/10/2026 con silencio digital y ruido blanco sintéticos: devuelve una carga verosímil ("mandarina tres con cincuenta") pese a las reglas del prompt y al ejemplo de silencio (sección 3). Hoy: toda respuesta cita lo oído y la carga lleva *Deshacer*, así que una invención se ve y se deshace en un toque. Con ruido real grabado en WhatsApp (11/10/2026) no pasa: `no_entendido` doce de doce veces. Si la ronda muestra lo contrario, un umbral de energía sobre el audio decodificado antes de llamar al modelo |
 | Una voz es un dato biométrico y la capa gratuita de Gemini usaría el contenido | La key está en Tier 1 (pago, sección 1): Google no usa prompts ni archivos. El audio vive en memoria durante la request y no se guarda ni se loguea (solo id del mensaje y motivo del rechazo); para VIP se guarda la transcripción como cualquier texto. Si la key cayera a la capa gratuita (billing quitado, tope del presupuesto con el proyecto pasado a gratis), cada nota pasaría a ser material de entrenamiento: mantener Tier 1 es parte del diseño, no un detalle de facturación |
 | `otros` se infla y esconde información | Revisión mensual en el dashboard: si pesa, falta una categoría — se crea y se reasigna |

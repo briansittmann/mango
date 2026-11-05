@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "playwright test",
     "test:unit": "node --test \"lib/**/*.test.mjs\"",
-    "test:parser": "node --env-file=.env.local lib/bot/parser.eval.mjs"
+    "test:parser": "node --env-file=.env.local lib/bot/parser.eval.mjs",
+    "test:agent": "node --env-file=.env.local lib/bot/agent.eval.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

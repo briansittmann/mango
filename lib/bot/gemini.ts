@@ -1,5 +1,6 @@
-import { GoogleGenAI, ThinkingLevel, type ContentListUnion } from '@google/genai'
+import { GoogleGenAI, ThinkingLevel, type Content, type ContentListUnion } from '@google/genai'
 
+import type { AgentCall, AgentContent } from './agent'
 import type { Model } from './parser'
 
 /** Pinned by name, not an alias: an alias can move to another model and silently change the eval. */
@@ -57,6 +58,48 @@ export function createGeminiModel(model = GEMINI_MODEL, fallback = GEMINI_FALLBA
         },
       })
       return response.text ?? ''
+    } catch (error) {
+      failed = true
+      throw error
+    }
+  }
+}
+
+/**
+ * The agent's model call (`add-bot-agent-mode` D4): the same models, timeout per call and switch to
+ * the fallback as the parser, with the tools as function declarations and the system prompt as
+ * `systemInstruction`. Text out, not JSON. The candidate's content goes back as it came (thought
+ * signatures included), so the next call sees its own tool calls.
+ */
+export function createGeminiAgentCall(model = GEMINI_MODEL, fallback = GEMINI_FALLBACK_MODEL): AgentCall {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) throw new Error('Missing GEMINI_API_KEY')
+
+  const ai = new GoogleGenAI({ apiKey })
+  let failed = false
+
+  return async ({ system, contents, tools, signal }) => {
+    try {
+      const response = await ai.models.generateContent({
+        model: failed ? fallback : model,
+        contents: contents as Content[],
+        config: {
+          systemInstruction: system,
+          temperature: 0.2,
+          abortSignal: AbortSignal.any([AbortSignal.timeout(GEMINI_TIMEOUT_MS), signal]),
+          ...(GEMINI_TEXT_THINKING_LEVEL ? { thinkingConfig: { thinkingLevel: GEMINI_TEXT_THINKING_LEVEL } } : {}),
+          ...(tools
+            ? { tools: [{ functionDeclarations: tools.map((tool) => ({ name: tool.name, description: tool.description, parametersJsonSchema: tool.parameters })) }] }
+            : {}),
+        },
+      })
+      const content = response.candidates?.[0]?.content
+      const text = (content?.parts ?? [])
+        .filter((part) => typeof part.text === 'string' && !part.thought)
+        .map((part) => part.text)
+        .join('')
+      const functionCalls = (response.functionCalls ?? []).flatMap((call) => (call.name ? [{ name: call.name, args: call.args, id: call.id }] : []))
+      return { text, functionCalls, content: content as AgentContent | undefined }
     } catch (error) {
       failed = true
       throw error
