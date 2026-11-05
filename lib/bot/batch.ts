@@ -120,17 +120,39 @@ export function matchRow<R extends NamedRow>(rows: R[], cual: string): R | null 
 }
 
 /**
- * What `borrar` deletes (D5): a single row whatever the name; on several, every row without a name,
- * else the one it names. Null when the name matches no single row: the bot asks which one.
+ * What `borrar` deletes (D5): every row without a name; with one, the single row only if the name
+ * points at it, else the one row of several it names. Null when the name matches no single row.
  */
 export function rowsToDelete<R extends NamedRow>(rows: R[], cual: string | null | undefined): R[] | null {
-  if (rows.length === 1 || !cual) return rows
+  if (!cual) return rows
+  if (rows.length === 1) return namesRow(rows[0], cual) ? rows : null
   const row = matchRow(rows, cual)
   return row ? [row] : null
 }
 
-/** What `corregir` changes (D5): a single row whatever the name; on several, only the one it names, else null. */
+/** What `corregir` changes (D5): a single row unless the name points elsewhere; on several, only the one it names, else null. */
 export function rowToCorrect<R extends NamedRow>(rows: R[], cual: string | null | undefined): R | null {
-  if (rows.length === 1) return rows[0]
+  if (rows.length === 1) return !cual || namesRow(rows[0], cual) ? rows[0] : null
   return cual ? matchRow(rows, cual) : null
+}
+
+/** Words that point at a load without naming it: "el último gasto de comida" names only "comida". */
+const POINTER_WORDS = new Set([
+  'el', 'la', 'los', 'las', 'lo', 'ese', 'esa', 'eso', 'este', 'esta', 'esto', 'ultimo', 'ultima', 'gasto', 'ingreso', 'carga', 'movimiento', 'de', 'del', 'en',
+  'the', 'that', 'this', 'last', 'expense', 'income', 'one', 'of', 'in',
+])
+
+/**
+ * Whether a name points at a load's only row (5/11: "borrá el último gasto de comida" deleted the
+ * last load, 5 € in Otros): its description or category contains the name or is contained in it,
+ * pointer words aside. A name made only of pointer words names the row.
+ */
+export function namesRow(row: NamedRow, cual: string): boolean {
+  const key = normalizeName(cual).split(/\s+/).filter((word) => !POINTER_WORDS.has(word)).join(' ')
+  if (!key) return true
+  return [row.descripcion, row.categoria?.nombre].some((name) => {
+    if (!name) return false
+    const own = normalizeName(name)
+    return own.includes(key) || key.includes(own)
+  })
 }

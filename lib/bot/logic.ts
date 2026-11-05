@@ -156,8 +156,8 @@ const MESSAGES = { es, en }
 type Cargar = Extract<Action, { accion: 'cargar' }>
 type CargarVarios = Extract<Action, { accion: 'cargar_varios' }>
 type Repreguntar = Extract<Action, { accion: 'repreguntar' }>
-type Corregir = Extract<Action, { accion: 'corregir' }>
-type Borrar = Extract<Action, { accion: 'borrar' }>
+type Corregir = Extract<Action, { accion: 'corregir' }> & { transcripcion?: string }
+type Borrar = Extract<Action, { accion: 'borrar' }> & { transcripcion?: string }
 type CrearCategoria = Extract<Action, { accion: 'crear_categoria' }>
 
 /** Everything one message is handled with, loaded once (design D9). */
@@ -883,16 +883,33 @@ function whichRow(turn: Turn, key: 'cualCorregir' | 'cualBorrar', rows: LoadRow[
 }
 
 /**
+ * A delete or a correction whose name points past the chat's last load (5/11: "borrá el último
+ * gasto de comida" deleted 5 € in Otros): a VIP account's agent finds the movement and asks with
+ * buttons; otherwise the bot says what the last load was and touches nothing.
+ */
+function notTheLastLoad(turn: Turn, action: Borrar | Corregir, rows: LoadRow[]): Promise<BotReply> | BotReply {
+  if (turn.usuario.vip) return askAgent(turn, action)
+  const key = action.accion === 'borrar' ? 'cualBorrar' : 'cualCorregir'
+  if (rows.length !== 1) return whichRow(turn, key, rows)
+  const { fmt, t } = turn
+  const fila = `${rowName(turn, rows[0])} ${formatBotAmount(fmt.locale, fmt.currency, Math.abs(rows[0].monto), fmt.amountFormat)}`
+  return { kind: 'text', text: t(action.accion === 'borrar' ? 'ultimaNoEsBorrar' : 'ultimaNoEsCorregir', { fila, cual: action.cual ?? '' }) }
+}
+
+/**
  * `borrar` (`add-bot-batch-loads` D5): every row of the last load, or the one row a list's message
  * names; a name that matches no single row deletes nothing and asks which one. Rows left keep the
  * load as the channel's last.
  */
 async function remove(turn: Turn, action: Borrar): Promise<BotReply> {
   const rows = await readLoad(turn, turn.message.lastLoadId)
-  if (rows.length === 0) return { kind: 'text', text: turn.t('nadaQueCorregir'), lastLoad: null }
+  if (rows.length === 0) {
+    if (action.cual && turn.usuario.vip) return askAgent(turn, action)
+    return { kind: 'text', text: turn.t('nadaQueCorregir'), lastLoad: null }
+  }
 
   const targets = rowsToDelete(rows, action.cual)
-  if (!targets) return whichRow(turn, 'cualBorrar', rows)
+  if (!targets) return notTheLastLoad(turn, action, rows)
 
   for (const row of targets) await deleteLoad(turn, row)
   return { kind: 'text', text: removedText(turn, targets, 'borrado', 'borradoVarios'), lastLoad: targets.length === rows.length ? null : undefined }
@@ -920,10 +937,15 @@ async function undo(turn: Turn, id: string): Promise<BotReply> {
 async function correct(turn: Turn, action: Corregir): Promise<BotReply> {
   const { data, context, usuario, t } = turn
   const rows = await readLoad(turn, turn.message.lastLoadId)
-  if (rows.length === 0) return { kind: 'text', text: t('nadaQueCorregir'), lastLoad: null }
+  if (rows.length === 0) {
+    if (action.cual && usuario.vip) return askAgent(turn, action)
+    return { kind: 'text', text: t('nadaQueCorregir'), lastLoad: null }
+  }
   // On a list, only the row the message names (`add-bot-batch-loads` D5); otherwise it asks which one.
-  const row = rowToCorrect(rows, action.cual)
-  if (!row) return whichRow(turn, 'cualCorregir', rows)
+  // A name equal to the new category ("eso era comida") is the change, not the row.
+  const named = action.cual && action.categoria && normalizeName(action.cual) === normalizeName(action.categoria) ? null : action.cual
+  const row = rowToCorrect(rows, named)
+  if (!row) return notTheLastLoad(turn, { ...action, cual: named }, rows)
 
   const amount = action.monto ?? Math.abs(row.monto)
   // A correction never changes the method (`bot-transaction-logging` → *A load carries its payment method*).

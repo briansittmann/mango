@@ -79,3 +79,19 @@ When the agent asks for a tool that writes (any MCP tool that is not read-only),
 #### Scenario: A write fails on Yes
 - **WHEN** the account presses «Sí, dale» and a held delete names a row that no longer exists
 - **THEN** the other writes still run, and the reply names what was done and what could not be
+
+### Requirement: A name that is not the last load never deletes or changes it
+
+A delete or a correction that names a movement SHALL act on the chat's last load only when the name points at one of its rows, by description or category, words that only point ("el último gasto de") aside. When it does not, a VIP account's message SHALL go to the agent, which proposes the write with buttons; any other account SHALL be told what the last load was, with nothing deleted or changed.
+
+#### Scenario: The last load is in another category
+- **GIVEN** the chat's last load is "Créditos API Gemini" 5 € in Otros
+- **WHEN** the person sends "borrá el último gasto de comida"
+- **THEN** that row is not deleted
+- **AND** a VIP account gets the agent's proposal to delete the newest Comida expense, with «Sí, dale» / «No, dejalo»
+- **AND** any other account gets "Lo último que anotaste por acá es Créditos API Gemini 5 €, no «comida»…"
+
+#### Scenario: A name the row carries still deletes it
+- **GIVEN** the chat's last load is "Súper Día" 30 € in Comida
+- **WHEN** the person sends "borrá el súper" or "borrá eso"
+- **THEN** that row is deleted as before

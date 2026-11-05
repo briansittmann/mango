@@ -639,6 +639,8 @@
     "deshechoVarios": "↩️ Undone: {cantidad} movements, {total} in all.",
     "cualCorregir": "🤔 Which one? {lista}. Tell me, for example, «the {ejemplo} was 40».",
     "cualBorrar": "🤔 Which one should I delete? {lista}. Tell me, for example, «delete the {ejemplo}», or «delete that» to delete them all.",
+    "ultimaNoEsBorrar": "🤔 The last thing you logged here is {fila}, not “{cual}”. If that's it, say “delete that”; any other movement is deleted on the web.",
+    "ultimaNoEsCorregir": "🤔 The last thing you logged here is {fila}, not “{cual}”. If that's it, say for example “that was 40”; any other movement is changed on the web.",
     "deshacer": "Undo",
     "hoy": "today",
     "ayer": "yesterday",

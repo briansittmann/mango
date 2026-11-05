@@ -639,6 +639,8 @@
     "deshechoVarios": "↩️ Deshecho: {cantidad} movimientos, {total} en total.",
     "cualCorregir": "🤔 ¿Cuál? {lista}. Decime, por ejemplo, «{ejemplo} era 40».",
     "cualBorrar": "🤔 ¿Cuál borro? {lista}. Decime, por ejemplo, «borrá {ejemplo}», o «borrá eso» para borrar todos.",
+    "ultimaNoEsBorrar": "🤔 Lo último que anotaste por acá es {fila}, no «{cual}». Si es eso, decime «borrá eso»; otro movimiento se borra desde la web.",
+    "ultimaNoEsCorregir": "🤔 Lo último que anotaste por acá es {fila}, no «{cual}». Si es eso, decime por ejemplo «eso era 40»; otro movimiento se cambia desde la web.",
     "deshacer": "Deshacer",
     "hoy": "hoy",
     "ayer": "ayer",

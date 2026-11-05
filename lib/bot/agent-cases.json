@@ -281,6 +281,32 @@
       }
     },
     {
+      "mensaje": "borrá el último gasto de comida",
+      "fecha": "2026-11-05",
+      "contexto": "5/11, Brian por nota de voz: la ultima carga del chat era Créditos API Gemini 5 € en Otros y el bot la borro. Desde el arreglo, un nombre que no es la ultima carga llega al agente.",
+      "esperado": "Proponer borrar Súper 32,40 del 4/11, el gasto mas nuevo de Comida.",
+      "escribe": [
+        "Súper 32,40 borrado"
+      ],
+      "eval": {
+        "herramientas": [
+          "list_movements"
+        ],
+        "menciona": [
+          "súper",
+          "32,40"
+        ],
+        "plan": [
+          {
+            "name": "delete_movement",
+            "args": {
+              "id": "m2"
+            }
+          }
+        ]
+      }
+    },
+    {
       "mensaje": "cambiá el presupuesto de comida a 400 desde este mes",
       "fecha": "2026-11-05",
       "esperado": "Proponer el presupuesto de Comida a 400 desde este mes.",
