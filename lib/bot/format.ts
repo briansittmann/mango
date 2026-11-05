@@ -14,7 +14,7 @@ export type BotTranslate = (key: string, values?: Record<string, string | number
 export type BotFormat = { locale: string; currency: string; amountFormat: AmountFormat; today: string; t: BotTranslate }
 
 /** The dashboard bar's levels (`getBudgetStatus`), as the confirmation's light (design D10). */
-const LIGHTS = { ok: '🟢', warning: '🟡', exceeded: '🔴' } as const
+export const LIGHTS = { ok: '🟢', warning: '🟡', exceeded: '🔴' } as const
 
 /** A category's budget bar: the fields of `BudgetStatus` the confirmation shows. */
 export type LoadBudget = { amount: number; spent: number; level: keyof typeof LIGHTS }
@@ -133,16 +133,11 @@ export function whichRowText(
 }
 
 /**
- * The month query's categories (design D7): spent > 0, largest first, at most `limit` in `top`;
- * `rest` counts and sums the spent categories left out, so the lines add up to the total.
+ * The month query's categories: every one with something spent or a budget, largest spent first
+ * (a stable sort, so the ones at 0 keep the dashboard's order).
  */
-export function topCategories<T extends { total: number }>(
-  groups: T[],
-  limit = 5,
-): { top: T[]; rest: { count: number; total: number } } {
-  const spent = groups.filter((group) => group.total > 0).sort((a, b) => b.total - a.total)
-  const left = spent.slice(limit)
-  return { top: spent.slice(0, limit), rest: { count: left.length, total: left.reduce((sum, group) => sum + group.total, 0) } }
+export function monthCategories<T extends { total: number; budget: unknown }>(groups: T[]): T[] {
+  return groups.filter((group) => group.total > 0 || group.budget).sort((a, b) => b.total - a.total)
 }
 
 /** An amount as the web shows it for the account: "45 €" in `es`, "€45.50" in `en`, "$ 15k" abbreviated. */

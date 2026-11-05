@@ -78,11 +78,11 @@ A load confirmed with an Undo button SHALL be deleted when that button is presse
 
 ### Requirement: The month and free-margin queries
 
-`consultar` SHALL write nothing and SHALL answer from the same monthly summary the dashboard shows, for the cycle in progress, with no model call. `mes` SHALL reply with the cycle's total spent and up to five categories with the most spent, largest first, each with its amount. When more categories have spending, one more line SHALL say how many were left out and their sum, so the lines add up to the total. `margen_libre` SHALL reply with the cycle's free margin, negative when it is. Both replies SHALL end with the link to the dashboard. Amounts SHALL be in the account's currency and language. A category with nothing spent SHALL NOT be listed.
+`consultar` SHALL write nothing and SHALL answer from the same monthly summary the dashboard shows, for the cycle in progress, with no model call. `mes` SHALL reply with the cycle's total spent and every category with something spent or a budget in the cycle, largest spent first, each with its amount; a category with a budget SHALL show its spent amount, its budget and the confirmation's light (🟢 🟡 🔴). `margen_libre` SHALL reply with the cycle's free margin, negative when it is. Both replies SHALL end with the link to the dashboard. Amounts SHALL be in the account's currency and language. A category with nothing spent and no budget SHALL NOT be listed.
 
 #### Scenario: How's the month
-- **WHEN** the cycle in progress has 1240 spent, with Vivienda 700, Comida 280, Transporte 120, Ocio 80, Salud 40 and Otros 20, and the account sends "¿cómo vengo?"
-- **THEN** the reply states 1240, lists Vivienda, Comida, Transporte, Ocio and Salud with their amounts in that order, then "1 categoría más: 20 €", and ends with the dashboard link
+- **WHEN** the cycle in progress has 1240 spent, with Vivienda 700, Comida 280 of a 300 budget, Transporte 120, Ocio 80, Salud 40 and Otros 20, Suplementos has a 100 budget and nothing spent, and the account sends "¿cómo vengo?"
+- **THEN** the reply states 1240, lists Vivienda, "Comida: 280 € de 300 € 🟡", Transporte, Ocio, Salud, Otros and "Suplementos: 0 € de 100 € 🟢" in that order, and ends with the dashboard link
 
 #### Scenario: Free margin
 - **WHEN** the dashboard shows a free margin of 864 € for the cycle in progress and the account sends "libre"
