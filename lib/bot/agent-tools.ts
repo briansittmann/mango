@@ -46,5 +46,6 @@ export function agentPromptFor(usuario: Usuario, fmt: BotFormat, categories: str
     categories,
     cycleRules: MCP_INSTRUCTIONS,
     link: `${SITE_URL}/dashboard`,
+    mcpUrl: `${SITE_URL}/api/mcp`,
   })
 }

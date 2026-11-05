@@ -1,5 +1,5 @@
 {
-  "nota": "Mensajes reales que el bot no resolvia (historial VIP de Brian, 2026-10-01 a 2026-10-26) y casos de lectura agregados, con lo que deberia pasar. Es el examen del modo agente (add-bot-agent-mode, etapa 3); se suma un caso cada vez que eventos_bot o el historial muestren uno nuevo. 'escribe' lista lo que el turno deberia cambiar en la base; vacio = solo responder. 'eval' lo corre `npm run test:agent` contra Gemini real con herramientas falsas: 'herramientas' son las que tiene que llamar (vacio = ninguna), 'alguna' basta con una de la lista, 'menciona' son textos que la respuesta tiene que contener (sin mayusculas ni tildes). Un caso sin 'eval' se salta (escrituras, etapa 4).",
+  "nota": "Mensajes reales que el bot no resolvia (historial VIP de Brian, 2026-10-01 a 2026-10-26) y casos de lectura agregados, con lo que deberia pasar. Es el examen del modo agente (add-bot-agent-mode, etapa 3); se suma un caso cada vez que eventos_bot o el historial muestren uno nuevo. 'escribe' lista lo que el turno deberia cambiar en la base; vacio = solo responder. 'eval' lo corre `npm run test:agent` contra Gemini real con herramientas falsas: 'herramientas' son las que tiene que llamar (vacio = ninguna), 'alguna' basta con una de la lista (con 'herramientas' vacio: puede leerlas, no es obligatorio), 'menciona' son textos que la respuesta tiene que contener (sin mayusculas ni tildes). Un caso sin 'eval' se salta (escrituras, etapa 4).",
   "casos": [
     {
       "mensaje": "Que me recomendas hacer con mi dinero ?",
@@ -29,13 +29,18 @@
       "mensaje": "Elimina categoría mascota",
       "fecha": "2026-10-01",
       "respuesta_de_hoy": "no_entendido",
-      "esperado": "Etapa 3 (solo lectura): decir que no borra categorias desde el chat y que se hace desde la web, sin escribir nada. Etapa 4: si la categoria existe, preguntar con un boton si la borra solo este mes o desde este mes, y a que categoria pasan sus movimientos; si no existe, decirlo y nombrar las parecidas.",
+      "esperado": "Etapa 3 (solo lectura): decir relajado que desde el chat todavia no se borran categorias, sin escribir nada, y ofrecer la web y Claude o ChatGPT con Mango conectado. Etapa 4: si la categoria existe, preguntar con un boton si la borra solo este mes o desde este mes, y a que categoria pasan sus movimientos; si no existe, decirlo y nombrar las parecidas.",
       "escribe": [
         "categoria borrada con alcance, despues de confirmar"
       ],
       "eval": {
         "herramientas": [],
-        "menciona": []
+        "alguna": [
+          "get_summary"
+        ],
+        "menciona": [
+          "claude"
+        ]
       }
     },
     {
@@ -154,6 +159,36 @@
         "herramientas": [],
         "menciona": [
           "café 3"
+        ]
+      }
+    },
+    {
+      "mensaje": "cómo conecto mango con chatgpt",
+      "fecha": "2026-11-05",
+      "respuesta_de_hoy": "no_entendido",
+      "esperado": "Los pasos de ChatGPT con la direccion del MCP.",
+      "escribe": [],
+      "eval": {
+        "herramientas": [],
+        "menciona": [
+          "usemango.dev/api/mcp",
+          "apps y conectores"
+        ]
+      }
+    },
+    {
+      "mensaje": "cambiame el presupuesto de comida a 400",
+      "fecha": "2026-11-05",
+      "respuesta_de_hoy": "no_entendido",
+      "esperado": "Que desde el chat todavia no, y que se hace en la web o con Claude/ChatGPT conectado; nada escrito.",
+      "escribe": [],
+      "eval": {
+        "herramientas": [],
+        "alguna": [
+          "get_summary"
+        ],
+        "menciona": [
+          "web"
         ]
       }
     }
