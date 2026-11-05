@@ -74,7 +74,7 @@ export function DesktopTopBar({ floating, pushedBack, hidden, cycle, actions, on
               onClick={onAddExpense}
               disabled={!onAddExpense}
               data-add-expense
-              className="pressable flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-primary pl-3 pr-4 text-body-md font-semibold text-primary-foreground [--press-scale:0.96] disabled:pointer-events-none disabled:opacity-40"
+              className="boton boton-primario flex h-10 min-h-0 shrink-0 items-center gap-1.5 rounded-full pl-3 pr-4 text-body-md font-semibold disabled:pointer-events-none disabled:opacity-40"
             >
               <Plus aria-hidden className="size-4" />
               {t('anadirGasto')}

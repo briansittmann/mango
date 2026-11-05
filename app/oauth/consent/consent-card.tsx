@@ -142,7 +142,10 @@ function DecisionButton({
         aria-busy={pending || undefined}
         onClick={onClick}
         className={cn(
-          "relative h-target overflow-hidden text-body-lg font-semibold transition-[width,border-radius,scale] duration-300 ease-out active:scale-95 motion-reduce:transition-none",
+          "relative h-target overflow-hidden text-body-lg font-semibold",
+          variant === "ghost"
+            ? "transition-[width,border-radius,scale] duration-300 ease-out active:scale-95 motion-reduce:transition-none"
+            : "boton-pliegue",
           pending ? "w-target rounded-full" : "w-full",
         )}
       >

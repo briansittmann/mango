@@ -991,8 +991,8 @@ export function EntrySheet<V>({
           disabled={primaryDisabled}
           onMouseDown={(event) => event.preventDefault()}
           className={cn(
-            'pressable h-9 rounded-full px-4 font-semibold',
-            primaryDisabled ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground',
+            'boton h-9 min-h-0 rounded-full px-4 font-semibold',
+            primaryDisabled ? 'bg-muted text-muted-foreground' : 'boton-primario',
           )}
         >
           {status === 'saving' ? (

@@ -20,6 +20,16 @@
   }
 }
 
+/* Every `hover:` and `group-hover:` only with a fine pointer, so a tap on a phone never leaves
+   anything looking hovered (skill botones-relieve). Tailwind's own checks only `(hover: hover)`. */
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
 :root {
   color-scheme: light dark;
 
@@ -36,6 +46,17 @@
   --brand-ink: light-dark(#15803D, #84CC16);
   --primary: light-dark(#149052, #84CC16);
   --primary-foreground: #0D110E;
+  /* Green buttons (botones-relieve). The hover goes lighter, not darker as the skill says: the
+     label is dark, and a darker green drops it under 4.5:1 in light. */
+  --primary-hover: light-dark(color-mix(in oklab, #149052 85%, white), color-mix(in oklab, #84CC16 85%, white));
+  --boton-degradado: linear-gradient(rgb(255 255 255 / 0.12), rgb(255 255 255 / 0));
+  --shadow-boton:
+    inset 0 1px 0 rgb(255 255 255 / 0.25),
+    inset 0 -1px 0 rgb(0 0 0 / 0.12),
+    0 1px 2px light-dark(rgb(23 26 23 / 0.15), rgb(0 0 0 / 0.5)),
+    0 4px 12px -4px color-mix(in srgb, var(--primary) 30%, transparent);
+  --shadow-boton-hundido: inset 0 2px 3px rgb(0 0 0 / 0.18);
+  --radius-control: 9999px;
   --secondary-foreground: light-dark(#0D100D, #F2F5F2);
   --warning: light-dark(#F0B429, #F0B429);
   --warning-ink: light-dark(#8A5A00, #F0B429);
@@ -444,6 +465,87 @@
   }
   @media (prefers-reduced-motion: reduce) {
     transition: none;
+  }
+}
+
+/* Green action buttons with a soft relief (skill botones-relieve): `.boton` reads the variables,
+   `.boton-primario` sets them. The hover changes only `background-color`; the gradient and the
+   shadows stay. A `.boton` with no variant is flat (the variables are unset): the sheets' disabled
+   state. The press uses `scale`/`translate`, not `transform`, so it composes with a GSAP entrance
+   that leaves an inline transform. Sizes come from each use's utilities (`min-h-0` for the 36px
+   sheet-header buttons). `.boton-pliegue` adds the fold into a spinner circle. */
+@layer components {
+  .boton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: var(--spacing-target);
+    padding-inline: 1.25rem;
+    border-radius: var(--radius-control);
+    font-weight: 600;
+    white-space: nowrap;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    background-color: var(--relieve-color);
+    background-image: var(--relieve-fondo);
+    box-shadow: var(--relieve-sombra);
+    transition:
+      scale 160ms var(--ease-out),
+      translate 160ms var(--ease-out),
+      background-color 160ms var(--ease-out),
+      border-color 160ms var(--ease-out),
+      color 160ms var(--ease-out);
+  }
+
+  .boton-pliegue {
+    transition:
+      width 300ms var(--ease-out),
+      border-radius 300ms var(--ease-out),
+      scale 160ms var(--ease-out),
+      translate 160ms var(--ease-out),
+      background-color 160ms var(--ease-out),
+      color 160ms var(--ease-out);
+  }
+
+  .boton:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    background-color: var(--relieve-color-hover);
+  }
+
+  .boton:active:not(:disabled, [aria-disabled='true']) {
+    scale: 0.97;
+    translate: 0 1px;
+    box-shadow: var(--relieve-sombra-hundido);
+  }
+
+  .boton-primario {
+    color: var(--primary-foreground);
+    --relieve-color: var(--primary);
+    --relieve-color-hover: var(--primary-hover);
+    --relieve-fondo: var(--boton-degradado);
+    --relieve-sombra: var(--shadow-boton);
+    --relieve-sombra-hundido: var(--shadow-boton-hundido);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .boton:hover:not(:disabled, [aria-disabled='true']) {
+      background-color: var(--relieve-color-hover);
+    }
+  }
+
+  /* Reduced motion: colour and shadow still answer, nothing shrinks, drops or folds. */
+  @media (prefers-reduced-motion: reduce) {
+    .boton:active:not(:disabled, [aria-disabled='true']) {
+      scale: none;
+      translate: none;
+    }
+    .boton-pliegue {
+      transition:
+        background-color 160ms var(--ease-out),
+        color 160ms var(--ease-out);
+    }
   }
 }
 
@@ -1116,9 +1218,17 @@ body {
     opacity: 0;
     translate: 0 0.7em;
   }
+  /* As "Empezar" it is a green button with the relief of `.boton-primario`. */
   &[data-cta] {
     background-color: var(--primary);
+    background-image: var(--boton-degradado);
+    box-shadow: var(--shadow-boton);
     color: var(--primary-foreground);
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        background-color: var(--primary-hover);
+      }
+    }
     .nav-shine {
       opacity: 0;
       translate: 0 -0.7em;
@@ -1286,14 +1396,8 @@ body {
   }
 }
 
+/* "Empezar" is a `.boton-primario`: its hover and press come from there. */
 .landing-cta {
-  transition: scale 200ms var(--ease-spring), box-shadow 300ms ease-out;
-  &:hover {
-    box-shadow: 0 10px 40px -8px color-mix(in oklab, var(--primary) 60%, transparent);
-  }
-  &:active {
-    scale: 0.93;
-  }
   &:focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 3px;
@@ -1865,7 +1969,6 @@ body {
   .landing-wire,
   .landing-bar,
   .landing-entry,
-  .landing-cta,
   .nav-entrar,
   .nav-entrar > span,
   .faq-panel,
@@ -2026,11 +2129,11 @@ body {
 }
 @keyframes fixed-add-pulse {
   0% {
-    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 55%, transparent);
+    box-shadow: var(--shadow-boton), 0 0 0 0 color-mix(in oklab, var(--primary) 55%, transparent);
   }
   55%,
   100% {
-    box-shadow: 0 0 0 10px color-mix(in oklab, var(--primary) 0%, transparent);
+    box-shadow: var(--shadow-boton), 0 0 0 10px color-mix(in oklab, var(--primary) 0%, transparent);
   }
 }
 @keyframes fixed-add-check {
@@ -2048,11 +2151,21 @@ body {
     width 300ms var(--ease-out),
     background-color 200ms var(--ease-out),
     color 200ms var(--ease-out),
-    scale 160ms var(--ease-out);
+    scale 160ms var(--ease-out),
+    translate 160ms var(--ease-out);
 }
+/* Ready, it is a green button with the relief of `.boton-primario` (the pulse keeps that shadow
+   under its ring). */
 .fixed-add[data-ready] {
   background-color: var(--primary);
+  background-image: var(--boton-degradado);
+  box-shadow: var(--shadow-boton);
   color: var(--primary-foreground);
+}
+@media (hover: hover) and (pointer: fine) {
+  .fixed-add[data-ready][data-phase='idle']:hover {
+    background-color: var(--primary-hover);
+  }
 }
 .fixed-add[data-ready][data-phase='idle'] {
   animation:
@@ -2060,7 +2173,9 @@ body {
     fixed-add-pulse 2200ms var(--ease-out) 450ms infinite;
 }
 .fixed-add[data-ready]:active {
-  scale: 0.95;
+  scale: 0.97;
+  translate: 0 1px;
+  box-shadow: var(--shadow-boton-hundido);
 }
 .fixed-add:not([data-phase='idle']) {
   width: 2.5rem;
@@ -2306,6 +2421,7 @@ body {
   }
   .fixed-add[data-ready]:active {
     scale: none;
+    translate: none;
   }
   /* The swipe hint holds still: the pill and the hand show and fade, nothing slides. */
   .swipe-hint-hand,

@@ -284,8 +284,8 @@ export function MoveMoneySheet({ open, onOpenChange, transfer, balances, cycle, 
               disabled={disabled || amount == null}
               onMouseDown={(event) => event.preventDefault()}
               className={cn(
-                'pressable flex min-h-row w-full items-center justify-center gap-2 rounded-full font-semibold',
-                disabled || amount == null ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground',
+                'boton flex min-h-row w-full items-center justify-center gap-2 rounded-full font-semibold',
+                disabled || amount == null ? 'bg-muted text-muted-foreground' : 'boton-primario',
               )}
             >
               {status === 'saving' ? (

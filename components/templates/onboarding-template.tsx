@@ -549,7 +549,7 @@ function Onboarding({ data, actions, onFinished, notice }: OnboardingTemplatePro
                   aria-disabled={pending || undefined}
                   aria-busy={pending || undefined}
                   className={cn(
-                    'onboarding-button relative flex h-12 items-center justify-center overflow-hidden whitespace-nowrap bg-primary text-body-lg font-semibold text-primary-foreground outline-none transition-[width,border-radius] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 motion-reduce:transition-none',
+                    'boton boton-primario boton-pliegue relative flex h-12 items-center justify-center overflow-hidden whitespace-nowrap text-body-lg font-semibold disabled:opacity-50',
                     pending ? 'w-12 rounded-full' : 'w-full rounded-[18px]',
                   )}
                 >

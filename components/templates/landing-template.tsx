@@ -147,7 +147,7 @@ function Actions({ delay = 0, className, hero }: { delay?: number; className?: s
       <Link
         href="/login"
         onPointerDown={ripple}
-        className="landing-cta group relative inline-flex h-12 items-center gap-2 overflow-hidden rounded-full bg-primary px-6 text-body-lg font-semibold text-primary-foreground"
+        className="landing-cta boton boton-primario group relative inline-flex h-12 items-center gap-2 overflow-hidden rounded-full px-6 text-body-lg font-semibold"
       >
         {t('empezar')}
         <ArrowRight className="size-4 transition-transform duration-300 ease-spring group-hover:translate-x-1" aria-hidden />

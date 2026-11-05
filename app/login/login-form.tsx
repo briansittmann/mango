@@ -216,7 +216,7 @@ export function LoginForm({
               type="button"
               size="lg"
               onClick={() => switchTo("email")}
-              className="h-target w-full gap-3 text-body-lg font-semibold transition-[scale] duration-300 ease-out active:scale-95 motion-reduce:transition-none"
+              className="h-target w-full gap-3 text-body-lg font-semibold"
             >
               <Mail aria-hidden className="size-5" />
               {t("continuarConEmail")}
@@ -254,7 +254,7 @@ export function LoginForm({
                 else if (event.currentTarget.form?.checkValidity()) setCharge((count) => count + 1);
               }}
               className={cn(
-                "relative h-target overflow-hidden text-body-lg font-semibold transition-[width,border-radius,scale] duration-300 ease-out active:scale-95 motion-reduce:transition-none",
+                "boton-pliegue relative h-target overflow-hidden text-body-lg font-semibold",
                 pending ? "w-target rounded-full" : "w-full",
               )}
             >

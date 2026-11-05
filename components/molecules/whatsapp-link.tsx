@@ -27,7 +27,7 @@ type WhatsAppLinkActionProps = {
 }
 
 const PRIMARY =
-  'onboarding-button relative flex h-12 w-full items-center justify-center whitespace-nowrap rounded-[18px] bg-primary text-body-lg font-semibold text-primary-foreground outline-none focus-visible:outline-2 focus-visible:outline-offset-2'
+  'boton boton-primario relative flex h-12 w-full items-center justify-center whitespace-nowrap rounded-[18px] text-body-lg font-semibold'
 
 /**
  * "Vincular WhatsApp" (`whatsapp-linking` → *"Vincular WhatsApp" opens the chat with the message

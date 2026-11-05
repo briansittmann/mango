@@ -576,7 +576,7 @@ export function CodeEntry({ email, onVerify, onResend, onChangeEmail, onDone }: 
             }}
             onPointerDown={() => setNudging(false)}
             className={cn(
-              'relative h-target overflow-hidden text-body-lg font-semibold transition-[width,border-radius,scale] duration-300 ease-out active:scale-95 motion-reduce:transition-none',
+              'boton-pliegue relative h-target overflow-hidden text-body-lg font-semibold',
               leaving ? 'w-target rounded-full' : 'w-full',
               nudging && 'animate-nudge motion-reduce:animate-none',
             )}
